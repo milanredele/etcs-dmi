@@ -1879,6 +1879,42 @@ package body EVC_Test_Support is
       end if;
    end Establish_Session;
 
+   procedure Establish_Session_Acked (S : Natural) is
+      M     : ETCS_Message.Message_T;
+      St    : ETCS_Message.Status_T;
+      Acked : Boolean := False;
+   begin
+      Give_Radio_Event (S, Connection_Set_Up);
+      for Cycles in 1 .. 20 loop
+         Stand;
+         for N in 1 .. Radio_Outputs loop
+            if not Acked
+              and then (Is_Radio_Message (N, 129, S)
+                        or else Is_Radio_Message (N, 157, S))
+            then
+               Decode_Radio_Message (N, M, St);
+               --  8.7.4: the T_TRAIN of the acknowledged message, the
+               --  catalogue's seventh value
+               Give_Radio_Message
+                 (S, Radio_Msg (ETCS_Message_Catalogue.Track_M8, Radio_Now,
+                                0, 7, M.Values (3)));
+               Acked := True;
+            end if;
+         end loop;
+         if Cycles = 1 then
+            Give_Radio_Message
+              (S, Radio_Msg (ETCS_Message_Catalogue.Track_M32, Radio_Now,
+                             0, 7, 48));
+         elsif Cycles = 2 then
+            Give_Radio_Message
+              (S, Radio_Msg (ETCS_Message_Catalogue.Track_M38, Radio_Now));
+         end if;
+         exit when Acked and then Cycles > 2;
+      end loop;
+      Stand;
+      Check (Acked, "session: the Train Data sent and acknowledged");
+   end Establish_Session_Acked;
+
    procedure Balise_Error_Reports (From  : Natural;
                             Count : out Natural;
                             Error : out Natural)

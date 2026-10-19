@@ -878,7 +878,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.3.1.1,3,x,,,,,E6,partial,"[E6 consistency-linking] EVC_Position.Supervise_Windows: the min safe antenna beyond the last possible location plus 1.3 m (Window_Passed, Missed_Margin_Cm); the time of a) and b) on top of it left"
 3.16.2.3.1.1 a),3,x,,,,,E6,partial,[E6 consistency-linking] EVC_Position.Supervise_Windows: the 1.3 m margin; the 100 ms after it left
 3.16.2.3.1.1 b),3,x,,,,,E6,todo,
-3.16.2.3.4,3,x,,,,,E6,todo,
+3.16.2.3.4,3,x,,,,,E6,done,"EVC_Balise_Groups.Geometry: balise 1 with M_DUP 2 (the duplicate of balise 0) is the location reference of the group when balise 0 is missed; EVC_Position.Check_Window judges the expectation window on that reference, so a duplicate detected inside it gives no linking reaction; evc_test Scenario_Consistency_Reactions [E6 consistency]"
 3.16.2.4.1,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (linking checked: the reaction of the expected group); EVC_Balise_Groups.Consistent
 3.16.2.4.1 a),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent (every N_PIG up to N_TOTAL read or duplicated)
 3.16.2.4.1 b),3,x,,,,,E6,partial,EVC_Balise_Groups.Consistent (decision: the BTM port carries decoded telegrams only; a balise without one is missed as a)

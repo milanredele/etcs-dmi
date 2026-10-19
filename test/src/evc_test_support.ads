@@ -910,6 +910,12 @@ package EVC_Test_Support is
    --  RBC (message 32) and the acknowledgement 38 (3.5.3.7 b to e)
    procedure Establish_Session (S : Natural; V : Unsigned_64 := 48);
 
+   --  Establish_Session, then the Train Data the on-board sends on S
+   --  (message 129, 3.18.3.4, or the SoM position report 157 with
+   --  packet 11) acknowledged by the RBC (message 8), so
+   --  that level 2 accepts the authorisations (4.8.3 [3])
+   procedure Establish_Session_Acked (S : Natural);
+
    --  The RTM outputs after From that are message 136 on session 1 with
    --  packet 4: their count, the M_ERROR of the last
    procedure Balise_Error_Reports (From  : Natural;

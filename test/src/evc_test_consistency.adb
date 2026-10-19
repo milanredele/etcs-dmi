@@ -1,7 +1,10 @@
 --  ETCS on-board (EVC)
 
 with Interfaces;         use Interfaces;
+with ETCS_Message;
+with ETCS_Message_Catalogue;
 with ETCS_Telegram;
+with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P145;
 with ETCS_Track_Packets.P254;
 with DMI_Protocol;
@@ -13,7 +16,9 @@ with EVC_JRU_Messages;  use EVC_JRU_Messages;
 with EVC_Core;
 with EVC_Modes;
 with EVC_Movement_Authority;
+with EVC_Ports;
 with EVC_Position;
+with EVC_Radio_Authority;
 with EVC_Test_Support;  use EVC_Test_Support;
 
 package body EVC_Test_Consistency is
@@ -295,6 +300,12 @@ package body EVC_Test_Consistency is
       Check (not SB and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_FS),
              "reactions: the missed balise duplicated and its duplicate "
              & "read, no reaction (3.16.2.4.2)");
+      Check (EVC_Position.LRBG.Id.NID_BG = 20
+               and then EVC_Position.Linking.Expected = 2
+               and then not EVC_Position.Linking_Reaction_Requested,
+             "reactions: the duplicate of balise 0 the location reference "
+             & "of the linked group, found inside its window, no linking "
+             & "reaction (3.16.2.3.4, EVC_Balise_Groups.Geometry)");
 
       --  linking not checked: the service brake, Balise read error, and
       --  at standstill the MA shortened to the train (3.16.2.4.4.2)
@@ -364,8 +375,34 @@ package body EVC_Test_Consistency is
       end loop;
    end Run_Errors;
 
+   --  A message 3 of the RBC referred to the group NID_BG of the
+   --  simulated track (NID_C 123): an MA of 2 km (packet 15), a flat
+   --  gradient, a speed profile of 100 km/h and the linking L (packet 5)
+   function Radio_Linked_MA (NID_BG : Natural; L : T5.Packet_T)
+                             return EVC_Ports.Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P15.Packet_T;
+   begin
+      V (3) := Radio_Now;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, ETCS_Message_Catalogue.Track_M3, V);
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.L_ENDSECTION := 2000;
+      ETCS_Track_Packets.P15.Encode (P, W, OK);
+      Check (OK, "error report: packet 15 encoded");
+      T21.Encode (Grad ((1 => (0, 0))), W, OK);
+      T27.Encode (SSP ((1 => (0, 100, False))), W, OK);
+      Put (W, L);
+      return Message_Bytes (W);
+   end Radio_Linked_MA;
+
    procedure Scenario_Consistency_Error_Report is
-      Count, Error : Natural;
+      Count, Error, Rejected : Natural;
    begin
       Start_X;
       EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
@@ -387,6 +424,56 @@ package body EVC_Test_Consistency is
              "error report: an unlinked group's message inconsistent, "
              & "M_ERROR 2 (3.16.4.1, 3.16.2.5.1), got"
              & Img (Count) & Img (Error));
+      --  linking by radio, no reaction: 20, 40 and 50 announced, absent
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (30, 500));
+      Run_X (15_000);
+      Establish_Session_Acked (1);
+      Rejected := EVC_Radio_Authority.Messages_Rejected;
+      Give_Radio_Message
+        (1, Radio_Linked_MA (10, Link_To ((200, 200, 200, 200),
+                                          (20, 30, 40, 50), 5, 2)));
+      Stand;
+      Check (EVC_Radio_Authority.Messages_Rejected = Rejected,
+             "error report: the message 3 with linking accepted in "
+             & "level 2 (4.8.3, 4.8.4)");
+      Run_Errors (45_000, Count, Error);
+      Check (Count = 1 and then Error = 0,
+             "error report: a linked group missed, M_ERROR 0 (3.16.4.1, "
+             & "3.16.2.3.2), got" & Img (Count) & Img (Error));
+      Run_Errors (80_000, Count, Error);
+      Check (Count = 1 and then Error = 0,
+             "error report: the next linked group missed, M_ERROR 0, got"
+             & Img (Count) & Img (Error));
+      Run_Errors (100_000, Count, Error);
+      Check (Count = 1 and then Error = 7,
+             "error report: two linked groups missed in a row, M_ERROR 7 "
+             & "(3.16.4.1, 3.16.2.7.1), got" & Img (Count) & Img (Error));
+      --  the service brake as reaction: at standstill the MA by radio
+      --  shortened to the train
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish_Session_Acked (1);
+      Give_Radio_Message
+        (1, Radio_Linked_MA (10, Link_To ((200, 200), (20, 30), 5, 1)));
+      Stand;
+      Run_Errors (45_000, Count, Error);
+      Check (Count = 1 and then Error = 0
+             and then EVC_Movement_Authority.MA.Present
+             and then not EVC_Movement_Authority.MA.Withdrawn,
+             "error report: a linked group missed with the service brake, "
+             & "M_ERROR 0, the MA kept while running, got"
+             & Img (Count) & Img (Error));
+      Stand;
+      Stand;
+      Check (EVC_Movement_Authority.MA.Withdrawn,
+             "error report: in level 2 at standstill the MA by radio "
+             & "shortened to the train (3.16.2.3.2, 3.16.2.6.2, "
+             & "EVC_Stored_Information.Linking_Shortening)");
    end Scenario_Consistency_Error_Report;
 
 end EVC_Test_Consistency;
