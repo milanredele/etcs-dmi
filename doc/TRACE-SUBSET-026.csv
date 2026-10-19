@@ -203,7 +203,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.5.1.2 d),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 e),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 f),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
-3.6.5.1.2 g),3,x,,,,,E2,deferred,"E5 (train integrity, Q_INTEGRITY 0 until then) [E5 session]"
+3.6.5.1.2 g),3,x,,,,,E2,done,"Q_INTEGRITY and L_TRAININT of EVC_Sessions.Integrity in every position report (EVC_Sessions.Reports, after EVC_Position.Position_Report); evc_test Train_Integrity [E5 session]"
 3.6.5.1.2 h),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 i),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.4,3,x,,,,,E2,done,"EVC_Sessions.Reports: message 136 to the supervising RBC (established, connection up) on the events of the position (EVC_Position.Report_Triggers) and of the radio and modes; c) d) e) k) l) not observable yet (their rows); evc_test Scenario_Session_Reports [E5 session]"
@@ -301,7 +301,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.2 c),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Conditions (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 d),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 e),3,x,,,,,E3,done,packet 69 Q_TRACKINIT 1: no platform from D_TRACKINIT on (EVC_Track_Conditions.Take_Platforms)
-3.7.3.3,3,x,,,,,E3,partial,"A.3.4.1.2 b) c) d) e) n) applied (EVC_Movement_Authority.Outcome_T, EVC_Stored_Information.Apply; evc_test Scenario_MA_Shortening, Scenario_Section_Timer, Scenario_End_Section_Timer); a) f) E5, g) to m) and o) and the table A.3.4 itself E4 [E5 authority]"
+3.7.3.3,3,x,,,,,E3,partial,"A.3.4.1.2 a) to f), i) and n) applied (EVC_Movement_Authority.Outcome_T, EVC_Stored_Information.Apply, Take_Stop, Contact_Shortening; evc_test Scenario_MA_Shortening, Scenario_Section_Timer, Scenario_End_Section_Timer, evc_test Emergency_Stops); g) h) j) l) m) o) are E6 (3.16.2, 3.18.3.7, Supervised Manoeuvre); the table re-read: B036 [E5 authority]"
 3.7.3.4,3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
 3.7.3.4 a),3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
 3.7.3.4 b),3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
@@ -1340,7 +1340,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.1.3.1 1),4,x,,,,,E4,done,"EVC_Levels.Take_Order carries the immediate order out first; EVC_Stored_Information.Message_Acceptance: the level before the order, the new level announced (condition [1] or [2] fulfilled); evc_test L2_Order_With_L1_MA"
 4.8.1.3.1 2),4,x,,,,,E4,done,"EVC_Levels.Take_Order carries the immediate order out first; EVC_Stored_Information.Message_Acceptance: what step 1 does not accept is judged in the new level, as the transition buffer released at once would (decision: also what step 1 rejects without [1] or [2]); evc_test E4_Level_Transition_0, L2_Order_With_L1_MA"
 4.8.1.5,4,x,,,,,E4,n/a,"no infill information is taken by this on-board (3.9, E7)"
-4.8.1.6,4,x,,,,,E4,deferred,E5 (radio) [E5 session]
+4.8.1.6,4,x,,,,,E4,deferred,"the linking of a radio message (packet 5) is not taken yet: EVC_Position.Take_Radio_Geo has no linking counterpart (B730, E5 remainder); the balise transition buffer's linking first (EVC_Position.Take_Released_Linking) [E5 session]"
 4.8.2.1,4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.2.1 a),4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.2.1 b),4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
@@ -1426,7 +1426,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.12.1.2 Table-footnote [1],4,x,,,,,E4,done,"EVC_Core.Revoke_Brake_Reasons: the unauthorised direction movement protection revoked entering FS, LS, SR, OS from PT; EVC_Levels.Mode_Entered the same for the level acknowledgement reasons"
 4.12.1.2 Table-footnote [2],4,x,,,,,E4,partial,"EVC_Core.Revoke_Brake_Reasons keeps roll away and unauthorised direction entering SM; missing: R when the SM authorisation changes the train orientation (Supervised Manoeuvre, E6); EVC_Levels.Mode_Entered the same for the level acknowledgement reasons"
 5.3.1.3,5,x,,,,,E4,done,"the procedures of 5.4, 5.5 and 5.10 in EVC_Mission and EVC_Levels"
-5.4.1.4,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
+5.4.1.4,5,x,,,,,E4,deferred,the termination at desk opening of a session still established is not found in EVC_Sessions (B789) [E5 session]
 5.4.3.2 A24,5,x,,,,,E4,done,"EVC_Sessions.Mission: the train accepted without a valid position, the position deleted by EVC_Core.Evaluate_Radio (EVC_Position.Delete_Position, e5/session-4); decision 5; evc_test Scenario_Session_SoM_Level_2 [E5 session]"
 5.4.3.2 A29,5,x,,,,,E4,done,EVC_Sessions.Network.Driver_Entries: entry 34 when the list is empty (no default network named) or on event 6; evc_test Session_Registration [E5 session]
 5.4.3.2 A31,5,x,,,,,E4,done,"EVC_Sessions.Mission: the session with the RBC of the contact opened, three attempts (A.3.1, EVC_Sessions); MSG_ONBOARD waiting 2 [E5 session]"
@@ -1494,7 +1494,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.5.3 j) 2nd bullet,5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22) [E5 session]"
 5.4.5.3 k),5,x,,,,,E4,deferred,"Supervised Manoeuvre (the SM authorisation of message 4, 4.6.3 [81], the safe consist length) is not built: E6 Supervised Manoeuvre (B008) [E6 Supervised Manoeuvre] [E5 session]"
 5.4.5.3 l),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22) [E5 session]"
-5.5.3.1.2,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E5 session]"
+5.5.3.1.2,5,x,,,,,E4,deferred,"a session with an RIU is radio infill, phase E7; step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E7 infill] [E5 session]"
 5.5.3.1.3,5,x,,,,,E4,done,EVC_Sessions.Mission: message 150 with packet 0 when a session with the RBC is established [E5 session]
 5.5.3.1.4,5,x,,,,,E4,done,"EVC_Sessions.Mission: 150 repeated while the desk is open until the RBC terminates the session (3.5.5, EVC_Sessions) [E5 session]"
 5.5.3.1.4 step 4,5,x,,,,,E4,done,EVC_Sessions: the termination ordered by the RBC (3.5.5) [E5 session]
@@ -1504,21 +1504,21 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.6.2.2 A030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
 5.6.2.2 A045,5,x,,,,,E4,done,"message 130 with the position report to the Supervising RBC (EVC_Radio_Authority.Evaluate_SH, Produce); without a session the request fails at once (a decision); evc_test Scenario_Shunting_L2 [E5 authority]"
 5.6.2.2 A050,5,x,,,,,E4,done,"SH entered by 4.6.3 [5]; the list of balise groups for the SH area deleted (EVC_Procedures.Mode_Changed; a new list comes with the RBC's authorisation, E5); evc_test_procedures Scenario_Shunting_Driver"
-5.6.2.2 A095,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
+5.6.2.2 A095,5,x,,,,,E4,partial,"the mode change to SH reported to the RBC (EVC_Sessions.Reports.Mode_Changed, 4.5.2) and the session terminated by the RBC's order (EVC_Sessions.Apply_Order, 3.5.5.1 a); no scenario of the shunting procedure in level 2 to its end (B789) [E5 authority]"
 5.6.2.2 A100,5,x,,,,,E4,done,"EVC_Mission.Mode_Entered: SH from FS, AD, LS, OS, SR, SM, SN, UN ends the mission (5.5.2); evc_test_procedures Integration_Shunting"
-5.6.2.2 A115,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
+5.6.2.2 A115,5,x,,,,,E4,partial,"the mode change to SH reported to the RBC (EVC_Sessions.Reports.Mode_Changed, 4.5.2) and the session terminated by the RBC's order (EVC_Sessions.Apply_Order, 3.5.5.1 a); no scenario of the shunting procedure in level 2 to its end (B789) [E5 authority]"
 5.6.2.2 A220,5,x,,,,,E4,done,"DMI system status 'SH refused' (EVC_DMI_Port.SS_SH_Refused, EVC_Radio_Authority.Status_Entry), MSG_ONBOARD answer 0; evc_test Scenario_Shunting_L2 [E5 authority]"
 5.6.2.2 D020,5,x,,,,,E4,partial,"levels 0 and 1 go to A050 (4.6.3 [5], EVC_Procedures); level 2 to A045 (EVC_Radio_Authority); level NTC (D030) is out of scope (PLAN.md) [E5 authority]"
 5.6.2.2 D030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
 5.6.2.2 D040,5,x,,,,,E4,done,EVC_Mission.Mode_Entered (the end of mission only when one is going on); evc_test_procedures Integration_Shunting
-5.6.2.2 D080,5,x,,,,,E4,partial,"levels 0 and 1: the procedure ends in SH; level 2: the mode report (A095) and the termination by the RBC (S100, A115) are the session half's [E5 authority]"
+5.6.2.2 D080,5,x,,,,,E4,partial,"levels 0 and 1: the procedure ends in SH; level 2: the mode report (A095, EVC_Sessions.Reports.Mode_Changed) and the termination by the RBC's order (S100, A115, EVC_Sessions.Apply_Order) without a scenario to the end (B789) [E5 authority]"
 5.6.2.2 E015,5,x,,,,,E4,done,"EVC_Driver_Requests.Shunting_Selected (DMI action 7), 4.6.3 [5] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Driver"
 5.6.2.2 S050,5,x,,,,,E4,done,"the wait (MSG_ONBOARD waiting 4, SH_Waiting) for 27 or 28 naming the request (4.8.4 [14]: second T_TRAIN, Take_SH_Answer); 28 is 4.6.3 [6] with its packet 49 (EVC_Procedures.Take_Radio_SH_List on entering SH); evc_test Scenario_Shunting_L2 [E5 authority]"
-5.6.2.2 S100,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
+5.6.2.2 S100,5,x,,,,,E4,partial,"the mode change to SH reported to the RBC (EVC_Sessions.Reports.Mode_Changed, 4.5.2) and the session terminated by the RBC's order (EVC_Sessions.Apply_Order, 3.5.5.1 a); no scenario of the shunting procedure in level 2 to its end (B789) [E5 authority]"
 5.6.4.1.1,5,x,,,,,E4,done,"130 sent again every 15 s without an answer, 3 times (A.3.1; EVC_Radio_Authority.Evaluate_SH); evc_test Scenario_Shunting_L2 [E5 authority]"
-5.6.4.1.2,5,x,,,,,E4,partial,after the repetitions the driver is told (SS_SH_Request_Failed) and the request ends (SH_Request_Failed); the termination of the session is the session half's (to read SH_Request_Failed); evc_test Scenario_Shunting_L2 [E5 authority]
-5.6.4.2,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
-5.6.4.3,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
+5.6.4.1.2,5,x,,,,,E4,partial,after the repetitions the driver is told (SS_SH_Request_Failed) and the request ends (EVC_Radio_Authority.SH_Request_Failed); evc_test Shunting_L2; the session is not terminated: EVC_Sessions does not read SH_Request_Failed (B789) [E5 authority]
+5.6.4.2,5,x,,,,,E4,deferred,the mode change report is sent once (EVC_Sessions.Reports.Mode_Changed); its repetition without the RBC's reply and the termination after the last one are not built (B788) [E5 session]
+5.6.4.3,5,x,,,,,E4,deferred,the mode change report is sent once (EVC_Sessions.Reports.Mode_Changed); its repetition without the RBC's reply and the termination after the last one are not built (B788) [E5 session]
 5.7.2.3,5,x,,,,,E4,done,"4.6.3 [51] (the max safe front end at the start of the SH mode profile), the acknowledgement asked after the transition (EVC_Procedures.Mode_Changed); evc_test_procedures Scenario_Shunting_Trackside"
 5.7.2.4,5,x,,,,,E4,done,"the service brake T_ACK after the transition until acknowledged (3.14.1.7.3, EVC_Procedures.Finish_Cycle, TIU reason 64, MSG_STATUS brake 3); evc_test_procedures Scenario_Shunting_Trackside"
 5.7.3.2,5,x,,,,,E4,done,"the request in the rectangle: estimated front end within L_ACKMAMODE, speed at or below V_MAMODE or V_NVSHUNT (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_Shunting_Trackside"
@@ -1528,8 +1528,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.7.3.5,5,x,,,,,E4,done,4.6.3 [50] on the acknowledgement; evc_test_procedures Scenario_Shunting_Trackside
 5.7.3.6,5,x,,,,,E4,done,"4.6.3 [51], then the request (EVC_Procedures.Mode_Changed); evc_test_procedures Scenario_Shunting_Trackside"
 5.7.3.7,5,x,,,,,E4,done,"the service brake T_ACK after the transition until acknowledged (3.14.1.7.3, EVC_Procedures.Finish_Cycle, TIU reason 64, MSG_STATUS brake 3); evc_test_procedures Scenario_Shunting_Trackside"
-5.7.4.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step, then [50]); the mode profile of level 2 comes from the RBC (E5), not exercised [E5 authority]"
-5.7.4.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step, then [50]); the mode profile of level 2 comes from the RBC (E5), not exercised [E5 authority]"
+5.7.4.1,5,x,,,,,E4,done,"a mode profile of the RBC with an SH area already entered, at the start of mission or after a trip in level 2: the driver's acknowledgement, then SH (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal_SH [E5 authority]"
+5.7.4.2,5,x,,,,,E4,done,"a mode profile of the RBC with an SH area already entered, at the start of mission or after a trip in level 2: the driver's acknowledgement, then SH (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal_SH [E5 authority]"
 5.8.1.9,5,x,,,,,E4,done,"the former EOA is the temporary EOA when it is closer (EVC_Procedures.Override_Step); by radio the level crossing of message 24 (EVC_Radio_Authority.Take_Message, evc_test Scenario_LX_By_Radio: [43])"
 5.8.2.1,5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the estimated speed (EVC_Core.Update_Position; decision: the train speed of the on-board's comparisons is V_est, 3.13.10.2.1, not its upper bound) at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
 5.8.2.1 a),5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the estimated speed (EVC_Core.Update_Position; decision: the train speed of the on-board's comparisons is V_est, 3.13.10.2.1, not its upper bound) at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
@@ -1563,7 +1563,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.8.4.2,5,x,,,,,E4,done,the trips of the cycle see the override as before the group's information ended it (EVC_Procedures.Ovr_For_Trips)
 5.9.1.1,5,x,,,,,E4,done,4.6.3 [40] at the latest when the max safe front end reaches the area (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
 5.9.2.1,5,x,,,,,E4,done,4.6.3 [40] at the latest when the max safe front end reaches the area (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
-5.9.2.2,5,x,,,,,E4,partial,4.6.3 [40] is level independent (EVC_Procedures); the mode profile of level 2 comes from the RBC (E5) [E5 authority]
+5.9.2.2,5,x,,,,,E4,done,"4.6.3 [40] is level independent (EVC_Procedures); the OS area of a mode profile of the RBC already overlapped at the start of mission or after a trip in level 2 (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal, evc_test PT_L2_Mode_Proposal [E5 authority]"
 5.9.2.3,5,x,,,,,E4,done,the request after the transition (EVC_Procedures.Mode_Changed); evc_test_procedures Scenario_On_Sight
 5.9.2.4,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_On_Sight
 5.9.2.7,5,x,,,,,E4,done,no request when already in OS (EVC_Procedures: requests only for another mode)
@@ -1576,8 +1576,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.9.3.7,5,x,,,,,E4,done,"EVC_Procedures; 4.6.3 [15], [40]; evc_test_procedures Scenario_On_Sight"
 5.9.3.8,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_On_Sight
 5.9.4.2,5,x,,,,,E4,done,"[34] is [40] with the level switched to 1 or 2 (EVC_Levels.Switched_To, Context_T.Level_Switched)"
-5.9.5.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised [E5 authority]"
-5.9.5.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised [E5 authority]"
+5.9.5.1,5,x,,,,,E4,done,"4.6.3 [40] is level independent (EVC_Procedures); the OS area of a mode profile of the RBC already overlapped at the start of mission or after a trip in level 2 (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal, evc_test PT_L2_Mode_Proposal [E5 authority]"
+5.9.5.2,5,x,,,,,E4,done,"4.6.3 [40] is level independent (EVC_Procedures); the OS area of a mode profile of the RBC already overlapped at the start of mission or after a trip in level 2 (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal, evc_test PT_L2_Mode_Proposal [E5 authority]"
 5.9.6.1.1,5,x,,,,,E4,done,4.6.3 [75] (EVC_Procedures); evc_test_procedures Scenario_On_Sight
 5.10.1.3,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
 5.10.1.5,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
@@ -1642,10 +1642,10 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.10.4.4,5,x,,,,,E4,done,EVC_Levels.Ack_Needed
 5.10.4.4 Table,5,x,,,,,E4,done,EVC_Levels.Ack_Needed
 5.11.2.2 A025,5,x,,,,,E4,done,"TR with its reason (DMI system status message, JRU 23 kind 1); evc_test_procedures Scenario_Trip_EOA"
-5.11.2.2 A030,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
+5.11.2.2 A030,5,x,,,,,E4,done,"the mode change to TR and to PT reported to the RBC in level 2 (EVC_Sessions.Reports.Mode_Changed, 3.6.5.1.4 b); the acknowledgement by message 6 (EVC_Radio_Authority.Trip_Exit_Recognised); evc_test Trip_L2 [E5 authority]"
 5.11.2.2 A035,5,x,,,,,E4,done,"the MA, the mode profile, the signalling related speed restriction and the track description but the track conditions deleted on entry, none accepted in TR (EVC_Movement_Authority.Delete_MA and EVC_Track_Description.Delete at the mode entry of EVC_Core); evc_test_procedures Scenario_Trip_EOA"
 5.11.2.2 A105,5,x,,,,,E4,done,"4.6.3 [7] to PT, the trip brake revoked; evc_test_procedures Scenario_Trip_EOA, Scenario_Linking"
-5.11.2.2 A115,5,x,x,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
+5.11.2.2 A115,5,x,x,,,,E4,done,"the mode change to TR and to PT reported to the RBC in level 2 (EVC_Sessions.Reports.Mode_Changed, 3.6.5.1.4 b); the acknowledgement by message 6 (EVC_Radio_Authority.Trip_Exit_Recognised); evc_test Trip_L2 [E5 authority]"
 5.11.2.2 A140,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
 5.11.2.2 A145,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
 5.11.2.2 A150,5,x,,,,,E4,n/a,"A150 is the change to SN in level NTC: level NTC and mode SN are out of scope (STM / National Systems, §1); the other branches of D090 are done (EVC_Procedures)"
@@ -1658,21 +1658,21 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.11.2.2 S010,5,x,,,,,E4,done,"the trip conditions of EVC_Procedures ([12], [16] to [18], [43], [49], [52], [54], [65], [66], [69]; [11], [20], [41] are E5); evc_test_procedures Scenario_Trip_EOA, _Trip_Order, _Linking, _Track_And_Version, _Shunting_Trips, _Override"
 5.11.2.2 S050,5,x,,,,,E4,done,the acknowledgement asked at standstill (EVC_Procedures.Finish_Cycle); evc_test_procedures Scenario_Trip_EOA
 5.11.2.2 S060,5,x,,,,,E4,done,the acknowledgement asked at standstill (EVC_Procedures.Finish_Cycle); evc_test_procedures Scenario_Trip_EOA
-5.11.2.2 S120,5,x,,,,,E4,partial,"message 6 taken in PT (EVC_Radio_Authority.Trip_Exit_Recognised): until then no MA, track description or SR authorisation taken and 'Start' requests no MA; evc_test Scenario_Trip_L2; the mode report it waits for (A115, 3.6.5) is the session half's [E5 authority]"
+5.11.2.2 S120,5,x,,,,,E4,done,"message 6 taken in PT (EVC_Radio_Authority.Trip_Exit_Recognised) after the mode report (EVC_Sessions.Reports.Mode_Changed): until then no MA, track description or SR authorisation taken and 'Start' requests no MA; evc_test Trip_L2 [E5 authority]"
 5.11.2.2 S130,5,x,,,,,E4,done,"'Start' waits for the revocation of every emergency stop (EVC_Radio_Authority.Evaluate, Any_Stop); evc_test Scenario_Trip_L2 [E5 authority]"
-5.11.2.2 S140,5,x,,,,,E4,partial,"a) start in level 1 (EVC_Mission) and d) SH ([5] from PT) and override from PT done; b), c) are E5 [E5 authority]"
+5.11.2.2 S140,5,x,,,,,E4,partial,"a) start in level 1 (EVC_Mission), b) 'Start' in level 2 (EVC_Radio_Authority, the MA request) and d) SH ([5] from PT) and override from PT done; c) Supervised Manoeuvre is E6 (B008) [E5 authority]"
 5.11.2.2 S140 a),5,x,,,,,E4,done,"'Start' in PT, level 1, proposes SR (EVC_Mission, 4.4.14.1.6); evc_test_procedures Integration_SR_Override_Trip"
-5.11.2.2 S140 b),5,x,,,,,E4,partial,"'Start' in PT, level 2, after message 6: the MA request (EVC_Radio_Authority); the SR proposal on the SR authorisation (S150 a, S160) needs EVC_Mission (session half) to read EVC_Radio_Authority; evc_test Scenario_Trip_L2 [E5 authority]"
-5.11.2.2 S140 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
+5.11.2.2 S140 b),5,x,,,,,E4,done,"'Start' in PT, level 2, after message 6: the MA request (EVC_Radio_Authority.Evaluate_Request); the SR proposal on the SR authorisation and the OS / LS / SH proposal (EVC_Mission.Take_RBC_Answer); evc_test Trip_L2, evc_test PT_L2_SR_Proposal [E5 authority]"
+5.11.2.2 S140 c),5,x,,,,,E4,deferred,Supervised Manoeuvre is not built: E6 Supervised Manoeuvre (B008) [E6 Supervised Manoeuvre] [E5 authority]
 5.11.2.2 S140 d),5,x,,,,,E4,done,4.6.3 [5] from PT (EVC_Procedures)
-5.11.2.2 S150,5,x,,,,,E4,partial,"the MA request (reason Start) sent (EVC_Radio_Authority); a) the SR proposal after message 2 and b) the proposal of OS / LS / SH (EVC_Mission.Take_RBC_Answer, e5/sr-proposal, e5/mode-proposal-2); c) the MA of the RBC and 4.6.3 [31] (phase 1); evc_test Scenario_Trip_L2, Scenario_PT_L2_SR_Proposal, Scenario_PT_L2_Mode_Proposal [E5 authority]"
+5.11.2.2 S150,5,x,,,,,E4,done,"the MA request (reason Start) sent (EVC_Radio_Authority.Evaluate_Request); a) the SR proposal after message 2 and b) the proposal of OS / LS / SH (EVC_Mission.Take_RBC_Answer); c) the MA of the RBC taken by EVC_Radio_Authority.Take_Message and 4.6.3 [31] (EVC_Transition_Conditions); evc_test Trip_L2, evc_test PT_L2_SR_Proposal, evc_test PT_L2_Mode_Proposal [E5 authority]"
 5.11.2.2 S150 a),5,x,,,,,E4,done,"EVC_Mission.Take_RBC_Answer: 'Start' in PT level 2 waits, the SR authorisation (message 2, after message 6) proposes SR (S160), e5/sr-proposal; evc_test Scenario_PT_L2_SR_Proposal (e5/mode-proposal-2) [E5 authority]"
 5.11.2.2 S150 b),5,x,,,,,E4,done,"EVC_Mission.Take_RBC_Answer (e5/mode-proposal-2): in PT level 2 an MA with a mode profile at the train ends the wait, the proposal is the acknowledgement of EVC_Procedures.Profiles_Step (5.7.4.1, 5.9.5.1, 5.19.5.1); evc_test Scenario_PT_L2_Mode_Proposal [E5 authority]"
-5.11.2.2 S150 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
+5.11.2.2 S150 c),5,x,,,,,E4,done,"the MA request (reason Start) sent (EVC_Radio_Authority.Evaluate_Request); a) the SR proposal after message 2 and b) the proposal of OS / LS / SH (EVC_Mission.Take_RBC_Answer); c) the MA of the RBC taken by EVC_Radio_Authority.Take_Message and 4.6.3 [31] (EVC_Transition_Conditions); evc_test Trip_L2, evc_test PT_L2_SR_Proposal, evc_test PT_L2_Mode_Proposal [E5 authority]"
 5.11.2.2 S160,5,x,,,,,E4,done,"the SR acknowledgement, [8] from PT; evc_test_procedures Integration_SR_Override_Trip"
 5.11.2.2 S170,5,x,,,,,E4,done,"EVC_Procedures.Profiles_Step asks the acknowledgement of OS / LS / SH in PT level 2, the driver's acknowledgement gives the mode by 4.6.3 (EVC_Mission.Take_RBC_Answer ends the wait, e5/mode-proposal-2); evc_test Scenario_PT_L2_Mode_Proposal [E5 authority]"
-5.11.4.1.1,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
-5.11.4.1.2,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
+5.11.4.1.1,5,x,,,,,E4,deferred,the mode change report is sent once (EVC_Sessions.Reports.Mode_Changed); its repetition without the RBC's reply and the termination after the last one are not built (B788) [E5 session]
+5.11.4.1.2,5,x,,,,,E4,deferred,the mode change report is sent once (EVC_Sessions.Reports.Mode_Changed); its repetition without the RBC's reply and the termination after the last one are not built (B788) [E5 session]
 5.11.4.2,5,x,,,,,E4,done,"override is selectable in PT in every level (5.8.2.1, EVC_Procedures)"
 5.11.4.3,5,x,,,,,E4,deferred,"a level transition in PT: in level 1 the balise information is rejected in PT (4.8.4 [1]) and the driver selects no level (4.7.2); the level 2 orders are E5 ([77] to [79] are implemented, EVC_Transition_Conditions) [E5 authority]"
 5.12.2.5,5,x,,,,,E2,done,"EVC_Position: anchors in the odometer frame, front end and orientation follow the active cab; evc_test position_orientation"
@@ -1797,7 +1797,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.18.10.6,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
 5.19.1.2,5,x,,,,,E4,done,the request after the transition or in the rectangle (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
 5.19.2.1,5,x,,,,,E4,done,4.6.3 [72] at the balise group (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
-5.19.2.2,5,x,,,,,E4,partial,4.6.3 [72] is level independent (EVC_Procedures); the mode profile of level 2 comes from the RBC (E5) [E5 authority]
+5.19.2.2,5,x,,,,,E4,done,"4.6.3 [72] is level independent (EVC_Procedures); the LS area of a mode profile of the RBC already overlapped at the start of mission or after a trip in level 2 (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal_LS [E5 authority]"
 5.19.2.3,5,x,,,,,E4,done,the request after the transition or in the rectangle (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
 5.19.2.4,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_Limited_Supervision
 5.19.2.7,5,x,,,,,E4,done,no request when already in LS (EVC_Procedures)
@@ -1810,8 +1810,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.19.3.7,5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
 5.19.3.8,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_Limited_Supervision
 5.19.4.2,5,x,,,,,E4,done,"[71] is [72] with the level switched to 1 or 2 (EVC_Levels.Switched_To, Context_T.Level_Switched)"
-5.19.5.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised [E5 authority]"
-5.19.5.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised [E5 authority]"
+5.19.5.1,5,x,,,,,E4,done,"4.6.3 [72] is level independent (EVC_Procedures); the LS area of a mode profile of the RBC already overlapped at the start of mission or after a trip in level 2 (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal_LS [E5 authority]"
+5.19.5.2,5,x,,,,,E4,done,"4.6.3 [72] is level independent (EVC_Procedures); the LS area of a mode profile of the RBC already overlapped at the start of mission or after a trip in level 2 (EVC_Procedures.Profiles_Step, EVC_Mission.Take_RBC_Answer); evc_test SoM_L2_Mode_Proposal_LS [E5 authority]"
 5.19.6.1.1,5,x,,,,,E4,done,4.6.3 [76] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
 5.20.1.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
 5.20.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
@@ -2335,7 +2335,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 8.4.4.2.1,8,x,x,,,,E1,done,"ETCS_Message.Parse Bad_Length, padding under 8 bits; evc_test message"
 8.4.4.3,8,x,x,,,,E1,done,"ETCS_Message_Catalogue fields and packet rules, Packet_Not_Allowed; evc_test message"
 8.4.4.4,8,x,x,,,,E1,done,"ETCS_Message.Parse: mandatory packets first, then optional ones; evc_test message"
-8.4.4.4.1 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse applies the ""From RIU"" rules of message 24 by its Sender (evc_test senders); EVC_Received passes RBC until the RIU session in E5 [E5 session]"
+8.4.4.4.1 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse applies the sender rules (evc_test senders); the RIU session is radio infill, phase E7 [E7 infill] [E5 session]"
 8.4.4.4.1.1 Table,8,x,x,,,,E1,done,"common optional packets in messages 3, 24, 33 (ETCS_Message_Catalogue); evc_test message"
 8.4.4.4.2,8,x,x,,,,E1,done,"ETCS_Message_Catalogue Train_M136 optional 4, 5, 44; evc_test message (136)"
 8.4.4.4.2 a),8,x,x,,,,E1,done,"ETCS_Message_Catalogue Train_M136 optional 4, 5, 44; evc_test message (136)"
@@ -2353,7 +2353,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 8.4.4.4.5 a),8,x,x,,,,E1,done,ETCS_Message_Catalogue Train_M131 optional packet 12; check_catalogue.py
 8.4.4.5,8,x,x,,,,E1,done,"ETCS_Message.Finish pads to a byte, Parse takes under 8 bits as padding; evc_test message"
 8.5.2 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse checks the receiver (Wrong_Sender, evc_test senders); Invariant column (3.17) in E5 [E5 session]"
-8.5.3 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse checks the sender (message 37 RIU only, Wrong_Sender, evc_test senders); Invariant column and the RIU session in E5 [E5 session]"
+8.5.3 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse applies the sender rules (evc_test senders); the RIU session is radio infill, phase E7 [E7 infill] [E5 session]"
 8.6.1,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M129; check_catalogue.py; evc_test message
 8.6.2,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M130; check_catalogue.py
 8.6.2.1,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M131; check_catalogue.py
