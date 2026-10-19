@@ -300,6 +300,12 @@ package body EVC_Test_Consistency is
       Check (not SB and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_FS),
              "reactions: the missed balise duplicated and its duplicate "
              & "read, no reaction (3.16.2.4.2)");
+      Check (EVC_Position.LRBG.Id.NID_BG = 20
+               and then EVC_Position.Linking.Expected = 2
+               and then not EVC_Position.Linking_Reaction_Requested,
+             "reactions: the duplicate of balise 0 the location reference "
+             & "of the linked group, found inside its window, no linking "
+             & "reaction (3.16.2.3.4, EVC_Balise_Groups.Geometry)");
 
       --  linking not checked: the service brake, Balise read error, and
       --  at standstill the MA shortened to the train (3.16.2.4.4.2)
