@@ -26,6 +26,7 @@ package EVC_Test_Sessions is
 
    --  Phase 2 (e5/session-3): 5.4.3.2 in level 2, 3.18.3.4, 5.5.3.1
    procedure Scenario_Session_SoM_Level_2;
+   procedure Scenario_Session_TRN;
    --  e5/registration: 3.5.6, 3.18.4.3.6, 5.4.3.2 S4
    procedure Scenario_Session_Registration;
    --  e5/sr-proposal: 5.4.3.2 S21, E26 -> S24, E32

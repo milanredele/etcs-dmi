@@ -499,4 +499,19 @@ is
                                 EVC_Odometry.State, EVC_Train_Data.State)),
           Post => Balise_Buffered = 0;
 
+   --  3.18.3.7 a): the Train Data regarding train category, axle load
+   --  category, loading gauge or traction system changed (Changed:
+   --  EVC_Mission.Categories_Changed) and the train at standstill: the
+   --  location based information shortened to the current position of
+   --  the train (A.3.4.1.2 j). Decision: the same shortening as for i),
+   --  the safe radio connection's brake (A.3.4.1.3 gives j) and i) the
+   --  same column entries)
+   --  @req 3.18.3.7, 3.18.3.7 a)
+   procedure Train_Data_Shortening (Changed : Boolean)
+     with Global => (In_Out => (State, EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State),
+                     Input  => (EVC_Origins.State, EVC_Position.State,
+                                EVC_Odometry.State, EVC_Train_Data.State));
+
 end EVC_Stored_Information;

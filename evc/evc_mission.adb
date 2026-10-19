@@ -14,7 +14,7 @@ package body EVC_Mission
                                    TD_Now, TD_Entry, SR_Entry, RBC_Wait,
                                    RBC_Wait_Count,
                                    SR_After_Wait, SR_After_Wait_MAs,
-                                   Events, Event_N))
+                                   TRN_N, Cat_N, Events, Event_N))
 is
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
@@ -23,6 +23,11 @@ is
    Driver_V        : Text_T;
    TRN_S           : Data_Status_T := Unknown;
    TRN_V           : Text_T;
+   --  the driver entered a train running number in this cycle
+   TRN_N           : Boolean := False;
+   --  the driver's Train Data of this cycle changed the train category,
+   --  axle load category, loading gauge or traction system (3.18.3.7)
+   Cat_N           : Boolean := False;
    --  Train Data were entered since the power-up
    Train_Known     : Boolean := False;
    Engaged         : Boolean := False;
@@ -71,6 +76,13 @@ is
      with Refined_Global => TRN_S;
    function TRN return Text_T is (TRN_V)
      with Refined_Global => TRN_V;
+
+   function TRN_Entered return Boolean is (TRN_N)
+     with Refined_Global => TRN_N;
+
+   function Categories_Changed return Boolean is (Cat_N)
+     with Refined_Global => Cat_N;
+
    function Train_Data_Status return Data_Status_T is
      (if not Train_Known then Unknown
       elsif EVC_Train_Data.Valid then Valid
@@ -133,6 +145,8 @@ is
       Driver_V := (others => <>);
       TRN_S := Unknown;
       TRN_V := (others => <>);
+      TRN_N := False;
+      Cat_N := False;
       Train_Known := False;
       Engaged := False;
       Mission_On := False;
@@ -172,6 +186,16 @@ is
      (T.Length in 1 .. 8
       and then (for all I in 1 .. T.Length =>
                   T.Chars (I) in Character'Pos ('0') .. Character'Pos ('9')));
+
+   --  3.18.3.7: the train category (the cant deficiency and the other
+   --  international categories), the axle load category, the loading
+   --  gauge or the traction systems of A differ from those of B
+   function Categories_Differ (A, B : EVC_Train_Data.Categories_T)
+     return Boolean is
+     (A.Cant_Deficiency /= B.Cant_Deficiency or else A.Other /= B.Other
+      or else A.Axle_Load /= B.Axle_Load
+      or else A.Loading_Gauge /= B.Loading_Gauge
+      or else A.Voltages /= B.Voltages);
 
    --  The Train Data of an entry with the fixed ones of the installation
    --  (OK False: an item out of its range)
@@ -233,7 +257,9 @@ is
          Loading_Gauge   =>
            (if E.Loading_Gauge = 16#FF# then Def.Loading_Gauge
             else M_LOADINGGAUGE_T (E.Loading_Gauge)),
-         Voltages        => F.Voltages);
+         Voltages        => F.Voltages,
+         Airtight        =>
+           (if E.Airtight = 1 then 1 else Def.Airtight));
    end Train_Data_Of;
 
    --  4.4.15.1.1.3: the non-leading input lost in NL; 4.4.20.1.5:
@@ -284,17 +310,20 @@ is
 
    --  4.7.2: the driver ID (DMI 11.3.3) and the train running number
    --  (A.3.11) entered in a mode where they may be
-   procedure Take_Identity (M : Mode_T)
-     with Global => (In_Out => (Driver_S, Driver_V, TRN_S, TRN_V,
+   --  @req 3.18.4.1.2, 3.18.4.1.3, 3.18.4.1.4, 3.18.4.5.2, 3.18.4.5.3
+   --  @req 3.18.4.5.5
+   procedure Take_Identity (C : Context_T; M : Mode_T)
+     with Global => (In_Out => (Driver_S, Driver_V, TRN_S, TRN_V, TRN_N,
                                 Proposal, Events, Event_N),
                      Input  => EVC_Driver_Requests.State)
    is
    begin
       --  the driver ID (4.7.2: SB, SH, SM, FS, AD, LS, SR, OS, NL, UN,
-      --  SN)
+      --  SN), while running only if the national value permits it
       if Entered (EVC_Driver_Requests.Driver_ID) then
          if M in M_SB | M_SH | M_SM | M_FS | M_AD | M_LS | M_SR | M_OS
                | M_NL | M_UN | M_SN
+           and then (C.Standstill or else C.ID_Running)
            and then Valid_Driver_ID (EVC_Driver_Requests.Driver_ID)
          then
             Driver_V := EVC_Driver_Requests.Driver_ID;
@@ -315,6 +344,7 @@ is
          then
             TRN_V := EVC_Driver_Requests.Train_Running_Number;
             TRN_S := Valid;
+            TRN_N := True;
             Put_Event (Event_TRN, TRN_V.Length, 0);
             Proposal := False;
          else
@@ -374,7 +404,8 @@ is
    --  4.4.11.1.5: the SR speed limit and distance entered at standstill
    --  in SR
    procedure Take_Data (C : Context_T; M : Mode_T)
-     with Global => (In_Out => (Train_Known, TD_Now, Proposal, SR_V, SR_D,
+     with Global => (In_Out => (Train_Known, TD_Now, Cat_N, Proposal,
+                                SR_V, SR_D,
                                 SR_Driver, Events, Event_N,
                                 EVC_Train_Data.State),
                      Input  => (EVC_Driver_Requests.State,
@@ -395,6 +426,8 @@ is
               and then M in M_SB | M_FS | M_AD | M_LS | M_SR | M_OS | M_UN
                           | M_SN
             then
+               Cat_N := Train_Known
+                 and then Categories_Differ (EVC_Train_Data.Categories, Cs);
                EVC_Train_Data.Set (D, Cs);
                Train_Known := True;
                TD_Now := True;
@@ -614,9 +647,11 @@ is
       Acked_Now := False;
       Desk_Closed_Now := False;
       TD_Now := False;
+      TRN_N := False;
+      Cat_N := False;
 
       Take_Desk (C, M);
-      Take_Identity (M);
+      Take_Identity (C, M);
       Take_Data (C, M);
       Take_National_SR (C, M);
       Take_Data_Entry (M);

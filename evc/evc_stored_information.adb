@@ -2969,4 +2969,13 @@ is
           then EVC_Movement_Authority.MA_Sense else Train.Sense));
    end Release_Balise_Buffer;
 
+   procedure Train_Data_Shortening (Changed : Boolean) is
+      O : EVC_Movement_Authority.Outcome_T;
+   begin
+      if Changed and then EVC_Odometry.Standstill then
+         EVC_Movement_Authority.Shorten_To_Train (Train_Frame, O);
+         Apply (EVC_Profiles.Origin_Table, O);
+      end if;
+   end Train_Data_Shortening;
+
 end EVC_Stored_Information;

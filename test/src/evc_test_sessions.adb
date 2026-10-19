@@ -8,6 +8,7 @@ with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P74;
 with ETCS_Train_Packets.P4;
+with ETCS_Train_Packets.P5;
 with ETCS_Bits;
 with ETCS_Variables;
 with DMI_Protocol;
@@ -826,6 +827,59 @@ package body EVC_Test_Sessions is
              "SoM L2: 'Start' with a session open goes to S21 (5.4.5.3 h): "
              & "no Staff Responsible proposed");
    end Scenario_Session_SoM_Level_2;
+
+   --  The NID_OPERATIONAL of packet 5 in the first RTM output that is the
+   --  message NID (0: no such message or no packet 5 in it)
+   function TRN_In (NID : Natural) return Unsigned_64 is
+      N  : constant Natural := Output_Of (NID);
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      P  : ETCS_Train_Packets.P5.Packet_T;
+      OK : Boolean;
+   begin
+      if N = 0 then
+         return 0;
+      end if;
+      Decode_Radio_Message (N, M, St);
+      for I in 1 .. M.Count loop
+         if St = ETCS_Message.Accepted and then M.Index (I).NID = 5 then
+            declare
+               Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+            begin
+               ETCS_Message.Open_Packet (M, I, Rd);
+               ETCS_Train_Packets.P5.Decode (Rd, P, OK);
+               if OK then
+                  return Unsigned_64 (P.NID_OPERATIONAL);
+               end if;
+            end;
+         end if;
+      end loop;
+      return 0;
+   end TRN_In;
+
+   --  3.18.4.5.4: the train running number to the RBC after the driver's
+   --  entry with the session established, once; not in the 157 while
+   --  unknown (5.4.3.2 A33); after a new session with it valid
+   procedure Scenario_Session_TRN is
+   begin
+      SoM_To_S3;
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
+      Stand;
+      Check (Output_Of (157) > 0 and then TRN_In (157) = 0,
+             "TRN: none in the 157 while unknown (5.4.3.2 A33)");
+      Give_Radio_Message (1, Msg (MCat.Track_M38, Now_T));
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M41, Now_T));
+      Stand;
+      Send (Text_Entry (1, "5678"));
+      Check (TRN_In (136) = 16#5678_FFFF#,
+             "TRN: entered with the session established, sent in packet 5 "
+             & "of a 136 (3.18.4.5.4, 8.4.4.4.2 b)");
+      Stand;
+      Check (TRN_In (136) = 0, "TRN: sent once");
+   end Scenario_Session_TRN;
 
    ---------------------------------------------------------------------
    --  e5/sr-proposal: the RBC's answer to 'Start' in level 2

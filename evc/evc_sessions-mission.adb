@@ -5,8 +5,10 @@
 with ETCS_Bits;
 with ETCS_Message;
 with ETCS_Train_Packets.P0;
+with ETCS_Train_Packets.P5;
 with ETCS_Train_Packets.P11;
 with EVC_Bytes;
+with EVC_JRU_Records;
 with EVC_Ports;
 with Interfaces;       use Interfaces;
 with ETCS_Variables;   use ETCS_Variables;
@@ -548,7 +550,7 @@ is
       P.V_MAXTRAIN := V_MAXTRAIN_T (Natural'Min (Kmh / 5, 120));
       P.M_LOADINGGAUGE := Cat.Loading_Gauge;
       P.M_AXLELOADCAT := Cat.Axle_Load;
-      P.M_AIRTIGHT := 0;
+      P.M_AIRTIGHT := Cat.Airtight;
       P.N_AXLE := 0;
       for V in 1 .. 5 loop
          pragma Loop_Invariant (N < V);
@@ -642,7 +644,8 @@ is
                                 TD_Stamp, TD_Since, TD_S),
                      Output => Report_Valid,
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State, EVC_Train_Data.State))
+                                EVC_Levels.State, EVC_Train_Data.State,
+                                EVC_Mission.State))
    is
       Q  : constant Unsigned_64 :=
         (if not EVC_Position.LRBG.Valid then Q_Unknown
@@ -657,6 +660,13 @@ is
       Start (W, Train_M157, T, Q, Ctx.Mode, OK);
       if OK and then TD then
          ETCS_Train_Packets.P11.Encode (Train_Packet, W, OK);
+      end if;
+      --  5.4.3.2 A33, 3.18.4.5.4: the train running number when valid
+      if OK and then EVC_Mission.TRN_Status = EVC_Mission.Valid then
+         ETCS_Train_Packets.P5.Encode
+           ((NID_OPERATIONAL =>
+               NID_OPERATIONAL_T (EVC_JRU_Records.TRN_Code (EVC_Mission.TRN)),
+             others => <>), W, OK);
       end if;
       Finish_And_Send (W, S, OK);
       if OK then

@@ -40,6 +40,8 @@ is
       Loading_Gauge   : M_LOADINGGAUGE_T := 1;
       --  the traction systems accepted by the engine (M_VOLTAGE)
       Voltages        : Natural range 0 .. 2**16 - 1 := 2;  -- bit 1: AC 25
+      --  the train is fitted with an airtight system (3.18.3.2 h)
+      Airtight        : M_AIRTIGHT_T := 0;
    end record;
 
    Default_Categories : constant Categories_T := (others => <>);

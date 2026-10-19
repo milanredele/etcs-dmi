@@ -243,6 +243,8 @@ begin
    Scenario_E4_SR_Distance;
    Scenario_SR_National_Distance;
    Scenario_Driver_Adhesion;
+   Scenario_Train_Data_Categories;
+   Scenario_Driver_Level_Table;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_0_Ack_In_SH;
    Scenario_E4_Level_Ack_Again;
@@ -275,6 +277,7 @@ begin
    Scenario_Session_Indication;
    Scenario_Session_Radio_Hole;
    Scenario_Session_SoM_Level_2;
+   Scenario_Session_TRN;
    Scenario_SoM_L2_SR_Proposal;
    Scenario_SoM_L2_Mode_Proposal;
    Scenario_SoM_L2_Mode_Proposal_SH;

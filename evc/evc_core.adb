@@ -347,7 +347,8 @@ is
           --  read by EVC_Mission.Evaluate only
           SR_Authorisations => 0,
           Profile_Ack => False,
-          Radio_MAs => 0));
+          Radio_MAs => 0,
+          ID_Running => True));
    end Set_Mode_For_Test;
 
    procedure Count (Counter : in out Natural) is
@@ -1348,6 +1349,9 @@ is
                            and then SR_Distance.Active,
             SR_End      => SR_End),
          Virtual_Last   => SDM_Result.Virtual);
+      --  3.18.3.7 a): after the Train Data entered in the last cycle
+      EVC_Stored_Information.Train_Data_Shortening
+        (EVC_Mission.Categories_Changed);
       for I in 1 .. EVC_Stored_Information.Event_Count loop
          declare
             E : constant EVC_Stored_Information.Event_T :=
@@ -1822,7 +1826,8 @@ is
           In_Communication => EVC_Radio.In_Communication,
           SR_Authorisations => EVC_Radio_Authority.SR_Authorisations,
           Profile_Ack => EVC_Procedures.Ack_Requested,
-          Radio_MAs => EVC_Radio_Authority.Radio_MAs_Accepted));
+          Radio_MAs => EVC_Radio_Authority.Radio_MAs_Accepted,
+          ID_Running => EVC_National_Values.M_NVDERUN));
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
       --  transition orders, the national values not yet applicable); the
@@ -2032,7 +2037,8 @@ is
           --  read by EVC_Mission.Evaluate only
           SR_Authorisations => 0,
           Profile_Ack => False,
-          Radio_MAs => 0));
+          Radio_MAs => 0,
+          ID_Running => True));
       end if;
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
@@ -2299,7 +2305,8 @@ is
           --  read by EVC_Mission.Evaluate only
           SR_Authorisations => 0,
           Profile_Ack => False,
-          Radio_MAs => 0));
+          Radio_MAs => 0,
+          ID_Running => True));
       Delete_On_Mode_Entry (To);
       Revoke_Brake_Reasons (From, To);
    end Enter_Mode;
