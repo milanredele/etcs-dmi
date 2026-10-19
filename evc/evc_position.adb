@@ -2125,14 +2125,15 @@ is
                            Shift   : Dist_T;
                            Origin  : out EVC_Origins.Count_T;
                            G, T    : out Direction_T;
-                           S       : out Sense_T)
+                           S       : out Sense_T;
+                           Reversed : Boolean := False)
    is
       A     : Anchor_T;
       Found : Natural;
       D     : Dist_T := 0;
    begin
       Origin := 0;
-      S := Orientation;
+      S := (if Reversed then Opposite (Orientation) else Orientation);
       T := To_Direction (S);
       G := Unknown;
       if LRBG_A.Valid and then LRBG_A.Id = Id then

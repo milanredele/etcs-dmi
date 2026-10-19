@@ -657,14 +657,17 @@ is
    --  is full. G: the orientation of the group, T: the train
    --  orientation, as directions on the axis (the packets valid for the
    --  train are those of Valid_For (Q_DIR, G, T), 3.6.3.1.3); S, the
-   --  sense of the distances: the train orientation.
+   --  sense of the distances: the train orientation (Reversed: the
+   --  opposite one, a Supervised Manoeuvre authorisation that turns
+   --  it, 4.4.21.1.7).
    --  @req 3.6.3.1.3
    procedure Radio_Origin (Id      : Identity_T;
                            Shifted : Boolean;
                            Shift   : Dist_T;
                            Origin  : out EVC_Origins.Count_T;
                            G, T    : out Direction_T;
-                           S       : out Sense_T)
+                           S       : out Sense_T;
+                           Reversed : Boolean := False)
      with Global => (Input  => (State, EVC_Odometry.State),
                      In_Out => EVC_Origins.State),
           Post => T = To_Direction (S)

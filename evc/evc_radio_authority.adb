@@ -503,11 +503,8 @@ is
       end if;
       if Valid then
          EVC_Position.Radio_Origin
-           (LRBG_Of_Last, Shifted, Shift, Sl.Origin, Sl.G, Sl.T, Sl.S);
-         if Reversed then
-            Sl.S := Opposite (Sl.S);
-            Sl.T := To_Direction (Sl.S);
-         end if;
+           (LRBG_Of_Last, Shifted, Shift, Sl.Origin, Sl.G, Sl.T, Sl.S,
+            Reversed);
       end if;
       Sl.Start_Ms := EVC_Radio.Time_Of_Stamp (Stamp_Of_Last, Now_Ms);
       Sl.Action := Action;
