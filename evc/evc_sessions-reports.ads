@@ -159,7 +159,8 @@ is
    --  supervising RBC while its session is established. 3.16.4.3: a group
    --  marked linked and not in the linking information is no linking
    --  reaction, so not reported. Decision: one report per cycle, the
-   --  double repositioning error first, the double linking error, then a linked group's message, an
+   --  double repositioning error first, the double linking error, then a
+   --  linked group's message, an
    --  unlinked group's, the single linking error; an error without an
    --  established session is not kept for a later one
    --  @req 3.16.4.1, 3.16.4.3
