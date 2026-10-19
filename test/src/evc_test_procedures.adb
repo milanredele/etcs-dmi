@@ -1116,6 +1116,30 @@ package body EVC_Test_Procedures is
       Run_Front (80, 15);
       Check (Mode_Byte = Code_SH,
              "4.4.8.1.1 c): ""go if in shunting"" lets the train pass");
+
+      --  SH ordered in level 1 with the list (7), level 0 ordered at the
+      --  listed group 7, then group 8, not in the list, passed in level 0
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 1_000);
+      Add (ST.Mode_Profile (D_M => 200, M_MAMODE => 1, L_M => 0,
+                            Ack_M => 100));
+      Add (ST.Shunting_Area_List ((1 => 7)));
+      Close;
+      Group (7, 300);
+      Add (ST.Level_Order (0, 0, 0, Now => True));
+      Close;
+      Group (8, 400);
+      Close;
+      Run_Front (120, 20);
+      Ack (1);
+      Cycle;
+      Run_Front (350, 20);
+      Check (Mode_Byte = Code_SH,
+             "4.4.8.1.1 b): the listed group 7 passed, level 0 ordered in SH");
+      Run_Front (450, 20);
+      Check (Mode_Byte = Code_TR,
+             "4.4.8.1.1 b), 4.6.3 [52]: group 8, not in the list, trips in "
+             & "level 0");
    end Scenario_Shunting_Trips;
 
    --  5.7 entry in Shunting ordered by the trackside (SUBSET-076 5070300)

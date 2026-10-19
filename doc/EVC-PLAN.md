@@ -8663,3 +8663,26 @@ not plan for (30 of the leftovers' on a scenario, the consistency
 agent's defect of the simulated track): a scenario's shape named in
 the brief, with the helper it extends, saves them. Open items:
 doc/BACKLOG.csv (67 open after this round; 7 added, 10 closed).
+### The leftovers, second pass: the relocated OS profile, the LSSMA and the driver action, the record 21 bits, the [62] scenario (e5/leftovers-2, 2026-10-19)
+
+Four traces, all ending in a triage with the cause; no change under
+`evc/`. B980 done, s076: 9990500_16 step 92, our relocation by the
+linking distance is 3.6.4.2.5 a); the OS profile of message 3 (BG2 +
+1800 m) ends before 2050 m even unrelocated, and the sequence keeps OS
+to 2600 m past its EOA without a new MA (Sa11ff531). B792 done, both
+s076: S4eed293c (4080300_17 step 175), the LSSMA toggle on order of
+message 24 is accepted by 4.8.3 [3] of 4.0.0 (only V_MAXTRAIN changed,
+Train Data acknowledged in the session), the sequence's comment rejects
+it; Sd640223d (4080455_03 step 92), the driver's acknowledgement of the
+trip (step 7 of case 5110200 13) is missing from the sequence; the
+other three sequences named stop earlier now (S1f552964). B642 done,
+s076: record 21 bits 44 and 47 are TC01 (pantograph lowered) and TC04
+(raise pantograph); 4080445_02 lacks steps 85 to 99 (the reach-points
+through the powerless section at 700 to 750 m), so step 100 expects the
+state past the section with the train before it (S8ffef078). B680 not
+done: the level 0 case of `EVC_Test_Procedures.Scenario_Shunting_Trips`
+(SH ordered in level 1 with a list, level 0 ordered at the listed group,
+the trip at a group not in the list) checks the trip in level 0; on the
+acknowledgement the mode goes back to SH instead of UN, the SH mode
+profile apparently outliving the entry in SH and the trip in
+`EVC_Procedures` (B1020, not traced: the bound). B904 not reached.
