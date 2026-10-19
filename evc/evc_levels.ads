@@ -260,6 +260,7 @@ is
    --  SM once another mode is entered, the acknowledgement area and the
    --  transition location of an announcement, the driver's
    --  acknowledgement (Ack), the time of 5.10.4.2
+   --  @req 3.18.4.2.1, 3.18.4.2.4, 3.18.4.2.5
    procedure Evaluate (T            : Origin_Table_T;
                        C            : Context_T;
                        Driver_Level : Boolean;

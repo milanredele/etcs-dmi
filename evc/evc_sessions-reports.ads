@@ -67,11 +67,11 @@ is
    --  start of mission sends its own report (decision 2)
    --  Mode: the mode of the cycle, for the table of 4.5.2 ("Report
    --  Train Position": which event is reported in which mode)
-   --  @req 4.4.15.1.4, 3.6.5.1.2 g)
+   --  @req 4.4.15.1.4, 3.6.5.1.2 g), 3.18.4.5.4
    procedure Evaluate (SoM : Boolean; Mode : EVC_Modes.Mode_T)
      with Global => (In_Out => (State, EVC_Position.State),
                      Input  => (EVC_Radio.State, EVC_Levels.State,
-                                EVC_Odometry.State)),
+                                EVC_Odometry.State, EVC_Mission.State)),
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
@@ -113,7 +113,7 @@ is
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.Integrity.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State));
+                                EVC_Levels.State, EVC_Mission.State));
 
    --  For the tests: the reports sent, the parameters applied
    --  8. Message 158, the driver acknowledgement report of each text
@@ -127,7 +127,8 @@ is
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.Integrity.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State, EVC_Text_Messages.State));
+                                EVC_Levels.State, EVC_Text_Messages.State,
+                                EVC_Mission.State));
 
    function Reports_Sent return Natural
      with Global => State;

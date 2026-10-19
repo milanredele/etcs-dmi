@@ -16,6 +16,8 @@ package EVC_Test_Modes is
       procedure Scenario_E4_SR_Distance;
       procedure Scenario_SR_National_Distance;
       procedure Scenario_Driver_Adhesion;
+      procedure Scenario_Train_Data_Categories;
+      procedure Scenario_Driver_Level_Table;
       procedure Scenario_E4_Level_Transition_0;
       procedure Scenario_E4_Level_0_Ack_In_SH;
       procedure Scenario_E4_Level_Ack_Again;

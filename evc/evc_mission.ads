@@ -107,6 +107,15 @@ is
    --  the train running number (NID_OPERATIONAL, up to 8 digits)
    function TRN return Text_T
      with Global => State;
+   --  the driver entered a valid train running number in this cycle (for
+   --  the RBC, 3.18.4.5.4)
+   function TRN_Entered return Boolean
+     with Global => State;
+   --  the Train Data the driver entered in this cycle changed the train
+   --  category, axle load category, loading gauge or traction system of
+   --  the Train Data entered before (3.18.3.7)
+   function Categories_Changed return Boolean
+     with Global => State;
    --  The status of the Train Data (EVC_Train_Data keeps them and their
    --  validity; unknown until the first entry)
    function Train_Data_Status return Data_Status_T
@@ -270,6 +279,9 @@ is
       --  power-up (EVC_Radio_Authority.Radio_MAs_Accepted); a change after
       --  an SR proposal of E26 is the MA of the message 2's cycle (5.4.3.2)
       Radio_MAs   : Natural := 0;
+      --  the national value permitting the driver to change the driver
+      --  ID while the train is running (M_NVDERUN, 3.18.4.1.2)
+      ID_Running  : Boolean := True;
    end record;
 
    --  Power-up: every datum unknown, no mission

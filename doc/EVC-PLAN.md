@@ -8121,3 +8121,40 @@ package on one row each; a selection should match both.
 - B824, 3.16.2.6.1: `EVC_Procedures.Mode_Changed` ends "Balise read error" when the linking service brake is revoked on NP or SB (decision: the 30 s of 3.14.1.6 are for a brake released at standstill, not revoked). 4120100_09 runs to step 132.
 - Left: B805 (two traces), B802 (3.16.2.4.8.1 / .8.2: the packets of the superseded telegram still taken), B803 / B823 (end-to-end scenarios of the reactions, the shortening and the error report through EVC_Core; only `Scenario_Default_Balise` added), B820, B822 (no decision taken).
 - New signature S54f1704c (3160200_33 step 55): the sequence's second balise of BG3d is said not decodable (CRC) but its telegram is valid in the file, so the group is consistent and its packet 254 shows "Trackside malfunction"; triaged s076.
+### Train Data and the additional data (e6/train-data) (2026-10-19)
+
+The first package of 3.18.3 / 3.18.4: the 53 rows todo or partial re-read
+against the code of E4 and E5, the missing behaviours built.
+
+Re-read: done by existing code 23 (the Train Data entry of
+`EVC_Mission.Train_Data_Of` / `Take_Data` for 3.18.3.2 and 3.18.3.3,
+the driver ID and train running number of `Take_Identity`, the level of
+`EVC_Levels.Evaluate`, the NID_ENGINE of the installation, the adhesion
+default), built now 8 (below), partial 15 (the gamma model's data, the
+traction model, the rotating mass, the axle number; 3.18.3.7 b); the RBC
+contact rows of 3.18.4.3 named but not re-read; the TRN from the RBC),
+n/a 1 (3.18.3.2 i), NTC), left todo 11 (the safe consist length and
+Supervised Manoeuvre, 3.18.3.8).
+
+Decisions: no safe consist length input on the TIU port: its rows
+(3.18.3.2 b) 1st bullet, 3.18.3.2.5, 3.18.3.5) and 3.18.3.9 / 3.18.3.10
+go with Supervised Manoeuvre, `[E6 Supervised Manoeuvre]` (B873, also
+B031). The train running number goes to the RBC in packet 5 of the next
+message 136 to the supervising RBC (8.4.4.4.2 b) after the driver's entry
+with the session established and after an establishment outside the
+start of mission, and of the 157 of the start of mission when valid
+(5.4.3.2 A33). 3.18.3.7 a) shortens as A.3.4.1.2 i) does (the same column
+of A.3.4.1.3), one cycle after the entry (the flag of `EVC_Mission` read
+by `EVC_Core.Evaluate_Stored_Information`); the first Train Data since
+power-up is no change.
+
+Built: 3.18.3.7 a) (`EVC_Mission.Categories_Changed`,
+`EVC_Stored_Information.Train_Data_Shortening`), 3.18.4.5.4
+(`EVC_Sessions.Reports.Evaluate` / `Send_136`,
+`EVC_Sessions.Mission.Send_Report`), 3.18.4.1.2 (M_NVDERUN, through
+`EVC_Mission.Context_T.ID_Running`), 3.18.4.2.5 (`EVC_Levels.Selectable`),
+3.18.3.2 h) (M_AIRTIGHT kept in `EVC_Train_Data.Categories_T` and sent in
+packet 11). Scenarios: `Train_Data_Categories`, `Driver_Level_Table`
+(EVC_Test_Modes), `Session_TRN` (EVC_Test_Sessions). Left: B870 (3.18.3.7
+b), the transition buffer), B871 (3.18.3.8), B872 (packet 140), B760,
+B782, B031 not started.

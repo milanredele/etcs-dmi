@@ -10,8 +10,10 @@ with ETCS_Track_Packets.P58;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P1;
 with ETCS_Train_Packets.P4;
+with ETCS_Train_Packets.P5;
 with EVC_Balise_Groups;
 with EVC_Bytes;
+with EVC_JRU_Records;
 with EVC_Ports;
 with Interfaces;             use Interfaces;
 with ETCS_Variables;         use ETCS_Variables;
@@ -21,13 +23,14 @@ package body EVC_Sessions.Reports
        Refined_State => (State => (P58, P58_Ref, P58_Held, Due,
                                    Was_Up, Last_Level,
                                    Level_Seen, N_Sent, N_Params,
-                                   Error_Due, Error_Code))
+                                   Error_Due, Error_Code, TRN_Due))
 is
    package R renames EVC_Radio;
    use type R.Session_Ref_T;
    use type R.Session_State_T;
    use type ETCS_Catalogue.Packet_Kind_T;
    use type EVC_Position.Report_Kind_T;
+   use type EVC_Mission.Data_Status_T;
 
    --  The packet 58 of the last message that had one, its LRBG
    P58        : ETCS_Track_Packets.P58.Packet_T;
@@ -51,6 +54,9 @@ is
    type Error_Count_T is range 0 .. Max_Errors;
    Error_Due  : array (R.Session_T) of Error_Count_T := (others => 0);
    Error_Code : array (R.Session_T) of M_ERROR_T := (others => 0);
+   --  the train running number to send with the next report to the
+   --  supervising RBC (3.18.4.5.4)
+   TRN_Due    : Boolean := False;
 
    function Reports_Sent return Natural is (N_Sent)
      with Refined_Global => N_Sent;
@@ -77,6 +83,7 @@ is
       N_Params := 0;
       Error_Due := (others => 0);
       Error_Code := (others => 0);
+      TRN_Due := False;
    end Clear;
 
    --  3.6.5.1.5, 3.6.5.1.7 (decision 4): the last packet 58 of the
@@ -180,6 +187,18 @@ is
       then
          Due := True;
       end if;
+      --  3.18.4.5.4: the train running number after the driver's entry
+      --  with the session established, or after its establishment
+      --  outside the start of mission (whose message 157 carries it)
+      if not Up then
+         TRN_Due := False;
+      elsif EVC_Mission.TRN_Status = EVC_Mission.Valid
+        and then (EVC_Mission.TRN_Entered
+                  or else (not Was_Up and then not SoM))
+      then
+         TRN_Due := True;
+         Due := True;
+      end if;
       Last_Level := Level;
       Level_Seen := True;
       Was_Up := Up;
@@ -206,10 +225,10 @@ is
                        Code    : M_ERROR_T;
                        Text    : Boolean := False;
                        Text_Id : Natural := 0)
-     with Global => (In_Out => (R.State, R.Queue, N_Sent,
+     with Global => (In_Out => (R.State, R.Queue, N_Sent, TRN_Due,
                                 Integrity.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State))
+                                EVC_Levels.State, EVC_Mission.State))
    is
       pragma Warnings
         (GNATprove, Off, """W"" is set by ""*"" but not used after*",
@@ -254,6 +273,15 @@ is
       if OK and then Error then
          ETCS_Train_Packets.P4.Encode ((M_ERROR => Code, others => <>),
                                        W, OK);
+      end if;
+      if OK and then TRN_Due and then not Text
+        and then R.Supervising = R.Session_Ref_T (S)
+      then
+         ETCS_Train_Packets.P5.Encode
+           ((NID_OPERATIONAL =>
+               NID_OPERATIONAL_T (EVC_JRU_Records.TRN_Code (EVC_Mission.TRN)),
+             others => <>), W, OK);
+         TRN_Due := not OK;
       end if;
       if OK then
          ETCS_Message.Finish (W, OK);

@@ -376,6 +376,16 @@ is
                     L : Location_T) return Boolean
    is (A (S, X) >= A (S, Frame (T, L, Estimated_Item)));
 
+   --  3.18.4.2.5: the driver may select L when no table of trackside
+   --  supported levels is applicable or when that table holds L
+   function Selectable (Code : Unsigned_16) return Boolean is
+     (Code in 2 .. 5
+      and then (Applicable.Count = 0
+                or else (for some I in 1 .. Applicable.Count =>
+                           Applicable.List (I).Level
+                             = Level_T'Val (Natural (Code) - 2))))
+     with Global => Applicable;
+
    procedure Evaluate (T            : Origin_Table_T;
                        C            : Context_T;
                        Driver_Level : Boolean;
@@ -385,8 +395,9 @@ is
    begin
       --  1. the driver's level: in the start of mission (5.4.3.2 S2),
       --  else at standstill (5.10.3.15.1) in the modes where the DMI
-      --  offers it (4.7.2: SB, FS, AD, LS, SR, OS, NL, UN, SN)
-      if Driver_Level and then Code in 2 .. 5
+      --  offers it (4.7.2: SB, FS, AD, LS, SR, OS, NL, UN, SN), limited
+      --  to the applicable table of trackside supported levels
+      if Driver_Level and then Selectable (Code)
         and then C.Standstill
         and then C.Mode in M_SB | M_FS | M_AD | M_LS | M_SR | M_OS | M_NL
                          | M_UN | M_SN

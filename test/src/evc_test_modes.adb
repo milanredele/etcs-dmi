@@ -8,6 +8,8 @@ with EVC_JRU_Messages;
 with EVC_DMI_Port;
 with EVC_Brake_Commands;
 with EVC_Mission;
+with EVC_Movement_Authority;
+with EVC_Train_Data;
 with EVC_Modes;
 with EVC_Ports;
 with EVC_Stored_Information;
@@ -803,6 +805,87 @@ package body EVC_Test_Modes is
              "adhesion: national values that no longer permit the driver's "
              & "choice reset it to non slippery rail (3.18.4.6.2.1)");
    end Scenario_Driver_Adhesion;
+
+   --  3.18.3.7 a): the Train Data changed in the axle load category at
+   --  standstill, the MA shortened to the train (A.3.4.1.2 j); the same
+   --  Train Data again shorten nothing. 3.18.4.1.2: the driver ID changed
+   --  while running only while M_NVDERUN permits it; 3.18.3.2 h): the
+   --  airtight entry kept
+   procedure Scenario_Train_Data_Categories is
+      use type ETCS_Variables.M_AIRTIGHT_T;
+      use type ETCS_Variables.M_AXLELOADCAT_T;
+      use type EVC_Movement_Authority.MA_T;
+      M0 : EVC_Movement_Authority.MA_T;
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+      function Entry_With (Axle_Load : Byte) return Byte_Array is
+        (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                Byte_Array'(1 => 2)
+                & U16 (200) & U16 (135) & U16 (160) & Byte_Array'(1 => 2)
+                & U16 (4) & Byte_Array'(Axle_Load, 1, 1)));
+   begin
+      Mission (L1_Code);
+      Group_With_MA (10, 50, (1 => 1_000));
+      Speed_Cms := 500;
+      while Train_Cm < 6_000 loop
+         Step_X (500);
+      end loop;
+      Input (DMI, Text_Entry (0, "4321"));
+      Step_X (500);
+      Check (EVC_Mission.Driver_ID.Length = 4
+             and then EVC_Mission.Driver_ID.Chars (1) = Character'Pos ('4'),
+             "train data: the driver ID changed while running, M_NVDERUN "
+             & "1 (3.18.4.1.2)");
+      NV.M_NVDERUN := 0;
+      Add_Group (Group (20, 100));
+      Carry (2, 0, NV);
+      while Train_Cm < 11_000 loop
+         Step_X (500);
+      end loop;
+      Input (DMI, Text_Entry (0, "9999"));
+      Step_X (500);
+      Check (EVC_Mission.Driver_ID.Chars (1) = Character'Pos ('4'),
+             "train data: the driver ID refused while running, M_NVDERUN "
+             & "0 (3.18.4.1.2)");
+      Speed_Cms := 0;
+      Stand_X (2_000);
+      Send (Text_Entry (0, "9999"));
+      Check (EVC_Mission.Driver_ID.Chars (1) = Character'Pos ('9'),
+             "train data: the driver ID changed at standstill");
+      M0 := EVC_Movement_Authority.MA;
+      Send (Entry_With (0));
+      Stand_X (200);
+      Check (EVC_Movement_Authority.MA_Present
+             and then EVC_Movement_Authority.MA = M0
+             and then EVC_Train_Data.Categories.Airtight = 1,
+             "train data: the same categories entered again: the MA kept "
+             & "(3.18.3.7); airtight taken (3.18.3.2 h)");
+      Send (Entry_With (2));
+      Stand_X (200);
+      Check (EVC_Train_Data.Categories.Axle_Load = 2
+             and then EVC_Movement_Authority.MA /= M0,
+             "train data: the axle load category changed at standstill: "
+             & "the MA shortened to the train (3.18.3.7 a), A.3.4.1.2 j)");
+   end Scenario_Train_Data_Categories;
+
+   --  3.18.4.2.5: a table of trackside supported levels applicable (an
+   --  immediate order to level 1 alone): the driver's selection of level
+   --  2 at standstill refused; level 0, in no table, refused too
+   procedure Scenario_Driver_Level_Table is
+   begin
+      Mission (L1_Code);
+      Group_With_MA (10, 50, (1 => 1_000));
+      Carry (Track_N, 0, Order_41 ((1 => Lv_1), Order_Now));
+      Run_X (6_000);
+      Stand_X (2_000);
+      Check (ML (2) = L1_Code, "level table: level 1 by the order");
+      Send (Action (11, L2_Code));
+      Check (ML (2) = L1_Code,
+             "level table: level 2 selected by the driver, not in the "
+             & "applicable table: refused (3.18.4.2.5)");
+      Send (Action (11, L0_Code));
+      Check (ML (2) = L1_Code,
+             "level table: level 0 refused likewise (3.18.4.2.5)");
+   end Scenario_Driver_Level_Table;
 
    --  5.10: an announcement to level 0 with its acknowledgement area
    --  (5.10.1.3, 5.10.4.1 a), the transition at the location (5.10.1.5)
