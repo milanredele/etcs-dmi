@@ -41,8 +41,11 @@ is
          when Tunnel_Toggle => return (if Arg = 1 then 39 else 40);
          when Adhesion      => return (if Arg = 1 then 32 else 33);
          when Supervised_Manoeuvre =>
+            --  decision: 'Continue in SM' (1) is the selection of
+            --  Supervised Manoeuvre in SM (5.21.2.2 S0, E015); SUBSET-027
+            --  has no value of its own for it
             return (case Arg is
-                       when 0      => 8,   -- Supervised Manoeuvre selected
+                       when 0 | 1  => 8,   -- Supervised Manoeuvre selected
                        when 2      => 9,   -- Exit Supervised Manoeuvre
                        when others => No_Code);
          --  recorded by their own events (EVC_Mission, EVC_Levels,

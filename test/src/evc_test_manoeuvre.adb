@@ -199,6 +199,40 @@ package body EVC_Test_Manoeuvre is
       return Message_Bytes (W);
    end SM_Authorisation;
 
+   --  The report of message 131 with the safe consist received equals
+   --  the position report
+   function Same_Report return Boolean is
+     (ETCS_Train_Packets.P0."="
+        (EVC_Position.Consist_Report (EVC_Core.Mode, L2,
+                                      EVC_Train_Data.Consist),
+         EVC_Position.Position_Report (EVC_Core.Mode, L2)));
+
+   --  The report of message 131 has its estimated front end Ahead cm
+   --  further than the position report and its confidence interval
+   --  More_Over and More_Under cm wider, to the resolution of its scale
+   function Front_Moved (Ahead, More_Over, More_Under : Length_T)
+     return Boolean
+   is
+      C : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Consist_Report (EVC_Core.Mode, L2,
+                                     EVC_Train_Data.Consist);
+      P : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Position_Report (EVC_Core.Mode, L2);
+      use type ETCS_Variables.Q_SCALE_T, ETCS_Variables.Q_DLRBG_T;
+      Q : constant Natural := Natural (C.Q_SCALE);
+      R : constant Length_T := Scaled (1, Q);
+      function Near (A, B : Length_T) return Boolean is
+        (A <= B + R and then B <= A + R);
+   begin
+      return C.Q_SCALE = P.Q_SCALE and then C.Q_DLRBG = P.Q_DLRBG
+        and then Near (Scaled (Natural (C.D_LRBG), Q),
+                       Scaled (Natural (P.D_LRBG), Q) + Ahead)
+        and then Near (Scaled (Natural (C.L_DOUBTOVER), Q),
+                       Scaled (Natural (P.L_DOUBTOVER), Q) + More_Over)
+        and then Near (Scaled (Natural (C.L_DOUBTUNDER), Q),
+                       Scaled (Natural (P.L_DOUBTUNDER), Q) + More_Under);
+   end Front_Moved;
+
    procedure Scenario_SM_Authorisation is
       T : Unsigned_64;
    begin
@@ -262,6 +296,21 @@ package body EVC_Test_Manoeuvre is
                 "SM opposite: SM entered from FS, the MA of the "
                 & "authorisation kept (4.6.3 [81], 4.10, 5.21.2.2 A050); "
                 & "mode " & Mode_T'Image (EVC_Core.Mode));
+         Check (Same_Report,
+                "SM opposite: the position shifted to the consist's end, "
+                & "the report of 131 is the position report (5.21.2.2 "
+                & "A045)");
+      end;
+      declare
+         Selected : constant Natural := JRU_Actions (8);
+      begin
+         --  'Continue in SM' (MSG_DRIVER_ACTION 17, argument 1)
+         Input (DMI, (16#40#, 3, 0, 0, 0, 17, 1, 0));
+         Check (Wait_For (MCat.Train_M131, 1_000) /= 0
+                and then JRU_Actions (8) = Selected + 1,
+                "SM: 'Continue in SM' sends 131 and is recorded as "
+                & "Supervised Manoeuvre selected (5.21.2.2 S0, E015, "
+                & "SUBSET-027 4.2.4.11 M_DRIVERACTIONS 8)");
       end;
    end Scenario_SM_Authorisation;
 
@@ -374,40 +423,6 @@ package body EVC_Test_Manoeuvre is
       Check (not EVC_Sessions.SM_Consist_Awaited,
              "SM consist: the resent one acknowledged (3.18.3.10.1)");
    end Scenario_SM_Consist_Info;
-
-   --  The report of message 131 with the safe consist received equals
-   --  the position report
-   function Same_Report return Boolean is
-     (ETCS_Train_Packets.P0."="
-        (EVC_Position.Consist_Report (EVC_Core.Mode, L2,
-                                      EVC_Train_Data.Consist),
-         EVC_Position.Position_Report (EVC_Core.Mode, L2)));
-
-   --  The report of message 131 has its estimated front end Ahead cm
-   --  further than the position report and its confidence interval
-   --  More_Over and More_Under cm wider, to the resolution of its scale
-   function Front_Moved (Ahead, More_Over, More_Under : Length_T)
-     return Boolean
-   is
-      C : constant ETCS_Train_Packets.P0.Packet_T :=
-        EVC_Position.Consist_Report (EVC_Core.Mode, L2,
-                                     EVC_Train_Data.Consist);
-      P : constant ETCS_Train_Packets.P0.Packet_T :=
-        EVC_Position.Position_Report (EVC_Core.Mode, L2);
-      use type ETCS_Variables.Q_SCALE_T, ETCS_Variables.Q_DLRBG_T;
-      Q : constant Natural := Natural (C.Q_SCALE);
-      R : constant Length_T := Scaled (1, Q);
-      function Near (A, B : Length_T) return Boolean is
-        (A <= B + R and then B <= A + R);
-   begin
-      return C.Q_SCALE = P.Q_SCALE and then C.Q_DLRBG = P.Q_DLRBG
-        and then Near (Scaled (Natural (C.D_LRBG), Q),
-                       Scaled (Natural (P.D_LRBG), Q) + Ahead)
-        and then Near (Scaled (Natural (C.L_DOUBTOVER), Q),
-                       Scaled (Natural (P.L_DOUBTOVER), Q) + More_Over)
-        and then Near (Scaled (Natural (C.L_DOUBTUNDER), Q),
-                       Scaled (Natural (P.L_DOUBTUNDER), Q) + More_Under);
-   end Front_Moved;
 
    procedure Scenario_SM_Request is
       T : Unsigned_64;
