@@ -1137,32 +1137,59 @@ is
    --  1a. The Virtual Balise Covers of the cycle, before the telegrams:
    --  the periods elapsed (3.15.9.5 b), from the reception or the entry,
    --  3.15.9.6), then the driver's Set VBC and Remove VBC (DMI 11.3.12.5,
-   --  11.3.13.5: the codes split as MSG_DRIVER_DATA carries them).
+   --  11.3.13.5: the codes split as MSG_DRIVER_DATA carries them), each
+   --  with its juridical record (SUBSET-027 4.2.4.28, 4.2.4.29: the code
+   --  entered, also when the mode does not take it).
    --  Decision (3.15.9.2): taken in SB only, the mode of the start of
    --  mission where the DMI offers them (DMI Table 36 #5, #6).
    --  @req 3.15.9.2, 3.15.9.5 c)
    procedure Take_VBC_Requests
      with Global => (Input  => (Clock_Ms, Current_Mode,
                                 EVC_Driver_Requests.State),
-                     In_Out => EVC_VBC.State)
+                     In_Out => (EVC_VBC.State, EVC_Outbox.Queue))
    is
       use EVC_Driver_Requests;
       use ETCS_Variables;
       Code : Unsigned_32;
+      NID_C : Unsigned_64;
+      Marker : Unsigned_64;
    begin
       EVC_VBC.Expire (Unsigned_64 (Clock_Ms));
-      if Current_Mode = M_SB and then Entered (Set_VBC) then
+      if Entered (Set_VBC) then
          Code := VBC_Code (Set_VBC);
-         EVC_VBC.Set
-           (NID_C  => NID_C_T (Shift_Right (Code, 6) and 16#3FF#),
-            Marker => NID_VBCMK_T (Code and 16#3F#),
-            T      => T_VBC_T (Shift_Right (Code, 16) and 16#FF#));
+         NID_C := Unsigned_64 (Shift_Right (Code, 6) and 16#3FF#);
+         Marker := Unsigned_64 (Code and 16#3F#);
+         EVC_Outbox.Put_JRU
+           (EVC_JRU_Messages.NID_VBC_Set, Unsigned_64 (Clock_Ms),
+            (1      => (Value => Marker, Bits => 6),
+             2      => (Value => NID_C, Bits => 10),
+             3      => (Value => Unsigned_64 (Shift_Right (Code, 16)
+                                              and 16#FF#),
+                        Bits  => 8),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
+         if Current_Mode = M_SB then
+            EVC_VBC.Set
+              (NID_C  => NID_C_T (NID_C),
+               Marker => NID_VBCMK_T (Marker),
+               T      => T_VBC_T (Shift_Right (Code, 16) and 16#FF#));
+         end if;
       end if;
-      if Current_Mode = M_SB and then Entered (Remove_VBC) then
+      if Entered (Remove_VBC) then
          Code := VBC_Code (Remove_VBC);
-         EVC_VBC.Remove
-           (NID_C  => NID_C_T (Code and 16#3FF#),
-            Marker => NID_VBCMK_T (Shift_Right (Code, 10) and 16#3F#));
+         NID_C := Unsigned_64 (Code and 16#3FF#);
+         Marker := Unsigned_64 (Shift_Right (Code, 10) and 16#3F#);
+         EVC_Outbox.Put_JRU
+           (EVC_JRU_Messages.NID_VBC_Removed, Unsigned_64 (Clock_Ms),
+            (1      => (Value => NID_C, Bits => 10),
+             2      => (Value => Marker, Bits => 6),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
+         if Current_Mode = M_SB then
+            EVC_VBC.Remove
+              (NID_C  => NID_C_T (NID_C),
+               Marker => NID_VBCMK_T (Marker));
+         end if;
       end if;
    end Take_VBC_Requests;
 

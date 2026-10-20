@@ -9165,3 +9165,49 @@ decision: not over a data entry or validation window the driver is in);
 `DMI_Test_Data_Entry.Scenario_Train_Data_Request`; no golden changed;
 3060500_14 passes in SV21, SV22, SV30 (S4ec90124). Runner after it 1022
 / 1111 / 1057, 0 regressions.
+### The runner's VBC steps, the driver's VBC records, 3.15.10 and 3.15.7 re-read (e6/vbc-runner, 2026-10-20)
+
+Done: the runner's VBC steps (B1061). `S076_Run.DMI_Input` presses Set
+VBC and Remove VBC in the Settings window (DMI Table 36 #5, #6);
+`Enter_VBC` types the code in the Set VBC (Remove VBC) window and
+validates it with 'Yes' (Table 54 S6-1 / S6-2, S7-1 / S7-2); the
+buttons `Set-VBC/Settings`, `Remove-VBC/Settings` (`DMI_Button`) and the
+windows `Set-VBC`, `Remove-VBC` (`Window_Of`) are judged; `INT
+timer-expires T_VBC` lets the period of the cover that ends first pass
+at once (`S076_Bench.Pass_Time`: cycles of at most a day, the train at
+standstill, the DMI's clock unmoved).
+
+Decisions (runner): the set code is the extractor's `event=104` words
+(each one an entry, 3180600_01 step 48 sets five), else the first code
+of the step's comment ("code N", "Code=N", "Value N", a quoted number),
+else the N-th "Code=" of an earlier comment (3150900_02 lists five),
+else for "the same NID_VBCMK and NID_C" the last code with T_VBC one
+more, else NID_VBCMK N, NID_C 64 and T_VBC N for the N-th entry; the
+remove code is "entering N" of the comment, else the identity of the
+last code set (`Next_Set_Code`). After an entry the driver closes the
+Settings window when the sequence's next DMI step is not about it
+(`Leave_Settings`; 3150900_01 step 11 expects the Driver ID window).
+
+SUBSET-076: 1017 / 1116 / 1057 before, 1032 / 1118 / 1040 after, steps
+not judged 4390 -> 4442 (more reached), 0 regressions, 30
+improvements; 3150900_02, _03, 4100103_02, 5040500_03, 9990400_34
+pass in sv30; one new signature, S82794294 (3120300_02 step 71: the
+runner has no V_MAMODE), triaged model. The expectations `JRU record
+28` / `29` stay not judged ("JRU not modelled") until B1062.
+
+B1062, after a resumption: the juridical records of the driver's VBC,
+SUBSET-027 4.2.4.28 (NID_VBCMK, NID_C, T_VBC) and 4.2.4.29 (NID_C,
+NID_VBCMK), written by `EVC_Core.Take_VBC_Requests` for every entry
+(`EVC_JRU_Messages.NID_VBC_Set`, `NID_VBC_Removed`; `View` gives the
+readers event 28 with NID_VBCMK and T_VBC, 29 with NID_VBCMK). Decision:
+the record reflects the code entered (4.2.4.28 "the code entered by
+the driver"), also outside SB where the store does not take it.
+Scenario: evc_test vbc_driver, both records with their fields. The
+runner judges `expect JRU record 28 / 29` (`S076_Tables.Message_Event`):
+steps not judged 4442 -> 4376, every one of them passed; sequences
+unchanged (1032 / 1118 / 1040), 0 regressions.
+
+Left: 3.15.10
+(6 rows todo, not re-read), 3.15.7 with 3.6.7.1 d) and 3.12.1.2.1.2
+(not re-read; note: the runner already presses `BMM-reaction-inhibition`,
+Special #4).

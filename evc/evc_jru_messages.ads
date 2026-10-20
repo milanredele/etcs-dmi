@@ -22,6 +22,8 @@
 --     9 message from RBC (4.2.4.9): NID_C, NID_RBC, the message;
 --    10 message to RBC: NID_C, NID_RBC, the message as sent;
 --    11 driver's actions: M_DRIVERACTIONS;
+--    28, 29 VBC set / removed by the driver (4.2.4.28, .29): NID_VBCMK,
+--       NID_C, T_VBC / NID_C, NID_VBCMK;
 --    12 balise group error: NID_C, NID_ERRORBG, M_ERROR, before a 255;
 --    13 radio error: NID_C, NID_RBC, M_ERROR;
 --    15 cold movement: M_COLD_MVT; 25 SR speed/distance entered by the
@@ -80,6 +82,8 @@ is
    NID_Plain_Start    : constant := 18;
    NID_Plain_Stop     : constant := 19;
    NID_SR_Data        : constant := 25;
+   NID_VBC_Set        : constant := 28;
+   NID_VBC_Removed    : constant := 29;
    NID_Track_Conds    : constant := 45;
    NID_Brake_Config   : constant := 47;
    NID_TRN            : constant := 49;
