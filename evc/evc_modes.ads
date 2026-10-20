@@ -333,6 +333,18 @@ is
    --  @req 3.6.8.5, 3.6.8.6.2
    function Odometer_Check_Mode (M : Mode_T) return Boolean is
      (M in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS);
+   --  - the service brake of the message consistency reaction (an
+   --    inconsistent balise group message, 3.16.2.4.4, 3.16.2.5.1):
+   --    every mode in which balises are read but SL, PT, NL, RV and PS
+   --    (4.4.6.1.12, 4.4.14.1.9, 4.4.15.1.10, 4.4.18.1.10, 4.4.20.1.15);
+   --    commanded by EVC_Procedures.Evaluate, shortened after by
+   --    EVC_Stored_Information.Linking_Shortening. Decision: SB, TR and
+   --    SN read balises too and are not excepted. The linking reaction's
+   --    brake (3.16.2.6.2) is that of Linking_Check_Mode
+   --  @req 4.4.6.1.12, 4.4.14.1.9, 4.4.15.1.10, 4.4.18.1.10, 4.4.20.1.15
+   function Message_Reaction_Mode (M : Mode_T) return Boolean is
+     (M in M_FS | M_AD | M_LS | M_OS | M_SM | M_SR | M_SH | M_UN | M_SB
+         | M_TR | M_SN);
 
    --  5.4.6.1: a mission is considered as started on entering these
    --  modes

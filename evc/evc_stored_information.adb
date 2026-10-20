@@ -2856,9 +2856,10 @@ is
    --  location based information shortened to the current position as
    --  for 3.16.3.4.5 b) (A.3.4.1.2 i), and an MA requested (3.8.2.5.1:
    --  g), h), l) and m) are not among its exceptions). The brake is
-   --  commanded in the modes of EVC_Procedures.Evaluate: FS, AD, LS, OS,
-   --  SM for a linking reaction, every mode reading balises but SL, PT,
-   --  NL, RV, PS for an inconsistent message (Message_Reaction).
+   --  commanded in the modes of EVC_Procedures.Evaluate:
+   --  EVC_Modes.Linking_Check_Mode for a linking reaction,
+   --  EVC_Modes.Message_Reaction_Mode for an inconsistent message
+   --  (Message_Reaction).
    --  Decision: the brake requested in an earlier cycle and the train at
    --  standstill now, a request at standstill shortens nothing. The
    --  service brake of an inconsistent message is such a reaction
@@ -2875,7 +2876,6 @@ is
                                 EVC_Track_Conditions.State,
                                 Events, Event_N))
    is
-      use type EVC_Modes.Mode_T;
       O : EVC_Movement_Authority.Outcome_T;
    begin
       if Linking_Braking and then EVC_Odometry.Standstill then
@@ -2887,11 +2887,8 @@ is
       if EVC_Position.Linking_Reaction_Requested
         and then EVC_Position.Reaction = Q_LINKREACTION_Apply_Service_Brake
         and then not EVC_Odometry.Standstill
-        and then (Mode in EVC_Modes.M_FS | EVC_Modes.M_AD | EVC_Modes.M_LS
-                        | EVC_Modes.M_OS | EVC_Modes.M_SM
-                  or else (Mode in EVC_Modes.M_SR | EVC_Modes.M_SH
-                                 | EVC_Modes.M_UN | EVC_Modes.M_SB
-                                 | EVC_Modes.M_TR | EVC_Modes.M_SN
+        and then (EVC_Modes.Linking_Check_Mode (Mode)
+                  or else (EVC_Modes.Message_Reaction_Mode (Mode)
                            and then Message_Reaction))
       then
          Linking_Braking := True;
