@@ -9310,3 +9310,46 @@ B031, B952, B991, B1080, B1082, 4.4.21.1.12 / .13, the rear length of
 3.18.3.2.4, packet 12 of 131 from the configured set); consistency
 B1040, B1041, B1120, B1121; the VBC re-reads 3.15.10 and 3.15.7 with
 S82794294; then the Gamma model, the big metal masses, NL.
+
+### Supervised Manoeuvre, the position report with the consist, the trip after message 7, the record of Continue in SM (e6/sm-report) (2026-10-20)
+
+The sixth Supervised Manoeuvre package.
+
+B950, 5.21.2.2 A045 done: the position report of message 131 takes the
+safe consist length into account. `EVC_Position.Consist_Report` gives
+packet 0 with the estimated front end at the far end of the consist in
+front of the engine (the side of its active cab), or in rear of it when
+the train orientation is the other side, the confidence interval widened
+by the consist's minimum and maximum (3.6.4.1.5); once the position was
+shifted to the other end of the consist (`Shift_For_Manoeuvre`) the
+report as it is. `Consist_End` is the front end shared with
+`Shift_For_Manoeuvre`; `Fill` and the new `Report_With` take the
+extension. `EVC_Sessions.Manoeuvre.Send_Request` uses it while the safe
+consist length is available (decision: message 133 and the reports of
+136 keep the position as it is; A045 names the request only). Scenario:
+`Scenario_SM_Request` (nothing in front: the same report; 50 m in front,
+49 .. 52: 50 m ahead, 1 m and 2 m wider), `Scenario_SM_Authorisation`
+(after the opposite authorisation: the position report). Found: after
+an authorisation in the train orientation the front end stays the
+engine's (`Shift_For_Manoeuvre` with Opposite False), the consist in
+front is not added for 136 and the supervision: B1160.
+
+B1082 dropped, not our defect: in 4080420_03 message 7 is taken and
+recorded; the trip is the linking error of message 24's packet 5 given
+at 650 m (step 82), D_LINK 450 m from BG2 at 200 m, a group announced at
+the train's own position, supervised by 3.4.4.4.5.1 and not placed. The
+sequence calls that linking rejected, as for the SM authorisation's
+[13] at step 73, but message 24 is no SM authorisation and 4.8.4 accepts
+linking in FS: Sc17009f0 triaged s076.
+
+B1080 done: `EVC_JRU_Records.Action_Code` records 'Continue in SM'
+(argument 1) as M_DRIVERACTIONS 8, Supervised Manoeuvre selected
+(decision: it is the selection of SM in SM, 5.21.2.2 S0 / E015;
+SUBSET-027 4.2.4.11 has no value of its own). 3110800_02 104 -> 117: the
+runner leaves the train at 1590 m for the backward run to 1400 m
+(S13c9beb3 model, as B1081).
+
+SUBSET-076: 1038 / 1112 / 1040 before and after, 1 improvement, 0
+regressions. No edit outside the package's units. Left of the mode:
+B008, B031, B952, B991, B1081 (runner), B1160, 4.4.21.1.12, 4.4.21.1.13,
+3.18.3.2.4's max rear length, packet 12 of 131 from the configured set.
