@@ -9348,6 +9348,21 @@ the train moves. The scenario sits in `EVC_Test_Procedures` next to
 18, the TIU brake bits) it needs.
 
 SUBSET-076: 1038 / 1112 / 1040 before and after, 0 regressions. Matrix:
-8 rows done (E6 todo 21 -> 17). Left: the re-reads of 3.15.10 (6 rows
-todo), 3.18.6, 3.18.5, 3.15.11.2, 3.20.1.2 and A.3.2, not started (the
-bound came after the first item); B1200, B1201.
+8 rows done (E6 todo 21 -> 17).
+
+3.15.10, after a resumption, a re-read with tags and no build: the
+planning of MSG_PLANNING is `EVC_Stored_Information.Build_Planning`
+(`Plan_Head`, `Plan_Gradients`, `Plan_Speeds`, `Plan_Orders`), every
+distance from the estimated front end. 3.15.10.3 done (the gradients);
+3.15.10.1, .2, .4 partial (the first Indication location never sent,
+`Planning_T.Indication_Dist`; the MRSP and the track conditions not from
+the max / min safe front end of their supervision; the gradients and the
+orders up to 32 km, not restricted to the MA or the first target at zero
+speed); 3.15.10.3.1 and 3.15.10.5 todo (the Indication location; the
+temporary EOAs of `Build_Temporary` not taken as the planning's EOA).
+The gaps are B1202; the tags sit above `Build_Planning` and
+`Plan_Gradients` (comment lines in `EVC_Stored_Information`). E6 todo
+17 -> 13.
+
+Left: the re-reads of 3.18.6, 3.18.5, 3.15.11.2, 3.20.1.2 and A.3.2, not
+started; B1200, B1201, B1202.

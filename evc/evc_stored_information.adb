@@ -2573,6 +2573,7 @@ is
 
    --  The planning (ERA_ERTMS_015560 8.3): the changes of the gradient
    --  ahead of Front, up to 32 km
+   --  @req 3.15.10.3
    procedure Plan_Gradients (Ahead     : Sense_T;
                              Front     : Dist_T;
                              G_Steps   : Steps_T;
@@ -2669,6 +2670,7 @@ is
 
    --  The planning (ERA_ERTMS_015560 8.3) for MSG_PLANNING: due when the
    --  MRSP is supervised (Supervise), an MA is and the position is valid
+   --  @req 3.15.10.1, 3.15.10.2, 3.15.10.4
    procedure Build_Planning (Train     : Train_Frame_T;
                              Ahead     : Sense_T;
                              Supervise : Boolean;
