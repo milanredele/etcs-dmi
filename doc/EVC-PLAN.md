@@ -9349,7 +9349,17 @@ SUBSET-027 4.2.4.11 has no value of its own). 3110800_02 104 -> 117: the
 runner leaves the train at 1590 m for the backward run to 1400 m
 (S13c9beb3 model, as B1081).
 
-SUBSET-076: 1038 / 1112 / 1040 before and after, 1 improvement, 0
-regressions. No edit outside the package's units. Left of the mode:
-B008, B031, B952, B991, B1081 (runner), B1160, 4.4.21.1.12, 4.4.21.1.13,
+B952 done (a resumption): `EVC_Sessions.Take_Message` takes message 4
+or 5 as the answer to the request for SM (the wait ended, "SM refused"
+shown) only when 4.8 accepts it, `EVC_Sessions.Network.Accepts` (the
+verdict of `EVC_Radio_Acceptance` in the network half's mode, message 6
+seen in PT for [1], the cab for [2], the level); `Take_Message` reads
+`EVC_Levels.State` now. 4080300_20 (SM refused in level 1) passes.
+4080455_04 still fails: message 6 came before message 5 and the
+sequence reads [1] by the time stamps, which is not modelled (B1161).
+
+SUBSET-076: 1038 / 1112 / 1040 before, 1039 / 1111 / 1040 after, 0
+regressions. Edit outside the package's named units for B952:
+`EVC_Sessions.Take_Message` and `EVC_Sessions.Network.Accepts`. Left of
+the mode: B008, B031, B991, B1161, B1081 (runner), B1160, 4.4.21.1.12, 4.4.21.1.13,
 3.18.3.2.4's max rear length, packet 12 of 131 from the configured set.

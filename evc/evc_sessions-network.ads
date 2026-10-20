@@ -79,6 +79,16 @@ is
    procedure Mode_Changed (To : Mode_T)
      with Global => (In_Out => State);
 
+   --  4.8.3, 4.8.4: 4.8 accepts the message of Kind just received in the
+   --  mode of the last Mode_Changed, with message 6 recognised in PT
+   --  ([1]), a cab active or not ([2]) and the level Level when
+   --  Level_Valid (EVC_Radio_Acceptance.Verdict)
+   function Accepts (Kind        : ETCS_Message_Catalogue.Message_Kind_T;
+                     Cab_Active  : Boolean;
+                     Level_Valid : Boolean;
+                     Level       : Level_T) return Boolean
+     with Global => State;
+
    --  The cycle: the defaults of the configuration and the power-up
    --  registration (3.5.6.1 a, 3.5.6.3, 3.5.6.4), the driver's radio
    --  data (3.18.4.3.6). Stop: terminate the sessions and abort the

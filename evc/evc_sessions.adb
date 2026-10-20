@@ -894,8 +894,15 @@ is
                return;
             end if;
             --  4.8.4 [14], 5.21.2.2 S050: message 4 or 5 not answering the
-            --  pending request for Supervised Manoeuvre is not taken; A220
-            if Kind in Track_M4 | Track_M5 then
+            --  pending request for Supervised Manoeuvre is not taken; A220;
+            --  one that 4.8 rejects ([1], [2], the level) neither answers
+            --  the request nor ends its wait
+            if Kind in Track_M4 | Track_M5
+              and then Network.Accepts
+                         (Kind,
+                          EVC_Position.Active_Cab /= EVC_Position.No_Cab,
+                          EVC_Levels.Valid, EVC_Levels.Level)
+            then
                declare
                   Matched, Refused : Boolean;
                begin

@@ -985,7 +985,8 @@ is
    --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11
    procedure Read_Radio_Messages
      with Global => (Input  => (Latched_RTM, Clock_Ms, Current_Mode,
-                                EVC_Position.State, EVC_Odometry.State),
+                                EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State),
                      In_Out => (Latched_RTM_Count, EVC_Received.Store,
                                 EVC_Mission.State,
                                 EVC_Outbox.Queue, EVC_Sessions.State,
