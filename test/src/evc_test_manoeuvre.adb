@@ -312,6 +312,68 @@ package body EVC_Test_Manoeuvre is
              & "force, the Train Data still not valid (3.18.3.9)");
    end Scenario_SM_Default_Data;
 
+   --  Message 7 acknowledging the message 133 of time stamp Sent
+   function Consist_Ack (Sent : Unsigned_64) return Byte_Array is
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Now_Stamp;
+      V (5) := 123;
+      V (6) := 10;
+      V (7) := Sent;
+      return Message_Of (MCat.Track_M7, V);
+   end Consist_Ack;
+
+   --  3.18.3.10, 3.18.3.10.1, 3.18.3.10.2: the safe consist length
+   --  information for SM (message 133) sent on a change in SB in level 2
+   --  with a session and after a request for SM, acknowledged by message
+   --  7, sent again after the connection lost and re-established before
+   --  the acknowledgement; not sent outside those periods
+   procedure Scenario_SM_Consist_Info is
+      T  : Unsigned_64;
+      N0 : Natural;
+   begin
+      Start_L2_SM;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 300, 298, 302));
+      Check (Wait_For (MCat.Train_M133, 1_000) = 0,
+             "SM consist: in FS without a request no message 133 "
+             & "(3.18.3.10)");
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 400, 398, 402));
+      T := Wait_For (MCat.Train_M133, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Awaited,
+             "SM consist: in SB in level 2 with a session, a changed safe "
+             & "consist length sent by message 133 (3.18.3.10)");
+      Give_Radio_Message (1, Consist_Ack (T));
+      Stand_X (300);
+      Check (not EVC_Sessions.SM_Consist_Awaited,
+             "SM consist: message 7 acknowledges it (3.18.3.10.1)");
+      --  after a request for SM in FS: the safe consist length becoming
+      --  unavailable is sent; the connection lost before the
+      --  acknowledgement, the information sent again once re-established
+      Start_L2_SM;
+      Select_SM;
+      Check (Wait_For (MCat.Train_M131, 1_000) /= 0,
+             "SM consist: the request for SM sent");
+      N0 := EVC_Sessions.SM_Consist_Sent;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      T := Wait_For (MCat.Train_M133, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Sent = N0 + 1,
+             "SM consist: after the request, the safe consist length "
+             & "unavailable sent by message 133 (3.18.3.10)");
+      EVC_Radio.Set_State (1, EVC_Radio.Connection_Lost);
+      Stand_X (300);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      T := Wait_For (MCat.Train_M133, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Sent = N0 + 2,
+             "SM consist: the connection lost before the acknowledgement "
+             & "and re-established, message 133 sent again (3.18.3.10.2)");
+      Give_Radio_Message (1, Consist_Ack (T));
+      Stand_X (300);
+      Check (not EVC_Sessions.SM_Consist_Awaited,
+             "SM consist: the resent one acknowledged (3.18.3.10.1)");
+   end Scenario_SM_Consist_Info;
+
    procedure Scenario_SM_Request is
       T : Unsigned_64;
    begin

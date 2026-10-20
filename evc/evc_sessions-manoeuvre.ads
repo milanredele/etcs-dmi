@@ -27,7 +27,9 @@
 
 with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
 with EVC_Driver_Requests;
+with ETCS_Train_Packets.P10;
 with EVC_Levels;
+with EVC_Mission;
 with EVC_Odometry;
 with EVC_Position;
 with EVC_Received;
@@ -53,7 +55,7 @@ is
      with Global => (In_Out => State,
                      Input  => (EVC_Radio.State, EVC_Levels.State,
                                 EVC_Position.State, EVC_Odometry.State,
-                                EVC_Train_Data.State,
+                                EVC_Train_Data.State, EVC_Mission.State,
                                 EVC_Driver_Requests.State)),
           Post => Status <= 255;
 
@@ -73,7 +75,27 @@ is
    procedure Mode_Changed
      with Global => (In_Out => State);
 
-   --  A045: message 131 when due
+   --  3.18.3.10.1: message 7 of session S acknowledges the safe consist
+   --  length information sent (message 133) when its second T_TRAIN is
+   --  the time stamp of that message
+   --  @req 3.18.3.10
+   procedure Take_Consist_Ack (S : EVC_Radio.Session_T)
+     with Global => (In_Out => State, Input => EVC_Received.Store);
+
+   --  Packet 10 (7.4.3.4.3) of the safe consist length of the train
+   --  interface: its lengths when available, Q_SAFECONSISTLENGTH 0 when
+   --  not (5.4.3.2 A33 / A34 and message 133 use it too)
+   function Consist_Packet return ETCS_Train_Packets.P10.Packet_T
+     with Global => EVC_Train_Data.State;
+
+   --  message 133 sent (the resends after a lost connection included)
+   --  and awaiting its acknowledgement
+   function Consist_Sent return Natural
+     with Global => State;
+   function Consist_Awaited return Boolean
+     with Global => State;
+
+   --  A045: message 131 when due; 3.18.3.10: message 133 when due
    procedure Produce (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,

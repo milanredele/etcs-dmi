@@ -369,6 +369,13 @@ is
    function SM_Requests_Sent return Natural
      with Global => State;
 
+   --  3.18.3.10: the safe consist length information for Supervised
+   --  Manoeuvre sent (message 133) and awaiting its acknowledgement
+   function SM_Consist_Sent return Natural
+     with Global => State;
+   function SM_Consist_Awaited return Boolean
+     with Global => State;
+
    --  5.10.3.3.3, 5.10.3.3.5, 5.10.3.15.4: a position report
    --  (136) due to the supervising RBC, sent by the next Produce (with a
    --  session established)

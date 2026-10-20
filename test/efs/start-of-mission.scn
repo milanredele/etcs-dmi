@@ -790,8 +790,8 @@ end init
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Valid position data
-clause E4 partial 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.1
-clause E4 partial 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.2
+clause E4 done 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.1
+clause E4 done 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.2
 step Send SoM position report
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A33
@@ -924,8 +924,8 @@ end init
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Send SoM position report
-clause E4 partial 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.1
-clause E4 partial 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.2
+clause E4 done 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.1
+clause E4 done 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.2
 step Invalid position data
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A34

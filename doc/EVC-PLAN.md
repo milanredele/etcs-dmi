@@ -9096,3 +9096,32 @@ captured with the safe consist length); 4.4.21.3.1 has no row. Scenario
 B1080; 5160000_06 88 -> 92). 3170200_11 runs SM at 60 km/h now and
 still fails at step 83: the runner leaves the train at 1250 m after the
 opposite authorisation (B1081).
+
+Message 133 (3.18.3.10, .10.2). `EVC_Sessions.Manoeuvre.Evaluate_Consist`
+makes it due on a change of the safe consist length or of its
+availability, in SB in level 2 with the session established and in the
+period from a request for SM sent (`Send_Request`) until the mission ends
+(it was on in the period and is off), continues in NL or the request is
+refused (`Take_Answer`). `Send_Consist` sends packet 0 and packet 10
+(`Consist_Packet`, Q_SAFECONSISTLENGTH 0 when unavailable) and awaits
+message 7, matched by its second T_TRAIN (`Take_Consist_Ack`, dispatched
+from `EVC_Sessions.Take_Message`). Awaiting and the connection lost then
+re-established within the session: sent again (decisions: a change
+while the connection is lost is sent once it is re-established; the
+session ended, nothing is awaited). 3.18.3.10.1 is the RBC's (no row).
+5.4.3.2 A33 / A34: message 157 carries packet 10 when the safe consist
+length is available without valid Train Data (`EVC_Sessions.Mission.Send_Report`).
+Rows: 3.18.3.10, 3.18.3.10.2, 5.4.3.2 A33, A34 done. Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Consist_Info`. Edits outside the
+package's named places: `EVC_Sessions.Take_Message` (the dispatch of
+message 7) and two accessors `EVC_Sessions.SM_Consist_Sent` /
+`SM_Consist_Awaited`. SUBSET-076: 1017 / 1116 / 1057 -> 1018 / 1115 /
+1057, 0 regressions, 5 improvements (4080431_02 passes; 4080420_03 80 ->
+85, a new signature Sc17009f0, a trip after message 7 not traced, B1082).
+
+Left of the mode: B950 (the position report of 131 with the consist in
+front), B008, B031, B952, B991, B1080 (record 11 of "Continue in SM"),
+B1081 (the runner's backward SM run of 3170200_11), B1082, 4.4.21.1.12,
+4.4.21.1.13, 3.18.3.2.4's max rear length with valid Train Data;
+packet 12 of message 131 still carries the on-board's Train Data
+(Manoeuvre decision 2), the configured set could replace it.

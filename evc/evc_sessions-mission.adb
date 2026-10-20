@@ -6,10 +6,12 @@ with ETCS_Bits;
 with ETCS_Message;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P5;
+with ETCS_Train_Packets.P10;
 with ETCS_Train_Packets.P11;
 with EVC_Bytes;
 with EVC_JRU_Records;
 with EVC_Ports;
+with EVC_Sessions.Manoeuvre;
 with Interfaces;       use Interfaces;
 with ETCS_Variables;   use ETCS_Variables;
 
@@ -640,7 +642,9 @@ is
    end Await_TD;
 
    --  A33, A34: the SoM position report with Q_STATUS, and packet 11
-   --  when the Train Data are valid (decision 2)
+   --  when the Train Data are valid (decision 2), packet 10 when not
+   --  but the safe consist length is available
+   --  @req 5.4.3.2 A33, 5.4.3.2 A34
    procedure Send_Report (S : R.Session_T; Ctx : R.Context_T; T : T_TRAIN_T)
      with Global => (In_Out => (R.State, R.Queue, N_TD, N_Rep, TD_Awaited,
                                 TD_Stamp, TD_Since, TD_S),
@@ -669,6 +673,11 @@ is
            ((NID_OPERATIONAL =>
                NID_OPERATIONAL_T (EVC_JRU_Records.TRN_Code (EVC_Mission.TRN)),
              others => <>), W, OK);
+      end if;
+      --  A33, A34: the safe consist length information when available
+      --  while no valid Train Data is stored
+      if OK and then not TD and then EVC_Train_Data.Consist_Available then
+         ETCS_Train_Packets.P10.Encode (Manoeuvre.Consist_Packet, W, OK);
       end if;
       Finish_And_Send (W, S, OK);
       if OK then

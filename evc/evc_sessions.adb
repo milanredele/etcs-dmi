@@ -906,6 +906,10 @@ is
                   end if;
                end;
             end if;
+            --  3.18.3.10.1: message 7 acknowledges message 133
+            if Kind = Track_M7 then
+               Manoeuvre.Take_Consist_Ack (S);
+            end if;
             --  3.6.5.1.5: the position report parameters
             Reports.Take_Message;
             if Kind = Track_M24 then
@@ -1691,6 +1695,8 @@ is
    function SM_Answer return Natural is (Manoeuvre.Answer);
    function SM_Latest return Boolean is (Manoeuvre.Latest);
    function SM_Requests_Sent return Natural is (Manoeuvre.Sent_Count);
+   function SM_Consist_Sent return Natural is (Manoeuvre.Consist_Sent);
+   function SM_Consist_Awaited return Boolean is (Manoeuvre.Consist_Awaited);
 
    procedure Take_Integrity_Input (Value : Natural) is
    begin

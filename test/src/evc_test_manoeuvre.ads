@@ -23,4 +23,7 @@ package EVC_Test_Manoeuvre is
    --  3.18.3.9, 3.18.3.2.4: the default Train Data in SM
    procedure Scenario_SM_Default_Data;
 
+   --  3.18.3.10: the safe consist length information for SM
+   procedure Scenario_SM_Consist_Info;
+
 end EVC_Test_Manoeuvre;

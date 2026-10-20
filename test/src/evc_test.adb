@@ -324,6 +324,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Request;
    EVC_Test_Manoeuvre.Scenario_SM_Authorisation;
    EVC_Test_Manoeuvre.Scenario_SM_Default_Data;
+   EVC_Test_Manoeuvre.Scenario_SM_Consist_Info;
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;

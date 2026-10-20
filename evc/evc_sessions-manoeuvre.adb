@@ -4,7 +4,6 @@
 with ETCS_Bits;
 with ETCS_Message;
 with ETCS_Train_Packets.P0;
-with ETCS_Train_Packets.P10;
 with ETCS_Train_Packets.P12;
 with EVC_Bytes;
 with EVC_DMI_Port;
@@ -14,7 +13,7 @@ with ETCS_Variables; use ETCS_Variables;
 
 package body EVC_Sessions.Manoeuvre
   with SPARK_Mode => On,
-       Refined_State => (State => (Req, N_Sent))
+       Refined_State => (State => (Req, N_Sent, SCL, N_133))
 is
 
    package R renames EVC_Radio;
@@ -39,16 +38,42 @@ is
    Req    : Request_T;
    N_Sent : Natural := 0;
 
+   --  3.18.3.10: the safe consist length information for Supervised
+   --  Manoeuvre (message 133). Period: from a request sent (Send_Request)
+   --  until the mission ends (Had_Mission: it was on in the period),
+   --  continues in NL or the request is refused; Seen, Avail, Last: the
+   --  safe consist length of the last cycle, a change of which is sent;
+   --  Awaited: sent and not yet acknowledged by message 7
+   type Consist_Info_T is record
+      Period      : Boolean := False;
+      Had_Mission : Boolean := False;
+      Seen        : Boolean := False;
+      Avail       : Boolean := False;
+      Last        : EVC_Train_Data.Consist_T := (others => 0);
+      Due         : Boolean := False;
+      Awaited     : Boolean := False;
+      Was_Up      : Boolean := False;
+      Session     : R.Session_T := 1;
+      Stamp       : T_TRAIN_T := 0;
+   end record;
+
+   SCL   : Consist_Info_T;
+   N_133 : Natural := 0;
+
    procedure Clear is
    begin
       Req := (others => <>);
       N_Sent := 0;
+      SCL := (others => <>);
+      N_133 := 0;
    end Clear;
 
    function Waiting return Boolean is (Req.Pending);
    function Answer return Natural is (Req.Answer);
    function Latest return Boolean is (Req.Latest);
    function Sent_Count return Natural is (N_Sent);
+   function Consist_Sent return Natural is (N_133);
+   function Consist_Awaited return Boolean is (SCL.Awaited);
 
    --  S0: level 2, a valid position referred to an LRBG, the safe consist
    --  length available, standstill, and FS, AD, OS, LS, SR, PT or SB
@@ -66,11 +91,69 @@ is
      with Global => (EVC_Levels.State, EVC_Position.State,
                      EVC_Train_Data.State, EVC_Odometry.State);
 
+   --  3.18.3.10: in SB in level 2 with the session established, and in
+   --  the period of a request, a change of the safe consist length (its
+   --  lengths, or its availability) makes message 133 due; 3.18.3.10.2:
+   --  sent again when the connection lost before the acknowledgement is
+   --  re-established within the session. Decisions: a change while the
+   --  connection is lost is sent once it is re-established; with the
+   --  session ended nothing is awaited any more
+   --  @req 3.18.3.10, 3.18.3.10.2
+   procedure Evaluate_Consist (Ctx : R.Context_T)
+     with Global => (In_Out => SCL,
+                     Input  => (R.State, EVC_Levels.State,
+                                EVC_Train_Data.State, EVC_Mission.State))
+   is
+      use type EVC_Train_Data.Consist_T;
+      use type R.Session_Ref_T;
+      use type R.Session_State_T;
+      Sv      : constant R.Session_Ref_T := R.Supervising;
+      Is_Up   : constant Boolean :=
+        Sv /= R.No_Session
+        and then R.Info (R.Session_T (Sv)).State = R.Established;
+      Lost    : constant Boolean :=
+        Sv /= R.No_Session
+        and then R.Info (R.Session_T (Sv)).State = R.Connection_Lost;
+      Avail   : constant Boolean := EVC_Train_Data.Consist_Available;
+      C       : constant EVC_Train_Data.Consist_T := EVC_Train_Data.Consist;
+      Changed : constant Boolean :=
+        SCL.Seen and then (Avail /= SCL.Avail or else C /= SCL.Last);
+      In_SB   : constant Boolean :=
+        Ctx.Mode = M_SB and then EVC_Levels.Valid
+        and then EVC_Levels.Level = L2 and then Is_Up;
+   begin
+      if SCL.Period
+        and then (Ctx.Mode = M_NL
+                  or else (SCL.Had_Mission and then not EVC_Mission.Mission))
+      then
+         SCL.Period := False;
+      elsif SCL.Period and then EVC_Mission.Mission then
+         SCL.Had_Mission := True;
+      end if;
+      if Changed and then (SCL.Period or else In_SB)
+        and then (Is_Up or else Lost)
+      then
+         SCL.Due := True;
+         SCL.Session := R.Session_T (Sv);
+      end if;
+      if not Is_Up and then not Lost then
+         SCL.Due := False;
+         SCL.Awaited := False;
+      elsif Is_Up and then not SCL.Was_Up and then SCL.Awaited then
+         SCL.Due := True;
+      end if;
+      SCL.Was_Up := Is_Up;
+      SCL.Seen := True;
+      SCL.Avail := Avail;
+      SCL.Last := C;
+   end Evaluate_Consist;
+
    procedure Evaluate (Ctx          : EVC_Radio.Context_T;
                        Order_Stored : Boolean;
                        Status       : out Natural)
    is
    begin
+      Evaluate_Consist (Ctx);
       Status := 0;
       if EVC_Driver_Requests.Shunting_Selected then
          Req.Latest := False;
@@ -112,12 +195,24 @@ is
         and then Kind in Track_M4 | Track_M5
         and then EVC_Received.Last_Field (7) = Unsigned_64 (Req.Stamp);
       Refused := Matched and then Kind = Track_M5;
+      if Refused then
+         SCL.Period := False;
+      end if;
       if Matched then
          Req.Pending := False;
          Req.Due := False;
          Req.Answer := (if Kind = Track_M4 then 1 else 0);
       end if;
    end Take_Answer;
+
+   procedure Take_Consist_Ack (S : EVC_Radio.Session_T) is
+   begin
+      if SCL.Awaited and then S = SCL.Session
+        and then EVC_Received.Last_Field (7) = Unsigned_64 (SCL.Stamp)
+      then
+         SCL.Awaited := False;
+      end if;
+   end Take_Consist_Ack;
 
    procedure Mode_Changed is
    begin
@@ -127,13 +222,14 @@ is
 
    subtype Writer_T is ETCS_Bits.Writer (128);
 
-   --  Packet 10 (7.4.3.4) from the safe consist length of the train
-   --  interface
-   function Consist_Packet return ETCS_Train_Packets.P10.Packet_T
-     with Global => EVC_Train_Data.State
-   is
+   function Consist_Packet return ETCS_Train_Packets.P10.Packet_T is
       C : constant EVC_Train_Data.Consist_T := EVC_Train_Data.Consist;
    begin
+      if not EVC_Train_Data.Consist_Available then
+         return (Q_SAFECONSISTLENGTH         => 0,
+                 Has_L_CONSISTFRONTENGINENOM => False,
+                 others                      => <>);
+      end if;
       return (Q_SAFECONSISTLENGTH         => 1,
               Has_L_CONSISTFRONTENGINENOM => True,
               L_CONSISTFRONTENGINENOM     =>
@@ -188,7 +284,7 @@ is
    --  outside SM, packet 12; the time stamp of the request is the one
    --  EVC_Radio.Send gave it (3.16.3.3.2)
    procedure Send_Request (Ctx : R.Context_T)
-     with Global => (In_Out => (Req, N_Sent, R.State, R.Queue),
+     with Global => (In_Out => (Req, N_Sent, SCL, R.State, R.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State, EVC_Train_Data.State))
    is
@@ -229,12 +325,61 @@ is
       Req.Due := False;
       Req.Sent := True;
       Req.Sent_Ms := Ctx.Now_Ms;
+      if not SCL.Period then
+         SCL.Period := True;
+         SCL.Had_Mission := False;
+      end if;
    end Send_Request;
+
+   --  3.18.3.10: message 133 (8.6.3.1) with the position report and
+   --  packet 10, awaiting message 7
+   procedure Send_Consist (Ctx : R.Context_T)
+     with Global => (In_Out => (SCL, N_133, R.State, R.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State, EVC_Train_Data.State))
+   is
+      V  : ETCS_Message.Value_Array := (others => 0);
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      ETCS_Bits.Clear (W);
+      V (3) := Unsigned_64 (R.T_Train_At (Ctx.Now_Ms));
+      V (4) := Unsigned_64 (R.Engine_Id);
+      ETCS_Message.Write_Fields (W, Train_M133, V, OK);
+      if OK then
+         ETCS_Train_Packets.P0.Encode
+           (EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level), W, OK);
+      end if;
+      if OK then
+         ETCS_Train_Packets.P10.Encode (Consist_Packet, W, OK);
+      end if;
+      if OK then
+         ETCS_Message.Finish (W, OK);
+      end if;
+      if OK then
+         declare
+            M : constant EVC_Bytes.Byte_Array := ETCS_Bits.Data (W);
+         begin
+            if EVC_Ports.Valid_RTM (M) and then R.Usable (SCL.Session) then
+               R.Send (SCL.Session, M);
+               SCL.Stamp := R.Info (SCL.Session).Last_Sent;
+               SCL.Awaited := True;
+               if N_133 < Natural'Last then
+                  N_133 := N_133 + 1;
+               end if;
+            end if;
+         end;
+      end if;
+      SCL.Due := False;
+   end Send_Consist;
 
    procedure Produce (Ctx : EVC_Radio.Context_T) is
    begin
       if Req.Due and then Req.Pending then
          Send_Request (Ctx);
+      end if;
+      if SCL.Due and then R.Usable (SCL.Session) then
+         Send_Consist (Ctx);
       end if;
    end Produce;
 
