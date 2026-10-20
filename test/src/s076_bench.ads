@@ -84,6 +84,11 @@ package S076_Bench is
    --  a shorter one shifts the on-board's timing)
    procedure Cycle (Distance_Cm : Integer_64);
    function Time_Ms return Unsigned_64;
+   --  Ms pass at once on the on-board's clock, in one cycle each of at
+   --  most a day at standstill (a timer of days, T_VBC: the DMI's clock
+   --  and the train do not move; the on-board's cycle is any length,
+   --  EVC_Core.Tick)
+   procedure Pass_Time (Ms : Unsigned_64);
 
    ---------------------------------------------------------------------
    --  The train

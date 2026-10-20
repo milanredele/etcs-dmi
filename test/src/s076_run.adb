@@ -33,6 +33,7 @@ with EVC_Modes;               use EVC_Modes;
 with EVC_National_Values;
 with EVC_Supervision_Input;
 with EVC_JRU_Messages;
+with EVC_VBC;
 with S076_Bench;
 with EVC_Config;
 with S076_Tables;             use S076_Tables;
@@ -667,6 +668,155 @@ package body S076_Run is
       end;
       return Pass ("DMI " & Name);
    end Press_Menu;
+
+   --  The driver's Virtual Balise Covers (DMI 11.3.12, 11.3.13): the
+   --  set codes entered in the sequence so far and the last one
+   VBC_Entries : Natural := 0;
+   VBC_Last    : Natural := 0;
+
+   --  The N-th number of T that follows Key ("Code=", "code "), 0 when
+   --  there are fewer
+   function Number_After (T, Key : String; N : Positive) return Natural is
+      U     : constant String (T'Range) := Up (T);
+      From  : Natural := T'First;
+      Found : Natural := 0;
+   begin
+      loop
+         declare
+            P : constant Natural :=
+              Ada.Strings.Fixed.Index (U (From .. U'Last), Up (Key));
+            J : Natural;
+            V : Natural := 0;
+         begin
+            exit when P = 0;
+            J := P + Key'Length;
+            while J <= T'Last and then T (J) in '0' .. '9' loop
+               if V < 100_000_000 then
+                  V := V * 10 + (Character'Pos (T (J)) - Character'Pos ('0'));
+               end if;
+               J := J + 1;
+            end loop;
+            if J > P + Key'Length then
+               Found := Found + 1;
+               if Found = N then
+                  return V;
+               end if;
+            end if;
+            exit when J > T'Last;
+            From := J;
+         end;
+      end loop;
+      return 0;
+   end Number_After;
+
+   --  The first code a comment names, 0 when none
+   function Comment_Code (C : String) return Natural is
+      Keys : constant array (1 .. 4) of String (1 .. 6) :=
+        ("code  ", "Code= ", "Value ", """     ");
+   begin
+      for K of Keys loop
+         declare
+            Key : constant String := Ada.Strings.Fixed.Trim
+              (K, Ada.Strings.Right);
+            V   : constant Natural :=
+              Number_After (C, (if Key = "code" then "code " else Key), 1);
+         begin
+            if V >= 64 then
+               return V;
+            end if;
+         end;
+      end loop;
+      return 0;
+   end Comment_Code;
+
+   --  The set code of the driver's next Set VBC entry when the input line
+   --  gives none. Decision (the sequences name the code in a comment, or
+   --  not at all): the code of the step's comment; else the N-th of a list
+   --  "Code=" in the comment of an earlier step; else, for "the same
+   --  NID_VBCMK and NID_C" with "a different T_VBC", the last code with
+   --  T_VBC one more; else NID_VBCMK N, NID_C 64 (the country of every VBC
+   --  sequence's groups) and T_VBC N, N the entry's number in the
+   --  sequence (3150900_03: "identities from 1 to 5, different validity")
+   function Next_Set_Code (St : Step_T) return Natural is
+      N : constant Positive := VBC_Entries + 1;
+      C : constant String := Image (St.Comment);
+   begin
+      if Comment_Code (C) > 0 then
+         return Comment_Code (C);
+      end if;
+      for I in reverse 1 .. Cur - 1 loop
+         if Number_After (Image (Seq.Steps (I).Comment), "Code=", N) > 0 then
+            return Number_After (Image (Seq.Steps (I).Comment), "Code=", N);
+         end if;
+      end loop;
+      if Has (C, "same NID_VBCMK") and then VBC_Last > 0 then
+         return VBC_Last + 65_536;
+      end if;
+      return N + 64 * 64 + N * 65_536;
+   end Next_Set_Code;
+
+   --  The driver enters Code in the Set VBC (Remove VBC) window, from the
+   --  Settings window where it is not open, and validates it with 'Yes'
+   --  (DMI Table 54 S6-1 / S6-2, S7-1 / S7-2; Table 29: 'Yes' is key 8,
+   --  the input field of the validation window its [Enter])
+   function Enter_VBC (Remove : Boolean; Code : Natural) return Judgement_T
+   is
+      Wid  : constant Window_ID_T :=
+        (if Remove then W_Remove_VBC else W_Set_VBC);
+      Val  : constant Window_ID_T :=
+        (if Remove then W_Remove_VBC_Validation else W_Set_VBC_Validation);
+      What : constant String :=
+        (if Remove then "Remove VBC " else "Set VBC ") & Img (Code);
+   begin
+      if not Top_Is (Wid) then
+         declare
+            J : constant Judgement_T :=
+              Press_Menu (W_Settings, (if Remove then 6 else 5), What);
+         begin
+            if J.Verdict /= Passed then
+               return J;
+            end if;
+         end;
+      end if;
+      if not Top_Is (Wid) then
+         return Fail ("DMI " & What & ": the window is not open, top is "
+                      & Top_Image);
+      end if;
+      Type_Digits (Img (Code));
+      Enter_Field (1);
+      Press (167, 440);
+      if not Top_Is (Val) then
+         return Fail ("DMI " & What & ": no validation window, top is "
+                      & Top_Image);
+      end if;
+      Key (8);
+      Press (487, 40);
+      if not Remove then
+         VBC_Entries := VBC_Entries + 1;
+         VBC_Last := Code;
+      end if;
+      return Pass ("DMI " & What);
+   end Enter_VBC;
+
+   --  Table 54 'Yes' -> S1, the Settings window: the driver closes it
+   --  when the sequence's next DMI step is not about the VBCs or the
+   --  Settings (3150900_01 step 11 expects the Driver ID window)
+   function Leave_Settings (J : Judgement_T) return Judgement_T is
+   begin
+      for I in Cur + 1 .. Seq.Step_Count loop
+         if Trim (Seq.Steps (I).Interface_Name) = "DMI" then
+            if not Has (Image (Seq.Steps (I).Line), "VBC")
+              and then not Has (Image (Seq.Steps (I).Line), "Settings")
+              and then Top_Is (W_Settings)
+              and then DMI_Windows.Close_Enabled
+            then
+               Press_Area (DMI_Windows.Close_Button_Area);
+            end if;
+            exit;
+         end if;
+      end loop;
+      return J;
+   end Leave_Settings;
 
    --  Wait up to Cycles for Cond
    function Wait_For (Cond : access function return Boolean;
@@ -1364,6 +1514,41 @@ package body S076_Run is
       elsif Same (Verb, "press") and then Same (Item, "BMM-reaction-inhibition")
       then
          return Press_Menu (W_Special, 4, "BMM reaction inhibition");
+      elsif Same (Verb, "press") and then Same (Item, "Set-VBC") then
+         return Press_Menu (W_Settings, 5, "Set VBC");
+      elsif Same (Verb, "press") and then Same (Item, "Remove-VBC") then
+         return Press_Menu (W_Settings, 6, "Remove VBC");
+      elsif Same (Verb, "set-vbc") then
+         --  the extractor's "event=104 <code>" words, one entry each
+         --  (3180600_01 step 48 sets five), else the code of the text
+         if Same (W (5), "event=104") then
+            declare
+               J : Judgement_T := Pass ("");
+               K : Positive := 5;
+            begin
+               while Same (W (K), "event=104") and then W (K + 1) /= ""
+                 and then J.Verdict = Passed
+               loop
+                  J := Enter_VBC
+                    (False, Number_After (" " & W (K + 1), " ", 1));
+                  K := K + 2;
+               end loop;
+               return Leave_Settings (J);
+            end;
+         end if;
+         return Leave_Settings (Enter_VBC (False, Next_Set_Code (St)));
+      elsif Same (Verb, "remove-vbc") then
+         --  "by entering 1088 in remove VBC", else the identity of the
+         --  last code set: NID_C in the 10 least significant bits of the
+         --  remove code, NID_VBCMK above (DMI 11.3.13.5)
+         if Number_After (Image (St.Comment), "entering ", 1) > 0 then
+            return Leave_Settings (Enter_VBC
+              (True, Number_After (Image (St.Comment), "entering ", 1)));
+         elsif VBC_Last = 0 then
+            return NJ (R_Runner, "DMI remove-vbc: no code set before");
+         end if;
+         return Leave_Settings (Enter_VBC
+           (True, (VBC_Last mod 64) * 1024 + (VBC_Last / 64) mod 1024));
       elsif Has (Item, "VBC") then
          return NJ (R_E6, "DMI " & Verb & " " & Item & " (VBC, 3.15.9)");
       elsif Same (Verb, "isolate") then
@@ -1553,6 +1738,23 @@ package body S076_Run is
                   end if;
                end;
             end if;
+         end;
+      end if;
+      --  T_VBC (days, 3.15.9.5 b): the period of the cover that ends
+      --  first has passed, a second more, at once (S076_Bench.Pass_Time)
+      if Same (Name, "T_VBC") then
+         declare
+            Least : Unsigned_64 := Unsigned_64'Last;
+         begin
+            for I in 1 .. EVC_VBC.Count loop
+               Least := Unsigned_64'Min (Least, EVC_VBC.Item (I).Left);
+            end loop;
+            if Least = Unsigned_64'Last then
+               return Fail ("timer T_VBC: no VBC stored on-board");
+            end if;
+            B.Pass_Time (Least + 1_000);
+            return Pass ("T_VBC" & Unsigned_64'Image ((Least + 1_000) / 1000)
+                         & " s elapsed");
          end;
       end if;
       --  the named timer, or one the comment names
@@ -2615,6 +2817,8 @@ package body S076_Run is
       elsif Same (Name, "Train-Running-Number") then Wid := W_TRN;
       elsif Same (Name, "SR-speed/distance") then Wid := W_SR_Data;
       elsif Same (Name, "System-version") then Wid := W_System_Version;
+      elsif Same (Name, "Set-VBC") then Wid := W_Set_VBC;
+      elsif Same (Name, "Remove-VBC") then Wid := W_Remove_VBC;
       else
          return False;
       end if;
@@ -2700,6 +2904,16 @@ package body S076_Run is
          Enabled_Now := (if Top_Is (W_Override)
                          then DMI_Windows.Button_Enabled (1)
                          else DMI_Conditions.Override_EOA);
+      elsif Same (Name, "Set-VBC/Settings")
+        or else Same (Name, "Remove-VBC/Settings")
+      then
+         --  DMI Table 36 #5, #6
+         if not Top_Is (W_Settings) then
+            return Fail ("button " & Name & ": the window is not open (top "
+                         & Top_Image & ")");
+         end if;
+         Enabled_Now := DMI_Windows.Button_Enabled
+           (if Starts (Name, "Set") then 5 else 6);
       else
          return NJ (R_DMI_Internal, "button " & Name);
       end if;
@@ -5919,6 +6133,8 @@ package body S076_Run is
       Hold_Speed := False;
       Train_Configuration := 1;
       SCL_Given := False;
+      VBC_Entries := 0;
+      VBC_Last := 0;
       Explicit_Speed := -1;
       Wait_Used := 0;
       RBC_Stamp := 0;

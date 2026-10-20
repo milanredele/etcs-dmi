@@ -856,6 +856,20 @@ package body S076_Bench is
       Cycle (Integer_64 (V_Cms) * Cycle_Ms / 1000);
    end Cycle;
 
+   --  The time the next cycle adds to the on-board's (Pass_Time)
+   Jump_Ms : Natural := 0;
+
+   procedure Pass_Time (Ms : Unsigned_64) is
+      Day  : constant := 86_400_000;
+      Left : Unsigned_64 := Ms;
+   begin
+      while Left > 0 loop
+         Jump_Ms := Natural (Unsigned_64'Min (Left, Day));
+         Left := Left - Unsigned_64 (Jump_Ms);
+         Cycle (0);
+      end loop;
+   end Pass_Time;
+
    procedure Brake_Cycle;
 
    procedure Cycle (Distance_Cm : Integer_64) is
@@ -864,7 +878,7 @@ package body S076_Bench is
       New_X : constant Integer_64 := X_Cm + Step;
    begin
       Settle;
-      Clock := Clock + Cycle_Ms;
+      Clock := Clock + Cycle_Ms + Unsigned_64 (Jump_Ms);
       if Hold_Length > 0 and then Clock >= Hold_At then
          Hold_JRU := JRU_N + 1;
          Hold_Msg := Messages_N + 1;
@@ -942,7 +956,8 @@ package body S076_Bench is
                         Byte (RTM_Event_T'Pos (Registered) + 1)));
             end if;
          end loop;
-         EVC_Core.Tick (Cycle_Ms);
+         EVC_Core.Tick (Cycle_Ms + Jump_Ms);
+         Jump_Ms := 0;
          Take_Outputs;
          DMI_Core.Tick (Cycle_Ms);
          Take_DMI;
