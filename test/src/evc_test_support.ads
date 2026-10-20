@@ -880,6 +880,10 @@ package EVC_Test_Support is
    --  Byte K (1 = the first after the request code) of the N-th RTM
    --  output, a request (EVC_Ports: the fields of a set-up, ...)
       function Request_Byte (N : Positive; K : Positive) return Natural;
+   --  Stands at most Max_Ms, 100 ms a cycle, until the on-board sends
+   --  an MA request (message 132): Reason its Q_MARQSTREASON (7.5.1.118.3),
+   --  -1 when none was sent
+   procedure Wait_MA_Request (Max_Ms : Natural; Reason : out Integer);
 
    --  T_TRAIN of the on-board time now (10 ms, 7.5.1.152), plus D
    function Radio_Now (D : Unsigned_64 := 0) return Unsigned_64 is

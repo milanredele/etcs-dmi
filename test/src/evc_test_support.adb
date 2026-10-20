@@ -1833,6 +1833,28 @@ package body EVC_Test_Support is
       return Byte_At (O.Rec, 3 + K);
    end Request_Byte;
 
+   procedure Wait_MA_Request (Max_Ms : Natural; Reason : out Integer) is
+      M : ETCS_Message.Message_T;
+      S : ETCS_Message.Status_T;
+      use type ETCS_Message.Status_T;
+      use type ETCS_Message_Catalogue.Known_Message_T;
+   begin
+      Reason := -1;
+      for I in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, S);
+            if S = ETCS_Message.Accepted
+              and then M.Kind = ETCS_Message_Catalogue.Train_M132
+            then
+               Reason := Integer (ETCS_Message.Value
+                                    (M, ETCS_Variables.Q_MARQSTREASON));
+               return;
+            end if;
+         end loop;
+      end loop;
+   end Wait_MA_Request;
+
    procedure Order_Session_Group (NID : Natural; At_M : Integer_64;
                           Q_RBC : Natural; NID_RBC : Natural)
    is

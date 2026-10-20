@@ -442,6 +442,49 @@ package body EVC_Test_Consistency is
              & "identity, no reaction (3.16.2.7.2.1 b)");
    end Scenario_Consistency_Reactions;
 
+   procedure Scenario_Consistency_Modes is
+      SB : Boolean;
+      Brake_Error : Natural renames
+        SS_Seen (EVC_DMI_Port.SS_Balise_Read_Error_Brake);
+   begin
+      --  SR is not excepted from the message consistency reaction
+      --  (4.4.11): a linked group's message inconsistent, linking not
+      --  checked, the service brake (3.16.2.4.4)
+      Inconsistent_Track (Linking => False);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L1);
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1
+             and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_SR),
+             "consistency modes: in SR a linked group's message "
+             & "inconsistent, the service brake and Balise read error "
+             & "(3.16.2.4.4, 3.16.2.4.4.3)");
+      --  an unlinked group's message inconsistent in SR (3.16.2.5.1)
+      Inconsistent_Track (Linking => False, Linked => False);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L1);
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1,
+             "consistency modes: in SR an unlinked group's message "
+             & "inconsistent, the service brake (3.16.2.5.1)");
+      --  the same in PT, excepted (4.4.14.1.9): its own brake only
+      Inconsistent_Track (Linking => False);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_PT, EVC_Modes.L1);
+      Run_Watch (80_000, SB);
+      Check (Brake_Error = 0
+             and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_PT),
+             "consistency modes: in PT no service brake for an "
+             & "inconsistent message, no Balise read error (4.4.14.1.9)");
+      --  a linking reaction in SR, the expected group not found in its
+      --  window: no service brake (3.16.2.6.2 keeps FS, AD, LS, OS, SM)
+      Inconsistent_Track (Linking => True, Reaction => 1, Skip => 0);
+      Track (2).At_Cm := 3_000_00;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L1);
+      Run_Watch (80_000, SB);
+      Check (not SB and then Brake_Error = 0
+             and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_SR),
+             "consistency modes: in SR the linking reaction's service "
+             & "brake not commanded (3.16.2.6.2)");
+   end Scenario_Consistency_Modes;
+
    --  Runs to To_Cm a cycle at a time: the error reports (136 with
    --  packet 4) sent on the way, their count and the last M_ERROR
    procedure Run_Errors (To_Cm : Integer_64; Count, Error : out Natural) is
@@ -487,6 +530,7 @@ package body EVC_Test_Consistency is
 
    procedure Scenario_Consistency_Error_Report is
       Count, Error, Rejected : Natural;
+      Reason : Integer;
    begin
       Start_X;
       EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
@@ -552,12 +596,15 @@ package body EVC_Test_Consistency is
              "error report: a linked group missed with the service brake, "
              & "M_ERROR 0, the MA kept while running, got"
              & Img (Count) & Img (Error));
-      Stand;
-      Stand;
+      Wait_MA_Request (3_000, Reason);
       Check (EVC_Movement_Authority.MA.Withdrawn,
              "error report: in level 2 at standstill the MA by radio "
              & "shortened to the train (3.16.2.3.2, 3.16.2.6.2, "
              & "EVC_Stored_Information.Linking_Shortening)");
+      Check (Reason >= 0 and then Reason / 8 mod 2 = 1,
+             "error report: an MA requested after the shortening, "
+             & "Q_MARQSTREASON track description deleted (3.8.2.5.1, "
+             & "A.3.4 h), 7.5.1.118.3), got" & Reason'Image);
       --  a repositioning group announced by radio, a second one with
       --  packet 16 inside its window: the double repositioning error
       Start_X;

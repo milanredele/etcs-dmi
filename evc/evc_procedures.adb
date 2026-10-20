@@ -225,6 +225,9 @@ is
       Link_Trip   : Boolean := False;
       Wrong_Dir   : Boolean := False;
       Link_SB     : Boolean := False;
+      --  the balise group message consistency reaction of the cycle
+      --  (3.16.2.4.4, 3.16.2.5.1: no link, Cause_Inconsistent)
+      Msg_SB      : Boolean := False;
    end record;
    Now_Flags : Now_Flags_T;
 
@@ -823,6 +826,11 @@ is
                   Now_Flags.Wrong_Dir := True;
                elsif E.B2 = Unsigned_8 (Q_LINKREACTION_Train_Trip) then
                   Now_Flags.Link_Trip := True;
+               elsif E.B2 = Unsigned_8 (Q_LINKREACTION_Apply_Service_Brake)
+                 and then E.B3 = EVC_Position.Cause_Inconsistent
+                 and then E.B4 = 0
+               then
+                  Now_Flags.Msg_SB := True;
                elsif E.B2 = Unsigned_8 (Q_LINKREACTION_Apply_Service_Brake)
                then
                   Now_Flags.Link_SB := True;
@@ -1570,6 +1578,8 @@ is
 
    end Set_Conditions;
 
+   --  @req 3.16.2.4.4, 3.16.2.5.1, 4.4.6.1.12, 4.4.14.1.9, 4.4.15.1.10
+   --  @req 4.4.18.1.10, 4.4.20.1.15
    procedure Evaluate (C   : Context_T;
                        S   : Snapshot_T;
                        SDM : EVC_SDM.Result_T)
@@ -1602,8 +1612,17 @@ is
          SH_Profile_Seen := Now_SH;
       end;
       Linking_Events;
-      if Now_Flags.Link_SB
-        and then C.Mode in M_FS | M_AD | M_LS | M_OS | M_SM
+      --  The linking reaction in FS, AD, LS, OS, SM (3.16.2.6.2); the
+      --  message consistency reaction in every mode in which balises are
+      --  read but SL, PT, NL, RV and PS (4.4.6.1.12, 4.4.14.1.9,
+      --  4.4.15.1.10, 4.4.18.1.10, 4.4.20.1.15). Decision: SB, TR and SN
+      --  read balises too and are not excepted
+      if (Now_Flags.Link_SB
+          and then C.Mode in M_FS | M_AD | M_LS | M_OS | M_SM)
+        or else
+         (Now_Flags.Msg_SB
+          and then C.Mode in M_FS | M_AD | M_LS | M_OS | M_SM | M_SR
+                           | M_SH | M_UN | M_SB | M_TR | M_SN)
       then
          --  3.16.2.3.1, 3.14.1.6: the service brake to standstill;
          --  3.16.2.6.1: the driver is informed that the intervention is
