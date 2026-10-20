@@ -9066,3 +9066,30 @@ package. Two of the four wrong premises were a packet numbering taken
 from memory: a brief names a packet by its clause (`clause.py 7.4.2.x`)
 or not at all. Open items: doc/BACKLOG.csv (69 open after this round;
 11 added, 8 closed).
+
+### The RBC identity by EURORADIO, the SM family's runner items, the Train data window on request (e5/runner-sm) (2026-10-20)
+
+Three of four items. B1010 done: the RTM port's connection set-up event
+may carry NID_C u16 and NID_RBC u16 of the called RBC as EURORADIO
+reports it (7 bytes, `EVC_Ports`; the 3 byte form still parses and
+leaves the identity unknown); `EVC_Core.Latch_RTM` latches it,
+`EVC_Sessions.Take_Event` keeps it in the session table
+(`EVC_Radio.Set_Reported`, `Session_Info_T.Reported`), and
+`EVC_Sessions.Mission.Judge_Opening` stores it with the short number as
+the RBC contact for a session called on the short number (3.18.4.3.4
+done; `Session_Short_Number` extended through `Establish_Session`'s new
+`Identity`). `Sim_RBC` sends the identity of the RBC it set up; the
+runner keeps the 3 byte form (the sequences give no identity).
+S8cb118b5 done: `S076_Run.Radio_Input` writes the answered request's
+T_TRAIN minus one as the second stamp when the step's comment asks for
+a stamp that "does not match the time stamp of the last sent request"
+(4.8.4 [14]); 4080428_02 and 4080454_05 pass, 4080415_03 stops at 76 on
+the default window after the rejected authorisation (Sd3250d19, s076:
+DMI 11.7.8.3 Table 54a S1 keeps the Main window), 4080418_04 at 75 on
+S69f1f87e (its step reads "NOT ... displayed" for "not changed").
+Scfbb86e1 traced, s076: the sequence presses Data view while the Main
+window is in S1 of the SM dialogue, buttons and [close] disabled (DMI
+11.7.8.2). Runner 1017 / 1116 / 1057 -> 1019 / 1114 / 1057, 0
+regressions. Not reached (the bound): B970, the Train data window on
+MSG_ONBOARD som 3 (`DMI_Core`, a `DMI_Test_Data_Entry` scenario with its
+goldens; 3060500_14 step 74, S4ec90124).
