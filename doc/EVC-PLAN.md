@@ -9310,3 +9310,35 @@ B031, B952, B991, B1080, B1082, 4.4.21.1.12 / .13, the rear length of
 3.18.3.2.4, packet 12 of 131 from the configured set); consistency
 B1040, B1041, B1120, B1121; the VBC re-reads 3.15.10 and 3.15.7 with
 S82794294; then the Gamma model, the big metal masses, NL.
+
+### The runner's backward SM run, the direction controller, the mode profile speed, the not-judged steps re-read (e5/runner-left, 2026-10-20)
+
+B1081 done: after a Supervised Manoeuvre authorisation opposite to cab
+A (`EVC_Position.Manoeuvre_Orientation`, the orientation Minus) `S076_Run`
+meets a step more than 5 m behind the train going backwards; the record
+header fields of a JRU 10 step (M_VERSION) are judged from the window's
+records (`Header_Judge`), not as fields of the message. 3170200_11 SV30
+failed 83 -> 91: 3.15.1.3.3 second sentence, message 133 to the
+accepting RBC in SM, `EVC_Sessions.Handover.Train_Data_To` sends 129
+only (B1220, onboard, S143d6aa2).
+B1121 done: `S076_Run.Controller_For_Movement` puts the direction
+controller (TIU input 6) the way an ODO start-moving or
+direction-reversed moves the train, from the active desk, unless the
+sequence set it (a roll away test keeps its own); 3140100_02 passes in
+three versions. 4100103_39 (same signature Sd56a8154) has another cause:
+the explicit speed of step 51 held into an On Sight area.
+S82794294: V_MAMODE is the speed of the first mode profile the on-board
+stores (`Mode_Profile_Limit`, `EVC_Movement_Authority.Mode_Profile`, 127
+the national value of OS / SH); 3120300_02 SV22/SV30 72 -> 76
+(S862b2e14, M_MODE=21, s076); 4100103_43 stays onboard.
+The re-read of the not-judged steps (4384): of the reasons naming a
+function built since, the SM symbols (20 as "SM symbol", 32 steps in
+sv30 with the negative ones) cannot be judged: the on-board sends
+sm_direction 0 (`EVC_DMI_Port`), judged against it 15 SV30 sequences
+stop at them; the bench decodes the byte (`S076_Bench.State_T.SM_Dir`),
+B1221. Left listed: JRU 21 Bit110 (the SM symbol's record), the 3
+"28.NID_NID_VBCMK" fields (the sequence's own spelling, s076), the
+DMI-internal buttons of the Train data window (7) and of Initiate SM (3),
+JRU 5 / 8 and message 153 (E7).
+SUBSET-076: 1038 / 1112 / 1040 -> 1041 / 1109 / 1040, steps passed
+207281 -> 207345, not judged 4383 -> 4384, 0 regressions.

@@ -244,6 +244,7 @@ package body S076_Bench is
                Now.Adhesion := P (B + 2) /= 0;
                Now.BMM := P (B + 3) /= 0;
                Now.Reversing := P (B + 4) /= 0;
+               Now.SM_Dir := Natural (P (B + 5));
                Now.Tunnel := Natural (P (B + 11));
                Now.Geo_Known := Get32 (P, B + 16) /= 16#FFFF_FFFF#;
             end if;

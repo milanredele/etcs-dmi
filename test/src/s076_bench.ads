@@ -276,6 +276,8 @@ package S076_Bench is
       --  MSG_STATUS
       Brake, Radio : Natural := 0;
       Adhesion, Reversing, BMM : Boolean := False;
+      --  the SM authorised direction (0 none, 1 forward, 2 backward)
+      SM_Dir   : Natural := 0;
       Tunnel   : Natural := 0;
       Geo_Known : Boolean := False;
       --  MSG_SPEED_STATE
