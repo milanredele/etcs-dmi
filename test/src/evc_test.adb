@@ -241,6 +241,7 @@ begin
    Scenario_Duplicated_Pair;
    Scenario_Default_Balise;
    Scenario_Consistency_Reactions;
+   Scenario_Consistency_Modes;
    Scenario_Consistency_Error_Report;
 
    Scenario_E4_Tables;
