@@ -9094,9 +9094,19 @@ pass in sv30; one new signature, S82794294 (3120300_02 step 71: the
 runner has no V_MAMODE), triaged model. The expectations `JRU record
 28` / `29` stay not judged ("JRU not modelled") until B1062.
 
-Left, at the bound after the first item: B1062 (the JRU records 28 /
-29 of the driver's VBC, written where `EVC_Core.Take_VBC_Requests`
-takes the entry; the runner's JRU judgement of 28 / 29 with it), 3.15.10
+B1062, after a resumption: the juridical records of the driver's VBC,
+SUBSET-027 4.2.4.28 (NID_VBCMK, NID_C, T_VBC) and 4.2.4.29 (NID_C,
+NID_VBCMK), written by `EVC_Core.Take_VBC_Requests` for every entry
+(`EVC_JRU_Messages.NID_VBC_Set`, `NID_VBC_Removed`; `View` gives the
+readers event 28 with NID_VBCMK and T_VBC, 29 with NID_VBCMK). Decision:
+the record reflects the code entered (4.2.4.28 "the code entered by
+the driver"), also outside SB where the store does not take it.
+Scenario: evc_test vbc_driver, both records with their fields. The
+runner judges `expect JRU record 28 / 29` (`S076_Tables.Message_Event`):
+steps not judged 4442 -> 4376, every one of them passed; sequences
+unchanged (1032 / 1118 / 1040), 0 regressions.
+
+Left: 3.15.10
 (6 rows todo, not re-read), 3.15.7 with 3.6.7.1 d) and 3.12.1.2.1.2
 (not re-read; note: the runner already presses `BMM-reaction-inhibition`,
 Special #4).

@@ -83,6 +83,10 @@ package body EVC_Test_VBC is
       I := Find_DMI (EVC_DMI_Port.MSG_VBC_LIST);
       Check (V.Covers (123, 5) and then V.Item (1).T_VBC = 3,
              "vbc: set by the driver in SB (3.15.9.2)");
+      Check (JRU_Field (28, 0, 6) = 5 and then JRU_Field (28, 6, 10) = 123
+             and then JRU_Field (28, 16, 8) = 3,
+             "vbc: SUBSET-027 4.2.4.28 VBC set by the driver, NID_VBCMK, "
+             & "NID_C, T_VBC");
       Check (I > 0 and then Byte_At (I, 6) = 1
              and then Byte_At (I, 7) = Natural ((5 + 123 * 64) mod 256),
              "vbc: MSG_VBC_LIST with the cover's set code");
@@ -97,6 +101,9 @@ package body EVC_Test_VBC is
       Stand;
       Check (not V.Covers (123, 5) and then V.Count = 0,
              "vbc: removed by the driver (3.15.9.5 c)");
+      Check (JRU_Field (29, 0, 10) = 123 and then JRU_Field (29, 10, 6) = 5,
+             "vbc: SUBSET-027 4.2.4.29 VBC removed by the driver, NID_C, "
+             & "NID_VBCMK");
       V.Clear;
    end Scenario_VBC_Driver;
 

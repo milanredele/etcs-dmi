@@ -241,6 +241,11 @@ is
             return (F (0, 8), F (8, 8), F (16, 8), F (24, 8));
          when NID_Driver_Actions =>
             return (11, F (0, 8), 0, 0);
+         when NID_VBC_Set =>
+            --  NID_VBCMK, T_VBC (NID_C is the message's)
+            return (28, F (0, 6), F (16, 8), 0);
+         when NID_VBC_Removed =>
+            return (29, F (10, 6), 0, 0);
          when NID_Radio_Error =>
             return (13, F (24, 8), 0, 0);
          when NID_SDM =>
