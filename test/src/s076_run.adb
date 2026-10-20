@@ -4312,25 +4312,49 @@ package body S076_Run is
                                 (if Shown_Now then "shown" else "not shown"));
                end;
             when 12 =>
-               if Line.Count > 4 then
-                  --  M_ERROR 0, the linking consistency error of 3.16.2.3,
-                  --  is the position's events 4 to 6 (EVC_Ports: linking
-                  --  reaction, unexpected and missed group); the others
-                  --  (1, 2 message consistency, 7, 8 double linking and
-                  --  repositioning) have no event of ours
+               --  the balise group error by M_ERROR (7.5.1.64): 0 the
+               --  linking consistency error of 3.16.2.3, the position's
+               --  events 4 to 6 (linking reaction, unexpected and missed
+               --  group); 1 and 2 the message consistency of a linked and
+               --  an unlinked group, events 12 and 13; 7 and 8 the double
+               --  linking and repositioning errors, event 4 of cause 5 and
+               --  6 (EVC_Position); without M_ERROR any of them
+               declare
+                  E : Integer := -1;
+                  Hit : Boolean;
+               begin
                   for K in 5 .. Line.Count loop
-                     if Starts (W (K), "M_ERROR=")
-                       and then not Starts (W (K), "M_ERROR=0")
-                     then
-                        return NJ (R_JRU_Not_Modelled, "12." & W (K));
+                     if Starts (W (K), "M_ERROR=") then
+                        --  the digits up to a ';' ("M_ERROR=2;NID_C")
+                        E := 0;
+                        for C of W (K) (W (K)'First + 8 .. W (K)'Last) loop
+                           exit when C not in '0' .. '9' or else E > 255;
+                           E := E * 10 + (Character'Pos (C) - 48);
+                        end loop;
                      end if;
                   end loop;
-               end if;
-               return Check ((Any_Rec (4, -1, -1) or else Any_Rec (5, -1, -1)
-                              or else Any_Rec (6, -1, -1)) = Positive,
-                             "JRU balise group error"
-                             & (if Positive then "" else " not"),
-                             "events 4 to 6");
+                  if E >= 0 and then E not in 0 | 1 | 2 | 7 | 8 then
+                     return NJ (R_JRU_Not_Modelled, "12.M_ERROR=" & Img (E));
+                  end if;
+                  Hit := (case E is
+                             when 0 => Any_Rec (4, -1, -1)
+                                       or else Any_Rec (5, -1, -1)
+                                       or else Any_Rec (6, -1, -1),
+                             when 1 => Any_Rec (12, -1, -1),
+                             when 2 => Any_Rec (13, -1, -1),
+                             when 7 => Any_Rec (4, -1, 5),
+                             when 8 => Any_Rec (4, -1, 6),
+                             when others =>
+                               Any_Rec (4, -1, -1) or else Any_Rec (5, -1, -1)
+                               or else Any_Rec (6, -1, -1)
+                               or else Any_Rec (12, -1, -1)
+                               or else Any_Rec (13, -1, -1));
+                  return Check (Hit = Positive,
+                                "JRU balise group error"
+                                & (if E >= 0 then " M_ERROR" & Img (E) else "")
+                                & (if Positive then "" else " not"),
+                                "events 4 to 6, 12, 13");
+               end;
             when 20 =>
                declare
                   --  the alternatives of each field ("0/2"), none: any
