@@ -9211,3 +9211,102 @@ Left: 3.15.10
 (6 rows todo, not re-read), 3.15.7 with 3.6.7.1 d) and 3.12.1.2.1.2
 (not re-read; note: the runner already presses `BMM-reaction-inhibition`,
 Special #4).
+
+### E5 integration after the thirty-eighth round, the seventh of E6 (2026-10-20)
+
+The round of the measured waits and of the resumptions with a fixed
+extra budget.
+
+Before the round the waits of twenty agents (rounds 33 to 37) were
+measured from their transcripts: 19 % of their wall time sat in tool
+calls of 15 s or more, three quarters of it the proof, and 65 polling
+calls waited 83 minutes for background jobs; on an idle machine the same
+steps take seconds (a cold build 50 s, `test/check.sh` 36 s with the
+runner 32 s of it, the proof of `evc_core` 10 to 30 s, the full proof
+31 s), so the waits were four worktrees sharing the machine and the
+proof lock queueing the proofs. No agent of those rounds had run the
+cross build, the stack tool, the wasm build, the smokes or the full
+proof. Addendum 7 of the common brief now binds: those five at the merge
+only; one unit proof per finished item; the runner on one sequence
+during an item and in full before the item's commit; a long command in
+the foreground with a four-minute timeout when nothing is to be done
+meanwhile. The same measurement found gnatprove's `--replay` reporting
+4900 checks unproved on a green master: a condition answered by the file
+cache never reaches why3, so the sessions under obj/evc/gnatprove keep
+the goals of the last real prover run (817 of them from 5 October), and
+1479 goals held only an Alt-Ergo attempt from before the prover list
+changed. The full run is what verifies a merge; AGENTS.md and the header
+of `evc/prove.sh` say so now (29b9b7b).
+
+Merged: e6/sm-data (the default Train Data of Supervised Manoeuvre,
+3.18.3.9, 3.18.3.2.5.1, 4.4.21.1.8: `EVC_Train_Data` keeps the configured
+set of `EVC_Config`, a shunting locomotive's values, from the first SM
+authorisation to the end of the mission or NL, `Valid` False, the length
+from the safe consist lengths, used by `EVC_Core.Sync_Train_Length` and
+`EVC_Stored_Information.Build_MA`; message 133 with packet 10 sent by
+`EVC_Sessions.Manoeuvre` in SB in level 2 with a session and from a
+request for SM until the mission ends, NL or the refusal, acknowledged by
+message 7, sent again after a lost and re-established connection,
+3.18.3.10 and 3.18.3.10.2 done; packet 10 in message 157 without valid
+Train Data, 5.4.3.2 A33 / A34 done; 3170200_11 runs at 60 km/h in SM
+and fails later on the runner's position, B1081; B950 not started),
+e6/consistency-brake (the message consistency service brake in every
+mode reading balises but SL, PT, NL, RV, PS, B1042, `EVC_Procedures`
+telling the reaction of cause 7 without a link apart as `Msg_SB`,
+4.4.6.1.12 and 4.4.15.1.10 done; the MA request after the shortenings
+g) h) j) l) m) of A.3.4, B1011, `Timer_Deletion` set by
+`Linking_Shortening` and `Train_Data_Shortening`; the two traces of B1043
+finished, neither our defect: the runner's direction controller left
+forward in PT's backward movement asks a second acknowledgement by
+3.14.1.10, B1121, and M_VERSION 110 0000 in 3130810_01's telegrams trips
+by [65]; B1040 and B1041 not reached), e6/vbc-runner (the runner's VBC
+steps, B1061: the presses in the Settings window, the code typed and
+validated, `T_VBC` by `S076_Bench.Pass_Time`, the code's source decided
+in five rules; the juridical records 28 / 29 of the driver's VBC,
+B1062, from SUBSET-027 4.2.4.28 / .29, written by
+`EVC_Core.Take_VBC_Requests` and judged by the runner; 3.15.10 and
+3.15.7 not started) and e5/runner-sm (the RBC identity reported by
+EURORADIO, B1010, 3.18.4.3.4 done: the RTM set-up event of 7 bytes with
+NID_C and NID_RBC, kept by `EVC_Sessions.Take_Event`, stored by
+`Judge_Opening` for a session on the short number, `Sim_RBC` sending it;
+the runner's mismatching second stamp when the step asks for it,
+S8cb118b5; Scfbb86e1 a sequence defect; the DMI's Train data window on
+the on-board's request, B970, `DMI_Windows.Onboard_State_Changed` on
+som 3, 3060500_14 passing in three versions, no golden changed).
+
+Merge by hand: the backlog three-way by id, the plan subsections and the
+triage lines appended (sm-data fast-forwarded); no matrix, baseline or
+source conflict; no golden changed.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12626
+checks, dmi_test 2172), the full proof 0 unproved (12835 checks, margin
+47726 steps, 6 checks of 16 VCs or more at the limit of 6, as before),
+cross build and stack (margin 5792 B), wasm and both smokes 0 failures.
+SUBSET-076: 1017 / 1116 / 1057 before, 1038 / 1112 / 1040 after, steps
+not judged 4390 -> 4383, 0 regressions, 0 untriaged. Matrix: 162 -> 155
+clauses left; E6 done 161 -> 166, todo 25 -> 21, partial 40 -> 39.
+
+Measurements (doc/ROUNDS.csv): sm-data 142 calls (budget 160) / 191k /
+8.3 USD; consistency-brake 132 (130) / 168k / 7.8; runner-sm 133 (130,
+then 175 by a resumption of 45 for B970, done in 30) / 173k / 7.6;
+vbc-runner 152 (130, then 175 by a resumption of 45 for B1062, done in
+39) / 199k / 9.3; the round 33.0 USD. Items 11 of 15 done, the best
+conversion so far; premises wrong 3 of 28 (4.4.21.3.1 has no row; no
+message carries the RBC identity onward; SUBSET-027 is imported under
+doc/SRS). Source-tree reading: 23, 30, 26, 33 runs against 22, 24, 15,
+24 outline runs.
+
+Lessons: an agent that stops at its bound with calls to spare and one
+named item left is resumed with a fixed extra budget for that item (45
+calls here, both items done in 30 and 39): cheaper than a new brief,
+since the context is paid for. The SM family's next failures are
+on-board again (B1080 the JRU action code of "Continue in SM", B1082 a
+trip after message 7) and one is the runner's (B1081). The mode list of
+the message consistency brake is written twice (`EVC_Procedures.Evaluate`,
+`EVC_Stored_Information.Linking_Shortening`): a shared expression next
+time someone is in either. Open items: doc/BACKLOG.csv (67 open after
+this round; 5 added, 7 closed). Next: SM sixth package (B950, B008,
+B031, B952, B991, B1080, B1082, 4.4.21.1.12 / .13, the rear length of
+3.18.3.2.4, packet 12 of 131 from the configured set); consistency
+B1040, B1041, B1120, B1121; the VBC re-reads 3.15.10 and 3.15.7 with
+S82794294; then the Gamma model, the big metal masses, NL.
