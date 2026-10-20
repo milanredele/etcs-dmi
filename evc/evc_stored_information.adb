@@ -2302,7 +2302,9 @@ is
    --  The MA (3.8.4; 4.5.2: monitored in the modes with an MA), the
    --  areas of lost braking (3.13.2.3.4), and Supervise (4.5.2: the
    --  MRSP is supervised with its curves in the modes of TSR_Mode, with
-   --  valid Train Data)
+   --  valid Train Data or, 4.4.21.1.8 and 4.4.21.3.1, the default Train
+   --  Data of Supervised Manoeuvre)
+   --  @req 4.4.21.1.8
    procedure Build_MA (T           : Origin_Table_T;
                        Ahead       : Sense_T;
                        V_NVREL     : Speed_Cms_T;
@@ -2328,7 +2330,8 @@ is
       end if;
       MA := MA_R;
       EVC_Track_Conditions.Inhibitions (T, Ahead, Length, Inhibitions);
-      Supervise := EVC_Modes.TSR_Mode (Mode) and then EVC_Train_Data.Valid;
+      Supervise := EVC_Modes.TSR_Mode (Mode)
+        and then (EVC_Train_Data.Valid or else EVC_Train_Data.Manoeuvre_Set);
    end Build_MA;
 
    --  4.6.3 [10], [25], [31], [32]: an MA, the SSP and the gradients on

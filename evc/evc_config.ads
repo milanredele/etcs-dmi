@@ -83,6 +83,7 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with ETCS_Variables;        use ETCS_Variables;
 with EVC_Bytes;             use EVC_Bytes;
 with EVC_Distances;         use EVC_Distances;
 with EVC_Ports;
@@ -130,6 +131,23 @@ is
       --  decision: 20 m, a locomotive, until a format version of the
       --  image carries it
       Engine_Length         : Length_T range 100 .. 10_000 := 2_000;
+      --  3.18.3.9: the default Train Data of a mission in Supervised
+      --  Manoeuvre, every item of 3.18.3.2 but the length b) (the
+      --  braking model, the special brakes, the traction cut-off time
+      --  and the traction systems are the fixed values above).
+      --  Decision: a shunting locomotive, until a format version of the
+      --  image carries them: 80 km/h, brake percentage 100 in position
+      --  "Passenger train in P", cant deficiency 80 mm (NC_CDTRAIN 0), no
+      --  "other international" category, axle load category A, loading
+      --  gauge G1, no airtight system
+      SM_Max_Speed          : Speed_Cms_T := 2_222;
+      SM_Brake_Percentage   : Natural range 10 .. 250 := 100;
+      SM_Brake_Position     : Brake_Position_T := Passenger_P;
+      SM_Cant_Deficiency    : NC_CDTRAIN_T := 0;
+      SM_Other              : NC_TRAIN_T := 0;
+      SM_Axle_Load          : M_AXLELOADCAT_T := 0;
+      SM_Loading_Gauge      : M_LOADINGGAUGE_T := 1;
+      SM_Airtight           : M_AIRTIGHT_T := 0;
    end record;
 
    Default_Fixed_Train : constant Fixed_Train_T := (others => <>);

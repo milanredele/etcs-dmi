@@ -20,4 +20,7 @@ package EVC_Test_Manoeuvre is
    --  answering the request authorises SM
    procedure Scenario_SM_Authorisation;
 
+   --  3.18.3.9, 3.18.3.2.4: the default Train Data in SM
+   procedure Scenario_SM_Default_Data;
+
 end EVC_Test_Manoeuvre;

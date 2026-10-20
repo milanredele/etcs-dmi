@@ -264,6 +264,54 @@ package body EVC_Test_Manoeuvre is
       end;
    end Scenario_SM_Authorisation;
 
+   --  3.18.3.9, 3.18.3.2.4, 3.18.3.2.5.1, 4.4.21.1.8, 4.4.21.3.1: SM
+   --  without valid Train Data, the safe consist length 100 m in front
+   --  of the engine and 400 m in rear: from the authorisation the
+   --  configured default set (EVC_Config) with the train length of the
+   --  max safe consist lengths, the MRSP and the EOA supervised; the set
+   --  gone when the mission ends
+   procedure Scenario_SM_Default_Data is
+      T : Unsigned_64;
+   begin
+      Start_L2_SM;
+      EVC_Core.Handle_Input
+        (TIU, SCL_Frame (1, 100, 98, 102, 400, 398, 402));
+      Stand_X (300);
+      Check (not EVC_Train_Data.Valid and then not EVC_Train_Data.Manoeuvre_Set,
+             "SM data: a consist in front of the engine, no valid Train "
+             & "Data (3.18.3.5 a))");
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM and then EVC_Train_Data.Manoeuvre_Set
+             and then not EVC_Train_Data.Valid
+             and then EVC_Train_Data.Data.Max_Speed = 2_222
+             and then EVC_Train_Data.Data.Brake_Percentage = 100,
+             "SM data: from the authorisation the default Train Data in "
+             & "force, no valid Train Data (3.18.3.9); mode "
+             & Mode_T'Image (EVC_Core.Mode));
+      Check (EVC_Train_Data.Length = 50_400
+             and then EVC_Position.Train_Length_Known
+             and then EVC_Position.Length_Of_Train = 50_400,
+             "SM data: the train length the sum of the max safe consist "
+             & "lengths, 102 + 402 m (3.18.3.2.4, 3.18.3.2.5.1):"
+             & Length_T'Image (EVC_Train_Data.Length));
+      Check (EVC_Core.Supervision.Active
+             and then Natural (EVC_Core.Supervision.V_Perm) = 2_222
+             and then EVC_Movement_Authority.MA_Present,
+             "SM data: the MRSP and the EOA supervised with the default "
+             & "set, the permitted speed its 80 km/h under the SSP's 100 "
+             & "(4.4.21.1.8, 4.4.21.3.1):"
+             & Natural'Image (Natural (EVC_Core.Supervision.V_Perm)));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand_X (300);
+      Check (not EVC_Mission.Mission and then not EVC_Train_Data.Manoeuvre_Set
+             and then not EVC_Train_Data.Valid,
+             "SM data: the mission ended, the default set no longer in "
+             & "force, the Train Data still not valid (3.18.3.9)");
+   end Scenario_SM_Default_Data;
+
    procedure Scenario_SM_Request is
       T : Unsigned_64;
    begin

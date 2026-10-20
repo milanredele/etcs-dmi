@@ -9063,3 +9063,36 @@ package. Two of the four wrong premises were a packet numbering taken
 from memory: a brief names a packet by its clause (`clause.py 7.4.2.x`)
 or not at all. Open items: doc/BACKLOG.csv (69 open after this round;
 11 added, 8 closed).
+
+### Supervised Manoeuvre, the default Train Data and message 133 (e6/sm-data) (2026-10-20)
+
+The fifth Supervised Manoeuvre package.
+
+The default Train Data (3.18.3.9, 3.18.3.2.4, 3.18.3.2.5.1, 4.4.21.1.8).
+The set: new fields `SM_*` of `EVC_Config.Fixed_Train_T` (decision: a
+shunting locomotive until a format version of the image carries them:
+80 km/h, brake percentage 100 in "Passenger train in P", cant deficiency
+80 mm, no other international category, axle load A, gauge G1, no
+airtight system; the braking model, special brakes, cut-off time and
+traction systems are the fixed values already there). Its life:
+`EVC_Train_Data.Start_Manoeuvre_Set`, called from the `SM_Taken` branch
+of `EVC_Core.Adjust_For_Manoeuvre` at the first authorisation, ended by
+`End_Manoeuvre_Set` in the same procedure once the mode is NL or the
+mission has ended (the condition that already ended the manoeuvre
+orientation), by `Set` (valid Train Data entered) and by `Clear`. While
+in force `Valid` is False and `Data`, `Length` and `Categories` return the
+set, its length the sum of the max safe consist lengths (3.18.3.2.4),
+following a later consist input. The source choice:
+`EVC_Core.Sync_Train_Length` gives the position that length (no longer
+the engine's in SB, no longer unset in SM), and
+`EVC_Stored_Information.Build_MA` supervises with the set (`Supervise`
+holds with valid Train Data or the set). No new Global in the Tick, no
+change to its post. Rows: 3.18.3.9, 3.18.3.2.5.1, 4.4.21.1.8 done,
+3.18.3.2.4 partial (left: the max rear length with valid Train Data
+captured with the safe consist length); 4.4.21.3.1 has no row. Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Default_Data`. SUBSET-076: 1017 / 1116 /
+1057 before and after, 0 regressions, 2 improvements (3110800_02 86 ->
+104, a new signature S8ba44975: the record 11 of "Continue in SM",
+B1080; 5160000_06 88 -> 92). 3170200_11 runs SM at 60 km/h now and
+still fails at step 83: the runner leaves the train at 1250 m after the
+opposite authorisation (B1081).

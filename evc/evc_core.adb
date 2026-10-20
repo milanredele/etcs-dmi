@@ -2478,7 +2478,10 @@ is
    --  end, 3.15.1.3.1 c) need it; no valid Train Data, no rear end. Once
    --  per cycle, after everything that sets or invalidates the Train Data
    --  (the driver's entry in EVC_Mission, a mode entered)
+   --  (and 3.18.3.2.5.1: with the default Train Data of Supervised
+   --  Manoeuvre, the length of the safe consist, EVC_Train_Data.Length)
    --  @req 4.4.6.1.4, 4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4
+   --  @req 3.18.3.2.5.1
    procedure Sync_Train_Length
      with Global => (Input    => (EVC_Train_Data.State, Current_Mode,
                                   EVC_Config.State),
@@ -2498,12 +2501,15 @@ is
       --  the front and rear end of the engine are the train's
       Engine : constant Boolean :=
         Current_Mode in M_SL | M_SH | M_NL | M_PS
-        or else (Current_Mode = M_SB and then not EVC_Train_Data.Valid);
+        or else (Current_Mode = M_SB and then not EVC_Train_Data.Valid
+                 and then not EVC_Train_Data.Manoeuvre_Set);
       Length : constant EVC_Distances.Length_T :=
         (if Engine then EVC_Config.Current.Train.Engine_Length
          else EVC_Train_Data.Length);
    begin
-      if Engine or else EVC_Train_Data.Valid then
+      if Engine or else EVC_Train_Data.Valid
+        or else EVC_Train_Data.Manoeuvre_Set
+      then
          if not EVC_Position.Train_Length_Known
            or else EVC_Position.Length_Of_Train /= Length
          then
@@ -3839,9 +3845,10 @@ is
    procedure Adjust_For_Manoeuvre
      with Global => (Input    => (Current_Mode, EVC_Mission.State,
                                   EVC_Radio_Authority.State,
-                                  EVC_Train_Data.State),
+                                  EVC_Config.State),
                      Proof_In => EVC_Odometry.State,
-                     In_Out   => (EVC_Track_Description.State,
+                     In_Out   => (EVC_Train_Data.State,
+                                  EVC_Track_Description.State,
                                   EVC_Movement_Authority.State,
                                   EVC_Track_Conditions.State,
                                   EVC_Position.State, EVC_Sessions.State)),
@@ -3874,10 +3881,16 @@ is
          EVC_Sessions.Request_Position_Report;
          EVC_Position.Shift_For_Manoeuvre
            (EVC_Radio_Authority.SM_Opposite, EVC_Train_Data.Consist);
-      elsif EVC_Position.Manoeuvre_Orientation
-        and then (Current_Mode = M_NL or else not EVC_Mission.Mission)
-      then
-         EVC_Position.End_Manoeuvre;
+         if not EVC_Train_Data.Manoeuvre_Set then
+            EVC_Train_Data.Start_Manoeuvre_Set (EVC_Config.Current.Train);
+         end if;
+      elsif Current_Mode = M_NL or else not EVC_Mission.Mission then
+         if EVC_Position.Manoeuvre_Orientation then
+            EVC_Position.End_Manoeuvre;
+         end if;
+         if EVC_Train_Data.Manoeuvre_Set then
+            EVC_Train_Data.End_Manoeuvre_Set;
+         end if;
       end if;
    end Adjust_For_Manoeuvre;
 

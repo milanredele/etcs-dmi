@@ -17,7 +17,8 @@
 --  a traction cut-off time of 1 s.
 
 with ETCS_Variables;        use ETCS_Variables;
-with EVC_Distances;
+with EVC_Config;
+with EVC_Distances;         use type EVC_Distances.Cm_T;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 
 --  @req 3.18.3.4 a), 3.18.3.4 b), 3.18.3.4 c), 3.18.3.4 d), 3.18.3.4 e)
@@ -123,7 +124,8 @@ is
    --  @req 3.18.3.2 b) 1st bullet, 3.18.3.2.5, 3.18.3.5, 3.18.3.5 a)
    procedure Take_Consist (Available : Boolean; C : Consist_T)
      with Global => (In_Out => State),
-          Post => Consist_Available = Available
+          Post => Manoeuvre_Set = Manoeuvre_Set'Old
+                  and then Consist_Available = Available
                   and then (if Consist_In_Front then not Valid);
 
    --  Power-up: no valid Train Data (4.10: deleted in No Power; phase
@@ -136,16 +138,40 @@ is
           Post => not Valid and then Data = Default
                   and then Categories = Default_Categories
                   and then not Consist_Available
-                  and then not Consist_Known;
+                  and then not Consist_Known
+                  and then not Manoeuvre_Set;
 
    --  New Train Data (phase E4)
    procedure Set (D : Train_Data_T; C : Categories_T)
      with Global => (In_Out => State),
-          Post => Valid and then Data = D and then Categories = C;
+          Post => Valid and then Data = D and then Categories = C
+                  and then not Manoeuvre_Set;
 
    --  The Train Data are no longer valid (phase E4)
    procedure Invalidate
      with Global => (In_Out => State),
-          Post => not Valid;
+          Post => Manoeuvre_Set = Manoeuvre_Set'Old and then not Valid;
+
+   --  3.18.3.9: the default Train Data of Supervised Manoeuvre are in
+   --  force (Data, Length and Categories return them, Valid is False)
+   function Manoeuvre_Set return Boolean
+     with Global => State;
+
+   --  3.18.3.9: the first Supervised Manoeuvre authorisation received:
+   --  the configured default set of F in force, no valid Train Data;
+   --  3.18.3.2.4: its train length is the sum of the max safe consist
+   --  lengths in front of and in rear of the engine (Consist_Length,
+   --  following a later safe consist length input)
+   --  @req 3.18.3.9, 3.18.3.2.4
+   procedure Start_Manoeuvre_Set (F : EVC_Config.Fixed_Train_T)
+     with Global => (In_Out => State),
+          Post => Manoeuvre_Set and then not Valid
+                  and then Length = Consist_Length;
+
+   --  3.18.3.9: the mission ended or continued in Non Leading: the
+   --  default set no longer in force (the Train Data stay not valid)
+   procedure End_Manoeuvre_Set
+     with Global => (In_Out => State),
+          Post => Valid = Valid'Old and then not Manoeuvre_Set;
 
 end EVC_Train_Data;
