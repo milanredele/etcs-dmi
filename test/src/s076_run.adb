@@ -30,6 +30,7 @@ with EVC_Radio;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
+with EVC_Movement_Authority;
 with EVC_National_Values;
 with EVC_Supervision_Input;
 with EVC_JRU_Messages;
@@ -1894,6 +1895,37 @@ package body S076_Run is
       return -1;
    end National_Limit;
 
+   --  V_MAMODE (packet 80, 7.5.1.159), km/h: the speed of the first mode
+   --  profile the on-board stores (EVC_Movement_Authority.Mode_Profile),
+   --  127 the national value of its mode (V_NVONSIGHT, V_NVSHUNT; of
+   --  LS none here); -1 without a profile
+   function Mode_Profile_Limit return Integer is
+   begin
+      for I in 1 .. EVC_Movement_Authority.Max_Mode_Profiles loop
+         declare
+            P : constant EVC_Movement_Authority.Mode_Profile_T :=
+              EVC_Movement_Authority.Mode_Profile (I);
+         begin
+            if P.Used then
+               if Integer (P.Speed) < 127 then
+                  return Integer (P.Speed) * 5;
+               end if;
+               return (case P.Mode is
+                          when 0 => National_Limit ("V_NVONSIGHT"),
+                          when 1 => National_Limit ("V_NVSHUNT"),
+                          when others => -1);
+            end if;
+         end;
+      end loop;
+      return -1;
+   end Mode_Profile_Limit;
+
+   --  A speed limit an expression names: a national value, else V_MAMODE
+   function Named_Limit (E : String) return Integer is
+     (if National_Limit (E) >= 0 then National_Limit (E)
+      elsif Has (E, "V_MAMODE") then Mode_Profile_Limit
+      else -1);
+
    --  The output steps of the input's block (up to the next input)
    --  expect the emergency brake (EB) or the service brake commanded
    function Brake_Expected (EB : Boolean) return Boolean is
@@ -2098,11 +2130,12 @@ package body S076_Run is
                             & " and SBI" & S.V_SBI'Image & " km/h");
             elsif Has (E, "warning") then
                Kmh := S.V_Wsl - 1;
-            elsif National_Limit (E) >= 0 then
+            elsif Named_Limit (E) >= 0 then
                --  a national speed value (A.3.2, or the sequence's packet
-               --  3): above or below it by 5 km/h
+               --  3), or the mode profile's (V_MAMODE): above or below it
+               --  by 5 km/h
                declare
-                  V : constant Natural := National_Limit (E);
+                  V : constant Natural := Named_Limit (E);
                begin
                   Kmh := (if Much then V / 2
                           elsif Below then Integer'Max (1, V - 5)
