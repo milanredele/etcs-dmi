@@ -3972,6 +3972,7 @@ package body S076_Run is
       Fields, Packets : Unbounded_String;
       Index  : Natural := 0;
       J      : Judgement_T;
+      Head   : Boolean := False;
    begin
       for K in 5 .. Line.Count loop
          if Starts (W (K), "NID_MESSAGE=") then
@@ -3979,6 +3980,14 @@ package body S076_Run is
          elsif Starts (W (K), "NID_PACKET=") then
             Packets := To_Unbounded_String
               (" packets " & W (K) (W (K)'First + 11 .. W (K)'Last));
+         elsif Header_Value
+           (W (K) (W (K)'First .. (if Ada.Strings.Fixed.Index (W (K), "=") > 0
+                                   then Ada.Strings.Fixed.Index (W (K), "=") - 1
+                                   else W (K)'Last)), (others => <>)) >= 0
+         then
+            --  a field of the record's header (M_VERSION, 4.2.2.2), not
+            --  of the message: judged from the records of the window
+            Head := True;
          else
             Append (Fields, " " & W (K));
          end if;
@@ -4024,6 +4033,13 @@ package body S076_Run is
                           & To_String (Packets) & To_String (Fields)));
       J := Radio_Expect (St);
       Load_Line (St.Line);
+      if Head and then J.Verdict = Passed then
+         declare
+            Judged : Boolean;
+         begin
+            J := Header_Judge (0, Positive, Judged);
+         end;
+      end if;
       J.Sig := To_Text ("JRU10 " & Image (J.Sig));
       return J;
    end JRU_Sent;
@@ -6267,6 +6283,20 @@ package body S076_Run is
                                                  "start-moving")))
                then
                   B.Set_Direction (1);
+               end if;
+               --  B1081: after a Supervised Manoeuvre authorisation in
+               --  the direction opposite to cab A (3.6.1.5.1, the
+               --  orientation turned, EVC_Position.Manoeuvre_Orientation)
+               --  the train runs towards decreasing distances: a step
+               --  placed more than 5 m behind it is met going backwards
+               --  (3170200_11: 1250 m, then BG6d at 1100 m, 1050 m)
+               if B.Direction > 0 and then St.Dist_Cm < B.Position - 500
+                 and then EVC_Position.Manoeuvre_Orientation
+                 and then EVC_Position.Orientation_Known
+                 and then EVC_Distances."=" (EVC_Position.Orientation,
+                                             EVC_Distances.Minus)
+               then
+                  B.Set_Direction (-1);
                end if;
                --  move to the step's distance, unless the input moves
                --  the train itself
