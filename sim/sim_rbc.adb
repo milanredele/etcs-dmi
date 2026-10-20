@@ -139,6 +139,16 @@ package body Sim_RBC is
             Byte (RTM_Event_T'Pos (E) + 1)));
    end Event;
 
+   --  The connection set up with the RBC R, its identity as EURORADIO
+   --  reports it (the 7 byte event of EVC_Ports, 3.18.4.3.4)
+   procedure Event_Set_Up (Session : Natural; NID_C, NID_RBC : Natural) is
+   begin
+      Put ((RTM_Tag_Event, Byte (Session mod 256),
+            Byte (RTM_Event_T'Pos (Connection_Set_Up) + 1),
+            Byte (NID_C / 256 mod 256), Byte (NID_C mod 256),
+            Byte (NID_RBC / 256 mod 256), Byte (NID_RBC mod 256)));
+   end Event_Set_Up;
+
    ---------------------------------------------------------------------
    --  The messages to the on-board
    ---------------------------------------------------------------------
@@ -294,7 +304,8 @@ package body Sim_RBC is
                   R.Heard := False;
                   R.Stamped := False;
                end;
-               Event (S, Connection_Set_Up);
+               Event_Set_Up (S, RBCs (RBC_T (Found)).NID_C,
+                             RBCs (RBC_T (Found)).NID_RBC);
             else
                Event (S, Set_Up_Failed);
             end if;

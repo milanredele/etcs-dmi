@@ -70,9 +70,13 @@ package DMI_Conditions is
    VBC_Stored           : Boolean := False; -- at least one VBC stored
 
    --  Start of mission (SUBSET-026 5.4, DMI Table 49)
+   --  Train_Data_Request: no start of mission, the on-board requests the
+   --  driver to re-enter or re-validate the Train Data (SUBSET-026
+   --  5.17.2.2 S6)
    type Start_Of_Mission_T is (No_Mission_Start,
                                Awaiting_Session_End,  -- S0
-                               Initiated);            -- S0 -> S1
+                               Initiated,             -- S0 -> S1
+                               Train_Data_Request);
    Start_Of_Mission : Start_Of_Mission_T := No_Mission_Start;
 
    --  The on-board awaits an answer: Main window with all buttons

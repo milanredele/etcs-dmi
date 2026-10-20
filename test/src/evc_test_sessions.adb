@@ -66,7 +66,11 @@ package body EVC_Test_Sessions is
    procedure Order_Group (NID : Natural; At_M : Integer_64;
                           Q_RBC : Natural; NID_RBC : Natural)
      renames Order_Session_Group;
-   procedure Establish (S : Natural; V : Unsigned_64 := 48)
+   procedure Establish (S        : Natural;
+                        V        : Unsigned_64 := 48;
+                        Identity : Boolean := False;
+                        NID_C    : Natural := 0;
+                        NID_RBC  : Natural := 0)
      renames Establish_Session;
    procedure Error_Reports (From  : Natural;
                             Count : out Natural;
@@ -1990,6 +1994,14 @@ package body EVC_Test_Sessions is
              "short number: the session set up with the EIRENE short "
              & "number, not the stored RBC ID and number, which stay "
              & "(3.5.3.11)");
+      Establish_Session (1, Identity => True, NID_C => 7, NID_RBC => 301);
+      Check (R.Established (1)
+             and then R.Contact.Known and then R.Contact.Valid
+             and then R.Contact.RBC = (NID_C => 7, NID_RBC => 301)
+             and then R.Contact.Radio = ETCS_Variables.NID_RADIO_T'Last,
+             "short number: the session established, the RBC identity "
+             & "reported by EURORADIO and the short number stored as the "
+             & "RBC contact (3.18.4.3.4)");
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Short_Number;
 

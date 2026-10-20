@@ -616,9 +616,10 @@ is
    --  registration events are those of 3.5.6 (phase 2).
    --  Decision: the connection lost while terminating ends the session
    --  (no acknowledgement can come, nothing to release).
-   procedure Take_Event (S      : EVC_Radio.Session_T;
-                         Event  : EVC_Ports.RTM_Event_T;
-                         Now_Ms : EVC_Radio.Time_Ms_T)
+   procedure Take_Event (S        : EVC_Radio.Session_T;
+                         Event    : EVC_Ports.RTM_Event_T;
+                         Now_Ms   : EVC_Radio.Time_Ms_T;
+                         Reported : EVC_Radio.RBC_Id_T := EVC_Radio.No_RBC)
    is
       St : constant R.Session_State_T := R.Info (S).State;
    begin
@@ -631,6 +632,7 @@ is
             if St = R.Connecting then
                --  3.5.3.7 b: message 155, the system version awaited
                R.Set_State (S, R.Initiating);
+               R.Set_Reported (S, Reported);
                Links (S).Send_155 := True;
                Links (S).Since := Now_Ms;
                Ind_Set_Up (S);

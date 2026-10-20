@@ -1639,7 +1639,10 @@ no NID_MESSAGE has: `RTM_Tag_Message` (16#F1#), session u8 (1 or 2),
 message: the message received in that session; `RTM_Tag_Event`
 (16#F2#), session, event u8: 1 the safe radio connection set up, 2 lost
 (3.5.4.1), 3 released, 4 set-up failed (3.5.3.7 a), 5 the mobile of the
-session registered to the radio network, 6 its registration failed. The
+session registered to the radio network, 6 its registration failed; the
+event 1 may carry NID_C u16 and NID_RBC u16 of the called RBC, as
+EURORADIO reports it (7 bytes; 3.18.4.3.4, stored for a session called on
+the short number; the 3 byte form leaves it unknown). The
 events latched between two cycles are taken before the messages.
 Outputs: `RTM_Tag_Message`, session, a train to track message;
 `RTM_Tag_Request` (16#F3#), session, request u8: 1 set up a safe radio
@@ -9132,3 +9135,33 @@ packet 12 of message 131 still carries the on-board's Train Data
 - B1043 done, both traces not ours: 3140100_02 step 79, the runner's direction controller left forward in a backward movement, the roll-away emergency brake beside the PT brake asks a second acknowledgement by 3.14.1.10 (Sd56a8154 `model`, B1121); 3130810_01 step 40, M_VERSION 110 0000 in the sequence's telegrams, [65] trips (Sb6e8acf4 `s076`).
 - Not reached (bound): B1040 (M_ERROR 9 and 10 of the odometer to the RBC), B1041 (the runner's record 12 judgement).
 - SUBSET-076: 1017 / 1116 / 1057 before and after, 9 improvements (9990400_25, 9990400_23, 3131040_54 in three versions), 0 regressions.
+### The RBC identity by EURORADIO, the SM family's runner items, the Train data window on request (e5/runner-sm) (2026-10-20)
+
+Three of four items. B1010 done: the RTM port's connection set-up event
+may carry NID_C u16 and NID_RBC u16 of the called RBC as EURORADIO
+reports it (7 bytes, `EVC_Ports`; the 3 byte form still parses and
+leaves the identity unknown); `EVC_Core.Latch_RTM` latches it,
+`EVC_Sessions.Take_Event` keeps it in the session table
+(`EVC_Radio.Set_Reported`, `Session_Info_T.Reported`), and
+`EVC_Sessions.Mission.Judge_Opening` stores it with the short number as
+the RBC contact for a session called on the short number (3.18.4.3.4
+done; `Session_Short_Number` extended through `Establish_Session`'s new
+`Identity`). `Sim_RBC` sends the identity of the RBC it set up; the
+runner keeps the 3 byte form (the sequences give no identity).
+S8cb118b5 done: `S076_Run.Radio_Input` writes the answered request's
+T_TRAIN minus one as the second stamp when the step's comment asks for
+a stamp that "does not match the time stamp of the last sent request"
+(4.8.4 [14]); 4080428_02 and 4080454_05 pass, 4080415_03 stops at 76 on
+the default window after the rejected authorisation (Sd3250d19, s076:
+DMI 11.7.8.3 Table 54a S1 keeps the Main window), 4080418_04 at 75 on
+S69f1f87e (its step reads "NOT ... displayed" for "not changed").
+Scfbb86e1 traced, s076: the sequence presses Data view while the Main
+window is in S1 of the SM dialogue, buttons and [close] disabled (DMI
+11.7.8.2). Runner 1017 / 1116 / 1057 -> 1019 / 1114 / 1057, 0
+regressions. B970 done (resumed): `DMI_Core` reads MSG_ONBOARD som 3 as
+`DMI_Conditions.Train_Data_Request`, and `DMI_Windows.Onboard_State_Changed`
+opens the Train data window on the change to 3 (SUBSET-026 5.17.2.2 S6;
+decision: not over a data entry or validation window the driver is in);
+`DMI_Test_Data_Entry.Scenario_Train_Data_Request`; no golden changed;
+3060500_14 passes in SV21, SV22, SV30 (S4ec90124). Runner after it 1022
+/ 1111 / 1057, 0 regressions.

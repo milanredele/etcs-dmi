@@ -314,6 +314,8 @@ is
    RTM_Tag_Request : constant Byte := 16#F3#;
 
    RTM_Event_Length : constant := 3;
+   --  a connection set up with the identity of the called RBC
+   RTM_Event_RBC_Length : constant := RTM_Event_Length + 4;
 
    type RTM_Event_T is
      (Connection_Set_Up,      -- 1
@@ -344,13 +346,44 @@ is
       and then Valid_RTM_Frame (Payload (Payload'First + RTM_Tagged_Header
                                          .. Payload'Last)));
 
-   --  An event of the safe radio connection
+   --  The big-endian u16 at Payload'First + Offset
+   function RTM_U16 (Payload : Byte_Array; Offset : Natural) return Natural
+   is (Natural (Payload (Payload'First + Offset)) * 256
+       + Natural (Payload (Payload'First + Offset + 1)))
+     with Pre  => Payload'Length >= 2
+                  and then Offset <= Payload'Length - 2,
+          Post => RTM_U16'Result <= 65_535;
+
+   --  An event of the safe radio connection: 3 bytes, or 7 for a
+   --  connection set up with the RBC identity EURORADIO reports (NID_C
+   --  u16 below 1024, NID_RBC u16 below 16384: 3.18.4.3.4)
    function Valid_RTM_Event (Payload : Byte_Array) return Boolean is
-     (Payload'Length = RTM_Event_Length
+     ((Payload'Length = RTM_Event_Length
+       or else (Payload'Length = RTM_Event_RBC_Length
+                and then Payload (Payload'First + 2) = 1
+                and then RTM_U16 (Payload, 3) < 1024
+                and then RTM_U16 (Payload, 5) < 16384))
       and then Payload (Payload'First) = RTM_Tag_Event
       and then Valid_RTM_Session (Payload (Payload'First + 1))
       and then Payload (Payload'First + 2) in 1 .. RTM_Event_T'Pos
                                                      (RTM_Event_T'Last) + 1);
+
+   --  Whether a valid event reports the identity of the called RBC
+   function RTM_Event_Has_RBC (Payload : Byte_Array) return Boolean is
+     (Payload'Length = RTM_Event_RBC_Length)
+     with Pre => Valid_RTM_Event (Payload);
+
+   --  NID_C and NID_RBC of the identity a valid event reports
+   function RTM_Event_NID_C (Payload : Byte_Array) return Natural is
+     (RTM_U16 (Payload, 3))
+     with Pre  => Valid_RTM_Event (Payload)
+                  and then RTM_Event_Has_RBC (Payload),
+          Post => RTM_Event_NID_C'Result < 1024;
+   function RTM_Event_NID_RBC (Payload : Byte_Array) return Natural is
+     (RTM_U16 (Payload, 5))
+     with Pre  => Valid_RTM_Event (Payload)
+                  and then RTM_Event_Has_RBC (Payload),
+          Post => RTM_Event_NID_RBC'Result < 16384;
 
    --  An RTM input: a message without a tag, a tagged message or an event
    --  @req 3.16.3.1.1.2
@@ -695,6 +728,11 @@ is
    --       failed (3.5.3.7 a: "immediately ... repeated"), 5 the mobile
    --       of the session is registered to the radio network ordered, 6
    --       the registration failed.
+   --    RTM_Tag_Event u8, session u8, 1, NID_C u16, NID_RBC u16, 7 bytes:
+   --       the safe radio connection is set up with the RBC of that
+   --       identity, as EURORADIO reports it (3.18.4.3.4: stored when the
+   --       driver chose the EIRENE short number); the 3 byte form leaves
+   --       the identity unknown.
    --    The core takes, in each cycle, the events latched since the last
    --    one before the messages (an event and a message latched between
    --    the same two cycles: the event first).

@@ -180,8 +180,7 @@ package DMI_Protocol is
    --    3 no start of mission is going on and the on-board requests the
    --      driver to re-enter or re-validate the Train Data (SUBSET-026
    --      5.17.2.2 S6, new Train Data from an external source): the
-   --      Train data window is to be opened on the change to 3 (the DMI
-   --      reads 3 as 0 today),
+   --      Train data window is opened on the change to 3,
    --    any other value is read as 0
    --  waiting u8: the on-board awaits an answer and the DMI shows the
    --    Main window with all buttons disabled and the hour glass ST05

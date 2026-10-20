@@ -148,6 +148,9 @@ is
       --  3.16.3: T_TRAIN of the last message the on-board sent (Send)
       Sent          : Boolean := False;
       Last_Sent     : T_TRAIN_T := 0;
+      --  3.18.4.3.4: the RBC identity EURORADIO reported when the safe
+      --  radio connection was set up (No_RBC: none reported)
+      Reported      : RBC_Id_T;
    end record;
 
    No_Info : constant Session_Info_T :=
@@ -160,7 +163,8 @@ is
       Last_Received => 0,
       Received_Ms   => 0,
       Sent          => False,
-      Last_Sent     => 0);
+      Last_Sent     => 0,
+      Reported      => No_RBC);
 
    --  The sessions this on-board handles (EVC_Config, taken at Clear)
    function Sessions return Session_Count_T
@@ -355,6 +359,19 @@ is
                   and then Sessions = Sessions'Old
                   and then Supervising = Supervising'Old
                   and then Accepting = Accepting'Old;
+
+   --  The RBC identity EURORADIO reported for the safe radio connection
+   --  of the session (3.18.4.3.4)
+   procedure Set_Reported (S : Session_T; RBC : RBC_Id_T)
+     with Global => (In_Out => State),
+          Post => Info (S).Reported = RBC
+                  and then Info (S).State = Info (S).State'Old
+                  and then Info (S).RBC = Info (S).RBC'Old
+                  and then Info (S).Radio = Info (S).Radio'Old
+                  and then Sessions = Sessions'Old
+                  and then Supervising = Supervising'Old
+                  and then Accepting = Accepting'Old
+                  and then Contact = Contact'Old;
 
    --  The RBC of the session and the number it is called on
    procedure Set_Peer (S : Session_T; RBC : RBC_Id_T; Radio : NID_RADIO_T)

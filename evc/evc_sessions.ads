@@ -87,11 +87,13 @@ is
                   and then (for all C in Condition_T => not Holds (C));
 
    --  1. A connection event of the RTM port on the session S, at the
-   --  on-board time Now_Ms
+   --  on-board time Now_Ms; Reported: the RBC identity EURORADIO
+   --  reports with a connection set up (EVC_Ports), else No_RBC
    --  @req 3.5.3.7 b), 3.5.4.1, 3.5.4.2, 3.5.4.3, 3.5.4.3 1st bullet
-   procedure Take_Event (S      : EVC_Radio.Session_T;
-                         Event  : EVC_Ports.RTM_Event_T;
-                         Now_Ms : EVC_Radio.Time_Ms_T)
+   procedure Take_Event (S        : EVC_Radio.Session_T;
+                         Event    : EVC_Ports.RTM_Event_T;
+                         Now_Ms   : EVC_Radio.Time_Ms_T;
+                         Reported : EVC_Radio.RBC_Id_T := EVC_Radio.No_RBC)
      with Global => (In_Out => (State, EVC_Radio.State)),
           Post => Has_Released = Has_Released'Old;
 

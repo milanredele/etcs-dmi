@@ -1231,6 +1231,16 @@ package body DMI_Windows is
 
       if Start_Of_Mission = Initiated and then Last_SOM /= Initiated then
          Engage_Start_Up;                                  -- S0 -> S1
+      elsif Start_Of_Mission = Train_Data_Request
+        and then Last_SOM /= Train_Data_Request
+      then
+         -- SUBSET-026 5.17.2.2 S6: the on-board requests the Train Data
+         -- again; decision: the Train data window opens on the change,
+         -- over the window displayed, unless a data entry or validation
+         -- window is displayed (the driver's entry is not interrupted)
+         if not Entry_Open then
+            Open (W_Train_Data);
+         end if;
       elsif Start_Of_Mission = No_Mission_Start
         and then Last_SOM /= No_Mission_Start
       then

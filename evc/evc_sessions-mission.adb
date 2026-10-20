@@ -294,7 +294,9 @@ is
    --  D31: opened (the system version agreed: D32, and 5.4.3.3
    --  "Following D31" the contact valid) or failed (A32: no session
    --  with the RBC any more; the driver is informed by the indication
-   --  of 3.5.7, EVC_Sessions: S10)
+   --  of 3.5.7, EVC_Sessions: S10). 3.18.4.3.4: a session called on
+   --  the EIRENE short number stores the RBC identity EURORADIO
+   --  reported (unknown, No_RBC, when it reported none)
    --  @req 3.18.4.3.4
    procedure Judge_Opening
      with Global => (In_Out => (Step, R.State),
@@ -319,7 +321,10 @@ is
       if Found /= R.No_Session then
          SoM_S := R.Session_T (Found);
          R.Set_Contact ((Known => True, Valid => True,
-                         RBC   => R.Info (SoM_S).RBC,
+                         RBC   =>
+                           (if R.Info (SoM_S).Radio = NID_RADIO_T'Last
+                            then R.Info (SoM_S).Reported
+                            else R.Info (SoM_S).RBC),
                          Radio => R.Info (SoM_S).Radio));
          Step := Report_Due;
       elsif not Any then

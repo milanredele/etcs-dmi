@@ -178,9 +178,9 @@ Subset-076-6-3_3060500_10_v400_SV30,passed,0,-
 Subset-076-6-3_3060500_11_v400_SV30,blocked,39,S076-defect
 Subset-076-6-3_3060500_12_v400_SV30,blocked,39,S076-defect
 Subset-076-6-3_3060500_13_v400_SV30,blocked,39,S076-defect
-Subset-076-6-3_3060500_14_v400_SV21,failed,74,S4ec90124
-Subset-076-6-3_3060500_14_v400_SV22,failed,74,S4ec90124
-Subset-076-6-3_3060500_14_v400_SV30,failed,74,S4ec90124
+Subset-076-6-3_3060500_14_v400_SV21,passed,0,-
+Subset-076-6-3_3060500_14_v400_SV22,passed,0,-
+Subset-076-6-3_3060500_14_v400_SV30,passed,0,-
 Subset-076-6-3_3060500_15_v400_SV30,blocked,16,E5-radio
 Subset-076-6-3_3060500_16_v400_SV30,blocked,16,E5-radio
 Subset-076-6-3_3060600_01_v400_SV21,failed,150,S0c7e8942
@@ -1839,7 +1839,7 @@ Subset-076-6-3_4080415_01_v400_SV30,failed,297,Sadfc7768
 Subset-076-6-3_4080415_02_v400_SV21,blocked,41,NTC
 Subset-076-6-3_4080415_02_v400_SV22,blocked,41,NTC
 Subset-076-6-3_4080415_02_v400_SV30,blocked,41,NTC
-Subset-076-6-3_4080415_03_v400_SV30,failed,73,S8cb118b5
+Subset-076-6-3_4080415_03_v400_SV30,failed,76,Sd3250d19
 Subset-076-6-3_4080416_01_v400_SV21,failed,71,S4a80e57d
 Subset-076-6-3_4080416_01_v400_SV22,failed,71,S4a80e57d
 Subset-076-6-3_4080416_01_v400_SV30,failed,71,S4a80e57d
@@ -1855,7 +1855,7 @@ Subset-076-6-3_4080418_01_v400_SV30,blocked,79,extractor
 Subset-076-6-3_4080418_03_v400_SV21,blocked,50,E7-euroloop
 Subset-076-6-3_4080418_03_v400_SV22,blocked,50,E7-euroloop
 Subset-076-6-3_4080418_03_v400_SV30,blocked,50,E7-euroloop
-Subset-076-6-3_4080418_04_v400_SV30,failed,73,S8cb118b5
+Subset-076-6-3_4080418_04_v400_SV30,failed,75,S69f1f87e
 Subset-076-6-3_4080419_01_v400_SV21,blocked,53,S076-defect
 Subset-076-6-3_4080419_01_v400_SV22,blocked,53,S076-defect
 Subset-076-6-3_4080419_01_v400_SV30,blocked,53,S076-defect
@@ -1908,7 +1908,7 @@ Subset-076-6-3_4080427_01_v400_SV30,failed,70,Seabc1f7c
 Subset-076-6-3_4080428_01_v400_SV21,failed,134,Sb83b2c65
 Subset-076-6-3_4080428_01_v400_SV22,failed,134,Sb83b2c65
 Subset-076-6-3_4080428_01_v400_SV30,failed,168,Sb83b2c65
-Subset-076-6-3_4080428_02_v400_SV30,failed,73,S8cb118b5
+Subset-076-6-3_4080428_02_v400_SV30,passed,0,-
 Subset-076-6-3_4080429_01_v400_SV21,failed,52,S6249c0a9
 Subset-076-6-3_4080429_01_v400_SV22,failed,52,S6249c0a9
 Subset-076-6-3_4080429_01_v400_SV30,failed,73,Sa8a3ba1a
@@ -2010,7 +2010,7 @@ Subset-076-6-3_4080454_03_v400_SV30,blocked,56,E7-euroloop
 Subset-076-6-3_4080454_04_v400_SV21,failed,48,Sa8a3ba1a
 Subset-076-6-3_4080454_04_v400_SV22,failed,48,Sa8a3ba1a
 Subset-076-6-3_4080454_04_v400_SV30,failed,48,Sa8a3ba1a
-Subset-076-6-3_4080454_05_v400_SV30,failed,73,S8cb118b5
+Subset-076-6-3_4080454_05_v400_SV30,passed,0,-
 Subset-076-6-3_4080455_01_v400_SV30,failed,78,Sa03cccdc
 Subset-076-6-3_4080455_02_v400_SV30,failed,78,Sa03cccdc
 Subset-076-6-3_4080455_03_v400_SV30,failed,92,Sd640223d

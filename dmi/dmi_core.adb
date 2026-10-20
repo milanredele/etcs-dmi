@@ -1013,6 +1013,7 @@ package body DMI_Core is
         (case SOM is
             when 1      => Awaiting_Session_End,
             when 2      => Initiated,
+            when 3      => Train_Data_Request,
             when others => No_Mission_Start);
 
       DMI_Conditions.Waiting :=

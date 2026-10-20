@@ -911,8 +911,14 @@ package EVC_Test_Support is
                  V    : Unsigned_64 := 0) return Byte_Array;
 
    --  The safe radio connection of S set up, the system version V of the
-   --  RBC (message 32) and the acknowledgement 38 (3.5.3.7 b to e)
-   procedure Establish_Session (S : Natural; V : Unsigned_64 := 48);
+   --  RBC (message 32) and the acknowledgement 38 (3.5.3.7 b to e);
+   --  Identity: the connection set up with the RBC identity NID_C,
+   --  NID_RBC as EURORADIO reports it (the 7 byte event of EVC_Ports)
+   procedure Establish_Session (S        : Natural;
+                                V        : Unsigned_64 := 48;
+                                Identity : Boolean := False;
+                                NID_C    : Natural := 0;
+                                NID_RBC  : Natural := 0);
 
    --  Establish_Session, then the Train Data the on-board sends on S
    --  (message 129, 3.18.3.4, or the SoM position report 157 with

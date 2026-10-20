@@ -802,4 +802,32 @@ package body DMI_Test_Data_Entry is
       Drain_Outbox;
    end Scenario_Train_Data_Windows;
 
+   -- SUBSET-026 5.17.2.2 S6: the on-board requests the driver to
+   -- re-enter or re-validate the Train Data (MSG_ONBOARD som 3): the
+   -- Train data window opens on the change to 3, once
+   procedure Scenario_Train_Data_Request is
+      use type DMI_Windows.Window_ID_T;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);  -- FS
+      Win_Onboard (Train => Win_Standing);
+      Check (not DMI_Windows.Is_Open,
+             "train data request: the default window before the request");
+      Win_Onboard (Train => Win_Standing, SOM => 3);
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "train data request: som 3 opens the Train data window "
+             & "(SUBSET-026 5.17.2.2 S6)");
+      DMI_Windows.Close_Top;
+      Win_Onboard (Train => Win_Standing, SOM => 3);
+      Check (not DMI_Windows.Is_Open,
+             "train data request: closed, not opened again while som "
+             & "stays 3");
+      Win_Onboard (Train => Win_Standing);
+      Win_Onboard (Train => Win_Standing, SOM => 3);
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "train data request: a new request opens it again");
+   end Scenario_Train_Data_Request;
+
 end DMI_Test_Data_Entry;
