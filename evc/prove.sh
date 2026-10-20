@@ -11,9 +11,11 @@
 #
 # Usage: evc/prove.sh [extra gnatprove switches]
 # e.g. evc/prove.sh --report=all to list every proved check,
-#      evc/prove.sh -u evc_fixed.adb for one unit during development,
-#      evc/prove.sh --replay to replay the recorded proofs without
-#      attempting new ones (a verification of a merge).
+#      evc/prove.sh -u evc_fixed.adb for one unit during development.
+# A merge is verified by the full run, not by gnatprove's --replay: the
+# file cache below answers a known condition before why3 sees it, so
+# the sessions under obj/evc/gnatprove keep the goals of the last real
+# prover run and a replay reports the current checks unproved.
 # The full report is obj/evc/gnatprove/gnatprove.out.
 #
 # Proof results are shared across worktrees and branches through
