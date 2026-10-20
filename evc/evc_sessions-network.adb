@@ -234,6 +234,19 @@ is
       Mode_Now := To;
    end Mode_Changed;
 
+   function Accepts (Kind        : ETCS_Message_Catalogue.Message_Kind_T;
+                     Cab_Active  : Boolean;
+                     Level_Valid : Boolean;
+                     Level       : Level_T) return Boolean
+   is (EVC_Radio_Acceptance."="
+         (EVC_Radio_Acceptance.Verdict
+            (EVC_Radio_Acceptance.Info_Of (Kind),
+             (Mode => Mode_Now, Level_Valid => Level_Valid, Level => Level,
+              Cab_Active => Cab_Active, Trip_Exit_Known => Exit_Seen,
+              others => <>)),
+          EVC_Radio_Acceptance.Accepted))
+     with Refined_Global => (Mode_Now, Exit_Seen);
+
    --  DMI 11.3.4 / Table 49 S3-2-2: the network the driver selected,
    --  its name the NID_MN digits (decision 6: 7.5.1.91.1, one digit per
    --  nibble, left adjusted, F the filler); OK False for anything else

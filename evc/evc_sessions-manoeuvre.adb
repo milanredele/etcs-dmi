@@ -297,8 +297,13 @@ is
       V (4) := Unsigned_64 (R.Engine_Id);
       ETCS_Message.Write_Fields (W, Train_M131, V, OK);
       if OK then
+         --  A045: the front end from the safe consist length
          ETCS_Train_Packets.P0.Encode
-           (EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level), W, OK);
+           ((if EVC_Train_Data.Consist_Available
+             then EVC_Position.Consist_Report
+                    (Ctx.Mode, EVC_Levels.Level, EVC_Train_Data.Consist)
+             else EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level)),
+            W, OK);
       end if;
       if OK then
          ETCS_Train_Packets.P10.Encode (Consist_Packet, W, OK);

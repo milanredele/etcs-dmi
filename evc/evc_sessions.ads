@@ -107,7 +107,8 @@ is
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
      with Global => (In_Out => (State, EVC_Radio.State),
-                     Input  => (EVC_Received.Store, EVC_Position.State)),
+                     Input  => (EVC_Received.Store, EVC_Position.State,
+                                EVC_Levels.State)),
           Post => Has_Released = Has_Released'Old;
 
    --  3. 3.5.2.6.1, 3.5.3.4 b), 3.5.5.1 a): a session management order

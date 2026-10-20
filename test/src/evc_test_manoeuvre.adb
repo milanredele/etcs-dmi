@@ -5,8 +5,10 @@ with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
+with ETCS_Train_Packets.P0;
 with ETCS_Variables;
 with EVC_Core;
+with EVC_DMI_Port;
 with EVC_Distances;       use EVC_Distances;
 with EVC_Modes;           use EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
@@ -198,6 +200,40 @@ package body EVC_Test_Manoeuvre is
       return Message_Bytes (W);
    end SM_Authorisation;
 
+   --  The report of message 131 with the safe consist received equals
+   --  the position report
+   function Same_Report return Boolean is
+     (ETCS_Train_Packets.P0."="
+        (EVC_Position.Consist_Report (EVC_Core.Mode, L2,
+                                      EVC_Train_Data.Consist),
+         EVC_Position.Position_Report (EVC_Core.Mode, L2)));
+
+   --  The report of message 131 has its estimated front end Ahead cm
+   --  further than the position report and its confidence interval
+   --  More_Over and More_Under cm wider, to the resolution of its scale
+   function Front_Moved (Ahead, More_Over, More_Under : Length_T)
+     return Boolean
+   is
+      C : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Consist_Report (EVC_Core.Mode, L2,
+                                     EVC_Train_Data.Consist);
+      P : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Position_Report (EVC_Core.Mode, L2);
+      use type ETCS_Variables.Q_SCALE_T, ETCS_Variables.Q_DLRBG_T;
+      Q : constant Natural := Natural (C.Q_SCALE);
+      R : constant Length_T := Scaled (1, Q);
+      function Near (A, B : Length_T) return Boolean is
+        (A <= B + R and then B <= A + R);
+   begin
+      return C.Q_SCALE = P.Q_SCALE and then C.Q_DLRBG = P.Q_DLRBG
+        and then Near (Scaled (Natural (C.D_LRBG), Q),
+                       Scaled (Natural (P.D_LRBG), Q) + Ahead)
+        and then Near (Scaled (Natural (C.L_DOUBTOVER), Q),
+                       Scaled (Natural (P.L_DOUBTOVER), Q) + More_Over)
+        and then Near (Scaled (Natural (C.L_DOUBTUNDER), Q),
+                       Scaled (Natural (P.L_DOUBTUNDER), Q) + More_Under);
+   end Front_Moved;
+
    procedure Scenario_SM_Authorisation is
       T : Unsigned_64;
    begin
@@ -261,6 +297,21 @@ package body EVC_Test_Manoeuvre is
                 "SM opposite: SM entered from FS, the MA of the "
                 & "authorisation kept (4.6.3 [81], 4.10, 5.21.2.2 A050); "
                 & "mode " & Mode_T'Image (EVC_Core.Mode));
+         Check (Same_Report,
+                "SM opposite: the position shifted to the consist's end, "
+                & "the report of 131 is the position report (5.21.2.2 "
+                & "A045)");
+      end;
+      declare
+         Selected : constant Natural := JRU_Actions (8);
+      begin
+         --  'Continue in SM' (MSG_DRIVER_ACTION 17, argument 1)
+         Input (DMI, (16#40#, 3, 0, 0, 0, 17, 1, 0));
+         Check (Wait_For (MCat.Train_M131, 1_000) /= 0
+                and then JRU_Actions (8) = Selected + 1,
+                "SM: 'Continue in SM' sends 131 and is recorded as "
+                & "Supervised Manoeuvre selected (5.21.2.2 S0, E015, "
+                & "SUBSET-027 4.2.4.11 M_DRIVERACTIONS 8)");
       end;
    end Scenario_SM_Authorisation;
 
@@ -391,6 +442,21 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Sessions.SM_Waiting,
              "SM request: an answer to another request not taken (4.8.4 "
              & "[14])");
+      declare
+         Shown : constant Natural :=
+           SS_Seen (Natural (EVC_DMI_Port.SS_SM_Refused));
+      begin
+         EVC_Core.Set_Mode_For_Test (M_FS, L1);
+         Give_Radio_Message (1, SM_Refused (T));
+         Stand_X (200);
+         Check (EVC_Sessions.SM_Waiting
+                and then SS_Seen (Natural (EVC_DMI_Port.SS_SM_Refused))
+                         = Shown,
+                "SM request: SM refused in level 1, rejected by 4.8.3, "
+                & "neither ends the wait nor is shown (4.8.4, B952)");
+         EVC_Core.Set_Mode_For_Test (M_FS, L2);
+         Stand_X (200);
+      end;
       Give_Radio_Message (1, SM_Refused (T));
       Stand_X (200);
       Check (not EVC_Sessions.SM_Waiting and then EVC_Sessions.SM_Answer = 0
@@ -421,6 +487,24 @@ package body EVC_Test_Manoeuvre is
              and then not EVC_Sessions.SM_Waiting,
              "SM request: none without the safe consist length available "
              & "(5.21.2.2 S0, 4.4.21.1.3)");
+
+      --  A045: the report's front end from the safe consist length in
+      --  front of the engine
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 400, 398, 402));
+      Stand_X (300);
+      Check (Same_Report,
+             "SM request: nothing in front of the engine, the report of 131 "
+             & "is the position report (5.21.2.2 A045)");
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      Stand_X (300);
+      Check (Front_Moved (5_000, 100, 200),
+             "SM request: 50 m in front of the engine (49 .. 52), the report "
+             & "of 131 has its front end 50 m ahead, the confidence interval "
+             & "1 m and 2 m wider (5.21.2.2 A045, 3.18.3.2.5.1)");
+      Select_SM;
+      Check (Wait_For (MCat.Train_M131, 1_000) /= 0,
+             "SM request: 131 sent with the consist in front (5.21.2.2 "
+             & "A045)");
    end Scenario_SM_Request;
 
 end EVC_Test_Manoeuvre;

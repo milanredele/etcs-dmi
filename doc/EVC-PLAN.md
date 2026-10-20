@@ -9404,3 +9404,55 @@ started; B1200, B1201, B1202.
 - B1120 done, none ours: 5090200_02 the runner's train below V_MAMODE 40 km/h (SR's own ceiling) on the OS entry (B1180); 5170200_02 case 5170200 9 given without the driver validation of 5.17.2.2 D0 (B1181); 6060302_05 the sequence's packet 80 without Q_MAMODE (L_PACKET 84) and D_MAMODE 450 (s076). Saf042fa6 triaged `model`.
 - B1041 done: `S076_Run` judges a JRU 12 by M_ERROR (0 events 4 to 6, 1 and 2 events 12 and 13, 7 and 8 event 4 of cause 5 and 6, none any of them). Findings: the error neither recorded nor reported in NL and PS (B1183: 3160200_15 step 68, S1bdb7ccd; 4042000_02 / _03 in PS, S99eb8ae1); 3160200_34 step 49 the linking reaction's brake for a group linked by an unknown identity and read against the announced orientation, which the sequence does not expect (B1182, under Sd56a8154 whose line names another cause). Looked wrong, not changed: our event 13 is both the unlinked group's inconsistency (`EVC_Position.Event_Code`) and the runner's radio error record 13 (`Any_Rec (13, E, -1)`).
 - SUBSET-076: 1038 / 1112 / 1040 before, 1036 / 1114 / 1040 after, steps not judged 4383 -> 4353; 5 regressions understood (3160200_15 in three versions one step earlier on the same cause, 3160200_34 in two, B1182), 2 improvements (3160200_30), baseline re-recorded.
+### Supervised Manoeuvre, the position report with the consist, the trip after message 7, the record of Continue in SM (e6/sm-report) (2026-10-20)
+
+The sixth Supervised Manoeuvre package.
+
+B950, 5.21.2.2 A045 done: the position report of message 131 takes the
+safe consist length into account. `EVC_Position.Consist_Report` gives
+packet 0 with the estimated front end at the far end of the consist in
+front of the engine (the side of its active cab), or in rear of it when
+the train orientation is the other side, the confidence interval widened
+by the consist's minimum and maximum (3.6.4.1.5); once the position was
+shifted to the other end of the consist (`Shift_For_Manoeuvre`) the
+report as it is. `Consist_End` is the front end shared with
+`Shift_For_Manoeuvre`; `Fill` and the new `Report_With` take the
+extension. `EVC_Sessions.Manoeuvre.Send_Request` uses it while the safe
+consist length is available (decision: message 133 and the reports of
+136 keep the position as it is; A045 names the request only). Scenario:
+`Scenario_SM_Request` (nothing in front: the same report; 50 m in front,
+49 .. 52: 50 m ahead, 1 m and 2 m wider), `Scenario_SM_Authorisation`
+(after the opposite authorisation: the position report). Found: after
+an authorisation in the train orientation the front end stays the
+engine's (`Shift_For_Manoeuvre` with Opposite False), the consist in
+front is not added for 136 and the supervision: B1160.
+
+B1082 dropped, not our defect: in 4080420_03 message 7 is taken and
+recorded; the trip is the linking error of message 24's packet 5 given
+at 650 m (step 82), D_LINK 450 m from BG2 at 200 m, a group announced at
+the train's own position, supervised by 3.4.4.4.5.1 and not placed. The
+sequence calls that linking rejected, as for the SM authorisation's
+[13] at step 73, but message 24 is no SM authorisation and 4.8.4 accepts
+linking in FS: Sc17009f0 triaged s076.
+
+B1080 done: `EVC_JRU_Records.Action_Code` records 'Continue in SM'
+(argument 1) as M_DRIVERACTIONS 8, Supervised Manoeuvre selected
+(decision: it is the selection of SM in SM, 5.21.2.2 S0 / E015;
+SUBSET-027 4.2.4.11 has no value of its own). 3110800_02 104 -> 117: the
+runner leaves the train at 1590 m for the backward run to 1400 m
+(S13c9beb3 model, as B1081).
+
+B952 done (a resumption): `EVC_Sessions.Take_Message` takes message 4
+or 5 as the answer to the request for SM (the wait ended, "SM refused"
+shown) only when 4.8 accepts it, `EVC_Sessions.Network.Accepts` (the
+verdict of `EVC_Radio_Acceptance` in the network half's mode, message 6
+seen in PT for [1], the cab for [2], the level); `Take_Message` reads
+`EVC_Levels.State` now. 4080300_20 (SM refused in level 1) passes.
+4080455_04 still fails: message 6 came before message 5 and the
+sequence reads [1] by the time stamps, which is not modelled (B1161).
+
+SUBSET-076: 1038 / 1112 / 1040 before, 1039 / 1111 / 1040 after, 0
+regressions. Edit outside the package's named units for B952:
+`EVC_Sessions.Take_Message` and `EVC_Sessions.Network.Accepts`. Left of
+the mode: B008, B031, B991, B1161, B1081 (runner), B1160, 4.4.21.1.12, 4.4.21.1.13,
+3.18.3.2.4's max rear length, packet 12 of 131 from the configured set.
