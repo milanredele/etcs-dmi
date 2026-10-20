@@ -9456,3 +9456,81 @@ regressions. Edit outside the package's named units for B952:
 `EVC_Sessions.Take_Message` and `EVC_Sessions.Network.Accepts`. Left of
 the mode: B008, B031, B991, B1161, B1081 (runner), B1160, 4.4.21.1.12, 4.4.21.1.13,
 3.18.3.2.4's max rear length, packet 12 of 131 from the configured set.
+
+### E5 integration after the thirty-ninth round, the eighth of E6 (2026-10-20)
+
+The round of the BTM alarm and of the resumptions inside the budget.
+
+Merged: e6/sm-report (the position report of message 131 with the
+consist in front, B950, 5.21.2.2 A045 done, `EVC_Position.Consist_Report`
+with `Consist_End` shared with `Shift_For_Manoeuvre`; the trip after
+message 7 of 4080420_03 a sequence defect, its linking packet announcing
+a group where the train already is, B1082 dropped; "Continue in SM"
+recorded as M_DRIVERACTIONS 8, B1080; the SM refusal shown only when the
+acceptance rules admit message 5, B952, `EVC_Sessions.Network.Accepts`
+in `Take_Message`, 4080300_20 passes, the PT case of the stamps B1161;
+B1160 the consist in front after an authorisation in the own direction),
+e6/consistency-left (the odometer accuracy errors to the RBC, B1040,
+M_ERROR 9 and 10 once per crossing, 3.16.4.1 and 3.6.5.1.4 l) done; one
+shared mode list, `EVC_Modes.Message_Reaction_Mode`; the three
+sequences of B1120 none our defect, B1180 and B1181 for the runner; the
+runner judges a JRU 12 by its M_ERROR, B1041, 66 steps judged, two
+on-board findings B1182 and B1183), e6/special-functions (the BTM alarm
+and the big metal masses, 3.15.7.2, .4, .5, .6, 3.6.7.1 d),
+3.12.1.2.1.2, 5.22.4.2: the alarm a one-byte input of the BTM port, a
+new `EVC_BTM_Alarm` with the 300 m immunity of A.3.1 in levels 0 / NTC,
+the inhibition of 5.22 and SB in levels 1 / 2, a big metal mass at the
+antenna in every level, `EVC_Track_Conditions.BMM_At_Antenna`, the
+reaction decided as the service brake while the alarm lasts,
+`EVC_Core.Supervise_BTM_Alarm`; SUBSET-076 expects SF with the emergency
+brake in 10 of its 16 alarm sequences, B1200 the decision, B1201 the
+runner's alarm steps after it; the 3.15.10 re-read, one row done, three
+partial, two todo, B1202 the planning gaps; 3.18.5, 3.18.6, 3.15.11.2,
+3.20.1.2, A.3.2 not started) and e5/runner-left (the backward SM run
+after an opposite authorisation, B1081, 3170200_11 to step 91 and the
+message 133 at the handover found, B1220; the direction controller set
+with the movement, B1121, 3140100_02 passes in three versions; V_MAMODE
+from the on-board's stored mode profile, S82794294; the not-judged
+steps re-read: the SM direction byte decoded by the bench and found
+always 0 on the on-board, B1221).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended (runner-left fast-forwarded); no matrix, baseline, triage or
+source conflict; no golden changed.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12645
+checks, dmi_test 2172), the full proof 0 unproved (12876 checks, margin
+47726 steps, 6 checks of 16 VCs or more at the limit of 6), cross build
+and stack (margin 5792 B), wasm and both smokes 0 failures. SUBSET-076:
+1038 / 1112 / 1040 before, 1040 / 1110 / 1040 after (one more on the
+union than on any branch), steps not judged 4383 -> 4354, 5 regressions
+explained by the stricter record 12 judgement and re-recorded on the
+branch, 0 on the union, 0 untriaged. Matrix: 155 -> 147 clauses left;
+E6 done 166 -> 172, todo 21 -> 13, partial 39 -> 41.
+
+Measurements (doc/ROUNDS.csv): sm-report 152 calls (budget 160, two
+resumptions inside it: B952 in 30, its scenario in 7) / 222k / 10.1
+USD; consistency-left 118 (130) / 173k / 6.3; special-functions 121
+(130, one resumption inside it: the 3.15.10 re-read in 14) / 181k /
+7.5; runner-left 109 (130) / 141k / 5.0; the round 28.9 USD, none over
+budget, the cheapest of E6. Items 13 of 15 done; premises wrong 3 of 25
+(the PT case was an FS one; the 5.22 procedure is in `EVC_Procedures`;
+the 300 m sits in the appendix table). Source-tree reading: 24, 16, 29,
+19 runs against 26, 13, 26, 12 outline runs.
+
+Lessons: a resumption inside the agent's own budget, for one named
+item, is free of any premium and converted three times out of three
+this round: the rule stays, stop at the bound and report the calls
+left. The BTM alarm's reaction is a decision the sequences have
+already taken (SF with the emergency brake, 4.6.3 [13]): B1200 is the
+first item of the next special-functions package, a mode machine
+change and so a package of its own. The runner's stricter judgements
+(record 12, the SM direction byte) now find on-board defects at the
+rate of two per package: B1182, B1183, B1220, B1221. Open items:
+doc/BACKLOG.csv (69 open after this round; 11 added, 11 closed or
+dropped). Next: SM seventh (B1220 message 133 at the handover, B1221
+the SM direction byte, B1160, B1161, B008, B031, B991, 4.4.21.1.12 /
+.13, 3.18.3.2.4's rear length, packet 12 of 131); the BTM alarm as SF
+(B1200 then B1201); consistency B1182, B1183; the re-reads of 3.18.5,
+3.18.6, 3.15.11.2, 3.20.1.2, A.3.2 and the planning gaps B1202; the
+runner B1180, B1181.
