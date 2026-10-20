@@ -427,7 +427,8 @@ is
                          then M_ERROR_Unlinked_Balise_Group_Message
                          elsif Found
                          then M_ERROR_Balise_Group_Linking_Consistency
-                         else M_ERROR_Odometer_Accuracy_Monitoring_Impairment));
+                         else
+                            M_ERROR_Odometer_Accuracy_Monitoring_Impairment));
       end if;
    end Request_Balise_Errors;
 
