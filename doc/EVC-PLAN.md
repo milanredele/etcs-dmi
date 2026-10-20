@@ -1639,7 +1639,10 @@ no NID_MESSAGE has: `RTM_Tag_Message` (16#F1#), session u8 (1 or 2),
 message: the message received in that session; `RTM_Tag_Event`
 (16#F2#), session, event u8: 1 the safe radio connection set up, 2 lost
 (3.5.4.1), 3 released, 4 set-up failed (3.5.3.7 a), 5 the mobile of the
-session registered to the radio network, 6 its registration failed. The
+session registered to the radio network, 6 its registration failed; the
+event 1 may carry NID_C u16 and NID_RBC u16 of the called RBC, as
+EURORADIO reports it (7 bytes; 3.18.4.3.4, stored for a session called on
+the short number; the 3 byte form leaves it unknown). The
 events latched between two cycles are taken before the messages.
 Outputs: `RTM_Tag_Message`, session, a train to track message;
 `RTM_Tag_Request` (16#F3#), session, request u8: 1 set up a safe radio

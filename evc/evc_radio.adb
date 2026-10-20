@@ -84,6 +84,11 @@ is
       Table (S).State := To;
    end Set_State;
 
+   procedure Set_Reported (S : Session_T; RBC : RBC_Id_T) is
+   begin
+      Table (S).Reported := RBC;
+   end Set_Reported;
+
    procedure Set_Peer (S : Session_T; RBC : RBC_Id_T; Radio : NID_RADIO_T)
    is
    begin

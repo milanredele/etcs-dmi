@@ -1867,9 +1867,19 @@ package body EVC_Test_Support is
       return Message_Of (Kind, Values);
    end Radio_Msg;
 
-   procedure Establish_Session (S : Natural; V : Unsigned_64 := 48) is
+   procedure Establish_Session (S        : Natural;
+                                V        : Unsigned_64 := 48;
+                                Identity : Boolean := False;
+                                NID_C    : Natural := 0;
+                                NID_RBC  : Natural := 0) is
    begin
-      Give_Radio_Event (S, Connection_Set_Up);
+      if Identity then
+         Input (RTM, RTM_Event_Input (S, Connection_Set_Up)
+                & (Byte (NID_C / 256 mod 256), Byte (NID_C mod 256),
+                   Byte (NID_RBC / 256 mod 256), Byte (NID_RBC mod 256)));
+      else
+         Give_Radio_Event (S, Connection_Set_Up);
+      end if;
       Stand;
       Give_Radio_Message (S, Radio_Msg (ETCS_Message_Catalogue.Track_M32, Radio_Now, 0, 7, V));
       Stand;

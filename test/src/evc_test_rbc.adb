@@ -13,6 +13,7 @@ with EVC_Ports;           use EVC_Ports;
 with EVC_Received;
 with EVC_Sessions;
 with EVC_Test_Support;    use EVC_Test_Support;
+with EVC_Track;
 with Interfaces;          use Interfaces;
 with Sim_Onboard_Env;
 with Sim_RBC;
@@ -94,12 +95,15 @@ package body EVC_Test_RBC is
       --  3.5.3.4: the connection
       Sim_RBC.Take (Set_Up);
       Drain;
-      Check (N = 1 and then Lengths (1) = 3
+      Check (N = 1 and then Lengths (1) = RTM_Event_RBC_Length
              and then Inputs (1) (1 .. 3) = Byte_Array'(RTM_Tag_Event, 1, 1)
+             and then Natural (Inputs (1) (4)) * 256
+                      + Natural (Inputs (1) (5)) = EVC_Track.NID_C
+             and then Inputs (1) (6 .. 7) = Byte_Array'(0, 1)
              and then Sim_RBC.State (1) = Sim_RBC.Connected
              and then Sim_RBC.Session_Of (1) = 1,
              "rbc: a set-up request answered with the event set up in its"
-             & " session (3.5.3.4)");
+             & " session, with the RBC identity (3.5.3.4, 3.18.4.3.4)");
       --  3.5.3.7: the session; 3.8.2: an MA on request; 3.5.5: the end
       Sim_RBC.Take (From_Train (MCat.Train_M155, 1_000));
       Sim_RBC.Step (500);

@@ -159,6 +159,8 @@ is
    type Event_Slot_T is record
       Session : RTM_Session_T := 1;
       Event   : RTM_Event_T := Connection_Set_Up;
+      --  the RBC identity reported with a connection set up
+      RBC     : EVC_Radio.RBC_Id_T;
    end record;
    type Event_Slots_T is array (1 .. RTM_Latch_Size) of Event_Slot_T;
 
@@ -398,7 +400,8 @@ is
                                  Data => (others => 0)));
       Latched_RTM_Count := 0;
       Latched_Events := (others => (Session => 1,
-                                    Event => Connection_Set_Up));
+                                    Event => Connection_Set_Up,
+                                    RBC => EVC_Radio.No_RBC));
       Latched_Event_Count := 0;
       Odometer_Now := Standstill_Sample;
       Odometer_Fresh := False;
@@ -544,7 +547,14 @@ is
          if Latched_Event_Count < RTM_Latch_Size then
             Latched_Event_Count := Latched_Event_Count + 1;
             Latched_Events (Latched_Event_Count) :=
-              (Session => S, Event => RTM_Event (Payload));
+              (Session => S, Event => RTM_Event (Payload),
+               RBC     =>
+                 (if RTM_Event_Has_RBC (Payload)
+                  then (NID_C   => ETCS_Variables.NID_C_T
+                                       (RTM_Event_NID_C (Payload)),
+                        NID_RBC => ETCS_Variables.NID_RBC_T
+                                       (RTM_Event_NID_RBC (Payload)))
+                  else EVC_Radio.No_RBC));
          else
             Count (Overflow_Count (RTM));
          end if;
@@ -931,7 +941,8 @@ is
          pragma Loop_Invariant (True);
          EVC_Sessions.Take_Event (Latched_Events (I).Session,
                                   Latched_Events (I).Event,
-                                  Unsigned_64 (Clock_Ms));
+                                  Unsigned_64 (Clock_Ms),
+                                  Latched_Events (I).RBC);
       end loop;
       Latched_Event_Count := 0;
    end Read_Radio_Events;
