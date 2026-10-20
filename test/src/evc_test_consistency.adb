@@ -530,6 +530,7 @@ package body EVC_Test_Consistency is
 
    procedure Scenario_Consistency_Error_Report is
       Count, Error, Rejected : Natural;
+      Reason : Integer;
    begin
       Start_X;
       EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
@@ -595,12 +596,15 @@ package body EVC_Test_Consistency is
              "error report: a linked group missed with the service brake, "
              & "M_ERROR 0, the MA kept while running, got"
              & Img (Count) & Img (Error));
-      Stand;
-      Stand;
+      Wait_MA_Request (3_000, Reason);
       Check (EVC_Movement_Authority.MA.Withdrawn,
              "error report: in level 2 at standstill the MA by radio "
              & "shortened to the train (3.16.2.3.2, 3.16.2.6.2, "
              & "EVC_Stored_Information.Linking_Shortening)");
+      Check (Reason >= 0 and then Reason / 8 mod 2 = 1,
+             "error report: an MA requested after the shortening, "
+             & "Q_MARQSTREASON track description deleted (3.8.2.5.1, "
+             & "A.3.4 h), 7.5.1.118.3), got" & Reason'Image);
       --  a repositioning group announced by radio, a second one with
       --  packet 16 inside its window: the double repositioning error
       Start_X;

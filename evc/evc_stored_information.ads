@@ -507,8 +507,8 @@ is
    --  location based information shortened to the current position of
    --  the train (A.3.4.1.2 j). Decision: the same shortening as for i),
    --  the safe radio connection's brake (A.3.4.1.3 gives j) and i) the
-   --  same column entries)
-   --  @req 3.18.3.7, 3.18.3.7 a)
+   --  same column entries); an MA requested (3.8.2.5.1)
+   --  @req 3.18.3.7, 3.18.3.7 a), 3.8.2.5.1
    procedure Train_Data_Shortening (Changed : Boolean)
      with Global => (In_Out => (State, EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,

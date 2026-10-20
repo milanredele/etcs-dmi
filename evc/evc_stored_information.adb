@@ -2821,21 +2821,50 @@ is
                          and then not EVC_Odometry.Standstill;
    end Contact_Shortening;
 
+   --  The balise group message consistency reaction (3.16.2.4.4,
+   --  3.16.2.5.1) requested in this cycle: the service brake of cause
+   --  Cause_Inconsistent without a link (EVC_Position.React_Inconsistent)
+   function Message_Reaction return Boolean
+     with Global => EVC_Position.State
+   is
+      use type EVC_Position.Event_Kind_T;
+   begin
+      for I in 1 .. EVC_Position.Event_Count loop
+         pragma Loop_Invariant (True);
+         declare
+            E : constant EVC_Position.Event_T := EVC_Position.Event (I);
+         begin
+            if E.Kind = EVC_Position.Linking_Reaction
+              and then E.B2 = Unsigned_8 (Q_LINKREACTION_Apply_Service_Brake)
+              and then E.B3 = EVC_Position.Cause_Inconsistent
+              and then E.B4 = 0
+            then
+               return True;
+            end if;
+         end;
+      end loop;
+      return False;
+   end Message_Reaction;
+
    --  3.16.2.6.2, 3.16.2.7.1.1: the service brake of a linking reaction
-   --  (EVC_Position.Reaction 1; commanded in the modes of EVC_Procedures)
-   --  and the train at standstill since: the location based information
-   --  shortened to the current position as for 3.16.3.4.5 b) (A.3.4.1.2 i).
+   --  (EVC_Position.Reaction 1) and the train at standstill since: the
+   --  location based information shortened to the current position as
+   --  for 3.16.3.4.5 b) (A.3.4.1.2 i), and an MA requested (3.8.2.5.1:
+   --  g), h), l) and m) are not among its exceptions). The brake is
+   --  commanded in the modes of EVC_Procedures.Evaluate: FS, AD, LS, OS,
+   --  SM for a linking reaction, every mode reading balises but SL, PT,
+   --  NL, RV, PS for an inconsistent message (Message_Reaction).
    --  Decision: the brake requested in an earlier cycle and the train at
    --  standstill now, a request at standstill shortens nothing. The
    --  service brake of an inconsistent message is such a reaction
    --  (EVC_Position.React_Inconsistent), shortened here: A.3.4.1.2 g)
    --  and m) share the column of h) and i) in Table A.3.4
-   --  @req 3.16.2.6.2, 3.16.2.4.4.2, 3.16.2.5.2
+   --  @req 3.16.2.6.2, 3.16.2.4.4.2, 3.16.2.5.2, 3.8.2.5.1
    procedure Linking_Shortening (T     : Origin_Table_T;
                                  Train : Train_Frame_T;
                                  Mode  : EVC_Modes.Mode_T)
      with Global => (Input  => (EVC_Position.State, EVC_Odometry.State),
-                     In_Out => (Linking_Braking,
+                     In_Out => (Linking_Braking, Timer_Deletion,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -2847,13 +2876,18 @@ is
       if Linking_Braking and then EVC_Odometry.Standstill then
          EVC_Movement_Authority.Shorten_To_Train (Train, O);
          Apply (T, O);
+         Timer_Deletion := True;
          Linking_Braking := False;
       end if;
       if EVC_Position.Linking_Reaction_Requested
         and then EVC_Position.Reaction = Q_LINKREACTION_Apply_Service_Brake
-        and then Mode in EVC_Modes.M_FS | EVC_Modes.M_AD | EVC_Modes.M_LS
-                       | EVC_Modes.M_OS | EVC_Modes.M_SM
         and then not EVC_Odometry.Standstill
+        and then (Mode in EVC_Modes.M_FS | EVC_Modes.M_AD | EVC_Modes.M_LS
+                        | EVC_Modes.M_OS | EVC_Modes.M_SM
+                  or else (Mode in EVC_Modes.M_SR | EVC_Modes.M_SH
+                                 | EVC_Modes.M_UN | EVC_Modes.M_SB
+                                 | EVC_Modes.M_TR | EVC_Modes.M_SN
+                           and then Message_Reaction))
       then
          Linking_Braking := True;
       end if;
@@ -3122,6 +3156,8 @@ is
       if Changed and then EVC_Odometry.Standstill then
          EVC_Movement_Authority.Shorten_To_Train (Train_Frame, O);
          Apply (EVC_Profiles.Origin_Table, O);
+         --  3.8.2.5.1: j) is not among the exceptions, an MA requested
+         Timer_Deletion := True;
       end if;
    end Train_Data_Shortening;
 

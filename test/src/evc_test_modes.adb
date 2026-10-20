@@ -817,6 +817,7 @@ package body EVC_Test_Modes is
       use type EVC_Movement_Authority.MA_T;
       M0 : EVC_Movement_Authority.MA_T;
       NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+      Deleted : Boolean;
       function Entry_With (Axle_Load : Byte) return Byte_Array is
         (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
                 Byte_Array'(1 => 2)
@@ -860,11 +861,18 @@ package body EVC_Test_Modes is
              "train data: the same categories entered again: the MA kept "
              & "(3.18.3.7); airtight taken (3.18.3.2 h)");
       Send (Entry_With (2));
-      Stand_X (200);
+      Deleted := EVC_Stored_Information.MA_Timer_Deletion;
+      for I in 1 .. 2 loop
+         Stand_X (100);
+         Deleted := Deleted or else EVC_Stored_Information.MA_Timer_Deletion;
+      end loop;
       Check (EVC_Train_Data.Categories.Axle_Load = 2
              and then EVC_Movement_Authority.MA /= M0,
              "train data: the axle load category changed at standstill: "
              & "the MA shortened to the train (3.18.3.7 a), A.3.4.1.2 j)");
+      Check (Deleted,
+             "train data: the shortening of j) asks for an MA "
+             & "(3.8.2.5.1, EVC_Stored_Information.MA_Timer_Deletion)");
    end Scenario_Train_Data_Categories;
 
    --  3.18.4.2.5: a table of trackside supported levels applicable (an
