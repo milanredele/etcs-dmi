@@ -9063,3 +9063,11 @@ package. Two of the four wrong premises were a packet numbering taken
 from memory: a brief names a packet by its clause (`clause.py 7.4.2.x`)
 or not at all. Open items: doc/BACKLOG.csv (69 open after this round;
 11 added, 8 closed).
+
+### The consistency brake by mode, the MA request after a shortening, the traces, the odometer errors (e6/consistency-brake, 2026-10-20)
+
+- B1042 done, 3.16.2.4.4, 3.16.2.5.1: `EVC_Procedures.Linking_Events` tells the message consistency reaction (a service brake of `Cause_Inconsistent` without a link) apart as `Msg_SB`; `Evaluate` commands it in every mode reading balises but SL, PT, NL, RV, PS (4.4.6.1.12, 4.4.14.1.9, 4.4.15.1.10, 4.4.18.1.10, 4.4.20.1.15), the linking reaction keeps FS, AD, LS, OS, SM (3.16.2.6.2). Decision: SB, TR and SN read balises and are not excepted. `Scenario_Consistency_Modes` (SR linked and unlinked, PT, the linking reaction in SR). Rows 4.4.6.1.12, 4.4.15.1.10 done. 9990400_25 fails at step 108 now; Saf042fa6 keeps three untraced sequences (B1120).
+- B1011 done, 3.8.2.5.1: `EVC_Stored_Information.Linking_Shortening` and `Train_Data_Shortening` set `Timer_Deletion` where they apply (g, h, l, m, j); `Linking_Shortening` also shortens after the message consistency brake in the modes B1042 added (`Message_Reaction`). `EVC_Test_Support.Wait_MA_Request`; checks in `Scenario_Consistency_Error_Report` (message 132, Q_MARQSTREASON track description deleted) and `Scenario_Train_Data_Categories`. 3.8.2.5.1 stays partial for o) (Supervised Manoeuvre).
+- B1043 done, both traces not ours: 3140100_02 step 79, the runner's direction controller left forward in a backward movement, the roll-away emergency brake beside the PT brake asks a second acknowledgement by 3.14.1.10 (Sd56a8154 `model`, B1121); 3130810_01 step 40, M_VERSION 110 0000 in the sequence's telegrams, [65] trips (Sb6e8acf4 `s076`).
+- Not reached (bound): B1040 (M_ERROR 9 and 10 of the odometer to the RBC), B1041 (the runner's record 12 judgement).
+- SUBSET-076: 1017 / 1116 / 1057 before and after, 9 improvements (9990400_25, 9990400_23, 3131040_54 in three versions), 0 regressions.
