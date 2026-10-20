@@ -1767,6 +1767,65 @@ package body EVC_Test_Procedures is
              & "announced BMM area");
    end Scenario_BMM;
 
+   --  3.15.7 Tolerance of big metal masses: the BTM alarm of the BTM port
+   --  (EVC_Ports: one byte, 1 raised, 0 ended), ignored or answered by
+   --  the service brake (3.15.7.6, EVC_BTM_Alarm)
+   procedure Scenario_BTM_Alarm is
+      procedure Alarm (On : Boolean) is
+      begin
+         Input (BTM, (1 => (if On then 1 else 0)));
+         Cycle;
+      end Alarm;
+   begin
+      Begin_Scenario (M_SB, L1);
+      Alarm (True);
+      Check (not SB, "3.15.7.4 b): the BTM alarm ignored in SB, level 1");
+
+      Begin_Scenario (M_SH, L1);
+      Alarm (True);
+      Check (SB, "3.15.7.6: the BTM alarm not ignored in SH, level 1: "
+             & "the service brake");
+      Alarm (False);
+      Check (not SB, "3.15.7.6: the service brake released when the "
+             & "alarm ends");
+
+      Begin_Scenario (M_SH, L1);
+      Driver (18, 0);
+      Cycle;
+      Alarm (True);
+      Check (not SB and then Status_BMM = 1,
+             "3.15.7.4 a), 5.22.4.2: the BTM alarm ignored under the "
+             & "inhibition of 5.22");
+
+      --  3.15.7.5, 3.12.1.2.1.2: a big metal mass at 100 m, 50 m long
+      Begin_Scenario (M_SH, L1);
+      Group (3, 0);
+      Add (ST.Big_Metal_Mass (100, 50));
+      Close;
+      Run_Front (Antenna_M + 99, 10);
+      Alarm (True);
+      Check (not SB, "3.15.7.5, 3.12.1.2.1.2: ignored with the max safe "
+             & "antenna position over the start of the big metal mass");
+      Run_Front (Antenna_M + 148, 10);
+      Check (not SB, "3.15.7.5: ignored over the big metal mass");
+      Run_Front (Antenna_M + 200, 10);
+      Check (SB, "3.15.7.5, 3.15.7.6: beyond the end of the big metal "
+             & "mass with the min safe antenna position, the reaction");
+
+      --  3.15.7.2, 3.6.7.1 d): the 300 m of A.3.1 in level 0
+      Begin_Scenario (M_UN, L0);
+      Alarm (True);
+      Run_Front (280, 20);
+      Check (not SB, "3.15.7.2, 3.6.7.1 d): ignored in level 0 within "
+             & "the 300 m of A.3.1");
+      Run_Front (300, 20);
+      Check (SB, "3.15.7.2: the alarm persisting beyond 300 m in level 0, "
+             & "the reaction");
+      Alarm (False);
+      Alarm (True);
+      Check (not SB, "3.15.7.2: a new alarm, the distance counted again");
+   end Scenario_BTM_Alarm;
+
    --  5.16 Passing a level crossing not protected (SUBSET-076 5160000_01:
    --  two level crossings not protected, stopping not required, passed
    --  in FS; 5160000 with stopping required)
@@ -2670,6 +2729,7 @@ package body EVC_Test_Procedures is
       Scenario_Text_Messages;
       Scenario_Text_Message_Room;
       Scenario_BMM;
+      Scenario_BTM_Alarm;
       Scenario_Mode_Speeds;
       Scenario_Brake_Reevaluated;
       Scenario_Level_Crossing;

@@ -24,6 +24,11 @@
 --     EVC_Received) and hands it with its stamp to the position
 --     (EVC_Position): the stamp places the balise, hence the balise
 --     group, on the odometer frame (SUBSET-026 3.6.4.1.1 a).
+--     Phase E6 adds the BTM alarm, the "integrity check alarm of balise
+--     transmission" a big metal mass may trigger (3.15.7.1, 5.22.1.2):
+--     one byte, 1 when the alarm is raised, 0 when it ends; the alarm
+--     holds from the first until the second (3.15.7.2: it persists).
+--     No telegram input is that short.
 --  RTM (in and out): the application side of Euroradio (SUBSET-037 and
 --     the safe connection are the other side of the port, as the air gap
 --     is the BTM's). In: one radio message of SUBSET-026 chapter 8 as its
@@ -212,6 +217,17 @@ is
    function BTM_Stamp (Payload : Byte_Array) return Unsigned_32 is
      (EVC_Bytes.Get_U32 (Payload, Payload'First))
      with Pre => Payload'Length > BTM_Stamp_Length;
+
+   --  The BTM alarm input (above): one byte, 0 or 1
+   BTM_Alarm_Length : constant := 1;
+   function Valid_BTM_Alarm (Payload : Byte_Array) return Boolean is
+     (Payload'Length = BTM_Alarm_Length
+      and then Payload (Payload'First) <= 1);
+
+   --  The alarm is raised (else it ended)
+   function BTM_Alarm_On (Payload : Byte_Array) return Boolean is
+     (Payload (Payload'First) = 1)
+     with Pre => Valid_BTM_Alarm (Payload);
 
    --  The message frame of a tagged input: NID_MESSAGE, L_MESSAGE and
    --  the rest, 3 .. 1023 bytes. Its L_MESSAGE is not the port's to
@@ -416,7 +432,8 @@ is
    --  True when Payload has the documented shape of an input on Port
    function Valid_Input (Port : Port_T; Payload : Byte_Array) return Boolean
    is (case Port is
-          when BTM      => Valid_BTM_Input (Payload),
+          when BTM      => Valid_BTM_Input (Payload)
+                           or else Valid_BTM_Alarm (Payload),
           when RTM      => Valid_RTM_Input (Payload),
           when Odometer => Valid_Odometer (Payload),
           when TIU      => Valid_TIU (Payload),

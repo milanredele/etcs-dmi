@@ -126,6 +126,20 @@ is
           Pre  => I <= Max_Stored,
           Post => BMM_Item'Result = Big_Metal_Masses.List (I);
 
+   --  3.15.7.5, 3.12.1.3 9th bullet: a big metal mass applies at the
+   --  balise antenna, Offset behind the front end along the orientation;
+   --  3.12.1.2.1.2: its start against the max safe antenna position, its
+   --  end against the min safe one. Decision: compared in the store's
+   --  sense whichever way the train moves (the interval of the antenna
+   --  overlaps the area), so that a mass passed backwards applies too
+   --  @req 3.12.1.2.1.2, 3.15.7.5
+   function BMM_At_Antenna (T      : Origin_Table_T;
+                            Train  : Train_Frame_T;
+                            Offset : Length_T) return Boolean
+     with Global => State,
+          Post => (if BMM_At_Antenna'Result
+                   then Train.Valid and then BMM_Count > 0);
+
    --  the station platforms
    --  (packet 69; Value: M_PLATFORM * 4 + Q_PLATFORM) and the changes of
    --  allowed current consumption (packet 40; Value: M_CURRENT, at Start)
