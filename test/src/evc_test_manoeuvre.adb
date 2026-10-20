@@ -8,6 +8,7 @@ with ETCS_Track_Packets.P27;
 with ETCS_Train_Packets.P0;
 with ETCS_Variables;
 with EVC_Core;
+with EVC_DMI_Port;
 with EVC_Distances;       use EVC_Distances;
 with EVC_Modes;           use EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
@@ -441,6 +442,21 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Sessions.SM_Waiting,
              "SM request: an answer to another request not taken (4.8.4 "
              & "[14])");
+      declare
+         Shown : constant Natural :=
+           SS_Seen (Natural (EVC_DMI_Port.SS_SM_Refused));
+      begin
+         EVC_Core.Set_Mode_For_Test (M_FS, L1);
+         Give_Radio_Message (1, SM_Refused (T));
+         Stand_X (200);
+         Check (EVC_Sessions.SM_Waiting
+                and then SS_Seen (Natural (EVC_DMI_Port.SS_SM_Refused))
+                         = Shown,
+                "SM request: SM refused in level 1, rejected by 4.8.3, "
+                & "neither ends the wait nor is shown (4.8.4, B952)");
+         EVC_Core.Set_Mode_For_Test (M_FS, L2);
+         Stand_X (200);
+      end;
       Give_Radio_Message (1, SM_Refused (T));
       Stand_X (200);
       Check (not EVC_Sessions.SM_Waiting and then EVC_Sessions.SM_Answer = 0
