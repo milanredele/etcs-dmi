@@ -83,6 +83,7 @@ begin
    DMI_Test_Data_Entry.Scenario_Alphanumeric_Entry;
    DMI_Test_Data_Entry.Scenario_Dedicated_Keyboards;
    DMI_Test_Data_Entry.Scenario_Train_Data_Windows;
+   DMI_Test_Data_Entry.Scenario_Train_Data_Request;
    DMI_Test_System_Status.Scenario_SS_Catalogue;
    DMI_Test_System_Status.Scenario_SS_Timers;
    DMI_Test_System_Status.Scenario_SS_Main_Window;

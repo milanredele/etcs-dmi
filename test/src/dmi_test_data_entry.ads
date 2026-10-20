@@ -19,4 +19,6 @@ package DMI_Test_Data_Entry is
 
    procedure Scenario_Train_Data_Windows;
 
+   procedure Scenario_Train_Data_Request;
+
 end DMI_Test_Data_Entry;

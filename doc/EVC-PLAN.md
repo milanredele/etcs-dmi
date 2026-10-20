@@ -9090,6 +9090,10 @@ S69f1f87e (its step reads "NOT ... displayed" for "not changed").
 Scfbb86e1 traced, s076: the sequence presses Data view while the Main
 window is in S1 of the SM dialogue, buttons and [close] disabled (DMI
 11.7.8.2). Runner 1017 / 1116 / 1057 -> 1019 / 1114 / 1057, 0
-regressions. Not reached (the bound): B970, the Train data window on
-MSG_ONBOARD som 3 (`DMI_Core`, a `DMI_Test_Data_Entry` scenario with its
-goldens; 3060500_14 step 74, S4ec90124).
+regressions. B970 done (resumed): `DMI_Core` reads MSG_ONBOARD som 3 as
+`DMI_Conditions.Train_Data_Request`, and `DMI_Windows.Onboard_State_Changed`
+opens the Train data window on the change to 3 (SUBSET-026 5.17.2.2 S6;
+decision: not over a data entry or validation window the driver is in);
+`DMI_Test_Data_Entry.Scenario_Train_Data_Request`; no golden changed;
+3060500_14 passes in SV21, SV22, SV30 (S4ec90124). Runner after it 1022
+/ 1111 / 1057, 0 regressions.
