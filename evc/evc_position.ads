@@ -354,6 +354,19 @@ is
    function Position_Report (Mode : Mode_T; Level : Level_T)
      return ETCS_Train_Packets.P0.Packet_T
      with Global => (State, EVC_Odometry.State);
+   --  5.21.2.2 A045: the position report of the Supervised Manoeuvre
+   --  request with the safe consist C: the estimated front end the far
+   --  end of the consist in front of the engine (the side of its active
+   --  cab), or in rear of it when the train orientation is the other
+   --  side, its confidence interval widened by the consist's minimum and
+   --  maximum (3.6.4.1.5); once the position was shifted to the other end
+   --  of the consist (Shift_For_Manoeuvre) the report as it is
+   --  @req 5.21.2.2 A045
+   function Consist_Report (Mode  : Mode_T;
+                            Level : Level_T;
+                            C     : EVC_Train_Data.Consist_T)
+     return ETCS_Train_Packets.P0.Packet_T
+     with Global => (State, EVC_Odometry.State);
    --  @req 3.4.2.3.3.2, 3.4.2.3.3.3
    function Position_Report_2 (Mode : Mode_T; Level : Level_T)
      return ETCS_Train_Packets.P1.Packet_T

@@ -5,6 +5,7 @@ with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
+with ETCS_Train_Packets.P0;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_Distances;       use EVC_Distances;
@@ -374,6 +375,40 @@ package body EVC_Test_Manoeuvre is
              "SM consist: the resent one acknowledged (3.18.3.10.1)");
    end Scenario_SM_Consist_Info;
 
+   --  The report of message 131 with the safe consist received equals
+   --  the position report
+   function Same_Report return Boolean is
+     (ETCS_Train_Packets.P0."="
+        (EVC_Position.Consist_Report (EVC_Core.Mode, L2,
+                                      EVC_Train_Data.Consist),
+         EVC_Position.Position_Report (EVC_Core.Mode, L2)));
+
+   --  The report of message 131 has its estimated front end Ahead cm
+   --  further than the position report and its confidence interval
+   --  More_Over and More_Under cm wider, to the resolution of its scale
+   function Front_Moved (Ahead, More_Over, More_Under : Length_T)
+     return Boolean
+   is
+      C : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Consist_Report (EVC_Core.Mode, L2,
+                                     EVC_Train_Data.Consist);
+      P : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Position_Report (EVC_Core.Mode, L2);
+      use type ETCS_Variables.Q_SCALE_T, ETCS_Variables.Q_DLRBG_T;
+      Q : constant Natural := Natural (C.Q_SCALE);
+      R : constant Length_T := Scaled (1, Q);
+      function Near (A, B : Length_T) return Boolean is
+        (A <= B + R and then B <= A + R);
+   begin
+      return C.Q_SCALE = P.Q_SCALE and then C.Q_DLRBG = P.Q_DLRBG
+        and then Near (Scaled (Natural (C.D_LRBG), Q),
+                       Scaled (Natural (P.D_LRBG), Q) + Ahead)
+        and then Near (Scaled (Natural (C.L_DOUBTOVER), Q),
+                       Scaled (Natural (P.L_DOUBTOVER), Q) + More_Over)
+        and then Near (Scaled (Natural (C.L_DOUBTUNDER), Q),
+                       Scaled (Natural (P.L_DOUBTUNDER), Q) + More_Under);
+   end Front_Moved;
+
    procedure Scenario_SM_Request is
       T : Unsigned_64;
    begin
@@ -421,6 +456,24 @@ package body EVC_Test_Manoeuvre is
              and then not EVC_Sessions.SM_Waiting,
              "SM request: none without the safe consist length available "
              & "(5.21.2.2 S0, 4.4.21.1.3)");
+
+      --  A045: the report's front end from the safe consist length in
+      --  front of the engine
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 400, 398, 402));
+      Stand_X (300);
+      Check (Same_Report,
+             "SM request: nothing in front of the engine, the report of 131 "
+             & "is the position report (5.21.2.2 A045)");
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      Stand_X (300);
+      Check (Front_Moved (5_000, 100, 200),
+             "SM request: 50 m in front of the engine (49 .. 52), the report "
+             & "of 131 has its front end 50 m ahead, the confidence interval "
+             & "1 m and 2 m wider (5.21.2.2 A045, 3.18.3.2.5.1)");
+      Select_SM;
+      Check (Wait_For (MCat.Train_M131, 1_000) /= 0,
+             "SM request: 131 sent with the consist in front (5.21.2.2 "
+             & "A045)");
    end Scenario_SM_Request;
 
 end EVC_Test_Manoeuvre;

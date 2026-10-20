@@ -2041,37 +2041,50 @@ is
    function Manoeuvre_Orientation return Boolean is (Manoeuvre.Fixed)
      with Refined_Global => Manoeuvre;
 
-   procedure Shift_For_Manoeuvre (Opposite : Boolean;
-                                  C        : EVC_Train_Data.Consist_T)
+   --  The front end of the consist C along the orientation O: the far end
+   --  of the consist in front of the engine when O is the side of the
+   --  active cab, else of the consist in rear of it (which includes the
+   --  engine, 3.18.3.2.4), from the active cab's end; Reach from the
+   --  antenna along O, the confidence interval widened by the consist's
+   --  minimum and maximum (3.6.4.1.5)
+   function Consist_End (O : Sense_T; C : EVC_Train_Data.Consist_T)
+     return Manoeuvre_T
+     with Global => (Cab_In, Antenna_Offset),
+          Post   => Consist_End'Result.Fixed and then Consist_End'Result.Moved
    is
       Cab_S : constant Sense_T :=
         (case Cab_In is
             when Cab_A  => Plus,
             when Cab_B  => Minus,
-            when No_Cab => Orient);
+            when No_Cab => O);
+   begin
+      if O = Cab_S then
+         return (Fixed => True, Moved => True,
+                 Reach => Sum (Antenna_Offset (Cab_S), Metres (C.Front_Nom)),
+                 Over  => Clamp_Length
+                   (Metres (C.Front_Nom) - Metres (C.Front_Min)),
+                 Under => Clamp_Length
+                   (Metres (C.Front_Max) - Metres (C.Front_Nom)));
+      else
+         return (Fixed => True, Moved => True,
+                 Reach => Diff (Metres (C.Rear_Nom), Antenna_Offset (Cab_S)),
+                 Over  => Clamp_Length
+                   (Metres (C.Rear_Nom) - Metres (C.Rear_Min)),
+                 Under => Clamp_Length
+                   (Metres (C.Rear_Max) - Metres (C.Rear_Nom)));
+      end if;
+   end Consist_End;
+
+   procedure Shift_For_Manoeuvre (Opposite : Boolean;
+                                  C        : EVC_Train_Data.Consist_T)
+   is
       New_O : constant Sense_T := EVC_Distances.Opposite (Orient);
    begin
       Manoeuvre.Fixed := True;
       if not Opposite then
          return;
       end if;
-      if New_O = Cab_S then
-         --  the far end of the consist in front of the engine
-         Manoeuvre.Reach := Sum (Antenna_Offset (Cab_S), Metres (C.Front_Nom));
-         Manoeuvre.Over := Clamp_Length
-           (Metres (C.Front_Nom) - Metres (C.Front_Min));
-         Manoeuvre.Under := Clamp_Length
-           (Metres (C.Front_Max) - Metres (C.Front_Nom));
-      else
-         --  the far end of the consist in rear of the engine (which it
-         --  includes, 3.18.3.2.4), from the active cab's end
-         Manoeuvre.Reach := Diff (Metres (C.Rear_Nom), Antenna_Offset (Cab_S));
-         Manoeuvre.Over := Clamp_Length
-           (Metres (C.Rear_Nom) - Metres (C.Rear_Min));
-         Manoeuvre.Under := Clamp_Length
-           (Metres (C.Rear_Max) - Metres (C.Rear_Nom));
-      end if;
-      Manoeuvre.Moved := True;
+      Manoeuvre := Consist_End (New_O, C);
       --  3.6.6.4.3: a change of orientation deletes the announced
       --  geographical references
       Geo_Refs := (others => No_Geo_Ref);
@@ -2556,8 +2569,12 @@ is
 
    --  The common part of the two reports, against the direction
    --  reference G (the LRBG orientation, or for packet 1 the direction
-   --  from the previous LRBG)
+   --  from the previous LRBG); the estimated front end moved by Ahead
+   --  along the orientation and its confidence interval widened by
+   --  More_Over and More_Under (the consist of Consist_Report)
    procedure Fill (G         : Direction_T;
+                   Ahead     : Dist_T;
+                   More_Over, More_Under : Length_T;
                    Q_SCALE   : out Q_SCALE_T;
                    D_LRBG    : out D_LRBG_T;
                    Q_DIRLRBG : out Q_DIRLRBG_T;
@@ -2566,9 +2583,9 @@ is
                    Under     : out L_DOUBTUNDER_T;
                    Q_DIRTRAIN : out Q_DIRTRAIN_T)
    is
-      Est : constant Dist_T := Estimated_Front;
-      O   : constant Length_T := Doubt_Over;
-      U   : constant Length_T := Doubt_Under;
+      Est : constant Dist_T := Sum (Estimated_Front, Ahead);
+      O   : constant Length_T := Add (Doubt_Over, More_Over);
+      U   : constant Length_T := Add (Doubt_Under, More_Under);
       Q   : constant Natural := Scale_For (Abs_Dist (Est), O, U);
       --  the estimated front end on the nominal side of G
       Side : constant Direction_T :=
@@ -2585,8 +2602,16 @@ is
       Q_DIRTRAIN := Q_DIRTRAIN_T (Q_Of (EVC_Odometry.Last_Direction, G));
    end Fill;
 
-   function Position_Report (Mode : Mode_T; Level : Level_T)
+   --  Packet 0 with the estimated front end moved by Ahead and the
+   --  confidence interval widened by More_Over and More_Under (Fill)
+   function Report_With (Mode       : Mode_T;
+                         Level      : Level_T;
+                         Ahead      : Dist_T;
+                         More_Over  : Length_T;
+                         More_Under : Length_T)
      return ETCS_Train_Packets.P0.Packet_T
+     with Global => (LRBG_A, Orient, Orient_Known, Antenna_Offset,
+                     Manoeuvre, EVC_Odometry.State)
    is
       P : ETCS_Train_Packets.P0.Packet_T;
    begin
@@ -2609,11 +2634,31 @@ is
       else
          P.NID_C := LRBG_A.Id.NID_C;
          P.NID_BG := LRBG_A.Id.NID_BG;
-         Fill (LRBG_A.Orientation, P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG,
-               P.Q_DLRBG, P.L_DOUBTOVER, P.L_DOUBTUNDER, P.Q_DIRTRAIN);
+         Fill (LRBG_A.Orientation, Ahead, More_Over, More_Under,
+               P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
+               P.L_DOUBTOVER, P.L_DOUBTUNDER, P.Q_DIRTRAIN);
       end if;
       return P;
-   end Position_Report;
+   end Report_With;
+
+   function Position_Report (Mode : Mode_T; Level : Level_T)
+     return ETCS_Train_Packets.P0.Packet_T
+   is (Report_With (Mode, Level, 0, 0, 0));
+
+   function Consist_Report (Mode  : Mode_T;
+                            Level : Level_T;
+                            C     : EVC_Train_Data.Consist_T)
+     return ETCS_Train_Packets.P0.Packet_T
+   is
+      E : constant Manoeuvre_T := Consist_End (Orient, C);
+   begin
+      if Manoeuvre.Moved then
+         return Report_With (Mode, Level, 0, 0, 0);
+      end if;
+      return Report_With (Mode, Level,
+                          Diff (E.Reach, Antenna_Offset (Orient)),
+                          E.Over, E.Under);
+   end Consist_Report;
 
    function Position_Report_2 (Mode : Mode_T; Level : Level_T)
      return ETCS_Train_Packets.P1.Packet_T
@@ -2637,7 +2682,7 @@ is
       P.NID_C_PRVLRBG := (if Prev_A.Valid then Prev_A.Id.NID_C else 0);
       P.NID_BG_PRVLRBG := (if Prev_A.Valid then Prev_A.Id.NID_BG
                            else Unknown_Identity.NID_BG);
-      Fill (Dref, P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
+      Fill (Dref, 0, 0, 0, P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
             P.L_DOUBTOVER, P.L_DOUBTUNDER, P.Q_DIRTRAIN);
       return P;
    end Position_Report_2;
