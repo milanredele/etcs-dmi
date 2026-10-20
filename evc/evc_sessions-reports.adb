@@ -380,6 +380,8 @@ is
       Repos    : Boolean := False;
       Linked   : Boolean := False;
       Unlinked : Boolean := False;
+      Impaired : Boolean := False;
+      Unsafe   : Boolean := False;
    begin
       for I in 1 .. EVC_Position.Event_Count loop
          pragma Loop_Invariant (True);
@@ -400,22 +402,32 @@ is
                Linked := True;
             elsif E.Kind = EVC_Position.Inconsistent_Unlinked then
                Unlinked := True;
+            elsif E.Kind = EVC_Position.Odometer_Accuracy then
+               --  the cycle the odometer accuracy reaches a threshold
+               --  (B2: 1 impaired, 2 safety threshold)
+               Impaired := Impaired or else E.B2 = 1;
+               Unsafe := Unsafe or else E.B2 = 2;
             end if;
          end;
       end loop;
-      if (Found or else Linked or else Unlinked)
+      if (Found or else Linked or else Unlinked or else Impaired
+          or else Unsafe)
         and then In_L2 and then Sv /= R.No_Session
         and then R.Info (R.Session_T (Sv)).State = R.Established
       then
          Request_Error (R.Session_T (Sv),
-                        (if Repos
+                        (if Unsafe
+                         then M_ERROR_Odometer_Accuracy_Monitoring_Safety
+                         elsif Repos
                          then M_ERROR_Double_Repositioning_Error_3
                          elsif Double then M_ERROR_Double_Linking_Error_3
                          elsif Linked
                          then M_ERROR_Linked_Balise_Group_Message
                          elsif Unlinked
                          then M_ERROR_Unlinked_Balise_Group_Message
-                         else M_ERROR_Balise_Group_Linking_Consistency));
+                         elsif Found
+                         then M_ERROR_Balise_Group_Linking_Consistency
+                         else M_ERROR_Odometer_Accuracy_Monitoring_Impairment));
       end if;
    end Request_Balise_Errors;
 

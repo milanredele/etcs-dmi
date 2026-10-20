@@ -628,6 +628,30 @@ package body EVC_Test_Consistency is
              "error report: a second group with the criteria of the "
              & "repositioning group in its window, M_ERROR 8 (3.16.4.1, "
              & "3.16.2.7.2, 7.5.1.64), got" & Img (Count) & Img (Error));
+      --  the odometer accuracy monitoring: 6 % reaches the impairment
+      --  threshold at 4200 m, then 35 % from 5000 m the safety threshold
+      --  once the window's accumulated amounts reach it
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish_Session (1);
+      Bound_Per_Mille := 60;
+      Run_Errors (415_000, Count, Error);
+      Check (Count = 0,
+             "error report: the odometer within its accuracy, none, got"
+             & Img (Count) & Img (Error));
+      Run_Errors (500_000, Count, Error);
+      Check (Count = 1 and then Error = 9,
+             "error report: the odometer impaired, M_ERROR 9 once "
+             & "(3.16.4.1, 3.6.8.5, 3.6.5.1.4 l), 7.5.1.64), got"
+             & Img (Count) & Img (Error));
+      Bound_Per_Mille := 350;
+      Run_Errors (1_000_000, Count, Error);
+      Check (Count = 1 and then Error = 10,
+             "error report: the odometer's safety threshold, M_ERROR 10 "
+             & "(3.16.4.1, 3.6.8.7, 7.5.1.64), got"
+             & Img (Count) & Img (Error));
    end Scenario_Consistency_Error_Report;
 
 end EVC_Test_Consistency;

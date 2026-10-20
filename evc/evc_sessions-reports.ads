@@ -155,15 +155,19 @@ is
    --  double linking error, 3.16.2.7.1; 8 the double repositioning error,
    --  3.16.2.7.2; the inconsistent message of a
    --  linked group 1, 3.16.2.4, of an unlinked one 2, 3.16.2.5, with or
-   --  without a reaction, 3.16.4.2), reported in level 2 to the
-   --  supervising RBC while its session is established. 3.16.4.3: a group
+   --  without a reaction, 3.16.4.2; the odometer accuracy monitoring on
+   --  the cycle it reaches a threshold, 9 the impairment threshold,
+   --  3.6.8.5, 10 the safety threshold, 3.6.8.7), reported in level 2 to
+   --  the supervising RBC while its session is established. 3.16.4.3: a group
    --  marked linked and not in the linking information is no linking
    --  reaction, so not reported. Decision: one report per cycle, the
-   --  double repositioning error first, the double linking error, then a
+   --  safety threshold first (the mode is SF, it implies the impairment:
+   --  9 is not sent with it), the double repositioning error, the double
+   --  linking error, then a
    --  linked group's message, an
-   --  unlinked group's, the single linking error; an error without an
-   --  established session is not kept for a later one
-   --  @req 3.16.4.1, 3.16.4.3
+   --  unlinked group's, the single linking error, the impairment; an
+   --  error without an established session is not kept for a later one
+   --  @req 3.16.4.1, 3.16.4.3, 3.6.5.1.4 l)
    procedure Request_Balise_Errors (In_L2 : Boolean)
      with Global => (Input  => (EVC_Position.State, EVC_Radio.State),
                      In_Out => State);
