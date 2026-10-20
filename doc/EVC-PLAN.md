@@ -9342,3 +9342,58 @@ DMI-internal buttons of the Train data window (7) and of Initiate SM (3),
 JRU 5 / 8 and message 153 (E7).
 SUBSET-076: 1038 / 1112 / 1040 -> 1041 / 1109 / 1040, steps passed
 207281 -> 207345, not judged 4383 -> 4384, 0 regressions.
+### The BTM alarm and the big metal masses, the special functions and system data rows re-read (e6/special-functions, 2026-10-20)
+
+Done: the tolerance of big metal masses, 3.15.7.2, .4, .5, .6, 3.6.7.1 d),
+3.12.1.2.1.2, 5.22.4.2 (n/a before: the port had no alarm). The BTM port
+carries the alarm as a one-byte input (`EVC_Ports.Valid_BTM_Alarm`,
+`BTM_Alarm_On`: 1 raised, 0 ended; it holds between the two, 3.15.7.2
+"persists"; no telegram input is that short, so the format stays
+backwards compatible), latched by `EVC_Core.Handle_Input`.
+`EVC_BTM_Alarm` (new, pure) holds the rules: ignored in levels 0 / NTC
+over the 300 m of A.3.1 (`Immunity_Distance_Cm`), in levels 1 / 2 under
+the inhibition of 5.22 or in SB, in all levels over a big metal mass at
+the antenna (`EVC_Track_Conditions.BMM_At_Antenna`: the start against
+the max safe, the end against the min safe antenna position).
+`EVC_Core.Supervise_BTM_Alarm` (after `Finish_Procedures`) counts the
+distance with an `EVC_Odometry.Virtual_T` started where the alarm was
+raised (either direction, again for the next alarm) and gives the
+reaction to `Produce_Outputs` as a service brake demand. Scenario:
+evc_test_procedures `Scenario_BTM_Alarm` (SB, the inhibition, a big
+metal mass, level 0 within and beyond 300 m, the alarm's end).
+
+Decisions: the reaction of 3.15.7.6 (3.15.7.6.1: implementation
+specific) is the service brake while the alarm persists not ignored,
+released when it ends or comes to be ignored: the alarm is a fault of
+the balise transmission, the service brake brings the train to the
+standstill at which the driver may select the inhibition (5.22.2.1).
+SUBSET-076 takes System Failure instead in 10 of its 16 sequences with
+an `INT btm-alarm` step ("here, transition to SF"): B1200 asks the
+choice again (4.6.3 [13] held by the alarm, SF cycling with its
+emergency brake); until then the runner leaves the alarm steps not
+modelled (B1201), since feeding them would make those sequences fail
+where they are blocked now. No reaction in NP, SF, IS, SL, NL, PS. The
+safe antenna interval is compared in the store's sense whichever way
+the train moves. The scenario sits in `EVC_Test_Procedures` next to
+`Scenario_BMM`, whose helpers (groups, packet 67, the driver's action
+18, the TIU brake bits) it needs.
+
+SUBSET-076: 1038 / 1112 / 1040 before and after, 0 regressions. Matrix:
+8 rows done (E6 todo 21 -> 17).
+
+3.15.10, after a resumption, a re-read with tags and no build: the
+planning of MSG_PLANNING is `EVC_Stored_Information.Build_Planning`
+(`Plan_Head`, `Plan_Gradients`, `Plan_Speeds`, `Plan_Orders`), every
+distance from the estimated front end. 3.15.10.3 done (the gradients);
+3.15.10.1, .2, .4 partial (the first Indication location never sent,
+`Planning_T.Indication_Dist`; the MRSP and the track conditions not from
+the max / min safe front end of their supervision; the gradients and the
+orders up to 32 km, not restricted to the MA or the first target at zero
+speed); 3.15.10.3.1 and 3.15.10.5 todo (the Indication location; the
+temporary EOAs of `Build_Temporary` not taken as the planning's EOA).
+The gaps are B1202; the tags sit above `Build_Planning` and
+`Plan_Gradients` (comment lines in `EVC_Stored_Information`). E6 todo
+17 -> 13.
+
+Left: the re-reads of 3.18.6, 3.18.5, 3.15.11.2, 3.20.1.2 and A.3.2, not
+started; B1200, B1201, B1202.

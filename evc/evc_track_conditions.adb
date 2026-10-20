@@ -34,6 +34,37 @@ is
      with Refined_Global => BMM_S;
    function BMM_Item (I : Positive) return Stored_T is (BMM_S.List (I))
      with Refined_Global => BMM_S;
+   --  The balise antenna Offset behind the front end X along the train
+   --  orientation, measured along S
+   function Antenna (S : Sense_T; Train : Train_Frame_T; X : Dist_T;
+                     Offset : Length_T) return Dist_T
+   is (A (S, Advance (X, Train.Sense, -Offset)))
+     with Pre => Offset <= Max_Cm;
+
+   --  The safe antenna positions measured along S: the furthest and the
+   --  nearest of the antenna at the max and at the min safe front end
+   function Max_Antenna (S : Sense_T; Train : Train_Frame_T;
+                         Offset : Length_T) return Dist_T
+   is (Dist_T'Max (Antenna (S, Train, Train.Max_Front, Offset),
+                   Antenna (S, Train, Train.Min_Front, Offset)));
+   function Min_Antenna (S : Sense_T; Train : Train_Frame_T;
+                         Offset : Length_T) return Dist_T
+   is (Dist_T'Min (Antenna (S, Train, Train.Max_Front, Offset),
+                   Antenna (S, Train, Train.Min_Front, Offset)));
+
+   function BMM_At_Antenna (T      : Origin_Table_T;
+                            Train  : Train_Frame_T;
+                            Offset : Length_T) return Boolean
+   is (Train.Valid
+       and then (for some I in 1 .. BMM_S.Count =>
+                   Max_Antenna (BMM_S.Sense, Train, Offset)
+                     >= A (BMM_S.Sense,
+                           Frame (T, BMM_S.List (I).Start, Estimated_Item))
+                   and then Min_Antenna (BMM_S.Sense, Train, Offset)
+                     < A (BMM_S.Sense,
+                          Frame (T, BMM_S.List (I).Finish,
+                                 Estimated_Item))))
+     with Refined_Global => BMM_S;
    function Platforms return Store_T is (Platform_S)
      with Refined_Global => Platform_S;
    function Current_Changes return Store_T is (Current_S)

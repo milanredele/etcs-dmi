@@ -250,11 +250,11 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.6.9 c),3,x,,,,,E2,done,EVC_Position.Update_Geo; evc_test position_geo
 3.6.6.9 d),3,x,,,,,E2,done,"EVC_Position.Delete_Geo, called on entering NP, PS, SH, SL, SN, RV (4.10, EVC_Core.Enter_Mode); evc_test position_geo"
 3.6.6.9.1,3,x,,,,,E2,done,EVC_Position.Update_Geo (a reference no longer applicable is dropped); evc_test position_geo
-3.6.7.1,3,x,,,,,E2,deferred,EVC_Odometry.Virtual_T: a) b) c) e) f) g) done (see their rows); d) the BTM alarm distance of 3.15.7.2 [E6 BTM alarm]
+3.6.7.1,3,x,,,,,E2,done,"EVC_Odometry.Virtual_T: a) to g) done (see their rows; d) EVC_BTM_Alarm, EVC_Core.Supervise_BTM_Alarm)"
 3.6.7.1 a),3,x,,,,,E2,done,"EVC_Odometry.Virtual_T in EVC_Brake_Commands.Protect (roll away, unauthorised direction, standstill: D_NVROLL); evc_test SDM_Protections"
 3.6.7.1 b),3,x,,,,,E2,done,EVC_Odometry.Virtual_T: D_NVPOTRP in Post Trip (EVC_Procedures.Post_Trip_Step); evc_test_procedures Trip_EOA
 3.6.7.1 c),3,x,,,,,E2,done,EVC_Odometry.Virtual_T: the trip suppression distance of the override (EVC_Procedures.Override_Step); evc_test_procedures Scenario_Override
-3.6.7.1 d),3,x,,,,,E2,deferred,EVC_Odometry.Virtual_T exists; the BTM alarm handling of 3.15.7.2 and 5.22.5.1 a) [E6 BTM alarm]
+3.6.7.1 d),3,x,,,,,E2,done,"EVC_Odometry.Virtual_T started by EVC_Core.Supervise_BTM_Alarm when the BTM alarm is raised, the 300 m of A.3.1 (EVC_BTM_Alarm.Immunity_Distance_Cm); 5.22.5.1 a) in EVC_Procedures.BMM_Step; evc_test_procedures Scenario_BTM_Alarm"
 3.6.7.1 e),3,x,,,,,E2,done,"the odometer port reports the distance moved in No Power, EVC_Odometry applies the 2 m (Cold_Allowance_Cm); evc_test Scenario_Cold_Movement"
 3.6.7.1 f),3,x,,,,,E2,done,EVC_Odometry.Virtual_T: the former EOA/LOA as a zero distance in SB and PT without a valid position (EVC_Procedures.Override_Step); evc_test_procedures Scenario_Override
 3.6.7.1 g),3,x,,,,,E2,done,"EVC_Odometry.Virtual_T: the SR distance (EVC_Mission, EVC_Radio_Authority for message 2); evc_test E4_SR_Distance, Scenario_SR_Authorisation"
@@ -467,7 +467,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.11.11,3,x,,,,,E3,done,"no restriction until packet 52 (the store PBD empty at Clear), outside its sections and beyond D_TRACKINIT; evc_test Scenario_PBD"
 3.11.12.6,3,x,,,,,E3,done,EVC_Track_Description.Take_Default_Gradient; evc_test Scenario_Other_Profiles
 3.12.1.2.1,3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, Inhibitions; evc_test Scenario_Track_Conditions"
-3.12.1.2.1.2,3,x,,,,,E3,deferred,the big metal masses are stored (EVC_Track_Conditions); their evaluation against the max / min safe antenna position belongs to 3.15.7 [E6 big metal mass]
+3.12.1.2.1.2,3,x,,,,,E3,done,"EVC_Track_Conditions.BMM_At_Antenna: the start of a big metal mass against the max safe antenna position, its end against the min safe one (the antenna interval overlapping the area in the store's sense); evc_test_procedures Scenario_BTM_Alarm"
 3.12.1.2.1.3,3,x,,,,,E3,done,EVC_Track_Conditions.Evaluate (powerless section: min safe front end); evc_test Scenario_Track_Conditions
 3.12.1.2.1.4,3,x,,,,,E3,done,"sound horn (EVC_Track_Conditions.Evaluate, E3); the tunnel stopping area against the estimated front end (Tunnel_Indication, E4)"
 3.12.1.2.1.5,3,x,,,,,E3,done,"the estimated front end stands for the engine, front and rear (EVC_Track_Conditions.Evaluate, Overlaps_Radio_Hole; decision: no engine length is known); the radio supervision of 3.5.4.4 in EVC_Sessions (e5/onboard-misc); evc_test Session_Radio_Hole [E5 session]"
@@ -838,10 +838,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.5.2 b),3,x,x,,,,E6,done,EVC_Radio_Authority.Evaluate_TAF: the display ends L_TAFDISPLAY further; evc_test Track_Ahead_Free [E5 authority]
 3.15.5.4,3,x,,,,,E6,done,"EVC_Radio_Authority.Evaluate_TAF (the driver's TAF_Yes while shown), Produce: message 149 with packet 0; evc_test Track_Ahead_Free [E5 authority]"
 3.15.5.6,3,x,,,,,E6,done,EVC_Radio_Authority.Take_TAF: a new request replaces the stored one; evc_test Track_Ahead_Free [E5 authority]
-3.15.7.2,3,x,,,,,E6,todo,
-3.15.7.4,3,x,,,,,E6,todo,
-3.15.7.5,3,x,,,,,E6,todo,
-3.15.7.6,3,x,,,,,E6,todo,
+3.15.7.2,3,x,,,,,E6,done,"EVC_BTM_Alarm.Ignored: in levels 0 / NTC the BTM alarm of the BTM port (EVC_Ports, one byte) ignored over the 300 m of A.3.1 from where it was raised (EVC_Odometry.Virtual_T, either direction), then the reaction; EVC_Core.Supervise_BTM_Alarm; evc_test_procedures Scenario_BTM_Alarm"
+3.15.7.4,3,x,,,,,E6,done,EVC_BTM_Alarm.Ignored: in levels 1 / 2 under the inhibition of 5.22 (EVC_Procedures.BMM_Inhibited) or in SB; EVC_Core.Supervise_BTM_Alarm; evc_test_procedures Scenario_BTM_Alarm
+3.15.7.5,3,x,,,,,E6,done,"EVC_BTM_Alarm.Ignored with EVC_Track_Conditions.BMM_At_Antenna: a big metal mass (packet 67) at the safe antenna positions, in all levels; EVC_Core.Supervise_BTM_Alarm; evc_test_procedures Scenario_BTM_Alarm"
+3.15.7.6,3,x,,,,,E6,done,"EVC_BTM_Alarm.Reaction: decision (3.15.7.6.1), the service brake while the alarm persists not ignored, released when it ends or is ignored (EVC_Core.Supervise_BTM_Alarm, the brake demand of Produce_Outputs); evc_test_procedures Scenario_BTM_Alarm"
 3.15.8.1,3,x,,,,,E2,done,"odometer port (cold, cold_distance), EVC_Odometry.Cold, JRU event 9; evc_test Scenario_Cold_Movement"
 3.15.8.1.1,3,x,,,,,E2,done,"odometer port (cold, cold_distance), EVC_Odometry.Cold, JRU event 9; evc_test Scenario_Cold_Movement"
 3.15.8.2,3,x,,,,,E2,done,"EVC_Odometry.Cold read at power-up; EVC_Core.Power_Up and Revalidate_Kept validate the kept level and position without a cold movement, leave them invalid with one (4.11); evc_test Scenario_Cold_Movement"
@@ -856,12 +856,12 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.9.5 c),3,x,,,,,E6,done,"EVC_Core.Take_VBC_Requests, EVC_VBC.Remove; evc_test vbc_driver"
 3.15.9.5 d),3,x,,,,,E6,done,"EVC_Stored_Information.Take_VBC_Orders: EVC_VBC.Check_Country at each consistent group message taken; evc_test vbc_store, vbc_cover"
 3.15.9.6,3,x,,,,,E6,done,EVC_VBC.Set: the period from the reception (EVC_Stored_Information.Take_VBC_Orders) or the entry (EVC_Core.Take_VBC_Requests); evc_test vbc_store
-3.15.10.1,3,x,,,,,E6,todo,
-3.15.10.2,3,x,,,,,E6,todo,
-3.15.10.3,3,x,,,,,E6,todo,
-3.15.10.3.1,3,x,,,,,E6,todo,
-3.15.10.4,3,x,,,,,E6,todo,
-3.15.10.5,3,x,,,,,E6,todo,
+3.15.10.1,3,x,,,,,E6,partial,"EVC_Stored_Information.Build_Planning (Plan_Head, Plan_Gradients, Plan_Speeds, Plan_Orders): the gradients as received, the MRSP, the orders of the track conditions (EVC_Track_Conditions; the big metal masses, platforms and current consumption are other stores) and the EOA / LOA in MSG_PLANNING (EVC_DMI_Port.Planning_T) from the front end; gap: the first Indication location in Ceiling Speed monitoring is not sent (Planning_T.Indication_Dist stays No_Distance), the exclusion of the tunnel stopping areas not re-read [B1202]"
+3.15.10.2,3,x,,,,,E6,partial,"EVC_Stored_Information.Build_Planning: the EOA / LOA from the estimated front end, as supervised; gap: the MRSP and the track conditions are also taken from the estimated front end, not from the max safe (a decrease, the start of a condition) or min safe front end (an increase) of their supervision [B1202]"
+3.15.10.3,3,x,,,,,E6,done,EVC_Stored_Information.Plan_Gradients and Plan_Head (in Build_Planning): the gradient at and ahead of the estimated front end
+3.15.10.3.1,3,x,,,,,E6,todo,"not built: the first Indication location (3.13.10.3.8, 3.13.10.3.8.1) is not in MSG_PLANNING (EVC_DMI_Port.Planning_T.Indication_Dist never set by EVC_Stored_Information.Build_Planning) [B1202]"
+3.15.10.4,3,x,,,,,E6,partial,"EVC_Stored_Information.Build_Planning: the MRSP up to the EOA (Plan_Speeds); gap: the gradients and the track condition orders are sent up to 32 km, not restricted to the movement authority, and nothing stops at the first target at zero speed [B1202]"
+3.15.10.5,3,x,,,,,E6,todo,"not built: the planning's EOA is the MA's (EVC_Stored_Information.Build_Planning, MA_R.EOA); the temporary EOAs of 3.12.2.4, 3.12.4.7, 3.12.5.8 (Build_Temporary) are not taken as the closest [B1202]"
 3.15.11.2,3,x,,,,,E6,todo,
 3.16.1.1,3,x,,,,,E6,done,EVC_Position.Receive_Refused (a telegram the codec refuses with its header read is a balise read not compliant); EVC_Balise_Groups.Consistent
 3.16.1.1.1,3,x,,,,,E6,done,EVC_Position.Receive_Refused (a spare value: ETCS_Telegram Invalid_Value)
@@ -1879,7 +1879,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.22.3.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented [B015]
 5.22.3.1.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented [B015]
 5.22.4.1,5,x,,,,,E4,done,"MSG_ONBOARD train bit 4 (EVC_Procedures.BMM_Inhibited), the indication MSG_STATUS bmm (EVC_Core.Send_Status, the DMI's ST07), JRU 23 kind 9; evc_test_procedures Scenario_BMM"
-5.22.4.2,5,x,,,,,E4,n/a,"the BTM port carries no transmission alarm (SUBSET-036 is outside the project, EVC-PLAN §1): there is no reaction to inhibit"
+5.22.4.2,5,x,,,,,E4,done,"EVC_BTM_Alarm.Reaction: no reaction to the BTM alarm of the port under the inhibition (EVC_Procedures.BMM_Inhibited, EVC_Core.Supervise_BTM_Alarm); evc_test_procedures Scenario_BTM_Alarm"
 5.22.5.1,5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
 5.22.5.1 a),5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
 5.22.5.1 b),5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"

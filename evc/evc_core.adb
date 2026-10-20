@@ -12,6 +12,7 @@ with ETCS_Variables;
 with EVC_Acceptance;
 with EVC_DMI_Port; use EVC_DMI_Port;
 with EVC_Balise_Groups;
+with EVC_BTM_Alarm;
 with EVC_Fixed;
 with EVC_JRU_Messages;
 with EVC_Limits;
@@ -35,6 +36,8 @@ package body EVC_Core
                                    Latched_SCL, Latched_SCL_Fresh,
                                    Latched_BTM,
                                    Latched_BTM_Count,
+                                   Latched_BTM_Alarm, BTM_Alarm_Run,
+                                   BTM_Alarm_Brake,
                                    Latched_RTM,
                                    Latched_RTM_Count,
                                    Latched_Events,
@@ -166,6 +169,13 @@ is
 
    Latched_BTM       : BTM_Slots_T;
    Latched_BTM_Count : Natural range 0 .. BTM_Latch_Size := 0;
+   --  3.15.7: the BTM alarm of the port (EVC_Ports: it holds from the
+   --  input 1 to the input 0), the distance travelled since it was
+   --  raised (3.6.7.1 d) and the safety reaction of the cycle
+   --  (EVC_BTM_Alarm)
+   Latched_BTM_Alarm : Boolean := False;
+   BTM_Alarm_Run     : EVC_Odometry.Virtual_T;
+   BTM_Alarm_Brake   : Boolean := False;
    Latched_RTM       : RTM_Slots_T;
    Latched_RTM_Count : Natural range 0 .. RTM_Latch_Size := 0;
    Latched_Events      : Event_Slots_T;
@@ -396,6 +406,9 @@ is
       Latched_SCL_Fresh := False;
       Latched_BTM := (others => (Length => 0, Data => (others => 0)));
       Latched_BTM_Count := 0;
+      Latched_BTM_Alarm := False;
+      BTM_Alarm_Run := (others => <>);
+      BTM_Alarm_Brake := False;
       Latched_RTM := (others => (Session => 1, Length => 0,
                                  Data => (others => 0)));
       Latched_RTM_Count := 0;
@@ -637,8 +650,11 @@ is
                Latched_Brake_Ack := True;
             end if;
          when BTM =>
-            --  parsed when the ports are read, at the next cycle
-            if Latched_BTM_Count < BTM_Latch_Size then
+            --  parsed when the ports are read, at the next cycle; the
+            --  alarm is a state (EVC_Ports)
+            if Valid_BTM_Alarm (Payload) then
+               Latched_BTM_Alarm := BTM_Alarm_On (Payload);
+            elsif Latched_BTM_Count < BTM_Latch_Size then
                Latched_BTM_Count := Latched_BTM_Count + 1;
                Latched_BTM (Latched_BTM_Count).Length := Payload'Length;
                Latched_BTM (Latched_BTM_Count).Data (1 .. Payload'Length) :=
@@ -3798,7 +3814,7 @@ is
    --  (the goldens are their byte stream)
    --  @req 3.6.6.1, 4.4.2.1, 4.4.5.1.2
    procedure Produce_Outputs
-     with Global => (Input  => (Current_Mode, Clock_Ms,
+     with Global => (Input  => (Current_Mode, Clock_Ms, BTM_Alarm_Brake,
                                 UTC_Known, UTC_Seconds,
                                 EVC_System_Version.State, EVC_Config.State,
                                 Standstill, Below_Override, TIU_Now,
@@ -3842,7 +3858,9 @@ is
       --  phase E5: with the service brake of the supervision of the safe
       --  radio connection (3.16.3.4.2 b), EVC_Sessions)
       Text_SB : constant Boolean :=
-        EVC_Text_Messages.Service_Brake or else EVC_Sessions.Service_Brake;
+        EVC_Text_Messages.Service_Brake or else EVC_Sessions.Service_Brake
+        --  3.15.7.6: the reaction to the BTM alarm
+        or else BTM_Alarm_Brake;
       Text_EB : constant Boolean := EVC_Text_Messages.Emergency_Brake;
    begin
       Record_Mode_Levels_Mission;   -- JRU 1, 40, 41
@@ -4035,6 +4053,52 @@ is
       EVC_Retained.Save (K);
    end Save_Retained;
 
+   --  3.15.7: the safety reaction to the BTM alarm of the port, after
+   --  the procedures and the mode machine (the inhibition of 5.22 and the
+   --  mode of the cycle). The distance of 3.15.7.2 is counted from where
+   --  the alarm was raised (3.6.7.1 d), in either direction; it starts
+   --  again with the next alarm
+   --  @req 3.15.7.2, 3.15.7.4, 3.15.7.5, 3.15.7.6, 3.6.7.1 d), 5.22.4.2
+   procedure Supervise_BTM_Alarm
+     with Global => (Input  => (Latched_BTM_Alarm, Current_Mode, Proc_Ctx,
+                                Snapshot, EVC_Procedures.State,
+                                EVC_Track_Conditions.State,
+                                EVC_Origins.State, EVC_Position.State,
+                                EVC_Odometry.State),
+                     In_Out => BTM_Alarm_Run,
+                     Output => BTM_Alarm_Brake)
+   is
+   begin
+      if not Latched_BTM_Alarm then
+         BTM_Alarm_Run := (others => <>);
+         BTM_Alarm_Brake := False;
+         return;
+      end if;
+      if not BTM_Alarm_Run.Active then
+         BTM_Alarm_Run :=
+           EVC_Odometry.Start_Virtual (EVC_BTM_Alarm.Immunity_Distance_Cm,
+                                       EVC_Position.Orientation);
+      end if;
+      BTM_Alarm_Brake :=
+        EVC_BTM_Alarm.Reaction
+          (Raised    => True,
+           Level     => Proc_Ctx.Level,
+           Mode      => Current_Mode,
+           Inhibited => EVC_Procedures.BMM_Inhibited,
+           Over_BMM  =>
+             EVC_Track_Conditions.BMM_At_Antenna
+               (EVC_Profiles.Origin_Table,
+                (Valid     => Snapshot.Train.Position_Valid,
+                 Sense     => EVC_Position.Orientation,
+                 Est_Front => Snapshot.Train.Est_Front,
+                 Min_Front => Snapshot.Train.Min_Safe_Front,
+                 Max_Front => Snapshot.Train.Max_Safe_Front,
+                 others    => <>),
+                Proc_Ctx.Antenna_Offset),
+           Moved     =>
+             EVC_Odometry.Away (BTM_Alarm_Run, EVC_Distances.Unknown));
+   end Supervise_BTM_Alarm;
+
    procedure Tick (Dt_Ms : Natural) is
       L_0 : constant EVC_Location.Anchor_T := EVC_Position.LRBG with Ghost;
       O_0 : constant EVC_Distances.Sense_T := EVC_Position.Orientation
@@ -4093,6 +4157,7 @@ is
          end if;
       end;
       Finish_Procedures;
+      Supervise_BTM_Alarm;
       Sync_Train_Length;
       --  4.4.19.1.4: the LSSMA of the cycle's snapshot in its mode
       EVC_LS_Display.Step (Snapshot, Current_Mode, Unsigned_64 (Clock_Ms));
