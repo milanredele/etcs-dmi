@@ -639,6 +639,24 @@ package body S076_Run is
    --  runner's default before the first SM selection)
    SCL_Given : Boolean := False;
 
+   --  The active desk (+1 cab A, -1 cab B) and whether the sequence set
+   --  the direction controller itself (a TIU direction step)
+   Cab_Sign         : Integer := 1;
+   Controller_Given : Boolean := False;
+
+   --  B1121: the driver puts the direction controller the way the
+   --  train moves (TIU input 6: 1 forward, 2 backward, from the active
+   --  desk) when a sequence moves the train without setting it, so a
+   --  backward movement does not trip the roll away protection of
+   --  3.14.2 beside the mode's own reaction (3140100_02, PT); a
+   --  controller the sequence set is left as it is (a roll away test)
+   procedure Controller_For_Movement is
+   begin
+      if not Controller_Given then
+         B.TIU_Input (6, (if B.Direction * Cab_Sign > 0 then 1 else 2));
+      end if;
+   end Controller_For_Movement;
+
    --  Press button Index of the menu window Wid
    function Press_Menu (Wid : Window_ID_T; Index : Positive; Name : String)
      return Judgement_T
@@ -2038,10 +2056,12 @@ package body S076_Run is
             end loop;
          end if;
          B.Set_Speed (Transit_Cms);
+         Controller_For_Movement;
          return Pass ("ODO moving"
                       & (if B.Direction < 0 then " backwards" else ""));
       elsif Same (Kind, "direction-reversed") then
          B.Set_Direction (-B.Direction);
+         Controller_For_Movement;
          if B.Speed = 0 then
             B.Set_Speed (Kmh_To_Cms (5.0));
          end if;
@@ -2148,11 +2168,13 @@ package body S076_Run is
             B.TIU_Input (1, 1);
             B.TIU_Input (6, 1);
             B.TIU_Input (13, Train_Configuration);
+            Cab_Sign := 1;
          elsif Same (Arg, "B") then
             B.TIU_Input (1, 0);
             B.TIU_Input (2, 1);
             B.TIU_Input (6, 1);
             B.TIU_Input (13, Train_Configuration);
+            Cab_Sign := -1;
          else
             B.TIU_Input (1, 0);
             B.TIU_Input (2, 0);
@@ -2167,6 +2189,7 @@ package body S076_Run is
          elsif Same (Arg, "backward") then
             B.Set_Direction (-1);
          end if;
+         Controller_Given := True;
          return Pass ("TIU direction " & Arg);
       elsif Same (Kind, "sleeping") then
          B.TIU_Input (3, (if Same (Arg, "requested") then 1 else 0));
@@ -6149,6 +6172,8 @@ package body S076_Run is
       Hold_Speed := False;
       Train_Configuration := 1;
       SCL_Given := False;
+      Cab_Sign := 1;
+      Controller_Given := False;
       VBC_Entries := 0;
       VBC_Last := 0;
       Explicit_Speed := -1;
