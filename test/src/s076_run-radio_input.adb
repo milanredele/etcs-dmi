@@ -255,8 +255,17 @@ begin
          if M.T_Train_Count >= 2 and then Answered (M.NID) > 0
            and then B.T_Train_Of (S, Answered (M.NID)) >= 0
          then
+            --  the answered request's T_TRAIN as the second stamp; one
+            --  less when the step asks for a stamp that "does not match
+            --  the time stamp of the last sent request" (the message is
+            --  to be rejected, e.g. 4.8.4 [14]): the sequences give no
+            --  data for it
             Put_Bits (Data, M.T_Train_At (2), 32,
-                      Unsigned_64 (B.T_Train_Of (S, Answered (M.NID))));
+                      (Unsigned_64 (B.T_Train_Of (S, Answered (M.NID)))
+                       + (if Has (Image (St.Comment),
+                                  "does not match the time stamp of the "
+                                  & "last sent request")
+                          then 2**32 - 1 else 0)) mod 2**32);
          end if;
          if Hold_Mode then
             B.Hold_RTM (B.Byte_Array'(EVC_Ports.RTM_Tag_Message,
