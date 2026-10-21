@@ -738,6 +738,43 @@ package body EVC_Test_Profiles is
       Check (SI.Current.National = NVa.Default_Values
              and then Onboard_Field (5) / 2 mod 2 = 0,
              "national values: the defaults of A.3.2 at power-up");
+      declare
+         D : constant NVa.Set_T := NVa.Default_Set;
+         function Kmh (V : Natural) return Natural is (V * 36 / 1_000 + 1);
+      begin
+         --  A.3.2 Table, in the table's units (a speed rounded down to
+         --  cm/s is one km/h short when multiplied back)
+         Check (not D.Values.Q_NVDRIVER_ADHES
+                and then Kmh (D.Values.V_NVSHUNT) = 30
+                and then Kmh (D.Values.V_NVSTFF) = 40
+                and then Kmh (D.Values.V_NVONSIGHT) = 30
+                and then Kmh (D.Values.V_NVLIMSUPERV) = 100
+                and then Kmh (D.Values.V_NVUNFIT) = 100
+                and then Kmh (D.Values.V_NVREL) = 40
+                and then D.Values.D_NVROLL = 200
+                and then D.Values.Q_NVSBTSMPERM
+                and then not D.Values.Q_NVEMRRLS
+                and then not D.Values.Q_NVGUIPERM
+                and then not D.Values.Q_NVSBFBPERM
+                and then not D.Values.Q_NVINHSMICPERM
+                and then D.Values.V_NVALLOWOVTRP = 0
+                and then Kmh (D.Values.V_NVSUPOVTRP) = 30
+                and then D.Values.D_NVOVTRP = 20_000
+                and then D.Values.T_NVOVTRP = 60_000
+                and then D.M_NVDERUN and then D.M_NVCONTACT = 2
+                and then D.Values.D_NVPOTRP = 20_000
+                and then D.Q_NVLOCACC = 1_200
+                and then D.Values.M_NVAVADH = 0
+                and then D.Values.M_NVEBCL = 9
+                and then D.Values.Kr_Int.Steps (1).Factor = 900
+                and then D.Values.Kv_Int_Fresh.Steps (1).Factor = 700
+                and then D.Values.Kv_Int_Passenger.Steps (1).Factor = 700
+                and then D.Values.Kt_Int = 1_100
+                and then D.Values.A_NVMAXREDADH1 = 1_000
+                and then D.Values.A_NVMAXREDADH2 = 700
+                and then D.Values.A_NVMAXREDADH3 = 700,
+                "national values: every default of the A.3.2 table");
+      end;
       Add_Group (Group (10, 100));
       Add_Group (Group (20, 200));
       Add_Group (Group (30, 600));

@@ -79,6 +79,9 @@ is
      (Speed_Cms_T (Natural'Min (Kmh, 1_000) * 250 / 9))
      with Pre => Kmh <= 1_000;
 
+   --  The defaults of A.3.2 (T_NVCONTACT, M_NVCONTACT, M_NVDERUN and
+   --  Q_NVLOCACC are the defaults of Set_T)
+   --  @req A.3.2, A.3.2 Table
    Default_Values : constant National_Values_T :=
      (M_NVEBCL           => 9,
       Q_NVGUIPERM        => False,
