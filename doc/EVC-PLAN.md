@@ -9766,3 +9766,39 @@ B031, B991, 4.4.21.1.12 / .13, 3.18.3.2.4's rear length, packet 12 of
 locations, the re-reads of 3.15.11.2, 3.20.1.2, A.3.2, B1181; the
 consistency traces B1281, B1280, the PS sequences, the event 13
 reading.
+
+
+### The planning's last limits, the re-reads of 3.15.11.2, 3.20.1.2 and A.3.2, the other-train-data input (e6/planning-left) (2026-10-21)
+
+Done (B1202 closed): 3.15.10.4, the gradients (`Plan_Gradients`) and
+the orders (`Plan_Orders`) of MSG_PLANNING only before the planning's
+EOA, the closer of the MA's and the temporary one, as the MRSP already
+was (decision: an element starting at the EOA is beyond it); 3.15.10.2,
+the orders at the location item the supervision compares (Table 2a):
+`EVC_Track_Conditions.Evaluate` (one edit outside the named units, at
+its `Order` calls, `Order_Start` and `Order_End`; Evaluate stays at its known size) gives a start at its max item, an end at its min
+item, the sound horn and the radio hole at the estimated one, and
+`Plan_Orders` measures each from the max safe, min safe or estimated
+front end (`Estimated_Order`; decision: an end, supervised by the min
+safe rear end, is shown from the min safe front end, the planning's
+axis). Scenarios: `EVC_Test_PBD.Scenario_Planning` (a gradient change
+and the end of an air tightness area beyond the EOA),
+`Scenario_Route_Suitability` (a gradient change beyond the temporary
+EOA). Goldens: evc/bench_onboard (one gradient change at 10505 m beyond
+the EOA at 10005 m dropped, 540 planning records, nothing else: as
+intended) and evc/bench_level2 (a digest); profiles_track_conditions did
+not move (its items coincide). Rows 3.15.10.2 and 3.15.10.4 done.
+
+Re-reads: 3.15.11.2 deferred, not n/a nor partial (the ATO selector
+belongs to an on-board interfaced to an ATO on-board, 3.15.11.1; the
+ATO is a module of its own on the ATO port, §1; `EVC_Driver_Requests`
+decodes the DMI's ATO_Selector action without effect). 3.20.1.2
+partial: `EVC_JRU_Records` and `EVC_JRU_Messages` write 28 of the
+SUBSET-027 messages; the 21 in scope not written are B1360. A.3.2 and
+its table done: every default in `EVC_National_Values.Default_Values`
+and `Default_Set`, checked value by value in `Scenario_National_Values`.
+
+SUBSET-076: 1060 / 1113 / 1017 before and after, 0 regressions (the
+planning's limits move no step). Left: B1181 (the runner's
+other-train-data input in `S076_Run`), not started: the bound came
+first.

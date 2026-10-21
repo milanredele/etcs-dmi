@@ -450,6 +450,17 @@ is
                   Length : Length_T) return Dist_T
    is (Advance (Frame (T, E.Finish, Min_Item), S, Length));
 
+   --  The planning order's location of the start and of the end of E
+   --  (8.3.4), the item the supervision compares (3.15.10.2, Table 2a):
+   --  the estimated one for the sound horn (2) and the radio hole (4),
+   --  else the max item of a start, the min of an end
+   function Order_Start (T : Origin_Table_T; E : Stored_T) return Dist_T
+   is (Frame (T, E.Start, (if E.Value in 2 | 4 then Estimated_Item
+                           else Max_Item)));
+   function Order_End (T : Origin_Table_T; E : Stored_T) return Dist_T
+   is (Frame (T, E.Finish, (if E.Value in 2 | 4 then Estimated_Item
+                            else Min_Item)));
+
    procedure Evaluate (T      : Origin_Table_T;
                        Train  : Train_Frame_T;
                        Now_Ms : Unsigned_64;
@@ -596,22 +607,12 @@ is
                   when others =>
                      null;
                end case;
-               --  8.3.4: the orders ahead of the estimated front end, at
-               --  the location item the supervision compares (3.15.10.2,
-               --  Table 2a): the estimated one for the sound horn and the
-               --  radio hole, else the max item of a start, the min of
-               --  an end
+               --  8.3.4: the orders ahead of the estimated front end
                if DE > Est_F then
-                  Order (Sym.PL_Start,
-                         Frame (T, E.Start, (if E.Value in 2 | 4
-                                             then Estimated_Item
-                                             else Max_Item)));
+                  Order (Sym.PL_Start, Order_Start (T, E));
                end if;
                if FE > Est_F then
-                  Order (Sym.PL_End,
-                         Frame (T, E.Finish, (if E.Value in 2 | 4
-                                              then Estimated_Item
-                                              else Min_Item)));
+                  Order (Sym.PL_End, Order_End (T, E));
                end if;
             end;
          end loop;
