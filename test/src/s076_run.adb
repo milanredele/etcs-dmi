@@ -2309,8 +2309,40 @@ package body S076_Run is
    function N_TOTAL (T : Telegram_T) return Natural is (Field (T, 12, 3));
    function NID_BG (T : Telegram_T) return Natural is (Field (T, 35, 14));
 
+   --  A telegram of a balise group input that the step's text names as
+   --  not decodable (a wrong CRC): the sequences give its bits decodable
+   --  all the same. The BTM port has no undecodable telegram, so it is
+   --  left out, a balise missed (EVC_Ports, BTM). Decision: "second
+   --  balise" names the telegram 2/n; else the one carrying no packet
+   --  when another telegram of the group at the step carries one; "balise
+   --  #i" and a group of one telegram name none
+   function Undecodable (St : Step_T; T : Telegram_T) return Boolean is
+      C : constant String := Image (St.Text) & " " & Image (St.Comment);
+   begin
+      if T.Parts < 2
+        or else not (Has (C, "cannot be decoded") or else Has (C, "wrong CRC")
+                     or else Has (C, "CRC error"))
+        or else Has (C, "balise #i")
+      then
+         return False;
+      elsif Has (C, "second balise") then
+         return T.Part = 2;
+      elsif T.Packet_Count > 0 then
+         return False;
+      end if;
+      for I in 1 .. Seq.Telegram_Count loop
+         if Seq.Telegrams (I).Tag = T.Tag
+           and then Seq.Telegrams (I).Step = T.Step
+           and then Seq.Telegrams (I).Packet_Count > 0
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Undecodable;
+
    --  The telegrams of a balise group input: placed on the track and
-   --  passed by the antenna
+   --  passed by the antenna, but those the step names undecodable
    function BTM_Input (St : Step_T) return Judgement_T is
       Far   : Integer_64 := St.Dist_Cm;
       Found : Natural := 0;
@@ -2391,7 +2423,9 @@ package body S076_Run is
                         for J in Data'Range loop
                            Data (J) := T.Data (J);
                         end loop;
-                        B.Place_Balise (At_Cm, T.Bits, Data);
+                        if not Undecodable (St, T) then
+                           B.Place_Balise (At_Cm, T.Bits, Data);
+                        end if;
                         if (At_Cm - Far) * Integer_64 (B.Direction) > 0 then
                            Far := At_Cm;
                         end if;
