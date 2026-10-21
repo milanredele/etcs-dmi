@@ -1822,6 +1822,21 @@ package body EVC_Test_Procedures is
       Check (SF, "3.15.7.5, 3.15.7.6: beyond the end of the big metal "
              & "mass with the min safe antenna position, the reaction");
 
+      --  3.15.7.5, A.3.6.2.1: the mass passed stays stored in rear; the
+      --  train moving back over its end, then beyond its start
+      Begin_Scenario (M_SH, L1);
+      Group (3, 0);
+      Add (ST.Big_Metal_Mass (100, 50));
+      Close;
+      Run_Front (Antenna_M + 170, 10);
+      Run_Front (Antenna_M + 140, 5);
+      Alarm (True);
+      Check (not SF, "3.15.7.5, A.3.6.2.1: the big metal mass passed is kept "
+             & "in rear; moving backwards over it, the alarm ignored");
+      Run_Front (Antenna_M + 30, 5);
+      Check (SF, "3.15.7.5, 3.12.1.2.1.2: moving backwards beyond the start "
+             & "of the big metal mass with the max safe antenna, the reaction");
+
       --  3.15.7.2, 3.6.7.1 d): the 300 m of A.3.1 in level 0
       Begin_Scenario (M_UN, L0);
       Alarm (True);
