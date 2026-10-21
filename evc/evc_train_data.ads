@@ -2,11 +2,10 @@
 --  The Train Data of the on-board (SUBSET-026 3.18.3), as far as the
 --  stored information and the supervision use them.
 --
---  Phase E3 had no data entry: the store held a documented default
---  train, valid from power-up. Phase E4 fills it from the DMI
---  (the Train Data entry of the Start of Mission, 5.4, EVC_Mission)
---  through Set and Invalidate, and starts invalid (4.10); E6 adds the
---  data view and the other sources (5.17 is the procedures half's).
+--  The store starts invalid (4.10) and is filled from the DMI (the Train
+--  Data entry of the Start of Mission, 5.4, EVC_Mission) through Set and
+--  Invalidate; a change from another source is EVC_Procedures' (5.17).
+--  The data view is not taken.
 --
 --  The default train (Default below): a passenger train in brake
 --  position "Passenger train in P" with 135 % brake percentage (lambda
@@ -64,7 +63,7 @@ is
       Has_Electro_Pneumatic => False,
       T_Traction_Cut_Off    => 1_000);
 
-   --  The Train Data are valid (3.18.3; E4: validated by the driver)
+   --  The Train Data are valid (3.18.3: validated by the driver)
    function Valid return Boolean
      with Global => State;
 
@@ -128,9 +127,9 @@ is
                   and then Consist_Available = Available
                   and then (if Consist_In_Front then not Valid);
 
-   --  Power-up: no valid Train Data (4.10: deleted in No Power; phase
-   --  E4: the driver enters them in the start of mission,
-   --  EVC_Mission). Data keeps the default train as the values of the
+   --  Power-up: no valid Train Data (4.10: deleted in No Power; the
+   --  driver enters them in the start of mission, EVC_Mission). Data
+   --  keeps the default train as the values of the
    --  invalid set, which nothing supervises (EVC_Stored_Information:
    --  Supervise needs valid Train Data).
    procedure Clear
@@ -141,13 +140,13 @@ is
                   and then not Consist_Known
                   and then not Manoeuvre_Set;
 
-   --  New Train Data (phase E4)
+   --  New Train Data
    procedure Set (D : Train_Data_T; C : Categories_T)
      with Global => (In_Out => State),
           Post => Valid and then Data = D and then Categories = C
                   and then not Manoeuvre_Set;
 
-   --  The Train Data are no longer valid (phase E4)
+   --  The Train Data are no longer valid
    procedure Invalidate
      with Global => (In_Out => State),
           Post => Manoeuvre_Set = Manoeuvre_Set'Old and then not Valid;

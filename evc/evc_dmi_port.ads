@@ -10,16 +10,17 @@
 --  A frame is: type u8, length u32 (little endian, the payload length),
 --  payload. On the DMI port one input or one output is one frame.
 --
---  Inputs the on-board accepts in phase E0 (Valid_Input_Frame):
+--  Inputs the on-board accepts (Valid_Input_Frame):
 --    MSG_DRIVER_ACTION with the Driver_Action_Length payload (any action
 --      but 2) or the Driver_Ack_Length payload (action 2 only);
 --    MSG_DRIVER_DATA with a payload of at least one byte (the kind).
 --  Every other frame, and a frame whose length field does not match its
 --  size, is rejected.
 --
---  Outputs of phase E0: MSG_MODE_LEVEL and MSG_ONBOARD, every cycle.
---  Phase E2: MSG_STATUS, for the geographical position (SUBSET-026
---  3.6.6), in every cycle while it is known and once when it stops.
+--  Outputs: MSG_MODE_LEVEL and MSG_ONBOARD, every cycle; MSG_STATUS
+--  (the geographical position of SUBSET-026 3.6.6, the supervision, the
+--  indications); the planning, the track conditions, MSG_SPEED_STATE and
+--  the other frames below.
 
 with EVC_Bytes; use EVC_Bytes;
 with EVC_Modes; use EVC_Modes;
@@ -107,13 +108,13 @@ is
    --  "None" in the code fields of MSG_MODE_LEVEL (mode_ack, level_ann)
    No_Code : constant Byte := 16#FF#;
 
-   --  MSG_MODE_LEVEL: the mode and the level; phase E4: the
+   --  MSG_MODE_LEVEL: the mode and the level; the
    --  acknowledgement of a mode (Mode_Ack: the code of the mode, No_Code
    --  none; the start of mission's proposal, 5.4.3.2, or the request of
    --  a procedure, 5.7, 5.9, 5.11, 5.13, 5.19), the level announced
    --  (Level_Ann: the code of the level, No_Code none) and whether its
-   --  acknowledgement is asked (5.10), "override active" (5.8.3.7); no
-   --  the track ahead free request shown (3.15.5, phase E5); the LSSMA
+   --  acknowledgement is asked (5.10), "override active" (5.8.3.7);
+   --  TAF, the track ahead free request shown (3.15.5); the LSSMA
    --  in km/h, 16#FFFF# not shown (4.4.19.1.4, EVC_LS_Display)
    --  @req 3.15.5.2 a)
    function Mode_Level_Frame (Mode          : Mode_T;
@@ -202,17 +203,17 @@ is
    --  No geographical position (geo_pos)
    Geo_Unknown : constant Unsigned_32 := 16#FFFF_FFFF#;
 
-   --  MSG_STATUS as far as the on-board knows it in phase E2: no brake
+   --  MSG_STATUS of the position alone: no brake
    --  command, no radio connection, no adhesion, BMM, reversing or SM
    --  indication, no set speed, no TTI (TdispTTI 14 s, SUBSET-026
    --  A.3.1), no tunnel; the geographical position Geo in m; the time of
    --  the on-board clock, Seconds since power-up, as EVC_Mock does (the
-   --  clock of 3.20 is later)
+   --  clock of 3.20 is not taken here)
    function Status_Frame (Geo : Unsigned_32; Seconds : Unsigned_64)
      return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 
-   --  Phase E3 (profiles): the planning and the track conditions
+   --  The planning and the track conditions
 
    MSG_TRACK_COND : constant Byte := 16#05#;
    MSG_PLANNING   : constant Byte := 16#06#;
@@ -297,7 +298,7 @@ is
      with Post => Last = Header_Length + Planning_Length (P)
                   and then Frame (1) = MSG_PLANNING;
 
-   --  Added by supervision (phase E3): MSG_SPEED_STATE, the fields of
+   --  The supervision: MSG_SPEED_STATE, the fields of
    --  MSG_STATUS of the speed and distance monitoring and of the brake
    --  command handling, the driver's acknowledgement of a brake release
 
@@ -335,7 +336,7 @@ is
    Brake_None    : constant Byte := 0;
    Brake_Applied : constant Byte := 1;
    Brake_Ack     : constant Byte := 2;
-   --  phase E4: applied because a requested acknowledgement of a level, a
+   --  Applied because a requested acknowledgement of a level, a
    --  mode or a text message is pending (its release comes with that
    --  acknowledgement, dmi_protocol.ads; 3.14.1.7.2, 3.14.1.7.3,
    --  3.14.1.7.5)
@@ -345,10 +346,10 @@ is
    TTI_None : constant Unsigned_16 := 16#FFFF#;
 
    --  MSG_STATUS with the brake indication and the time to Indication
-   --  (tenths of a second) of the supervision (phase E3); phase E4: the
-   --  reversing indication (3.15.4.7) and the tunnel stopping area
-   --  (5.18.8: tunnel 0 none / unknown, 1 active, 2 announced; its
-   --  distance, m); phase E5: Radio, the indication of the safe radio
+   --  (tenths of a second) of the supervision; the reversing indication
+   --  (3.15.4.7) and the tunnel stopping area (5.18.8: tunnel 0 none /
+   --  unknown, 1 active, 2 announced; its distance, m); Radio, the
+   --  indication of the safe radio
    --  connection (3.5.7.1: 0 none, 1 up, 2 lost / set-up failed);
    --  Slippery, the adhesion factor "slippery rail" selected by the driver
    --  (3.18.4.6.2.3, the DMI's ST02); BMM, the "BTM alarm reaction

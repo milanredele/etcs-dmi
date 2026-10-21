@@ -8,7 +8,7 @@
 --  being the End of Movement Authority, with its timers, danger point
 --  and overlap, all as locations of the message (EVC_Profiles). The
 --  MA of a balise group at a main signal replaces the stored one as a
---  whole (3.8.5.1 a; infill, 3.8.5.1 b and 3.8.4.6, is phase E7). The
+--  whole (3.8.5.1 a; infill, 3.8.5.1 b and 3.8.4.6, is not taken). The
 --  stored information accepts it only when the SSP and the gradients
 --  cover it from the estimated front end to its SvL (3.7.2.3, checked by
 --  the caller), and applies the deletion it asks for (Outcome_T) to the
@@ -37,9 +37,9 @@
 --  than its time-out (1023: infinite). Their effects and the deletions
 --  of A.3.4 are in Supervise and Accept below.
 --
---  Level 2 (the time stamps of 3.8.4.2.1 a and 3.8.4.3.1 a) is phase E5;
---  the conditional emergency stop (A.3.4.1.2 a) and the co-operative
---  shortening (f) are E5 too.
+--  The MA of level 2 comes from EVC_Radio_Authority with its time
+--  stamps (3.8.4.2.1 a, 3.8.4.3.1 a); the conditional emergency stop
+--  (A.3.4.1.2 a) is Conditional_Stop below.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -174,8 +174,8 @@ is
      with Global => State;
    function V_Main_Open return Boolean
      with Global => State;
-   --  3.11.6.4: a V_MAIN 0, a train trip order, was received (phase E4
-   --  trips); cleared by Clear_Trip_Order
+   --  3.11.6.4: a V_MAIN 0, a train trip order, was received
+   --  (EVC_Procedures trips); cleared by Clear_Trip_Order
    --  @req 3.11.6.4
    function Trip_Ordered return Boolean
      with Global => State;
@@ -213,7 +213,7 @@ is
       elsif X.Has_DP then X.DP
       else EOA_Location (X));
 
-   --  Phase E5, 3.8.2.2.1 b): a Section timer of any section, the End
+   --  3.8.2.2.1 b): a Section timer of any section, the End
    --  Section's included (not the End Section timer, nor the Overlap
    --  timer), running and not stopped, or the LOA speed timer, whose
    --  time-out comes within Lead_Ms of Now_Ms
@@ -266,7 +266,7 @@ is
           Pre => X.Present,
           Post => MA.Present and then Outcome.Accepted;
 
-   --  3.10.2.2 b) (phase E5): the EOA and SvL by the stop location of
+   --  3.10.2.2 b): the EOA and SvL by the stop location of
    --  an accepted conditional emergency stop, without release speed;
    --  Updated: the EOA or LOA changed (Q_EMERGENCYSTOP 0, else 1)
    --  @req 3.10.2.2 b), 3.10.2.2 b) 1st bullet, 3.10.2.2 b) 2nd bullet
@@ -344,8 +344,8 @@ is
           when 0 .. 120 => (Kind => Fixed, Speed => V5_To_Cms (Code)),
           when others => (Kind => Fixed, Speed => V_NVREL));
 
-   --  The MA X as the supervision sees it, frame positions (phase E5:
-   --  also a proposed MA not stored, 3.8.6.1 b)
+   --  The MA X as the supervision sees it, frame positions (also a
+   --  proposed MA not stored, 3.8.6.1 b)
    procedure Authority_Of (X       : MA_T;
                            T       : Origin_Table_T;
                            V_NVREL : Speed_Cms_T;

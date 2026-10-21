@@ -2,10 +2,10 @@
 --  The acceptance of the information received from balise groups,
 --  SUBSET-026 4.8: the first filter of Figure 3 by the level and the
 --  origin (4.8.3, the rows "From RBC: No, non-infill") and the third
---  filter by the mode (4.8.4), as tables. The second filter (RBC
---  messages) is phase E5; the infill information (3.9, the infill
---  location reference) is not taken by this on-board (E7), so every
---  balise information is non-infill here.
+--  filter by the mode (4.8.4), as tables. The RBC information is
+--  EVC_Radio_Acceptance's; the infill information (3.9, the infill
+--  location reference) is not taken by this on-board, so every balise
+--  information is non-infill here.
 --
 --  The information of a group message is evaluated in the order of
 --  EVC_Stored_Information (the level transition orders first, 4.8.1.3);
@@ -23,19 +23,19 @@
 --      it at once, as before (the linking, packet 5, in EVC_Position;
 --      the reversing packets 138 and 139 in EVC_Procedures); the
 --      stores ask Stored first.
---    4.8.3 [2] (level 2 at a further location): RBC information, E5.
+--    4.8.3 [2] (level 2 at a further location): RBC information.
 --    4.8.3 [4] the SSP and gradient cover the MA: 3.7.2.3 in
 --      EVC_Stored_Information.
 --    4.8.3 [11] (conditional order): Context.Order_In_Message,
 --      Context.Order_Pending.
 --    4.8.3 [16] (level 2, unlinked group): Context.Unlinked_Group.
---    4.8.4 [1] in PT: level 1 rejected, level 2 the RBC's (E5).
+--    4.8.4 [1] in PT: level 1 rejected, level 2 the RBC's.
 --    4.8.4 [2] a cab is active, [4] valid Train Data, [11] a valid train
 --      running number (this on-board takes no train running number from
 --      a balise group, 4.8.3: none is sent by balise).
 --    4.8.4 [7] in SH, PS, SM only the immediate and conditional orders,
 --      stored for later (EVC_Levels).
---    4.8.4 [13], [14]: SM authorisations, E5.
+--    4.8.4 [13], [14]: SM authorisations, RBC information.
 --  A level that is not valid (unknown, or invalid: 5.4.3.2 D2) is no
 --  level of the tables: only what every level accepts is accepted.
 --  The procedures (EVC_Procedures, EVC_Text_Messages)
@@ -242,7 +242,7 @@ is
                 | RBC_Transition_Order | Network_Order
                 | Generic_LS_Marker | Track_Ahead_Free_L2,
           --  [1]: every information of these tables is marked [1] in PT,
-          --  rejected in level 1 (in level 2 the RBC's, phase E5), but
+          --  rejected in level 1 (in level 2 the RBC's), but
           --  the track ahead free up to the level 2 transition location
           --  ("A")
           when M_PT => I = Track_Ahead_Free_L2,

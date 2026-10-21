@@ -3,8 +3,8 @@
 --  SUBSET-026 3.13.2, as the stored information of the on-board hands
 --  them to the supervision once per cycle.
 --
---  This package is the boundary between the two halves of phase E3
---  (doc/EVC-PLAN.md §8):
+--  This package is the boundary between the stored information and the
+--  supervision (doc/EVC-PLAN.md §8):
 --    - the stored information (SSP, ASP, TSR, gradients, MA, track
 --      conditions, adhesion, national values, train data: 3.7, 3.8.4,
 --      3.11, 3.12, 3.13.7) fills a Snapshot_T at the third step of the
@@ -16,11 +16,9 @@
 --  (EVC_Distances, cm); "ahead" is the sense of Ahead. Speeds are cm/s,
 --  accelerations mm/s², times ms, gradients per mille. Integers only:
 --  the curves of 3.13 are computed in fixed point (plan §3).
---  The owner of a type is the half that produces it; the other half
---  may add what it needs, additively, and says so here.
---  Added by supervision: Supervision_Extra_T and the Extra component of
---  Snapshot_T (the train data, national values and configuration 3.13
---  and 3.14 need beyond the first version of this interface).
+--  Supervision_Extra_T, the Extra component of Snapshot_T, holds what
+--  3.13 and 3.14 need beyond the profiles: train data, national values
+--  and the configuration.
 --
 --  Conventions the supervision reads into the types:
 --  a Decel_Curve_T of Count steps gives Decel (K) for Speed (K - 1) <
@@ -38,17 +36,14 @@
 --  least one step (a set not received keeps the default of A.3.2), so
 --  the passenger set applies to a train in "Passenger train in P".
 --
---  Added at the integration of the two halves: the TSR
---  flags of the MRSP, the coverage of the gradient profile and the
---  default gradient for TSR (3.13.4.1.3), the powerless sections
---  (3.13.2.3.4.1), and how the stored information fills Extra: the
---  configuration of this on-board (EVC_Config.Current.Supervision: the
---  installation configuration, data loaded by EVC_Core.Configure),
---  the use of A_NVMAXREDADHn from the national values and the trip
---  margin of 3.13.9.4.8.2 from the SOLR and the EOA; the other fields of
---  Extra keep their defaults until their phase: the train data beyond
---  Train_Data_T come with the data entry (E4), T_MAR with packet 57
---  (E5), the SR distance with the mode SR (E4).
+--  The snapshot also carries the TSR flags of the MRSP, the coverage of
+--  the gradient profile and the default gradient for TSR (3.13.4.1.3),
+--  the powerless sections (3.13.2.3.4.1); the stored information fills
+--  Extra with the configuration of this on-board
+--  (EVC_Config.Current.Supervision, loaded by EVC_Core.Configure), the
+--  use of A_NVMAXREDADHn from the national values and the trip margin of
+--  3.13.9.4.8.2 from the SOLR and the EOA; EVC_Core sets the rest (the
+--  train data beyond Train_Data_T, T_MAR, the SR distance).
 
 with EVC_Distances; use EVC_Distances;
 
@@ -315,7 +310,7 @@ is
       A_NVP23          : Decel_Mms2_T := 0;
    end record;
 
-   --  The train as the position of phase E2 gives it (3.6.1, 3.6.4)
+   --  The train as the position gives it (3.6.1, 3.6.4)
 
    type Train_State_T is record
       Position_Valid   : Boolean := False;
@@ -529,17 +524,17 @@ is
       --  10 % of its distance to the EOA (with the SM term when beta =
       --  1); the on-board takes the larger of it and the current one
       Trip_Margin    : Length_T := 0;
-      --  3.13.11.8: T_MAR of the MA request parameters (packet 57, E5);
+      --  3.13.11.8: T_MAR of the MA request parameters (packet 57);
       --  0 when none is stored; MAR_Known: one is stored that asks for
       --  requests (T_MAR = 0 s is a value, 3.8.2.1.3: no request
       --  without it)
       T_MAR          : Time_Ms_T := 0;
       MAR_Known      : Boolean := False;
       --  3.13.2.3.6.1 b), 3.13.8.2.1 d): the end of the maximum
-      --  permitted distance to run in Staff Responsible (E4)
+      --  permitted distance to run in Staff Responsible
       SR_Distance    : Boolean := False;
       SR_End         : Dist_T := 0;
-      --  3.8.6.1 b) (E5): the shortened MA an RBC proposes (message 9),
+      --  3.8.6.1 b): the shortened MA an RBC proposes (message 9),
       --  not stored: EVC_SDM.Step says whether the train front end is in
       --  rear of its Indication supervision limit
       --  (Result_T.Proposal_In_Rear)
@@ -562,10 +557,10 @@ is
       Inhibitions  : Inhibition_Areas_T := (others => <>);
       Adhesion     : Adhesion_T := (others => <>);
       --  Mode related ceiling speed (3.11.7), No_Speed_Limit when the
-      --  mode has none; the mode machine of E4 sets it
+      --  mode has none; set from the mode of the cycle
       Mode_Speed   : Speed_Cms_T := No_Speed_Limit;
-      --  Train data valid and the supervision may run (4.5.2, E4);
-      --  until E4 the stored information sets it when an MA is present
+      --  Train data valid and the supervision may run (4.5.2): an MA,
+      --  valid Train Data and a mode that supervises
       Supervise    : Boolean := False;
       --  added by profiles: the temporary EOA and SvL (see above)
       Temporary    : Temporary_Target_T := (others => <>);
