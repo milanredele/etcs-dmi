@@ -1349,6 +1349,13 @@ package body S076_Bench is
       end if;
    end TIU_Input;
 
+   procedure BTM_Alarm (Raised : Boolean) is
+   begin
+      if Is_Powered then
+         EVC_Core.Handle_Input (BTM, (1 => (if Raised then 1 else 0)));
+      end if;
+   end BTM_Alarm;
+
    procedure TIU_Safe_Consist (Available : Boolean;
                                Front, Rear : Natural := 0)
    is

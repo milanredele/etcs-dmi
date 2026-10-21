@@ -9542,3 +9542,45 @@ runner B1180, B1181.
 - B1180 dropped, resumed inside the budget: 5090200_02 step 50 is a sequence defect, not a runner gap. BG4d's V_MAMODE 40 km/h equals SR's ceiling (V_NVSTFF by default, no packet 3, SSP 125 km/h), so On Sight has SR's SBI of 45 km/h: no SR speed reaches it without SR's own ceiling brake before the OS entry. Saf042fa6's note says so; the runner is unchanged.
 - Not reached (bound): the event 13 naming.
 - SUBSET-076: 1040 / 1110 / 1040 before and after, 0 regressions, 0 improvements.
+### The BTM alarm as System Failure, the runner's alarm steps, 3.18.6 and 3.18.5 re-read (e6/btm-sf) (2026-10-21)
+
+Done: B1200, the reaction of 3.15.7.6 is System Failure (the decision
+changed, 3.15.7.6.1, as SUBSET-076 takes it): the alarm not ignored is a
+fault that affects safety. `EVC_Core.Supervise_BTM_Alarm` (after the
+mode machine, as before) gives its verdict to
+`EVC_Procedures.BTM_Alarm_Failure` (`Set_BTM_Alarm_Failure`, cleared by
+`Clear`); `EVC_Transition_Conditions.Holds (C_13)` answers it, so the
+next cycle's mode machine takes SF by 4.6.3 [13] and the on-board cycles
+on in SF with its emergency brake (4.4.5.1.2), MSG_STATUS and the JRU
+mode 9; the alarm's service brake left `Produce_Outputs`;
+`EVC_Core.Enter_Failure` stays the host's. No new Global in the Tick
+(Holds already read `EVC_Procedures.State`). Scenario:
+evc_test_procedures `Scenario_BTM_Alarm` (SF with the EB and TIU reason
+Failure, SF kept after the alarm ends, left only by No Power, the
+distance of 3.15.7.2 counted again from a new alarm). Rows 3.15.7.6,
+4.4.5.1.1, 4.4.5.1.2, 4.6.3 Table notes.
+
+B1201: `S076_Run.Apply_Input` feeds `INT btm-alarm received / revoked`
+by `S076_Bench.BTM_Alarm`; `S076_Run.Columns` passes over the window's
+steps after the step under other columns when it looks for the
+sequence's own mode expectation (the alarm sequences keep the mode
+columns before the implementation-dependent SF). SUBSET-076 1040 / 1110
+/ 1040 -> 1043 / 1131 / 1016, 20 improvements, 5 regressions understood
+and re-recorded: 9990600_07 (3 SV) the alarm in the backward movement
+over the big metal mass not ignored, an on-board defect (B1240);
+4080444_03 SV21 / SV22 the expected SF judged against the FS columns
+(B1242). The JRU record 21 bit 56 after SF (four sequences) is to trace
+(B1241); 3070300_05's M_LEVEL=1 in level 1 a sequence defect.
+
+3.18.6, after a resumption, a re-read with tags and no build: the
+data view of the DMI is made of what the on-board sends, the VBCs
+(`EVC_DMI_Port.VBC_List_Frame`, MSG_VBC_LIST), the RBC contact
+(`RBC_Contact_Frame`, MSG_RBC_CONTACT), the Radio Network type and the
+status of each data (`Onboard_Frame`, MSG_ONBOARD); the DMI shows a
+value only while its status is valid. 3.18.6.2 done, 3.18.6.1 partial:
+the values of the driver ID, the running number, the GSM-R network ID
+and the Train Data are not sent, so Train Data from another source and
+any value after a DMI restart cannot be viewed (B1243, a protocol item).
+The tags sit above the three frames. E6 todo 13 -> 11.
+
+Left: the re-read of 3.18.5, not started; B1240, B1241, B1242, B1243.

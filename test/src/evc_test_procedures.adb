@@ -1769,31 +1769,41 @@ package body EVC_Test_Procedures is
 
    --  3.15.7 Tolerance of big metal masses: the BTM alarm of the BTM port
    --  (EVC_Ports: one byte, 1 raised, 0 ended), ignored or answered by
-   --  the service brake (3.15.7.6, EVC_BTM_Alarm)
+   --  System Failure (3.15.7.6, EVC_BTM_Alarm; 4.6.3 [13] the cycle after)
    procedure Scenario_BTM_Alarm is
       procedure Alarm (On : Boolean) is
       begin
          Input (BTM, (1 => (if On then 1 else 0)));
          Cycle;
+         Cycle;
       end Alarm;
+      function SF return Boolean is
+        (EVC_Core.Mode = M_SF and then EB
+         and then Why (EVC_Ports.TIU_Reason_Failure));
    begin
       Begin_Scenario (M_SB, L1);
       Alarm (True);
-      Check (not SB, "3.15.7.4 b): the BTM alarm ignored in SB, level 1");
+      Check (not SF and then EVC_Core.Mode = M_SB,
+             "3.15.7.4 b): the BTM alarm ignored in SB, level 1");
 
       Begin_Scenario (M_SH, L1);
       Alarm (True);
-      Check (SB, "3.15.7.6: the BTM alarm not ignored in SH, level 1: "
-             & "the service brake");
+      Check (SF, "3.15.7.6, 4.6.3 [13], 4.4.5.1.2: the BTM alarm not "
+             & "ignored in SH, level 1: System Failure, the emergency brake");
       Alarm (False);
-      Check (not SB, "3.15.7.6: the service brake released when the "
-             & "alarm ends");
+      for I in 1 .. 5 loop
+         Cycle;
+      end loop;
+      Check (SF, "4.4.5.1.2, 4.6.2: System Failure and its emergency brake "
+             & "stay after the alarm ends");
 
       Begin_Scenario (M_SH, L1);
+      Check (EVC_Core.Mode = M_SH and then not EB,
+             "4.6.2: System Failure left only through No Power");
       Driver (18, 0);
       Cycle;
       Alarm (True);
-      Check (not SB and then Status_BMM = 1,
+      Check (not SF and then Status_BMM = 1,
              "3.15.7.4 a), 5.22.4.2: the BTM alarm ignored under the "
              & "inhibition of 5.22");
 
@@ -1804,26 +1814,28 @@ package body EVC_Test_Procedures is
       Close;
       Run_Front (Antenna_M + 99, 10);
       Alarm (True);
-      Check (not SB, "3.15.7.5, 3.12.1.2.1.2: ignored with the max safe "
+      Check (not SF, "3.15.7.5, 3.12.1.2.1.2: ignored with the max safe "
              & "antenna position over the start of the big metal mass");
       Run_Front (Antenna_M + 148, 10);
-      Check (not SB, "3.15.7.5: ignored over the big metal mass");
+      Check (not SF, "3.15.7.5: ignored over the big metal mass");
       Run_Front (Antenna_M + 200, 10);
-      Check (SB, "3.15.7.5, 3.15.7.6: beyond the end of the big metal "
+      Check (SF, "3.15.7.5, 3.15.7.6: beyond the end of the big metal "
              & "mass with the min safe antenna position, the reaction");
 
       --  3.15.7.2, 3.6.7.1 d): the 300 m of A.3.1 in level 0
       Begin_Scenario (M_UN, L0);
       Alarm (True);
       Run_Front (280, 20);
-      Check (not SB, "3.15.7.2, 3.6.7.1 d): ignored in level 0 within "
+      Check (not SF, "3.15.7.2, 3.6.7.1 d): ignored in level 0 within "
              & "the 300 m of A.3.1");
-      Run_Front (300, 20);
-      Check (SB, "3.15.7.2: the alarm persisting beyond 300 m in level 0, "
-             & "the reaction");
       Alarm (False);
       Alarm (True);
-      Check (not SB, "3.15.7.2: a new alarm, the distance counted again");
+      Run_Front (500, 20);
+      Check (not SF, "3.15.7.2: a new alarm, the distance counted again "
+             & "from where it was raised");
+      Run_Front (600, 20);
+      Check (SF, "3.15.7.2: the alarm persisting beyond 300 m in level 0, "
+             & "the reaction");
    end Scenario_BTM_Alarm;
 
    --  5.16 Passing a level crossing not protected (SUBSET-076 5160000_01:

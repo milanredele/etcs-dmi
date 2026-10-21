@@ -32,7 +32,8 @@ package body EVC_Procedures
                     Use_V, PT_Start, PT_Sense, PT_Over, PT_SB,
                     Stop_On_Desk, SH_List_Known, SH_List_N, SH_List,
                     Now_Flags, Rev, Rev_Possible, RV_Over,
-                    RV_EB, BMM_On, BMM_From, Link_SB, Demand, Demand_Sent,
+                    RV_EB, BMM_On, BMM_From, BTM_Failure, Link_SB, Demand,
+                    Demand_Sent,
                     Status_N, Status_List, Event_N, Events,
                     TD_Step, TD_Then_Revalidate, TD_Revalidate,
                     TD_Moving_Due, SH_Profile_Seen))
@@ -253,6 +254,9 @@ is
    BMM_On   : Boolean := False;
    BMM_From : Dist_T := 0;
 
+   --  3.15.7.6: the BTM alarm's safety reaction of the last cycle
+   BTM_Failure : Boolean := False;
+
    --  3.14.1.6: the service brake of a linking reaction, to standstill
    Link_SB : Boolean := False;
 
@@ -304,6 +308,9 @@ is
      with Refined_Global => TD_Revalidate;
    function BMM_Inhibited return Boolean is (BMM_On)
      with Refined_Global => BMM_On;
+
+   function BTM_Alarm_Failure return Boolean is (BTM_Failure)
+     with Refined_Global => BTM_Failure;
    function Status_Event_Count return Natural is (Status_N)
      with Refined_Global => Status_N;
    function Status_Event (I : Positive) return Status_Event_T is
@@ -424,6 +431,7 @@ is
       RV_EB := False;
       BMM_On := False;
       BMM_From := 0;
+      BTM_Failure := False;
       Link_SB := False;
       Demand := (others => <>);
       Demand_Sent := (others => <>);
@@ -441,6 +449,14 @@ is
    begin
       Version_Seen := True;
    end Note_Version_Not_Supported;
+
+   procedure Set_BTM_Alarm_Failure (Raised : Boolean)
+     with Refined_Global => (Output => BTM_Failure,
+                             Proof_In => (BMM_On, Demand))
+   is
+   begin
+      BTM_Failure := Raised;
+   end Set_BTM_Alarm_Failure;
 
    procedure Train_Data_Revalidated is
    begin

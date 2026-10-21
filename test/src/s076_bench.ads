@@ -223,6 +223,10 @@ package S076_Bench is
    --  integrity: 0 unknown, 1 confirmed, 2 lost)
    procedure TIU_Input (Signal : Natural; Value : Natural);
 
+   --  The BTM alarm of the BTM port (EVC_Ports.Valid_BTM_Alarm: the
+   --  one-byte input, 1 raised, 0 ended; it holds between the two)
+   procedure BTM_Alarm (Raised : Boolean);
+
    --  The TIU input of the safe consist length (EVC_Ports signal 15):
    --  available with the lengths in metres in front of the engine
    --  (nominal, min, max) and in rear of it, or not available

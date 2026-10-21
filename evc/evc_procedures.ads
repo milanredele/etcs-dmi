@@ -269,6 +269,20 @@ is
    function BMM_Inhibited return Boolean
      with Global => State;
 
+   --  The BTM alarm's safety reaction of the last cycle, a fault that
+   --  affects safety: the mode machine answers 4.6.3 [13] with it
+   --  (EVC_Transition_Conditions.Holds), System Failure follows
+   --  @req 3.15.7.6
+   function BTM_Alarm_Failure return Boolean
+     with Global => State;
+
+   --  EVC_Core.Supervise_BTM_Alarm gives its verdict of the cycle
+   procedure Set_BTM_Alarm_Failure (Raised : Boolean)
+     with Global => (In_Out => State),
+          Post => BTM_Alarm_Failure = Raised
+                  and then BMM_Inhibited = BMM_Inhibited'Old
+                  and then Brake_Demand = Brake_Demand'Old;
+
    --  The system status messages of the catalogue of DMI chapter 15
    --  that started or ended in the cycle (MSG_SYSTEM_STATUS: entry, event
    --  0 start, 1 end, 2 the event that starts its 30 s)

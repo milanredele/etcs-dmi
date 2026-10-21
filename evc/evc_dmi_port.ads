@@ -193,6 +193,7 @@ is
 
    subtype Onboard_Frame_T is Byte_Array (1 .. Header_Length + Onboard_Length);
 
+   --  @req 3.18.6.1, 3.18.6.2
    function Onboard_Frame (Onboard : Onboard_T) return Onboard_Frame_T
      with Post => Onboard_Frame'Result (1) = MSG_ONBOARD;
 
@@ -498,6 +499,7 @@ is
    VBC_List_Max : constant := 16;
    type VBC_Codes_T is array (1 .. VBC_List_Max) of Unsigned_32;
 
+   --  @req 3.18.6.1
    procedure VBC_List_Frame (Count : Natural;
                              Codes : VBC_Codes_T;
                              Frame : out Frame_Buffer_T;
@@ -518,6 +520,7 @@ is
    subtype RBC_Contact_Frame_T is
      Byte_Array (1 .. Header_Length + RBC_Contact_Length);
 
+   --  @req 3.18.6.1
    procedure RBC_Contact_Frame (Known  : Boolean;
                                 RBC_Id : Unsigned_32;
                                 Radio  : Unsigned_64;
