@@ -107,10 +107,10 @@ is
    --  axle load, airtight and loading gauge), installation data
    --  (3.13.2.2.9.1.1). EVC_Mission builds the Train Data from the
    --  driver's entry and these. Not in the byte image of format version
-   --  1: Decoded gives the defaults below (the train of E3), until a
-   --  format version brings them with the train data view of E6 (the
-   --  gamma models, the correction factors and the rotating mass of
-   --  EVC_Supervision_Input.Train_Data_Extra_T go there too).
+   --  1: Decoded gives the defaults below (the default train); the
+   --  format version that brings them is not defined yet (the gamma
+   --  models, the correction factors and the rotating mass of
+   --  EVC_Supervision_Input.Train_Data_Extra_T belong there too).
    type Fixed_Train_T is record
       --  the braking model (3.13.2.2.2): the lambda model only, the
       --  curves of the gamma model are not installation data here yet
@@ -224,8 +224,8 @@ is
    function Front_Offset (C : Config_T; S : Sense_T) return Length_T is
      (if S = Plus then C.Antenna_To_Cab_A else C.Antenna_To_Cab_B);
 
-   --  The configuration when no image was given: the choices of phase
-   --  E3 (a service brake command with the feedback from the main brake
+   --  The configuration when no image was given: the default choices
+   --  (a service brake command with the feedback from the main brake
    --  pipe, the traction cut-off, the status of every special brake
    --  counting for both brake models except the magnetic shoe brake,
    --  which Table 3 allows for the emergency brake model only, the

@@ -70,14 +70,13 @@
 --
 --  Train categories (3.11.3.2.3, 3.11.3.2.6): the speed of each SSP
 --  element is chosen for the train when the packet is received (a change
---  of the categories at standstill deletes the SSP, A.3.4.1.2 j, E4).
+--  of the categories at standstill deletes the SSP, A.3.4.1.2 j).
 --  The ASP takes the speed of the train's axle load category (3.11.4.3);
 --  an element without it restricts nothing.
 --
 --  Not here: the comparison of route suitability with the train data
---  and its reaction (3.12.2.3, 3.12.2.4, phases E4 and E6), the
---  inhibition of revocable TSRs from balises by the RBC (3.11.5.12 to
---  .14, E5).
+--  and its reaction (3.12.2.3, 3.12.2.4), the inhibition of revocable
+--  TSRs from balises by the RBC (3.11.5.12 to .14).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -478,11 +477,10 @@ is
      with Global => State;
 
    --  3.12.5.8: the start of the nearest level crossing not protected,
-   --  a temporary EOA and SvL (Found False when none); phase E4, 5.16:
-   --  until the min safe front end Front has passed its end (a start
-   --  passed without the substitution is an EOA passed, the trip of
-   --  4.6.3 [12], {9}; E3 dropped it once the estimated front end had
-   --  reached the start), not once its supervision is substituted by
+   --  a temporary EOA and SvL (Found False when none); 5.16: until the
+   --  min safe front end Front has passed its end (a start passed
+   --  without the substitution is an EOA passed, the trip of 4.6.3
+   --  [12], {9}), not once its supervision is substituted by
    --  its speed restriction (Released); Index its place in LX.
    --  Not limited to the MA, on purpose: the temporary EOA is distinct
    --  from the EOA of the MA (3.12.2.5) and the supervision takes the

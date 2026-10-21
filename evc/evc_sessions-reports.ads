@@ -1,9 +1,10 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half, phase 3: the
---  position reports of 3.6.5 (message 136, 8.6.6), sent to the
---  supervising RBC on the events of 3.6.5.1.4 and as the position report
---  parameters of packet 58 ask (3.6.5.1.5, 3.6.5.1.7), and the deletion
---  of those parameters on entering level 1 (4.9.1.3).
+--  The position reports of the session and link half (3.6.5, message
+--  136, 8.6.6), sent to the supervising RBC on the events of 3.6.5.1.4
+--  and as the position report parameters of packet 58 ask (3.6.5.1.5,
+--  3.6.5.1.7), and the deletion of those parameters on entering level 1
+--  (4.9.1.3). Entry points, numbered as in EVC_Sessions: Take_Message,
+--  Evaluate, Mode_Changed, Produce (Request: the integrity reports).
 --
 --  A private child of EVC_Sessions, its state a part of the parent's.
 --  EVC_Position computes what the position knows (Report_Triggers:
@@ -11,7 +12,7 @@
 --  locations, "immediately") and keeps the parameters; this unit adds
 --  the events the radio and the modes know, decides and sends.
 --
---  Decisions (doc/EVC-PLAN.md §13, session and link, phase 3):
+--  Decisions (doc/EVC-PLAN.md §13):
 --  (1) The mode change (b) and the level change (g) are seen here, in
 --      the cycle they happen (Mode_Changed, the level at Evaluate): the
 --      report goes at the end of that cycle with its consequences
