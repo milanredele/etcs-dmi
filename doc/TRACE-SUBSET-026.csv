@@ -1072,8 +1072,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.4.6.4,3,x,,,,,E6,done,EVC_Stored_Information.Driver_Slippery_Rail: non slippery at power-up and after the reset of 3.18.4.6.2.1; evc_test Driver_Adhesion
 3.18.5.1,3,x,,,,,E6,todo,
 3.18.5.2,3,x,,,,,E6,todo,
-3.18.6.1,3,x,,,,,E6,todo,
-3.18.6.2,3,x,,,,,E6,todo,
+3.18.6.1,3,x,,,,,E6,partial,"the data view of the DMI from what the on-board sends: the VBCs stored (EVC_DMI_Port.VBC_List_Frame, MSG_VBC_LIST), the RBC contact information (EVC_DMI_Port.RBC_Contact_Frame, MSG_RBC_CONTACT), the Radio Network type and the status of the driver ID, the train running number, the Train Data and the GSM-R registration (EVC_DMI_Port.Onboard_Frame, MSG_ONBOARD); left: the values of the driver ID, the train running number, the GSM-R network ID and the Train Data are not sent, the DMI shows what was entered on it, so Train Data from another source (5.17) and any value after a DMI restart are not viewable (B1243)"
+3.18.6.2,3,x,,,,,E6,done,"EVC_DMI_Port.Onboard_Frame: MSG_ONBOARD carries the on-board's status of each data (driver ID, Train Data, train running number, RBC contact, the network); the DMI shows a value only while the on-board reports it valid (the data view of the DMI, its 10.5.1.4)"
 3.20.1.2,3,x,,,,,E6,todo,
 A.3.1 Table,3,x,,,,,E3,partial,"the values of the stored information (300 m in rear, 5 s after the rear end, 4 s for the horn: EVC_Track_Description, EVC_Track_Conditions); the odometer ones in E2; the supervision ones with their rows of 3.13 (EVC_Braking, EVC_Limits, EVC_SDM, EVC_Build_Up); the radio ones in EVC_Sessions (15 s, 5 minutes, 60 s, 45 s), EVC_Sessions.Network (40 s), EVC_Sessions.Mission (15 s, the Train Data repeated), EVC_Radio_Authority (60 s, the MA request cycle); left: the repetition of the mode change report (B788), the FRMCS registration time (B844), the distances of metal immunity [E6 big metal] [E5 session]"
 A.3.2,3,x,,,x,,E6,todo,

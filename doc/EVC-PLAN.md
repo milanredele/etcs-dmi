@@ -9564,7 +9564,15 @@ over the big metal mass not ignored, an on-board defect (B1240);
 (B1242). The JRU record 21 bit 56 after SF (four sequences) is to trace
 (B1241); 3070300_05's M_LEVEL=1 in level 1 a sequence defect.
 
-Left: the re-reads of 3.18.6 (rows todo; the on-board sends the VBCs,
-`EVC_DMI_Port.VBC_List_Frame`, and the networks; the driver ID, train
-running number, RBC contact and Train Data views not checked) and
-3.18.5, not started; B1240, B1241, B1242.
+3.18.6, after a resumption, a re-read with tags and no build: the
+data view of the DMI is made of what the on-board sends, the VBCs
+(`EVC_DMI_Port.VBC_List_Frame`, MSG_VBC_LIST), the RBC contact
+(`RBC_Contact_Frame`, MSG_RBC_CONTACT), the Radio Network type and the
+status of each data (`Onboard_Frame`, MSG_ONBOARD); the DMI shows a
+value only while its status is valid. 3.18.6.2 done, 3.18.6.1 partial:
+the values of the driver ID, the running number, the GSM-R network ID
+and the Train Data are not sent, so Train Data from another source and
+any value after a DMI restart cannot be viewed (B1243, a protocol item).
+The tags sit above the three frames. E6 todo 13 -> 11.
+
+Left: the re-read of 3.18.5, not started; B1240, B1241, B1242, B1243.
