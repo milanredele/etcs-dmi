@@ -1,66 +1,30 @@
 --  ETCS on-board (EVC)
 --  Core of the ETCS on-board (SUBSET-026), independent of any transport.
 --
---  Same shape as DMI_Core: the host initialises it, hands over what
---  arrives on the ports (Handle_Input), runs one cycle per period (Tick)
---  and takes what the on-board sends (Take_Outputs). There is no
---  tasking, no allocation, no exception propagation: an input of the
---  wrong shape is ignored, and every operation is proven free of
---  run-time errors (evc/prove.sh).
+--  Same shape as DMI_Core. The host calls Initialise (or Power_Up),
+--  Configure with the installation configuration, Handle_Input with what
+--  arrives on a port (latched until the next cycle), Tick once per
+--  period and Take_Outputs for what the on-board sends. No tasking, no
+--  allocation, no exception propagation: an input of the wrong shape is
+--  ignored, and every operation is proven free of run-time errors.
 --
---  One cycle (Tick) does, in this order (doc/EVC-PLAN.md §2): read the
---  ports, update the position, evaluate the stored information, speed
---  and distance monitoring, mode machine, produce the outputs. Inputs
---  that arrive between two cycles are latched and read at the start of
---  the next one.
---
---  Phase E0: power-up in No Power, transition NP -> SB (SUBSET-026
---  4.6.2, condition [4]), isolation by the driver (condition [1]), and
---  every cycle the DMI messages that show the mode (MSG_MODE_LEVEL,
---  MSG_ONBOARD). Phase E1: the telegrams (BTM) and radio messages (RTM)
---  latched since the last cycle are parsed when the ports are read
---  (EVC_Received keeps the last accepted of each, and counts the
---  rejections by reason) and recorded on the JRU port. Phase E2: the
---  accepted telegrams go with the stamp of their balise to the train
---  position (EVC_Position), which the second step updates with the cab
---  status and the odometer sample of the cycle; its events are recorded
---  on the JRU port, the geographical position goes to the DMI
---  (MSG_STATUS) and the validity of the position to MSG_ONBOARD. Phase
---  E3: the third step evaluates the stored information
---  (EVC_Stored_Information: the snapshot of 3.13.2, MSG_PLANNING,
---  MSG_TRACK_COND, JRU event 32), the fourth runs the speed and distance
---  monitoring and the brake command handling on that snapshot (EVC_SDM,
---  EVC_Brake_Commands: MSG_SPEED_STATE every cycle, the brake and the
---  time to Indication in MSG_STATUS, the TIU output, JRU events 20 to
---  22). Phase E4, modes and levels: the driver's requests of
---  the DMI port (EVC_Driver_Requests) and the inputs of the train
---  interface (EVC_Train_Inputs) are taken with the ports; the stored
---  information filters what it receives by level and mode (4.8) and
---  takes the level transition orders (EVC_Levels); after the
---  supervision the levels (5.10) and the mission (5.4, 5.5:
---  EVC_Mission) evaluate the cycle; the mode machine takes the
---  transition of 4.6.2 of the highest priority whose condition of 4.6.3
---  holds (EVC_Modes.Conditions, EVC_Transition_Conditions.Holds) and
---  carries out what entering the mode means (4.10, 4.12, 5.4.3.2, 5.5);
---  the outputs show the mode, the level, the announcement and the
---  acknowledgements (4.7, MSG_MODE_LEVEL, MSG_ONBOARD) and record the
---  events of the levels and the mission (JRU events 40 and 41). Phase
---  E4, the procedures: after the levels and the mission, the procedures of
---  chapter 5 (EVC_Procedures, the text messages of EVC_Text_Messages)
---  evaluate the conditions of 4.6.3 they own; after the mode machine
---  they do what entering the mode means for them and give their brake
---  demand; the outputs carry the acknowledgements and "override" in
---  MSG_MODE_LEVEL, the system status messages, the text messages, their
---  brake commands on the TIU, the information for an external function
---  (the second TIU output) and JRU events 23 and 24. Phase E5, the joint:
---  the RTM port carries the messages and connection events
---  of the communication sessions (EVC_Ports, EVC_Radio); the ports step
---  hands them to the session and link half (EVC_Sessions), which passes
---  the messages it accepts to the authority half (EVC_Radio_Authority);
---  both evaluate after the levels and the mission, hear of a mode
---  change after the mode machine and produce their messages at the end
---  of the outputs, which EVC_Radio.Drain moves to the RTM port. The
---  later phases fill the empty steps.
+--  One Tick, in this order (doc/EVC-PLAN.md §2):
+--  1. read the ports: the telegrams (EVC_Received, the VBCs), the RTM
+--     connection events and messages (EVC_Sessions, which passes what
+--     it accepts to EVC_Radio_Authority), the driver's requests
+--     (EVC_Driver_Requests) and the train inputs (EVC_Train_Inputs);
+--  2. update the position (EVC_Position) with the cab and the odometer;
+--  3. evaluate the stored information (EVC_Stored_Information, filtered
+--     by level and mode per 4.8; the level orders go to EVC_Levels);
+--  4. the speed and distance monitoring and the brake commands
+--     (EVC_SDM, EVC_Brake_Commands) on the snapshot of 3.13.2;
+--  5. the levels and the mission (EVC_Levels, EVC_Mission), the sessions
+--     and the authority, the procedures (EVC_Procedures,
+--     EVC_Text_Messages), each evaluating the conditions of 4.6.3 it owns;
+--  6. the mode machine (EVC_Modes, EVC_Transition_Conditions), then what
+--     entering the mode means for each unit (4.10, 4.12, 5.4.3.2, 5.5);
+--  7. the outputs: the DMI, TIU and JRU ports, the RTM port last
+--     (EVC_Radio.Drain).
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
@@ -129,7 +93,7 @@ is
    function Mode return Mode_T
      with Global => State;
 
-   --  The level and its status (EVC_Levels, phase E4)
+   --  The level and its status (EVC_Levels)
    function Level_Status return Level_Status_T
      with Global => EVC_Levels.State;
 
@@ -260,8 +224,8 @@ is
    --  The UTC time at the on-board time 0, seconds since 2000-01-01
    --  00:00:00 UTC, for the date and time of the juridical messages
    --  (SUBSET-027 4.1.1.2 a, 4.2.3.3, 4.2.3.4): given by the port from
-   --  its clock (E8: the Hercules port's); until then the date and the
-   --  time are recorded "unknown". Initialise and Power_Up forget it.
+   --  its clock; without it the date and the time are recorded
+   --  "unknown". Initialise and Power_Up forget it.
    procedure Set_UTC (Seconds : Interfaces.Unsigned_32)
      with Global => (In_Out => State);
 
@@ -448,16 +412,15 @@ is
                   and then Cycle = Cycle'Old;
 
    --  For the tests of the hosts (evc_test, evc_fuzz), not for an
-   --  on-board in service, like Set_Snapshot_For_Test (phase E4): the
-   --  scenarios of phases E2 and E3 exercise the position, the stored
-   --  information and the supervision as they were written, before the
-   --  modes, in a mode of their own: from the next cycle on, the mode is
+   --  on-board in service, like Set_Snapshot_For_Test: the scenarios of
+   --  the position, the stored information and the supervision run in a
+   --  mode of their choice: from the next cycle on, the mode is
    --  Mode (the mode machine runs from there), the level Level (valid)
    --  and the Train Data the default train of EVC_Train_Data (valid), as
    --  after a start of mission; in SR the SR data of the national values
    --  (EVC_Mission.Set_For_Test). Nothing of entering the mode (4.10,
-   --  4.12) is done. The scenarios of E4 start their missions through
-   --  the ports; those of the procedures (evc_test_procedures) start
+   --  4.12) is done. The scenarios of the modes start their missions
+   --  through the ports; those of the procedures (evc_test_procedures) start
    --  from a mode set here when the mode is not their subject.
    procedure Set_Mode_For_Test (Mode : Mode_T; Level : Level_T)
      with Global => (In_Out => (State, EVC_Levels.State, EVC_Mission.State,
