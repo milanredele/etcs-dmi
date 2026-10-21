@@ -32,4 +32,7 @@ package EVC_Test_Manoeuvre is
    --  4.4.21.1.9: the SM authorised direction to the DMI
    procedure Scenario_SM_Direction;
 
+   --  4.8.4 [1]: in PT the exit from TR with a more recent time stamp
+   procedure Scenario_SM_Post_Trip;
+
 end EVC_Test_Manoeuvre;

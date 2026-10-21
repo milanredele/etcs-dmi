@@ -637,4 +637,65 @@ package body EVC_Test_Manoeuvre is
              & "A045)");
    end Scenario_SM_Request;
 
+   --  4.8.4 [1] in level 2, Post Trip: message 5 (SM refused) is taken
+   --  only after the recognition of the exit from TR (message 6) with a
+   --  more recent time stamp than the trip; a message 6 stamped before
+   --  the trip does not count
+   procedure Scenario_SM_Post_Trip is
+      T, Before : Unsigned_64;
+      Shown     : Natural;
+      function M6 (Stamp : Unsigned_64) return Byte_Array is
+         V : ETCS_Message.Value_Array := (others => 0);
+      begin
+         V (3) := Stamp;
+         V (5) := 123;
+         V (6) := 10;
+         return Message_Of (MCat.Track_M6, V);
+      end M6;
+   begin
+      Start_L2_SM;
+      Stand_X (200);
+      Before := Now_Stamp;
+      --  the trip by an unconditional emergency stop (message 16), then
+      --  the driver's acknowledgement: PT
+      declare
+         V : ETCS_Message.Value_Array := (others => 0);
+      begin
+         V (3) := Before;
+         V (5) := 123;
+         V (6) := 10;
+         V (7) := 3;
+         Give_Radio_Message (1, Message_Of (MCat.Track_M16, V));
+      end;
+      Stand_X (500);
+      EVC_Core.Handle_Input
+        (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand_X (500);
+      Check (EVC_Core.Mode = M_PT,
+             "SM post trip: the trip acknowledged, PT, got "
+             & EVC_Core.Mode'Image);
+      --  consistent (3.16.3.3.3: above message 16) but before the trip
+      Give_Radio_Message (1, M6 (Before + 1));
+      Stand_X (200);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Shown := SS_Seen (Natural (EVC_DMI_Port.SS_SM_Refused));
+      Give_Radio_Message (1, SM_Refused (T));
+      Stand_X (200);
+      Check (T /= 0 and then EVC_Sessions.SM_Waiting
+             and then SS_Seen (Natural (EVC_DMI_Port.SS_SM_Refused))
+                      = Shown,
+             "SM post trip: message 6 stamped before the trip, SM refused "
+             & "rejected (4.8.4 [1])");
+      Give_Radio_Message (1, M6 (Now_Stamp));
+      Stand_X (200);
+      Give_Radio_Message (1, SM_Refused (T));
+      Stand_X (200);
+      Check (not EVC_Sessions.SM_Waiting
+             and then SS_Seen (Natural (EVC_DMI_Port.SS_SM_Refused))
+                      > Shown,
+             "SM post trip: message 6 more recent than the trip, SM "
+             & "refused taken and shown (4.8.4 [1])");
+   end Scenario_SM_Post_Trip;
+
 end EVC_Test_Manoeuvre;
