@@ -1,11 +1,10 @@
 --  ETCS on-board (EVC)
---  The mission data and the start and end of mission in levels 0, 1 and
---  NTC: SUBSET-026 5.4 (the start of mission), 5.5 (the end of
---  mission), the data of 5.4.2 the driver enters (driver ID, train
---  running number, Train Data), the acknowledgements of the modes the
---  start of mission proposes (4.6.3 [8], [58], [60]) and the data of the
---  mode Staff Responsible (4.4.11: the SR mode speed limit and the SR
---  distance, 4.6.3 [42]).
+--  The mission data and the start and end of mission: SUBSET-026 5.4 (the
+--  start of mission), 5.5 (the end of mission), the data of 5.4.2 the driver
+--  enters (driver ID, train running number, Train Data), the acknowledgements
+--  of the modes the start of mission proposes (4.6.3 [8], [58], [60]) and the
+--  data of the mode Staff Responsible (4.4.11: the SR mode speed limit and the
+--  SR distance, 4.6.3 [42]).
 --
 --  Data statuses (5.4.2.1): unknown, invalid, valid. Nothing is kept
 --  over No Power (EVC_Core: Initialise is a cold start), so every datum
@@ -15,8 +14,8 @@
 --  SH, SM and NL).
 --
 --  Start of mission (5.4.3.2). The procedure is engaged (S0) while the
---  mode is SB with a desk open (no communication session exists in
---  levels 0, 1, NTC: the RBC parts are phase E5); its steps are the
+--  mode is SB with a desk open (the RBC parts of level 2 are
+--  EVC_Sessions.Mission's); its steps are the
 --  DMI's dialogue (DMI 11.7.2, Table 49), so the on-board takes the
 --  driver's entries when they come and answers 'Start' (S20):
 --    - the driver ID (S1, and 5.4.5.3 b), the train running number (S1,
@@ -27,9 +26,10 @@
 --      (5.4.5.3 h: 'Start' at S10 needs valid Train Data, not a train
 --      running number): level 1 proposes Staff Responsible
 --      (S24), level 0 Unfitted (S23), level NTC National System (S22);
---      level 2 sends an MA request to the RBC (S21, E5): until E5 the
---      on-board has no session and proposes Staff Responsible as
---      5.4.5.3 h) says for level 2 without a session;
+--      in level 2 the on-board waits for the RBC (S21: an SR
+--      authorisation proposes Staff Responsible, an MA allowing FS
+--      changes the mode), and without a session proposes Staff
+--      Responsible as 5.4.5.3 h) says;
 --    - the driver's acknowledgement of the proposed mode is the
 --      condition [8], [60] or [58] of 4.6.3 (Acknowledged).
 --  In Post Trip, 'Start' in level 1 proposes Staff Responsible
@@ -54,7 +54,7 @@
 --  End of mission (5.5.2): entering SB from FS, AD, LS, OS, SM, UN, NL,
 --  SR, PT, RV or SN, or SH from FS, AD, LS, OS, SR, SM, SN or UN (from
 --  PT: when a mission was going on). Its first step is the deletions of
---  4.10; the RBC session steps are E5.
+--  4.10; the RBC session steps are EVC_Sessions.Mission's.
 --
 --  Staff Responsible (4.4.11.1.3, 4.4.11.1.6.2, 4.4.11.1.6.3): entering
 --  SR the national values V_NVSTFF and D_NVSTFF apply, the distance
@@ -163,7 +163,7 @@ is
      with Global => State;
 
    --  The driver validated Train Data in this cycle (5.4.3.2 S12; the
-   --  re-validation of 5.17.2.2 E6, EVC_Procedures)
+   --  re-validation of 5.17.2.2, EVC_Procedures)
    --  @req 5.17.2.2 S6
    function Train_Data_Validated return Boolean
      with Global => State;
@@ -174,7 +174,7 @@ is
      with Global => State;
 
    --  5.4.3.2 D2 passed in this cycle: the driver ID entered or
-   --  revalidated (E1) in SB during the start of mission
+   --  revalidated in SB during the start of mission
    function D2_Passed return Boolean
      with Global => State;
 

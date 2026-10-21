@@ -1,7 +1,6 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half: the radio
---  networks of 3.5.6 and the radio data the driver enters (3.18.4.3.6,
---  5.4.3.2 S3 / S5, DMI 11.3.15, 11.3.16).
+--  The session and link half's radio networks of 3.5.6 and the radio data the
+--  driver enters (3.18.4.3.6, 5.4.3.2 S3 / S5, DMI 11.3.15, 11.3.16).
 --
 --  A private child of EVC_Sessions, its state a part of the parent's.
 --  The Radio Network type and the GSM-R network identity stored are
@@ -32,7 +31,7 @@
 --      registered. With "mission with only one radio system" either
 --      system registered is enough (3.5.6.7 c).
 --  (6) The list of networks (3.18.4.3.6.2): the port offers none, so it
---      is empty (5.4.3.2 S3 E3 -> A29: "GSM-R network registration
+--      is empty (5.4.3.2 S3 -> A29: "GSM-R network registration
 --      failed"); a network the driver names (six digits at most, the
 --      NID_MN digits) is ordered as entered.
 
@@ -94,7 +93,7 @@ is
    --  data (3.18.4.3.6). Stop: terminate the sessions and abort the
    --  attempts (3.18.4.3.6.1); Failed: show "GSM-R network
    --  registration failed" (5.4.3.2 A29; A42 at the end of the time
-   --  of 5.4.3.2 S4 E7 while the start of mission waits at S4, In_SoM)
+   --  of 5.4.3.2 S4 while the start of mission waits at S4, In_SoM)
    procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
                        In_SoM : Boolean;
                        Stop, Failed : out Boolean)
@@ -123,12 +122,11 @@ is
    function Selection_Awaited return Boolean
      with Global => State;
 
-   --  3.18.4.3.6.2: the list of GSM-R networks is
-   --  due in this cycle (MSG_RADIO_NETWORKS); the networks it offers,
-   --  the default network of the configuration and the stored one when
-   --  different (decision 6 of e5/registration in the plan: the port
-   --  offers none), each named by at least one digit
-   --  5.4.3.2 S4 E7 -> A42: the registration
+   --  3.18.4.3.6.2: the list of GSM-R networks is due in this cycle
+   --  (MSG_RADIO_NETWORKS); the networks it offers, the default network of the
+   --  configuration and the stored one when different (decision 6 above: the
+   --  port offers none), each named by at least one digit
+   --  5.4.3.2 S4 -> A42: the registration
    --  ordered last was not achieved within the time of A.3.1; until
    --  the next order (A43)
    function Registration_Timed_Out return Boolean

@@ -3,74 +3,53 @@
 --  the supervision (SUBSET-026 3.7, 3.8.4, 3.11, 3.12, 3.13.7): the
 --  third step of the cycle, "evaluate stored information" (EVC_Core).
 --
---  One cycle (Evaluate):
+--  Evaluate, the third step of the cycle, writes State in this order:
 --    1. the train orientation changed: the TSRs go (3.11.5.10);
 --    2. the balise groups the position took into account in this cycle
 --       (EVC_Position.Taken), each a message evaluated in its order:
---       the country of the national values (3.18.2.10), then its
---       packets valid for the train (3.6.3.1.3) in this order: national
---       values (3), SSP (27), gradients (21), ASP (51), PBD (52), TSR
---       (65, 66),
---       default gradient (141), track conditions (68, 39, 67), route
---       suitability (70), adhesion (71), level crossings (88), the MA
---       (12) and the mode profile of an MA accepted (80). The stores
---       replace what the new information replaces (3.7.3.1) before the
---       MA of the message is evaluated, and the deletion a shortened MA
---       asks is applied to the information of the earlier messages only
---       (3.8.5.1.5). An MA whose SvL the SSP and the gradients do not
---       cover from the estimated front end is not accepted (3.7.2.3);
+--       the filters of 4.8 (EVC_Acceptance, the mode of the Context and
+--       the level of EVC_Levels) first, the level transition orders (41,
+--       46) before the rest (4.8.1.3: an immediate order switches the
+--       level at once), the country of the national values (3.18.2.10),
+--       then the packets valid for the train (3.6.3.1.3): 3, 27, 21, 51,
+--       52, 65, 66, 141, 68, 39, 67, 70, 71, 88, the MA (12) and the mode
+--       profile of an MA accepted (80). The stores replace what the new
+--       information replaces (3.7.3.1) before the MA of the message is
+--       evaluated; the deletion a shortened MA asks applies to the
+--       earlier messages only (3.8.5.1.5); an MA whose SvL the SSP and
+--       the gradients do not cover from the estimated front end is not
+--       accepted (3.7.2.3);
 --    3. the timers of the MA (3.8.4) and the deletions they ask (A.3.4);
 --    4. national values waiting for their location (3.18.2.3);
 --    5. what lies more than 300 m in rear of the min safe rear end
 --       (A.3.1), and the origins nothing refers to any more;
---  the filters of 4.8 (EVC_Acceptance) in the mode of
---  the Context and the level of EVC_Levels, before an information of a
---  group is taken; the level transition orders (41, 46) first
---  (4.8.1.3: the rest of the message is evaluated with them, an
---  immediate order switches the level at once, EVC_Levels); in the
---  snapshot, the functions of the mode (4.5.2 Figure 1, EVC_Modes): the
---  SSP, the ASP, the LX speed restrictions, the speed restrictions to
---  ensure a permitted braking distance, the signalling related speed
---  restriction, the MA and its temporary targets in the modes with an MA
---  (Track_Speed_Mode, MA_Mode), the TSRs and the gradients where the
---  MRSP is supervised with its curves (TSR_Mode), the maximum train
---  speed (Train_Speed_Mode); Supervise is a mode of TSR_Mode with valid
---  Train Data; the SR distance (Extra.SR_Distance) from the Context.
---
---    6. the snapshot (Current): the train, the Train Data, the national
---       values, the speed restrictions to ensure a permitted braking
---       distance computed (3.11.11.3: the sections received, or all of
---       them when an input of EVC_PBD changed), the MRSP with its TSR
---       flags, the gradient profile with
---       its coverage and the default gradient for TSR (3.13.4.1.3), the
---       MA, the braking inhibitions and the powerless sections, the
---       adhesion, the temporary EOA and SvL, Supervise (an MA and valid
---       Train Data; phase E4 adds the mode) and Extra (the configuration
---       of the on-board, the use of A_NVMAXREDADHn, the trip margin of
---       3.13.9.4.8.2; the rest at its defaults until E4 and E5, see
---       EVC_Supervision_Input);
---    7. the indications of the track conditions and the planning for the
---       DMI (EVC_Core sends them), the records for the juridical
---       recording (Event).
+--    6. the snapshot (Current), read by the supervision in the fourth
+--       step: the train, the Train Data, the national values, the PBD
+--       sections computed (3.11.11.3), the MRSP with its TSR flags, the
+--       gradient profile with its coverage and the default gradient for
+--       TSR (3.13.4.1.3), the MA, the braking inhibitions, the powerless
+--       sections, the adhesion, the temporary EOA and SvL, Supervise (an
+--       MA, valid Train Data and a mode of TSR_Mode) and Extra (the
+--       on-board configuration, A_NVMAXREDADHn, the trip margin of
+--       3.13.9.4.8.2, the SR distance of the Context; the rest:
+--       EVC_Supervision_Input); the functions of the mode (4.5.2 Figure
+--       1, EVC_Modes: Track_Speed_Mode, MA_Mode, TSR_Mode,
+--       Train_Speed_Mode) choose what goes in;
+--    7. the track conditions and the planning for the DMI, the records
+--       for the juridical recording (Event).
 --
 --  The MRSP (3.13.7): the lower envelope (EVC_Profiles.Envelope) of the
---  SSP, the ASP, the TSRs, the LX speed restrictions, the speed
---  restrictions to ensure a permitted braking distance (EVC_Track_
---  Description), the signalling related speed restriction (3.11.6, from
---  its reception on), under the ceiling of the maximum train speed
---  (3.11.8, V_MAXTRAIN) and of the mode related speed (the Mode_Speed of
---  the caller: the mode and override speeds of 3.11.7 and 3.11.10 are
---  phase E4). The positions are those of Table 2a ("max" item at a
---  start, "min" item at an end) with the train length where the rear end
+--  SSP, the ASP, the TSRs, the LX speed restrictions, the PBD speed
+--  restrictions (EVC_Track_Description), the signalling related speed
+--  restriction (3.11.6, from its reception on), under the ceiling of the
+--  maximum train speed (3.11.8) and of the caller's Mode_Speed (3.11.7,
+--  3.11.10). The positions are those of Table 2a ("max" item at a start,
+--  "min" item at an end) with the train length where the rear end
 --  counts, so that V_MRSP of 3.13.7.2, the lowest over the confidence
 --  interval of the front end, is what the supervision reads from it.
 --  Evaluate's postcondition states what the SRS asks: the MRSP is sorted
 --  in the sense Ahead and never above any of its sources at any position
---  (MRSP_Sources are those sources along Ahead), and the SvL of the MA
---  is never before its EOA.
---
---  The supervision half of phase E3 reads the snapshot with Current in
---  the fourth step of the cycle.
+--  (MRSP_Sources), and the SvL of the MA is never before its EOA.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -140,7 +119,7 @@ is
    Info_Group             : constant := 16;
    --  the speed restriction to ensure a permitted braking distance
    Info_PBD               : constant := 17;
-   --  phase E4: the station platforms (packet 69), the allowed current
+   --  the station platforms (packet 69), the allowed current
    --  consumption (packet 40)
    Info_Platforms         : constant := 18;
    Info_Current           : constant := 19;
@@ -256,7 +235,7 @@ is
                   and then Event_Count = 0 and then not Track_Cond_Due
                   and then not Planning_Due;
 
-   --  The driver's "slippery rail" (3.18.4.6, phase E4)
+   --  The driver's "slippery rail" (3.18.4.6)
    procedure Set_Driver_Slippery (Slippery : Boolean)
      with Global => (In_Out => State);
 
@@ -276,7 +255,7 @@ is
    function Driver_Slippery_Rail return Boolean
      with Global => State;
 
-   --  Added by the procedures of phase E4
+   --  For the procedures
 
    --  5.20: the information for an external function of the last
    --  cycle (EVC_Track_Conditions.External), for the train interface
@@ -299,7 +278,7 @@ is
    --  mode (the functions of 4.5.2 Figure 1, EVC_Modes; the filter of
    --  4.8.4), the inputs of the exceptions of 4.8.4 (a cab active, a
    --  valid train running number), the SR distance (4.4.11.1.3 b, a
-   --  frame position), the antenna... The default is E3's: FS, every
+   --  frame position), the antenna... The default: FS, every
    --  information accepted and used.
    type Mode_Context_T is record
       Mode        : EVC_Modes.Mode_T := EVC_Modes.M_FS;
@@ -324,9 +303,9 @@ is
    function Train_Covered return Boolean
      with Global => State;
 
-   --  Phase E5: an MA received by radio (EVC_Radio_Info) was accepted
+   --  An MA received by radio (EVC_Radio_Info) was accepted
    --  in the last Evaluate
-   --  Phase E5, 3.10.2.2: the outcome of the conditional emergency stop
+   --  3.10.2.2: the outcome of the conditional emergency stop
    --  of the radio message I of the cycle (EVC_Radio_Info), as
    --  Q_EMERGENCYSTOP (7.5.1.107): 0 accepted with a new EOA, 1 accepted
    --  without, 3 rejected; 4 when the message has none
@@ -358,7 +337,7 @@ is
    function Proposal_Covered return Boolean
      with Global => State;
 
-   --  Phase E5, 3.8.2.5.1: a timer of the MA deleted track description
+   --  3.8.2.5.1: a timer of the MA deleted track description
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n), or the service brake of
    --  the safe radio connection at standstill (i, 3.16.3.4.5 b)
    --  @req 3.8.2.5.1
@@ -375,12 +354,12 @@ is
      with Global => State;
 
    --  One cycle (see above). Mode_Speed: the mode related speed limit
-   --  (No_Speed_Limit until phase E4); Special_Active and Additional:
+   --  (No_Speed_Limit when none); Special_Active and Additional:
    --  the status of the special brakes and of the additional brake on
    --  the train interface (SUBSET-034 2.3.6, 2.3.7), which the braking
    --  model of the speed restrictions to ensure a permitted braking
    --  distance depends on (3.11.11.4, 3.13.6.2.1)
-   --  Phase E4: Virtual_Last, the virtual limits the supervision found
+   --  Virtual_Last, the virtual limits the supervision found
    --  in the last cycle for the indication of the track conditions
    --  (EVC_Track_Conditions, 5.18.4.2, 5.18.8.3)
    --  Work: a work area for the profile of a section of the speed

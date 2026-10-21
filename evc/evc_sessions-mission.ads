@@ -1,17 +1,15 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half, phase 2: the
---  level 2 parts of the start of mission (5.4.3.2: the RBC contact and
---  its status of 5.4.3.3, A31 the session opened, D31 / A32, the SoM
---  position report of D32 / A33 / A34 and the RBC's answers A35, D34 /
---  A24, D35 / A39 / A40), the Train Data sent to the RBC (3.18.3.4,
---  repeated until acknowledged, 3.18.3.4.1 and 3.18.3.4.2) and the end
---  of mission (5.5.3.1.3, 5.5.3.1.4, 5.5.4.1).
---
+--  The session and link half's level 2 parts of the start of mission (5.4.3.2:
+--  the RBC contact and its status of 5.4.3.3, A31 the session opened, D31 /
+--  A32, the SoM position report of D32 / A33 / A34 and the RBC's answers A35,
+--  D34 / A24, D35 / A39 / A40), the Train Data sent to the RBC (3.18.3.4,
+--  repeated until acknowledged, 3.18.3.4.1 and 3.18.3.4.2) and the end of
+--  mission (5.5.3.1.3, 5.5.3.1.4, 5.5.4.1).
 --  A private child of EVC_Sessions, its state a part of the parent's:
 --  the parent calls it from its entry points and does what it asks
 --  (Request_T: open or terminate a session, show a status message).
 --
---  Decisions (doc/EVC-PLAN.md §13, session and link, phase 2):
+--  Decisions (doc/EVC-PLAN.md §13):
 --  (1) D7 and the radio networks: the session is opened at D7 (stored
 --      level 2, position and level valid) with the stored contact when
 --      one is known; with none the driver's entry (S3) opens it. The
@@ -30,7 +28,7 @@
 --      "valid referred to an LRBG" (the status is kept), else it is
 --      deleted (A24, A39).
 --  (6) N_AXLE of packet 11 is 0 and M_AIRTIGHT 0 (not fitted): the
---      installation data have neither yet (EVC_Config, E6).
+--      installation data (EVC_Config) have neither.
 
 with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
 with EVC_Driver_Requests;

@@ -34,25 +34,19 @@
 --  automatically or by the driver is application dependent (5.18.2.2.2):
 --  Automatic below chooses; this on-board asks the driver. Not
 --  indicated: station platforms, allowed current consumption and big
---  metal masses (3.12.1.5 a); the tunnel stopping area, shown on the
---  driver's request with the SBD of 5.18.8.3 (phase E4). The non
---  stopping area is announced and shown from point C to the min safe
---  rear end leaving it; the virtual SBI limits of 5.18.4.2 need the
---  supervision (phase E4).
---
---  Phase E4 (the procedures half) adds the supervision's part: the feet
---  of virtual SBD curves (Virtual_Feet: D and G of the two nearest non
---  stopping areas, the end of the two nearest tunnel stopping areas)
---  go in the snapshot, EVC_SDM gives the locations of the SBI and of the
---  Permitted limit at the estimated speed, and the next cycle shows a
---  non stopping area only between SBID and SBIG (5.18.4.2; when the
---  supervision gave nothing for it, from point C as before) and reports
+--  metal masses (3.12.1.5 a). The feet of the virtual SBD curves
+--  (Virtual_Feet: D and G of the two nearest non stopping areas, the end
+--  of the two nearest tunnel stopping areas) go in the snapshot; EVC_SDM
+--  gives the locations of the SBI and of the Permitted limit at the
+--  estimated speed, and the next cycle shows a non stopping area only
+--  between SBID and SBIG (5.18.4.2; when the supervision gave nothing
+--  for it, from point C to the min safe rear end leaving it) and reports
 --  the nearest tunnel stopping area the train can stop in rear of the
 --  end of (Tunnel_Indication, 5.18.8.3 to 5.18.8.5: MSG_STATUS tunnel,
---  announced with the distance to its start, then active). The
---  enabling of its display by the driver (5.18.8.2) is the DMI's (DMI
---  8.2.3.6: the toggle, DR05), so the on-board reports the area
---  whatever the toggle.
+--  announced with the distance to its start, then active). The enabling
+--  of its display by the driver (5.18.8.2) is the DMI's (DMI 8.2.3.6:
+--  the toggle, DR05), so the on-board reports the area whatever the
+--  toggle.
 --
 --  Braking (3.13.2.3.4): the areas where a special brake is inhibited
 --  (M_TRACKCOND 6, 7, 8, 10) and the powerless sections (3, 9, the kind
@@ -61,7 +55,7 @@
 --  max safe front end at their start to the rear end leaving them.
 --
 --  The information for an external function of 3.12.1.5 b) and 5.20
---  (added by the procedures of phase E4, External below): for the
+--  (External below): for the
 --  powerless sections (5.20.2, 5.20.3), the air tightness areas (5.20.4),
 --  the special brake inhibitions (5.20.5) and the changes of traction
 --  system (5.20.6), from the max safe front end at the point C of the
@@ -69,7 +63,7 @@
 --  remaining distances of SUBSET-034 2.3.4, 2.4.1, 2.4.2, 2.4.4 and
 --  2.4.7 (positive in rear of the location, 5.20.1.2); and for the
 --  station platforms (5.20.8, packet 69) and the changes of allowed
---  current consumption (5.20.7, packet 40), which phase E4 stores here
+--  current consumption (5.20.7, packet 40), which are stored here
 --  (3.7.3.1 o, p; 3.7.3.2 e), not indicated to the driver (3.12.1.5
 --  a), their point C as the others' (5.20.7.3, 5.20.8.3).
 
@@ -266,7 +260,7 @@ is
 
    --  The indications and orders of now; notes when the min safe rear
    --  end passes the end of a condition (for the 5 s of A.3.1)
-   --  Phase E4: Last, the virtual limits the supervision found in the
+   --  Last, the virtual limits the supervision found in the
    --  last cycle (5.18.4.2)
    --  @req 3.12.1.2.1, 3.12.1.2.1.3, 3.12.1.2.1.4, 3.12.1.2.1.5, 3.12.1.5
    --  @req 3.12.1.5 a), 5.18.2.2, 5.18.2.2.1, 5.18.2.2.2
