@@ -137,7 +137,7 @@ is
 
    Events       : Natural := 0;
    Messages     : Natural := 0;
-   --  the messages waiting in the transition buffer (none in phase 1)
+   --  the messages waiting in the transition buffer
    Held_Back    : Natural := 0;
    Held         : Held_T := (others => False);
    Mode_Changes : Natural := 0;
@@ -612,7 +612,7 @@ is
    --  3.5.3.7, 3.5.4, 3.5.5: the events of the safe radio connection.
    --  A connection released that was not ordered is lost (3.5.4.1: the
    --  release the on-board requests closes the session first). The
-   --  registration events are those of 3.5.6 (phase 2).
+   --  registration events are those of 3.5.6 (EVC_Sessions.Network).
    --  Decision: the connection lost while terminating ends the session
    --  (no acknowledgement can come, nothing to release).
    procedure Take_Event (S        : EVC_Radio.Session_T;
@@ -679,8 +679,8 @@ is
    --  received on S. The session is established; the on-board supports
    --  a compatible version: 159 (with packet 2) and its acknowledgement
    --  awaited; none: 154, the driver informed and the session terminated.
-   --  Decision (phase 1, no handover yet): the session established
-   --  becomes the one of the supervising RBC (3.15.1 is phase 2)
+   --  Decision: the session established becomes the one of the
+   --  supervising RBC (the handover of 3.15.1 aside)
    --  @req 3.5.3.7 d), 3.5.3.7 d) 1st bullet, 3.5.3.7 d) 2nd bullet, 3.5.4.7
    --  @req 3.17.3.7
    procedure Take_Version (S : Session_T; V : M_VERSION_T; Now : Time_Ms_T)
@@ -724,8 +724,8 @@ is
    --  an acknowledgement owed (M_ACK). The session messages (32, 38, 39)
    --  are taken here; the others pass to the authority half.
    --  Decision: a message on a session not established passes (whether
-   --  the information is accepted is 4.8, phase 2); one on a session the
-   --  on-board does not handle is ignored.
+   --  the information is accepted is 4.8's, in the authority half); one
+   --  on a session the on-board does not handle is ignored.
    --  3.5.3.4 a), 3.5.5.1 a): packet 42 of a General message (24) of the
    --  RBC, an order to establish or terminate a session (a
    --  message 24 goes to none of the stores; 4.8.4 accepts session
@@ -1599,7 +1599,7 @@ is
          Ind_Released (S);
       end if;
       --  3.5.6.7: no request while the registration conditions do not
-      --  hold; it stays due (decision 5 of e5/registration in the plan);
+      --  hold; it stays due (a decision);
       --  3.5.4.4: nor while the engine overlaps an announced radio hole,
       --  set up again
       --  once it has left it

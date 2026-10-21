@@ -1,7 +1,7 @@
 --  ETCS on-board (EVC)
 --  Speed and distance monitoring, implementation.
 --
---  Decisions where 3.13 leaves a choice or where this phase has less
+--  Decisions where 3.13 leaves a choice or where this on-board has less
 --  than the SRS assumes (each stated where it is applied):
 --    - the MRSP before its first element takes the speed of the first
 --      element (the stored information starts it at or behind the

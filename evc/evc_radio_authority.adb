@@ -1021,7 +1021,7 @@ is
         EVC_Levels.Valid and then EVC_Levels.Level = EVC_Modes.L2;
       --  5.4.3.2 D15, S11: "Start" is offered at S20 (in SB), once the
       --  RBC acknowledged the Train Data (3.18.3.4); before, the driver's
-      --  Start waits for it (decision 8 of e5/session-3 in the plan). Start in
+      --  Start waits for it (a decision). Start in
       --  another mode (SR, PT) is not the start of mission
       Acked  : constant Boolean :=
         Mode_Now /= M_SB

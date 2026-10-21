@@ -7,7 +7,7 @@
 --  computes its conditions once per cycle, EVC_Procedures.Evaluate, and
 --  every trip condition, those of the levels and of SR included: [39],
 --  [42], [67], so that a trip has one reason, 4.4.13.1.3), and those not
---  evaluated (a later phase, not implemented yet, or absent from 4.0.0).
+--  evaluated (not implemented yet, or absent from 4.0.0).
 --  Holds dispatches on the group; each group says per condition where it
 --  comes from.
 

@@ -138,7 +138,7 @@ is
    --  b) the Radio data awaited when a) does not hold: no valid RBC
    --  contact, or not registered to the stored network type (3.5.6.7,
    --  EVC_Sessions.Network_Ready: the conditions of a) as 3.5.6.7 reads
-   --  them, GSM-R only; decision 2 of e5/registration in the plan)
+   --  them; decision: GSM-R only)
    --  @req 5.10.3.15.2, 5.10.3.15.2 a), 5.10.3.15.2 a) 1st bullet
    --  @req 5.10.3.15.2 a) 2nd bullet, 5.10.3.15.2 a) 3rd bullet
    --  @req 3.5.3.4 d)
