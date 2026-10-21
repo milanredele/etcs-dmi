@@ -177,6 +177,10 @@ package EVC_Test_Support is
 
    --  Byte N (1 = first) of the payload of record I; of a JRU record,
    --  bytes 1 to 4 of its view (the event and its three bytes), else 0
+   --  Byte N of the JRU record I as the event of EVC_Ports it records
+   --  (EVC_JRU_Messages.View: 1 the event, 2 to 4 its bytes), not its
+   --  NID_MESSAGE (JRU_NID); the event 13 is both the radio error (NID
+   --  13) and an unlinked group's inconsistent message (NID 255)
    function Byte_At (I : Positive; N : Positive) return Natural is
      (if Recs (I).Port /= JRU then Natural (Out_Buf (Recs (I).First + N - 1))
       elsif N = 1 then Natural (JRU_Views (I).Event)
@@ -793,6 +797,8 @@ package EVC_Test_Support is
    --  8.2.3.10: 0 none, 1 forward, 2 backward), 16#FFFF# when none
       function Status_SM_Direction return Natural;
 
+      --  The JRU records of the last Take viewed as the event Event
+      --  (Byte_At (I, 1)), whatever their NID_MESSAGE
       function JRU_Count (Event : Natural) return Natural;
 
    --  3.13.10.3: ceiling speed monitoring, Tables 5 to 7; the TIU output

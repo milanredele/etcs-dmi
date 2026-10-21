@@ -3312,6 +3312,13 @@ package body S076_Run is
      (R.Event = Event and then (Sub < 0 or else R.B2 = Sub)
       and then (B3 < 0 or else R.B3 = B3));
 
+   --  A record of the window viewed as the event 13 whose message is the
+   --  JRU record NID: 13 the radio error, 255 the proprietary record of an
+   --  unlinked group's inconsistent message (both are the event 13)
+   function Any_Rec_13 (NID : Natural; Sub : Integer) return Boolean is
+     (for some I in 1 .. Rec_Count =>
+        Rec_Matches (Rec (I), 13, Sub, -1) and then Rec (I).NID = NID);
+
    function Any_Rec (Event : Natural; Sub, B3 : Integer) return Boolean is
    begin
       for I in 1 .. Rec_Count loop
@@ -4419,7 +4426,7 @@ package body S076_Run is
                   if E >= 0 and then E not in 3 .. 5 then
                      return NJ (R_JRU_Not_Modelled, "13.M_ERROR=" & Img (E));
                   end if;
-                  return Check (Any_Rec (13, E, -1) = Positive,
+                  return Check (Any_Rec_13 (13, E) = Positive,
                                 "JRU13 radio error"
                                 & (if E >= 0 then " M_ERROR" & Img (E) else "")
                                 & (if Positive then "" else " not"),
@@ -4475,14 +4482,14 @@ package body S076_Run is
                                        or else Any_Rec (5, -1, -1)
                                        or else Any_Rec (6, -1, -1),
                              when 1 => Any_Rec (12, -1, -1),
-                             when 2 => Any_Rec (13, -1, -1),
+                             when 2 => Any_Rec_13 (255, -1),
                              when 7 => Any_Rec (4, -1, 5),
                              when 8 => Any_Rec (4, -1, 6),
                              when others =>
                                Any_Rec (4, -1, -1) or else Any_Rec (5, -1, -1)
                                or else Any_Rec (6, -1, -1)
                                or else Any_Rec (12, -1, -1)
-                               or else Any_Rec (13, -1, -1));
+                               or else Any_Rec_13 (255, -1));
                   return Check (Hit = Positive,
                                 "JRU balise group error"
                                 & (if E >= 0 then " M_ERROR" & Img (E) else "")

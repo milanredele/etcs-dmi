@@ -358,6 +358,10 @@ package S076_Bench is
       Event, B2, B3, B4 : Natural := 0;
       --  event 20: byte 2 of the event 20 before it (the commands)
       Prev : Natural := 0;
+      --  the NID_MESSAGE of the record viewed: the event 13 is both the
+      --  radio error (NID 13) and an unlinked group's inconsistent
+      --  message (EVC_Position.Event_Code, a proprietary record, 255)
+      NID  : Natural := 0;
    end record;
    Max_JRU : constant := 2048;
    function JRU_Count return Natural;
