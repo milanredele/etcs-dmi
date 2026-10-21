@@ -9534,3 +9534,37 @@ the SM direction byte, B1160, B1161, B008, B031, B991, 4.4.21.1.12 /
 (B1200 then B1201); consistency B1182, B1183; the re-reads of 3.18.5,
 3.18.6, 3.15.11.2, 3.20.1.2, A.3.2 and the planning gaps B1202; the
 runner B1180, B1181.
+### The BTM alarm as System Failure, the runner's alarm steps, 3.18.6 and 3.18.5 re-read (e6/btm-sf) (2026-10-21)
+
+Done: B1200, the reaction of 3.15.7.6 is System Failure (the decision
+changed, 3.15.7.6.1, as SUBSET-076 takes it): the alarm not ignored is a
+fault that affects safety. `EVC_Core.Supervise_BTM_Alarm` (after the
+mode machine, as before) gives its verdict to
+`EVC_Procedures.BTM_Alarm_Failure` (`Set_BTM_Alarm_Failure`, cleared by
+`Clear`); `EVC_Transition_Conditions.Holds (C_13)` answers it, so the
+next cycle's mode machine takes SF by 4.6.3 [13] and the on-board cycles
+on in SF with its emergency brake (4.4.5.1.2), MSG_STATUS and the JRU
+mode 9; the alarm's service brake left `Produce_Outputs`;
+`EVC_Core.Enter_Failure` stays the host's. No new Global in the Tick
+(Holds already read `EVC_Procedures.State`). Scenario:
+evc_test_procedures `Scenario_BTM_Alarm` (SF with the EB and TIU reason
+Failure, SF kept after the alarm ends, left only by No Power, the
+distance of 3.15.7.2 counted again from a new alarm). Rows 3.15.7.6,
+4.4.5.1.1, 4.4.5.1.2, 4.6.3 Table notes.
+
+B1201: `S076_Run.Apply_Input` feeds `INT btm-alarm received / revoked`
+by `S076_Bench.BTM_Alarm`; `S076_Run.Columns` passes over the window's
+steps after the step under other columns when it looks for the
+sequence's own mode expectation (the alarm sequences keep the mode
+columns before the implementation-dependent SF). SUBSET-076 1040 / 1110
+/ 1040 -> 1043 / 1131 / 1016, 20 improvements, 5 regressions understood
+and re-recorded: 9990600_07 (3 SV) the alarm in the backward movement
+over the big metal mass not ignored, an on-board defect (B1240);
+4080444_03 SV21 / SV22 the expected SF judged against the FS columns
+(B1242). The JRU record 21 bit 56 after SF (four sequences) is to trace
+(B1241); 3070300_05's M_LEVEL=1 in level 1 a sequence defect.
+
+Left: the re-reads of 3.18.6 (rows todo; the on-board sends the VBCs,
+`EVC_DMI_Port.VBC_List_Frame`, and the networks; the driver ID, train
+running number, RBC contact and Train Data views not checked) and
+3.18.5, not started; B1240, B1241, B1242.
