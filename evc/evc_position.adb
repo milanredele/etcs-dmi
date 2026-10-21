@@ -1415,13 +1415,18 @@ is
    --  checked, the service brake unless packet 145 inhibits it, or the
    --  reaction of the last group announced. The service brake is a
    --  linking reaction of Q_LINKREACTION 1 (EVC_Procedures: "Balise read
-   --  error", released at standstill). Decision (3.16.2.4.3.1 a): the
-   --  case "surely not the expected group" is not told apart from b),
-   --  the reaction applies
-   --  @req 3.16.1.4, 3.16.2.4.1, 3.16.2.4.3, 3.16.2.4.3.1, 3.16.2.4.3.1 b)
+   --  error", released at standstill). For an expected group of
+   --  unknown identity, a group whose orientation its own balises give
+   --  (Orientation, of the geometry) and which is crossed against the
+   --  direction announced is surely not the expected one: no reaction
+   --  (3.16.2.4.3.1 a); else the reaction (b). Decision: the error is
+   --  recorded in both cases (3.16.1.4, the message rejected) and the
+   --  window runs on in case a)
+   --  @req 3.16.1.4, 3.16.2.4.1, 3.16.2.4.3, 3.16.2.4.3.1, 3.16.2.4.3.1 a)
+   --  @req 3.16.2.4.3.1 b)
    --  @req 3.16.2.4.4, 3.16.2.4.4.1 b), 3.16.2.4.4.3, 3.16.2.4.4.4
    --  @req 3.16.2.5.1, 3.16.2.5.1.1, 3.16.2.5.3
-   procedure React_Inconsistent (Id : Identity_T)
+   procedure React_Inconsistent (Id : Identity_T; Orientation : Direction_T)
      with Global => (Input  => (Check_Linking, Passage),
                      In_Out => (Links, Events, Event_N, Reaction_Flag,
                                 Reaction_Value))
@@ -1440,7 +1445,13 @@ is
             E : constant EVC_Linking.Link_Index_T := Links.Expected;
             L : constant EVC_Linking.Link_T := Links.Links (E);
          begin
-            if not L.Known_Id or else L.Id = Id then
+            if not L.Known_Id
+              and then Orientation /= Unknown
+              and then Same (Orientation, Links.Sense) /= L.Nominal
+            then
+               --  3.16.2.4.3.1 a): surely not the expected group
+               Put_Identity_Event (Inconsistent_Linked, Id);
+            elsif not L.Known_Id or else L.Id = Id then
                Put_Identity_Event (Inconsistent_Linked, Id);
                Request_Reaction (L.Reaction, Cause_Inconsistent, E);
                Next_Window;
@@ -1485,7 +1496,7 @@ is
       --  3.16.2.7.1.1: a balise detected
       Missed_Last := False;
       if not Consistent (Passage) then
-         React_Inconsistent (Id);
+         React_Inconsistent (Id, G.Orientation);
          return;
       end if;
       if not G.Has_Reference then

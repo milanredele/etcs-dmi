@@ -886,7 +886,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.4.2,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated (M_DUP of the neighbour read)
 3.16.2.4.3,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (another group than the expected one: no reaction)
 3.16.2.4.3.1,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the expected group of unknown identity: its reaction)
-3.16.2.4.3.1 a),3,x,,,,,E6,partial,EVC_Position.React_Inconsistent (decision: not told apart from b; the reaction applies)
+3.16.2.4.3.1 a),3,x,,,,,E6,done,"EVC_Position.React_Inconsistent (the group's own orientation, EVC_Balise_Groups.Geometry, against the direction announced: no reaction, the error recorded, the window runs on); evc_test Scenario_Consistency_Reactions"
 3.16.2.4.3.1 b),3,x,,,,,E6,done,EVC_Position.React_Inconsistent
 3.16.2.4.4,3,x,,,,,E6,done,"EVC_Position.React_Inconsistent (linking not checked: the service brake as a linking reaction of Q_LINKREACTION 1 in EVC_Procedures); EVC_Procedures.Evaluate commands it in every mode reading balises but SL, PT, NL, RV, PS (Msg_SB, apart from the linking reaction's FS, AD, LS, OS, SM); evc_test Scenario_Consistency_Modes (SR)"
 3.16.2.4.4 a),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent

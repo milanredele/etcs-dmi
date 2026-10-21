@@ -315,6 +315,66 @@ package body EVC_Test_Consistency is
       Add_Group (Group (30, 1000));
    end Inconsistent_Track;
 
+   --  Runs to To_Cm a cycle at a time: the service brake seen on the way
+   --  and the count of balise group error records (JRU 12)
+   procedure Run_Records (To_Cm : Integer_64; SB : out Boolean;
+                          Rec_12 : out Natural) is
+   begin
+      SB := False;
+      Rec_12 := 0;
+      while Train_Cm < To_Cm loop
+         Step_X (1_000);
+         if TIU_Out /= 16#FFFF# and then TIU_Out mod 256 / 2 mod 2 = 1 then
+            SB := True;
+         end if;
+         Rec_12 := Rec_12 + JRU_Count (12);
+      end loop;
+   end Run_Records;
+
+   --  3.16.2.4.3.1: linking checked, the expected group 20 announced with
+   --  an unknown identity (NID_BG 16383) and against its nominal
+   --  direction, its message inconsistent (balise Skip - 1 of Balises
+   --  missed); the linking reaction the service brake
+   procedure Unknown_Identity_Case (Skip, Balises : Positive;
+                                    SB : out Boolean; Rec_12 : out Natural)
+   is
+   begin
+      Start_X;
+      SS_Seen := (others => 0);
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((500, 400), (16383, 30), 5, 1,
+                                      Nominal => False)));
+      Add_Group (Group (20, 600, Balises));
+      Track (2).Skip := Skip;
+      Add_Group (Group (30, 1000));
+      JRU_Last (4, 3) := 0;
+      Run_Records (80_000, SB, Rec_12);
+   end Unknown_Identity_Case;
+
+   procedure Scenario_Unknown_Identity is
+      SB     : Boolean;
+      Rec_12 : Natural;
+   begin
+      --  balises 0 and 2 read: the group's own orientation, nominal,
+      --  against the announced one, surely not the expected group
+      Unknown_Identity_Case (2, 3, SB, Rec_12);
+      Check (Rec_12 >= 1
+             and then JRU_Last (4, 3) = EVC_Position.Cause_Not_Detected,
+             "reactions: the expected group of unknown identity, an "
+             & "inconsistent group crossed against the direction "
+             & "announced, its error recorded, no reaction: the brake "
+             & "comes when its window ends without it (3.16.2.4.3.1 a, "
+             & "3.16.2.3.1 b), got" & Img (Rec_12) & Img (JRU_Last (4, 3)));
+      --  balise 0 of 2 read: no orientation of its own, it may be the
+      --  expected group
+      Unknown_Identity_Case (2, 2, SB, Rec_12);
+      Check (SB and then Rec_12 >= 1
+             and then JRU_Last (4, 3) = EVC_Position.Cause_Inconsistent,
+             "reactions: the expected group of unknown identity, an "
+             & "inconsistent group without an orientation of its own, the "
+             & "linking reaction (3.16.2.4.3.1 b)");
+   end Scenario_Unknown_Identity;
+
    procedure Scenario_Consistency_Reactions is
       SB : Boolean;
       Brake_Error : Natural renames
@@ -440,6 +500,7 @@ package body EVC_Test_Consistency is
       Check (not SB,
              "cross-talk: the watch ended by the linked group 57 of known "
              & "identity, no reaction (3.16.2.7.2.1 b)");
+      Scenario_Unknown_Identity;
    end Scenario_Consistency_Reactions;
 
    procedure Scenario_Consistency_Modes is
