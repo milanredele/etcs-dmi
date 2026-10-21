@@ -1,8 +1,7 @@
 --  ETCS on-board (EVC)
 --  The operated system version: SUBSET-026 3.17.2 and the envelope of
---  6.4.2 (phase E5 brings the part of chapter 6 the radio needs; the
---  rest, the balise side of 3.17.2.3 .. .7 and 3.17.3.3 .. .4, is E6 /
---  E7).
+--  6.4.2, by radio (Follow) and by balise (Take_Balise_Group: 3.17.2.3
+--  .. .7, 3.17.3.3 .. .4).
 --
 --  6.4.2.1, 6.4.2.2: the highest system version this on-board supports
 --  is 3.0, so its envelope is the full one, 1.0 up to 3.0: X = 1, 2 and
@@ -21,13 +20,13 @@
 --      entering (a: the cycle after EVC_Levels changed the level);
 --    - out of level 2, or without that session (d, e), the operated
 --      version is the one last operated: the control in relation to the
---      non-RBC constituents applies again from there (3.17.2.3, E6 / E7);
+--      non-RBC constituents applies again from there (3.17.2.3);
 --    - c, the accepting RBC at the border, comes with the handover
 --      (3.15.1): the accepting RBC then becomes the supervising one;
 --    - .8.1 / .8.2 (the balise group that ordered the transition checked
---      again with the new version): the telegram decoder knows one layout
---      of 4.0.0 today, nothing to check again; E7 with the layouts of
---      chapter 6.
+--      again with the new version): the telegram decoder knows the one
+--      layout of 4.0.0, nothing to check again (the layouts of chapter 6
+--      are not translated).
 --  3.17.2.9: the operated version is kept over No Power (EVC_Retained);
 --  3.17.2.9.1: lost, the highest supported one (Restore).
 

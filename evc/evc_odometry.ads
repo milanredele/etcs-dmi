@@ -41,9 +41,9 @@
 --  whole 5000 m were travelled (3.6.8.8). Impaired ends once 5000 m were
 --  travelled with both sums, at every check, below the accuracy of
 --  distances measured on-board, 5 m + 5 % of the distance of the sums
---  (SUBSET-041 5.3.1.1; 3.6.8.6). E2 reports; the reactions (informing
---  the driver, System Failure) are those of phase E4 (EVC_Position
---  events, EVC_Core).
+--  (SUBSET-041 5.3.1.1; 3.6.8.6). This unit reports; the reactions
+--  (informing the driver, System Failure) are EVC_Core's, from the
+--  events of EVC_Position.
 --
 --  Cold movement (3.15.8): the detection works while the on-board is in
 --  No Power and is part of the odometer port. The first sample after
@@ -54,7 +54,7 @@
 --  the frame position and the accumulated amounts at its start; the
 --  functions below give what 3.6.7.2 and 3.6.7.3 define. The functions
 --  that supervise such distances (roll away protection, SR distance,
---  ...) keep their own Virtual_T (phases E3 and E4).
+--  ...) keep their own Virtual_T.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 

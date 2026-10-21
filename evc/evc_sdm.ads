@@ -17,9 +17,7 @@
 --
 --  The monitoring runs when the snapshot gives a ceiling speed (an MRSP
 --  under Supervise, or a mode related speed); the targets are
---  supervised with Supervise and a valid train position. Until the mode
---  machine of phase E4, Supervise stands for "a mode with speed and
---  distance monitoring" (4.5.2 Figure 1).
+--  supervised with Supervise and a valid train position.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -81,7 +79,7 @@ is
       Level_1        : Boolean := False;
       --  the distance from the active antenna to the front end
       Antenna_Offset : Natural range 0 .. 100_000 := 0;
-      --  phase E4, 4.4.18.1.6: in Reversing an SBI exceeded commands the
+      --  4.4.18.1.6: in Reversing an SBI exceeded commands the
       --  emergency brake instead of the service brake (revoked as the
       --  service brake would be, 3.13.10.2.4)
       EB_Instead_Of_SB : Boolean := False;
@@ -213,21 +211,20 @@ is
       Perturbation   : Boolean := False;
       Perturbation_X : Num := 0;
       MA_Request     : Boolean := False;
-      --  3.8.6.1 b) (E5): with a proposed shortened MA in the snapshot
+      --  3.8.6.1 b): with a proposed shortened MA in the snapshot
       --  (Extra.Proposal), the estimated front end is in rear of the
       --  Indication location of its EOA and the max safe front end in
       --  rear of that of its SvL (or of its LOA) for the current speed
       --  @req 3.8.6.1 b)
       Proposal_In_Rear : Boolean := False;
-      --  added by the procedures of phase E4, 5.16 (the temporary EOA
-      --  and SvL of the target c) is the start of the level crossing not
-      --  protected of Snapshot_T.LX): LX_MRDT, it is the most relevant
-      --  displayed target (5.16.1.4 a); LX_Release, stopping in rear of
-      --  it not being required, the estimated or the max safe front end
-      --  (as the SBI1 or the SBI2 for V_LX is the most restrictive) has
+      --  5.16 (the temporary EOA and SvL of the target c) is the start of the
+      --  level crossing not protected of Snapshot_T.LX): LX_MRDT, it is the
+      --  most relevant displayed target (5.16.1.4 a); LX_Release, stopping in
+      --  rear of it not being required, the estimated or the max safe front
+      --  end (as the SBI1 or the SBI2 for V_LX is the most restrictive) has
       --  reached the location of the Permitted speed supervision limit
-      --  calculated for V_LX (3.13.9.3.5.11, .12) at or below V_LX
-      --  (5.16.3.2), and LX_From that location, a frame position
+      --  calculated for V_LX (3.13.9.3.5.11, .12) at or below V_LX (5.16.3.2),
+      --  and LX_From that location, a frame position
       LX_MRDT        : Boolean := False;
       LX_Release     : Boolean := False;
       LX_From        : Dist_T := 0;
@@ -300,7 +297,7 @@ is
        --  and revoked only at standstill or, outside release speed
        --  monitoring, when the speed is back at or below V_MRSP (Tables
        --  6, 10, 11, 14), unless nothing is supervised any more (the
-       --  mode, 3.14.1.11, E4)
+       --  mode, 3.14.1.11)
        and then (if State.EB'Old and then not State.EB
                  then not Result.Active
                       or else S.Train.Standstill

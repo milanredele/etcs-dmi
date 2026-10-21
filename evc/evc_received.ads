@@ -6,17 +6,16 @@
 --  A telegram is parsed by ETCS_Telegram, a radio message by
 --  ETCS_Message; each is kept as its bits plus the index of its packets
 --  (the memory model of doc/EVC-PLAN.md §2: a packet is decoded on
---  demand, Open_*_Packet then the Decode of its package). Phase E1 keeps
---  the last accepted one of each; what the on-board does with them is
---  phases E2 to E6.
+--  demand, Open_*_Packet then the Decode of its package). The last
+--  accepted one of each is kept; the other units read it from here.
 --
---  The radio messages are taken as coming from an RBC: the session
---  management of phase E5 will tell an RBC from an RIU. Until then a
---  message or packet only an RIU sends is rejected (Wrong_Sender).
+--  The radio messages are taken as coming from an RBC: RIUs are not
+--  taken, and a message or packet only an RIU sends is rejected
+--  (Wrong_Sender).
 --
 --  Every rejection reason is counted, among them a spare value of a
 --  variable (Invalid_Value, SUBSET-026 3.16.1.1.1: the information is
---  not kept; the reaction of 3.16.2 / 3.16.3 is a later phase).
+--  not kept; the reaction of 3.16.2 / 3.16.3 is not this unit's).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -100,7 +99,7 @@ is
    function Last_Message return ETCS_Message.Message_T
      with Global => Store;
 
-   --  Phase E5: the last message accepted read in place (Last_Message
+   --  The last message accepted read in place (Last_Message
    --  returns about 1.6 KB by value): its kind, the value of the first
    --  field Var (ETCS_Message.Value), its copy into M
    function Last_Kind return ETCS_Message_Catalogue.Message_Kind_T
@@ -108,7 +107,7 @@ is
    function Last_Value (Var : ETCS_Variables.Variable_T)
      return Interfaces.Unsigned_64
      with Global => Store;
-   --  Phase E5: the value of the field I (in the order of the message,
+   --  The value of the field I (in the order of the message,
    --  for a variable the message has twice: T_TRAIN of 27, 28)
    function Last_Field (I : ETCS_Message_Catalogue.Field_Index_T)
      return Interfaces.Unsigned_64

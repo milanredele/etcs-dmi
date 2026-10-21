@@ -10,7 +10,9 @@
 --    - the ERTMS/ETCS level and the table of priority of the trackside
 --      supported levels, "to be revalidated";
 --    - the RBC contact information, "to be revalidated"
---      (EVC_Radio.RBC_Contact_T, written by EVC_Sessions, phase E5);
+--      (EVC_Radio.RBC_Contact_T, written by EVC_Sessions);
+--    - 3.5.6.2: the Radio Network type and GSM-R network identity
+--      (EVC_Radio.Network);
 --    - 3.17.2.9: the system version operated (EVC_System_Version; lost,
 --      the highest supported one, 3.17.2.9.1);
 --    - 3.18.2.7: the national values applicable (EVC_National_Values;
@@ -19,9 +21,8 @@
 --      their periods);
 --  not kept: what 4.10 deletes in NP (Train Data, driver ID, train
 --  running number, the MA and the track description, the RBC/RIU system
---  version, ...). Not yet kept, with the phase that brings it: EOLM
---  information (Euroloop, E7), the radio network and the radio system
---  used ("unchanged", E5), the not yet applicable table of priority,
+--  version, ...). Not kept yet: EOLM information (Euroloop), the radio
+--  system used ("unchanged"), the not yet applicable table of priority,
 --  the order kept in SH, PS or SM (4.11.1.4).
 --
 --  The store is written at the end of every cycle (Save, EVC_Core), so
@@ -29,8 +30,8 @@
 --  and read at the power-up (Load, EVC_Core.Power_Up). Here it is a
 --  memory that survives EVC_Core.Initialise, as the installation
 --  configuration (EVC_Config) does: the state of the on-board within
---  one run of its host. On the target (phase E8) the same record goes
---  to non-volatile memory with a CRC behind this interface; Erase is
+--  one run of its host. Non-volatile memory with a CRC behind this
+--  interface, for the target, is not there yet; Erase is
 --  the empty store of a new on-board (EVC_Core.Initialise).
 
 with EVC_Levels;
