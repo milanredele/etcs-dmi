@@ -1,6 +1,5 @@
 --  ETCS on-board (EVC)
---  The procedures of chapter 5 of the second half of phase E4,
---  implementation.
+--  The procedures of chapter 5, implementation.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -1432,11 +1431,11 @@ is
       if TD_Revalidate and then not C.Train_Data_Valid then
          TD_Revalidate := False;
       end if;
-      --  E2, E4: at standstill, the acknowledgement asked (S3, S5)
+      --  S2, S4 at standstill: the acknowledgement asked (S3, S5)
       if TD_Step = TD_Brake and then Standstill then
          TD_Step := TD_Ack;
       end if;
-      --  E3, E5: acknowledged, the brake released (A5, A6), then A7 or S6
+      --  S3, S5 acknowledged: the brake released (A5, A6), then A7 or S6
       if TD_Step = TD_Ack and then C.Brake_Release_Ack then
          TD_Step := TD_Idle;
          Status (SS_Train_Data_Changed_Brake, 1);
@@ -1447,7 +1446,7 @@ is
             Record_Event (Event_Train_Data, 6, 0);
          end if;
       end if;
-      --  S0, E0 (5.17.1.3: not in RV)
+      --  S0 -> D0 (5.17.1.3: not in RV)
       if C.TD_Change and then C.Train_Data_Valid and then TD_Step = TD_Idle
         and then C.Mode in M_FS | M_AD | M_LS | M_OS | M_SR | M_SB | M_SN
                          | M_UN | M_TR | M_PT
@@ -1465,8 +1464,8 @@ is
          elsif not C.TD_Category then
             Inform;                                        -- D1, A1
          elsif C.Mode in M_SB | M_PT | M_UN | M_SN | M_SR | M_TR then
-            --  D3; D5: the MA and track description of an RBC (level 2,
-            --  phase E5) are not stored
+            --  D3; D5: the MA and track description of an RBC (level 2)
+            --  are not stored
             Inform;                                        -- A1
          elsif Standstill then
             Inform;                                        -- D7, A1
@@ -1538,7 +1537,7 @@ is
       Conds (5) := Standstill and then L_Valid
                    and then C.Level in L0 | NTC | L1
                    and then EVC_Driver_Requests.Shunting_Selected;
-      --  [6]: level 2, the RBC (phase E5)
+      --  [6]: level 2, the RBC
       --  [7], [62], [63], [68]: the train trip acknowledged
       declare
          Trip_Ack : constant Boolean :=
@@ -1553,7 +1552,7 @@ is
                        and then C.Level in L0 | NTC
                        and then not C.Train_Data_Valid;
       end;
-      --  [9]: LX_Step; [11]: level 2 (phase E5)
+      --  [9]: LX_Step; [11]: level 2
       --  [15], [50], [70]: the acknowledgement of a request displayed
       Conds (15) := Acked_Now and then Acked_M = M_OS;
       Conds (50) := Acked_Now and then Acked_M = M_SH;
@@ -1561,7 +1560,7 @@ is
       --  [19]
       Conds (19) := EVC_Driver_Requests.Exit_Shunting_Selected
                     and then Standstill;
-      --  [20]: the unconditional emergency stop (radio, phase E5)
+      --  [20]: the unconditional emergency stop (radio)
       --  [22], [23]: Passive Shunting, a desk opened
       Conds (22) := C.Desk_Open and then Stop_On_Desk;
       Conds (23) := C.Desk_Open and then not Stop_On_Desk;
@@ -1587,7 +1586,7 @@ is
       Conds (71) := Conds (72) and then C.Level_Switched;
       --  [59]: the reversing acknowledged at standstill
       Conds (59) := Acked_Now and then Acked_M = M_RV and then Standstill;
-      --  [81]: the SM authorisation of the RBC (phase E5)
+      --  [81]: the SM authorisation of the RBC
       --  [82]
       Conds (82) := EVC_Driver_Requests.Exit_SM_Selected
                     and then Standstill;
@@ -1691,7 +1690,7 @@ is
       for I in L'Range loop
          --  not unrolled by the proof, nothing needed after the loop
          pragma Loop_Invariant (True);
-         --  phase E5: [41] is the session half's (EVC_Sessions)
+         --  [41] is the session half's (EVC_Sessions)
          if R = No_Trip and then L (I) in Condition_T
            and then (Conds (L (I))
                      or else (L (I) = 41
@@ -1805,7 +1804,7 @@ is
    end Leave_Mode;
 
    --  The change of Train Data (5.17) on entering To: 4.12, its brake
-   --  while running revoked; 5.17.2.2 E1, D4, the trip procedure exited
+   --  while running revoked; 5.17.2.2 S1 -> D4, the trip procedure exited
    procedure Train_Data_Mode_Entered (To : Mode_T)
      with Global => (In_Out => (TD_Step, TD_Revalidate, Status_List,
                                 Status_N, Events, Event_N))
@@ -1820,7 +1819,7 @@ is
          Status (SS_Train_Data_Changed_Brake, 1);
       end if;
 
-      --  5.17.2.2 E1, D4: the trip procedure exited, the re-validation
+      --  5.17.2.2 S1 -> D4: the trip procedure exited, the re-validation
       --  (S6) in FS, LS, OS, SR, SN, UN; in SH the Train Data are invalid
       --  already (4.6.3 [68]): the procedure ends
       if TD_Step = TD_Wait_Trip and then To not in M_TR | M_PT then

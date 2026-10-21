@@ -96,7 +96,7 @@ is
    MA_Board        : Boolean := False;
    Profile_Overlap : Boolean := False;
    Covered_Flag    : Boolean := False;
-   --  phase E5: an MA by radio was accepted in the last Evaluate
+   --  an MA by radio was accepted in the last Evaluate
    Radio_MA        : Boolean := False;
    --  4.4.8.1.8: the list of balise groups for the SH area that came
    --  with it (packet 49)
@@ -105,7 +105,7 @@ is
    Radio_SH        : Boolean := False;
    Radio_SH_N      : Natural range 0 .. Max_Radio_SH := 0;
    Radio_SH_Ids    : Radio_SH_Ids_T := (others => (others => <>));
-   --  phase E5, 3.8.6.1 b): the shortened MA proposed in the cycle
+   --  3.8.6.1 b): the shortened MA proposed in the cycle
    --  (message 9), as the supervision sees it, not stored; the origin of
    --  its message, kept while the RBC's request is answered
    Proposal        : Movement_Authority_T := (others => <>);
@@ -113,12 +113,12 @@ is
    --  3.7.2.3: the profiles cover the proposal of
    --  the cycle (True when there is none)
    Proposal_Cover  : Boolean := True;
-   --  phase E5, 3.10.2.2: the outcome of the conditional emergency stop
+   --  3.10.2.2: the outcome of the conditional emergency stop
    --  of each radio message of the cycle (Q_EMERGENCYSTOP, 7.5.1.107: 0
    --  accepted with a new EOA, 1 accepted without, 3 rejected; 4 none)
    type Stop_Q_T is array (EVC_Radio_Info.Index_T) of Stop_Outcome_T;
    Stop_Q          : Stop_Q_T := (others => 4);
-   --  phase E5: the track description was deleted by a timer of the MA
+   --  the track description was deleted by a timer of the MA
    --  or by the contact supervision (A.3.4.1.2 i) in the last Evaluate
    --  (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
    Timer_Deletion  : Boolean := False;
@@ -365,7 +365,7 @@ is
          --  A.3.4.1.3: gradients, SSP, ASP, route suitability, mode
          --  profile, signalling related speed restriction deleted, track
          --  conditions reset; TSRs, level crossings, adhesion, national
-         --  values unchanged; linking (EVC_Position) is phase E4
+         --  values unchanged; the linking is EVC_Position's
          EVC_Track_Description.Delete_Beyond
            (T, O.Delete_X, O.Delete_To, O.Delete_Before);
          EVC_Movement_Authority.Delete_Beyond
@@ -384,16 +384,16 @@ is
    type Order_Kind_T is
      (K41, K46, K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70,
       K71, K88, K12,
-      --  phase E5: the level 2 MA of a radio message (messages 3, 33)
+      --  the level 2 MA of a radio message (messages 3, 33)
       K15,
       K80,
       --  the repositioning information (3.8.5.2.2), after
       --  the MA it updates
       K16,
-      --  phase E4: the station platforms, the allowed current
+      --  the station platforms, the allowed current
       --  consumption (track conditions, 5.18, 5.20)
       K69, K40,
-      --  phase E5: the session management order (3.5.2.6.1)
+      --  the session management order (3.5.2.6.1)
       K42, K45,
       --  the RBC transition order (3.15.1.3)
       K131,
@@ -990,7 +990,7 @@ is
                end if;
             end;
          when K15 =>
-            --  3.8.1, 3.8.5.1 (phase E5): the level 2 MA, packet 12
+            --  3.8.1, 3.8.5.1: the level 2 MA, packet 12
             --  without V_MAIN (a radio message carries no signalling
             --  related speed restriction); the timers start at the time
             --  stamp of the message (M.Start_Ms, 3.8.4.2.1 a, 3.8.4.3.1 a)
@@ -1045,7 +1045,7 @@ is
       end case;
    end Take_MA_Packet;
 
-   --  3.5.2.6.1 (phase E5): the session management order of packet 42
+   --  3.5.2.6.1: the session management order of packet 42
    --  to the session half (Q_SLEEPSESSION, the sleeping trains, is not
    --  modelled)
    procedure Take_Session_Packet (R : in out Reader_T)
@@ -1760,7 +1760,7 @@ is
       end loop;
    end Take_Balise_Set;
 
-   --  Phase E5: the radio message I of the cycle (EVC_Radio_Info), as
+   --  The radio message I of the cycle (EVC_Radio_Info), as
    --  message number Msg_Count: its packets valid for the train
    --  (3.6.3.1.3, the directions of EVC_Position.Radio_Origin) in the
    --  order of Order_Kind_T, referred to its origin (the LRBG it names,
@@ -1769,7 +1769,7 @@ is
    --  every packet of a message passed is taken, but an MA after an
    --  accepted emergency stop (3.10.2.4: Slot.MA_Allowed False) is
    --  rejected. Radio_MA: an MA of it accepted.
-   --  3.8.6.1 b) (phase E5): the proposed shortened MA of the radio
+   --  3.8.6.1 b): the proposed shortened MA of the radio
    --  message I (message 9, packet 15 valid for the train) to Proposal,
    --  for the supervision of the cycle; nothing of it is stored (its
    --  packets are taken when the request is granted, 3.8.6.1 b)
@@ -1829,7 +1829,7 @@ is
       end loop;
    end Take_Proposal;
 
-   --  3.10.2.2 (phase E5): the conditional emergency stop of the radio
+   --  3.10.2.2: the conditional emergency stop of the radio
    --  message I: rejected when the min safe front end has passed its
    --  stop location (a), also without a position or a known location
    --  reference; else accepted, the EOA and SvL by the stop location (b,
@@ -2361,7 +2361,7 @@ is
 
    --  The trip margin of 3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m
    --  + 10 % of the distance from it to the EOA; beta, the Supervised
-   --  Manoeuvre term, is phase E4)
+   --  Manoeuvre term, is not in it)
    procedure Build_Trip_Margin (Train       : Train_Frame_T;
                                 Ahead       : Sense_T;
                                 MA_R        : Movement_Authority_T;
@@ -2383,8 +2383,8 @@ is
 
    --  The temporary EOA and SvL: the nearest (3.12.2.5) of the mode
    --  profile's (3.12.4), the level crossing's (3.12.5.8) and the route
-   --  unsuitability's (3.12.2.4); phase E4, 5.16: the level crossing of
-   --  the temporary EOA
+   --  unsuitability's (3.12.2.4); 5.16: the level crossing of the
+   --  temporary EOA
    --  @req 3.12.2.4, 3.13.1.5
    procedure Build_Temporary (T         : Origin_Table_T;
                               Train     : Train_Frame_T;
@@ -2417,7 +2417,7 @@ is
       elsif F2 then
          Temporary := (Present => True, EOA => E2,
                        Has_SvL => True, SvL => S2);
-         --  phase E4, 5.16: the level crossing of the temporary EOA
+         --  5.16: the level crossing of the temporary EOA
          declare
             X : constant EVC_Track_Description.LX_T :=
               EVC_Track_Description.LX_Item (LX_I);
@@ -2447,7 +2447,7 @@ is
    end Build_Temporary;
 
    --  The track conditions (3.12.1, 5.18): their indications and the
-   --  orders for the planning; phase E4, 5.18.4.2, 5.18.8: the virtual
+   --  orders for the planning; 5.18.4.2, 5.18.8: the virtual
    --  SBD curves for the supervision of this cycle, the tunnel stopping
    --  area of the last; 5.20: the information for an external function
    procedure Build_Track_Conditions (T            : Origin_Table_T;
@@ -2480,7 +2480,7 @@ is
       EVC_Track_Conditions.External (T, Train, Ext);
    end Build_Track_Conditions;
 
-   --  Phase E4, 5.16.1.4, 5.16.1.5: a level crossing not protected whose
+   --  5.16.1.4, 5.16.1.5: a level crossing not protected whose
    --  status the driver is informed of, while the min safe front end is
    --  in rear of its end (LX01, the symbol 38 of MSG_TRACK_COND; the
    --  numbers 232 .. 247, apart from those of EVC_Track_Conditions)
@@ -3061,7 +3061,7 @@ is
       for G in 1 .. EVC_Position.Taken_Count loop
          Take_Group (G, T, Train, Context, Now_Ms);
       end loop;
-      --  phase E5: then the radio messages of the cycle
+      --  then the radio messages of the cycle
       Radio_MA := False;
       Radio_SH := False;
       Radio_SH_N := 0;
@@ -3114,7 +3114,7 @@ is
             Marks (Balise_Buffer.Info (S).Origin) := True;
          end if;
       end loop;
-      --  phase E5: the origin of a proposed MA, taken once granted
+      --  the origin of a proposed MA, taken once granted
       if Proposal_Origin /= 0 then
          Marks (Proposal_Origin) := True;
       end if;
@@ -3130,10 +3130,10 @@ is
       --  6., 7.
       Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional,
              Context, Virtual_Last, Work);
-      --  3.13.11.8 (phase E5): T_MAR of the MA request parameters
+      --  3.13.11.8: T_MAR of the MA request parameters
       Snap.Extra.T_MAR := Time_Ms_T (EVC_Radio_Info.T_MAR_Ms);
       Snap.Extra.MAR_Known := EVC_Radio_Info.MAR_Known;
-      --  3.8.6.1 b) (phase E5): the proposed shortened MA
+      --  3.8.6.1 b): the proposed shortened MA
       Snap.Extra.Proposal := Proposal;
    end Evaluate;
 
