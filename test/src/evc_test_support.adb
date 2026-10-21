@@ -1671,6 +1671,12 @@ package body EVC_Test_Support is
    begin
       return (if I = 0 then 16#FFFF# else Byte_At (I, 6));
    end Status_Brake;
+
+   function Status_SM_Direction return Natural is
+      I : constant Natural := Find_DMI (EVC_DMI_Port.MSG_STATUS);
+   begin
+      return (if I = 0 then 16#FFFF# else Byte_At (I, 11));
+   end Status_SM_Direction;
    function JRU_Count (Event : Natural) return Natural is
       N : Natural := 0;
    begin

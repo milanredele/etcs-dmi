@@ -378,6 +378,14 @@ is
       SCL.Due := False;
    end Send_Consist;
 
+   procedure Send_Consist_To (S : EVC_Radio.Session_T;
+                              Ctx : EVC_Radio.Context_T)
+   is
+   begin
+      SCL.Session := S;
+      Send_Consist (Ctx);
+   end Send_Consist_To;
+
    procedure Produce (Ctx : EVC_Radio.Context_T) is
    begin
       if Req.Due and then Req.Pending then

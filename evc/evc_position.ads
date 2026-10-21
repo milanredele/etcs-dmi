@@ -503,6 +503,17 @@ is
    function Manoeuvre_Orientation return Boolean
      with Global => State;
 
+   --  4.4.21.1.9, DMI 8.2.3.10: the direction controller position that
+   --  moves the train in the direction of the Supervised Manoeuvre
+   --  authorisation: 1 forward (the train orientation of the authorisation
+   --  is the active cab's side), 2 backward, 0 none (no authorisation's
+   --  orientation, or no active cab). Decision: forward and backward
+   --  are those of the active cab's direction controller
+   --  @req 4.4.21.1.9
+   function Manoeuvre_Direction return Natural
+     with Global => State,
+          Post   => Manoeuvre_Direction'Result <= 2;
+
    --  3.6.1.5: after Update with the cab inputs A and B, the active cab
    --  defines the orientation (Cab_One), with none (or both, SUBSET-034
    --  2.5.1.4.7) the last active one (Old_O, Old_Known) stays (Cab_None);
@@ -528,8 +539,10 @@ is
    --  4.4.21.1.7, 5.21.2.2 A075: a Supervised Manoeuvre authorisation
    --  taken; Opposite: the direction of its MA is opposite to the train
    --  orientation, which turns, and the train position is that of the
-   --  other end of the consist C (safe consist length, metres): the
-   --  estimated front end and the confidence interval of 3.6.1.3.4 and
+   --  other end of the consist C (safe consist length, metres); not
+   --  Opposite, the first authorisation moves it to the far end of the
+   --  consist in front of the engine (3.18.3.2.5.1), a later one keeps
+   --  it: the estimated front end and the confidence interval of 3.6.1.3.4 and
    --  3.6.4.1.5 (gamma 1) in the new orientation. Decision: computed from
    --  the active cab's end of the engine (the estimated front end before
    --  the shift does not yet hold the consist length in front of the
@@ -537,7 +550,7 @@ is
    --  does
    --  @req 4.4.21.1.7, 4.4.21.1.7 a), 4.4.21.1.7 b) 1st bullet
    --  @req 4.4.21.1.7 b) 2nd bullet, 4.4.21.1.7 c) 1st bullet
-   --  @req 4.4.21.1.7 c) 2nd bullet
+   --  @req 4.4.21.1.7 c) 2nd bullet, 3.18.3.2.5.1
    procedure Shift_For_Manoeuvre (Opposite : Boolean;
                                   C        : EVC_Train_Data.Consist_T)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
@@ -549,6 +562,7 @@ is
                   and then Active_Cab = Active_Cab'Old
                   and then LRBG = LRBG'Old
                   and then (if not Opposite
+                              and then Manoeuvre_Orientation'Old
                             then Doubt_Over = Doubt_Over'Old
                                  and then Doubt_Under = Doubt_Under'Old);
 

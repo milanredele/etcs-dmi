@@ -80,7 +80,7 @@ package body EVC_Core
                                    Proc_Ctx,
                                    Ack_For_Protection,
                                    Status_Rev_Sent, Status_Slip_Sent,
-                                   Status_BMM_Sent,
+                                   Status_BMM_Sent, Status_SM_Sent,
                                    Status_Tunnel_Sent,
                                    Status_Radio_Sent,
                                    TC_Sent, Contact_Sent,
@@ -291,6 +291,9 @@ is
    Status_Slip_Sent : Boolean := False;
    --  the "BTM alarm reaction inhibition" sent last (MSG_STATUS, 5.22.4.1)
    Status_BMM_Sent : Boolean := False;
+   --  the Supervised Manoeuvre authorised direction sent last (MSG_STATUS,
+   --  4.4.21.1.9)
+   Status_SM_Sent : EVC_Bytes.Byte := 0;
    --  the tunnel stopping area sent last (MSG_STATUS, 5.18.8)
    Status_Tunnel_Sent : EVC_Track_Conditions.Tunnel_T;
    --  phase E5: the radio byte sent last (3.5.7.1)
@@ -373,6 +376,21 @@ is
       end if;
    end Count;
 
+   --  The fields of MSG_STATUS sent last: none yet (Start)
+   procedure Reset_Status_Sent
+     with Global => (Output => (Status_Rev_Sent, Status_Slip_Sent,
+                                Status_BMM_Sent, Status_SM_Sent,
+                                Status_Tunnel_Sent, Status_Radio_Sent))
+   is
+   begin
+      Status_Rev_Sent := False;
+      Status_Slip_Sent := False;
+      Status_BMM_Sent := False;
+      Status_SM_Sent := 0;
+      Status_Tunnel_Sent := (others => <>);
+      Status_Radio_Sent := 0;
+   end Reset_Status_Sent;
+
    --  The power-up of Initialise and Power_Up: everything cleared but the
    --  store of the data kept over No Power
    procedure Start is
@@ -449,11 +467,7 @@ is
       Unsuitable_Shown := (others => False);
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
-      Status_Rev_Sent := False;
-      Status_Slip_Sent := False;
-      Status_BMM_Sent := False;
-      Status_Tunnel_Sent := (others => <>);
-      Status_Radio_Sent := 0;
+      Reset_Status_Sent;
       TC_Sent := False;
       Contact_Sent := EVC_Radio.No_Contact;
       EVC_JRU_Records.Reset;
@@ -3003,6 +3017,7 @@ is
                      In_Out => (Geo_Sent, Status_Brake_Sent,
                                 Status_TTI_Sent, Status_Rev_Sent,
                                 Status_Slip_Sent, Status_BMM_Sent,
+                                Status_SM_Sent,
                                 Status_Tunnel_Sent, Status_Radio_Sent,
                                 EVC_Outbox.Queue))
    is
@@ -3038,11 +3053,15 @@ is
       --  5.22.4.1: the indication of the BTM alarm reaction inhibition
       --  until the procedure is ended (the DMI's ST07)
       BMM   : constant Boolean := EVC_Procedures.BMM_Inhibited;
+      --  4.4.21.1.9: the SM authorised direction (the DMI's SM01 / SM02)
+      SM    : constant EVC_Bytes.Byte :=
+        (if Current_Mode = M_SM
+         then EVC_Bytes.Byte (EVC_Position.Manoeuvre_Direction) else 0);
       Changed : constant Boolean :=
         Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
         or else Radio /= Status_Radio_Sent
         or else Rev /= Status_Rev_Sent or else Slip /= Status_Slip_Sent
-        or else BMM /= Status_BMM_Sent
+        or else BMM /= Status_BMM_Sent or else SM /= Status_SM_Sent
         or else EVC_Track_Conditions."/=" (Tun, Status_Tunnel_Sent);
    begin
       if EVC_Position.Geo_Known then
@@ -3052,7 +3071,7 @@ is
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
                                Unsigned_32 (Tun.Distance_M), Radio,
-                               Slip, BMM));
+                               Slip, BMM, SM));
          Geo_Sent := True;
       elsif Geo_Sent or else Changed then
          EVC_Outbox.Put
@@ -3061,7 +3080,7 @@ is
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
                                Unsigned_32 (Tun.Distance_M), Radio,
-                               Slip, BMM));
+                               Slip, BMM, SM));
          Geo_Sent := False;
       end if;
       Status_Brake_Sent := Brake;
@@ -3069,6 +3088,7 @@ is
       Status_Rev_Sent := Rev;
       Status_Slip_Sent := Slip;
       Status_BMM_Sent := BMM;
+      Status_SM_Sent := SM;
       Status_Tunnel_Sent := Tun;
       Status_Radio_Sent := Radio;
    end Send_Status;
@@ -3848,7 +3868,7 @@ is
                                 Entering_Shown, Runaway_Shown,
                                 Odometer_Shown, Unsuitable_Shown,
                                 Status_Rev_Sent, Status_Slip_Sent,
-                                Status_BMM_Sent,
+                                Status_BMM_Sent, Status_SM_Sent,
                                 Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 Contact_Sent,

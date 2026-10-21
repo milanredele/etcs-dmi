@@ -789,6 +789,9 @@ package EVC_Test_Support is
    --  The brake field of the MSG_STATUS of the last Take, 16#FFFF# when
    --  there is none
       function Status_Brake return Natural;
+   --  The sm_direction field of the MSG_STATUS of the last Take (DMI
+   --  8.2.3.10: 0 none, 1 forward, 2 backward), 16#FFFF# when none
+      function Status_SM_Direction return Natural;
 
       function JRU_Count (Event : Natural) return Natural;
 

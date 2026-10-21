@@ -193,7 +193,8 @@ is
                           Tunnel_Dist : Unsigned_32 := 0;
                           Radio       : Byte := 0;
                           Slippery    : Boolean := False;
-                          BMM         : Boolean := False)
+                          BMM         : Boolean := False;
+                          SM_Dir      : Byte := 0)
      return Status_Frame_T
    is
      (MSG_STATUS,
@@ -203,7 +204,7 @@ is
       (if Slippery then 1 else 0),    -- adhesion
       (if BMM then 1 else 0),         -- bmm
       (if Reversing then 1 else 0),   -- reversing
-      0,                              -- sm_direction
+      SM_Dir,                         -- sm_direction
       16#FF#, 16#FF#,                 -- set_speed: none
       Byte (TTI and 16#FF#),          -- tti u16
       Byte (Shift_Right (TTI, 8)),

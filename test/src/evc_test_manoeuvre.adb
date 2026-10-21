@@ -123,6 +123,27 @@ package body EVC_Test_Manoeuvre is
       return 0;
    end Wait_For;
 
+   --  Wait_For on session S only
+   function Wait_On (Kind : MCat.Message_Kind_T; S : Natural; Max_Ms : Natural)
+     return Unsigned_64
+   is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+   begin
+      for C in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, St);
+            if St = ETCS_Message.Accepted and then M.Kind = Kind
+              and then Radio_Output (N).Session = S
+            then
+               return M.Values (3);
+            end if;
+         end loop;
+      end loop;
+      return 0;
+   end Wait_On;
+
    --  The level 2 start of the authority scenarios: FS in level 2, the
    --  LRBG 10 at 100 m passed, an established session 1 whose RBC
    --  acknowledged the Train Data (message 8), the safe consist length
@@ -259,6 +280,34 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Position.Manoeuvre_Orientation and then EVC_Mission.Mission,
              "SM authorisation: the same direction, the orientation fixed "
              & "by it (3.6.1.5.1, 3.7.3.4 a)");
+      --  50 m in front of the engine (49 .. 52), the authorisation in the
+      --  train orientation: the front end at the far end of that consist
+      Start_L2_SM;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      Stand_X (300);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      declare
+         E0 : constant Dist_T := EVC_Position.Estimated_Front;
+         O0 : constant Length_T := EVC_Position.Doubt_Over;
+         U0 : constant Length_T := EVC_Position.Doubt_Under;
+      begin
+         Give_Radio_Message (1, SM_Authorisation (T));
+         Stand_X (300);
+         Check (EVC_Core.Mode = M_SM
+                and then EVC_Position.Estimated_Front = E0 + 5_000
+                and then EVC_Position.Doubt_Over = O0 + 100
+                and then EVC_Position.Doubt_Under = U0 + 200,
+                "SM same direction: the front end 50 m ahead, 1 m and 2 m "
+                & "wider, from the consist in front (3.18.3.2.5.1):"
+                & Dist_T'Image (E0)
+                & Dist_T'Image (EVC_Position.Estimated_Front)
+                & Length_T'Image (EVC_Position.Doubt_Over - O0)
+                & Length_T'Image (EVC_Position.Doubt_Under - U0));
+         Check (Same_Report,
+                "SM same direction: the report of 131 is the position "
+                & "report from it (5.21.2.2 A045, 3.18.3.2.5.1)");
+      end;
       --  the MA in the direction opposite to the train orientation: the
       --  front end at the far end of the 400 m in rear of the engine
       --  (4.4.21.1.7)
@@ -424,6 +473,87 @@ package body EVC_Test_Manoeuvre is
       Check (not EVC_Sessions.SM_Consist_Awaited,
              "SM consist: the resent one acknowledged (3.18.3.10.1)");
    end Scenario_SM_Consist_Info;
+
+   --  3.15.1.3.3: in Supervised Manoeuvre the session with the Accepting
+   --  RBC, once established, gets the safe consist length information
+   --  (message 133) instead of the Train Data (129); message 7 on that
+   --  session acknowledges it (3.18.3.10.1)
+   procedure Scenario_SM_Handover is
+      T  : Unsigned_64;
+      N0 : Natural;
+      D0 : Natural;
+   begin
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM, "SM handover: SM entered");
+      N0 := EVC_Sessions.SM_Consist_Sent;
+      D0 := EVC_Sessions.Train_Data_Sent;
+      EVC_Radio.Set_Peer (2, (NID_C => 123, NID_RBC => 2), 0);
+      EVC_Radio.Set_State (2, EVC_Radio.Established);
+      EVC_Radio.Set_Version (2, 33);
+      EVC_Radio.Set_Roles (1, 2);
+      T := Wait_On (MCat.Train_M133, 2, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Sent = N0 + 1
+             and then EVC_Sessions.Train_Data_Sent = D0
+             and then EVC_Sessions.SM_Consist_Awaited,
+             "SM handover: the session with the Accepting RBC established, "
+             & "message 133 sent on it, not the Train Data (3.15.1.3.3)");
+      Give_Radio_Message (2, Consist_Ack (T));
+      Stand_X (300);
+      Check (not EVC_Sessions.SM_Consist_Awaited,
+             "SM handover: message 7 of the Accepting RBC acknowledges it "
+             & "(3.18.3.10.1)");
+      Check (Wait_On (MCat.Train_M133, 2, 1_000) = 0
+             and then EVC_Sessions.Train_Data_Sent = D0,
+             "SM handover: sent once (3.15.1.3.3)");
+   end Scenario_SM_Handover;
+
+   --  The sm_direction of the last MSG_STATUS sent in Max_Ms, 16#FFFF#
+   --  when none was sent
+   function Last_SM_Direction (Max_Ms : Natural) return Natural is
+      Last : Natural := 16#FFFF#;
+   begin
+      for C in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         if Status_SM_Direction /= 16#FFFF# then
+            Last := Status_SM_Direction;
+         end if;
+      end loop;
+      return Last;
+   end Last_SM_Direction;
+
+   --  4.4.21.1.9, DMI 8.2.3.10: the SM authorised direction to the DMI,
+   --  forward (SM01) after an authorisation in the orientation of the
+   --  active cab, backward (SM02) after one opposite to it, none outside
+   --  Supervised Manoeuvre
+   procedure Scenario_SM_Direction is
+      T : Unsigned_64;
+   begin
+      Start_L2_SM;
+      Check (Last_SM_Direction (300) in 0 | 16#FFFF#,
+             "SM direction: none in FS (4.4.21.1.9)");
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Check (Last_SM_Direction (500) = 1 and then EVC_Core.Mode = M_SM,
+             "SM direction: the authorisation in the active cab's "
+             & "orientation shown forward, SM01 (4.4.21.1.9, DMI "
+             & "8.2.3.10)");
+      EVC_Core.Set_Mode_For_Test (M_FS, L2);
+      Check (Last_SM_Direction (300) = 0,
+             "SM direction: none once the mode is no longer SM "
+             & "(4.4.21.1.9)");
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+      Check (Last_SM_Direction (500) = 2 and then EVC_Core.Mode = M_SM,
+             "SM direction: the authorisation opposite to the active "
+             & "cab shown backward, SM02 (4.4.21.1.9, DMI 8.2.3.10)");
+   end Scenario_SM_Direction;
 
    procedure Scenario_SM_Request is
       T : Unsigned_64;
