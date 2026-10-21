@@ -280,6 +280,34 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Position.Manoeuvre_Orientation and then EVC_Mission.Mission,
              "SM authorisation: the same direction, the orientation fixed "
              & "by it (3.6.1.5.1, 3.7.3.4 a)");
+      --  50 m in front of the engine (49 .. 52), the authorisation in the
+      --  train orientation: the front end at the far end of that consist
+      Start_L2_SM;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      Stand_X (300);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      declare
+         E0 : constant Dist_T := EVC_Position.Estimated_Front;
+         O0 : constant Length_T := EVC_Position.Doubt_Over;
+         U0 : constant Length_T := EVC_Position.Doubt_Under;
+      begin
+         Give_Radio_Message (1, SM_Authorisation (T));
+         Stand_X (300);
+         Check (EVC_Core.Mode = M_SM
+                and then EVC_Position.Estimated_Front = E0 + 5_000
+                and then EVC_Position.Doubt_Over = O0 + 100
+                and then EVC_Position.Doubt_Under = U0 + 200,
+                "SM same direction: the front end 50 m ahead, 1 m and 2 m "
+                & "wider, from the consist in front (3.18.3.2.5.1):"
+                & Dist_T'Image (E0)
+                & Dist_T'Image (EVC_Position.Estimated_Front)
+                & Length_T'Image (EVC_Position.Doubt_Over - O0)
+                & Length_T'Image (EVC_Position.Doubt_Under - U0));
+         Check (Same_Report,
+                "SM same direction: the report of 131 is the position "
+                & "report from it (5.21.2.2 A045, 3.18.3.2.5.1)");
+      end;
       --  the MA in the direction opposite to the train orientation: the
       --  front end at the far end of the 400 m in rear of the engine
       --  (4.4.21.1.7)

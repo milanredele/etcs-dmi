@@ -2086,8 +2086,13 @@ is
    is
       New_O : constant Sense_T := EVC_Distances.Opposite (Orient);
    begin
-      Manoeuvre.Fixed := True;
       if not Opposite then
+         --  3.18.3.2.5.1: the first authorisation in the train
+         --  orientation moves the front end to the far end of the consist
+         --  in front of the engine; a later one keeps the front end
+         if not Manoeuvre.Fixed then
+            Manoeuvre := Consist_End (Orient, C);
+         end if;
          return;
       end if;
       Manoeuvre := Consist_End (New_O, C);
