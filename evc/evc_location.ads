@@ -16,8 +16,7 @@
 --    Doubt_Under         the same on the front side (3.6.4.1.5 b).
 --  The detection error of the balise is in the odometer's amounts (the
 --  odometer port, SUBSET-041 5.3.1.1 notes). The gamma term of 3.6.4.1.5
---  (consist lengths in SB without Train Data and in SM) is 0: phases E4
---  and E6.
+--  (consist lengths in SB without Train Data and in SM) is 0 here.
 --
 --  Location items (3.6.4.2.3): location based information received from
 --  the track is processed into items, each a signed distance along the

@@ -161,7 +161,7 @@ is
    function SR_Data return SR_Entry_T
      with Global => State;
    --  RBC data (23 bytes), radio network type, one radio system, VBC
-   --  code, language: the bytes after the kind, as they came (E5, E6)
+   --  code, language: the bytes after the kind, as they came
    function RBC_Data return Bytes_23_T
      with Global => State;
    function Data_Byte (K : Data_Kind_T) return Byte

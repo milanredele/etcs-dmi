@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half: the train integrity information
+--  The session and link half: the train integrity information
 --  reported to the RBC (3.6.5.2): its status of Table 2b, moved by the
 --  conditions of Table 2c, and the confirmed train length (Figure 15)
 --  of the position reports (packets 0 and 1, Q_INTEGRITY, L_TRAININT).

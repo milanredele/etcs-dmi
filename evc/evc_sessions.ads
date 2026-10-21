@@ -1,13 +1,12 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half (doc/EVC-PLAN.md
---  §13): the communication sessions of 3.5 (set-up, the system version
---  of 3.5.3 and 3.17, maintaining, termination, the radio networks of
---  3.5.6, the safe radio connection indication of 3.5.7), the time
---  stamps and the link supervision of 3.16.3 (T_NVCONTACT), the
---  position reports of 3.6.5, the acceptance of radio information of
---  4.8 with the transition buffer of 4.8.5, the level 2 parts of the
---  start and end of mission (5.4, 5.5), the level transitions into and
---  out of level 2 (5.10, 5.15) and the RBC handover (3.15.1).
+--  The session and link half of the radio (doc/EVC-PLAN.md §13): the
+--  communication sessions of 3.5 (set-up, the system version of 3.5.3 and
+--  3.17, maintaining, termination, the radio networks of 3.5.6, the safe radio
+--  connection indication of 3.5.7), the time stamps and the link supervision
+--  of 3.16.3 (T_NVCONTACT), the position reports of 3.6.5, the acceptance of
+--  radio information of 4.8 with the transition buffer of 4.8.5, the level 2
+--  parts of the start and end of mission (5.4, 5.5), the level transitions
+--  into and out of level 2 (5.10, 5.15) and the RBC handover (3.15.1).
 --
 --  The joint gave the entry points EVC_Core calls, in the
 --  order of the cycle, with bodies that do nothing but count: the half
@@ -193,7 +192,7 @@ is
                                 EVC_Train_Data.State,
                                 EVC_Driver_Requests.State,
                                 EVC_Config.State)),
-          --  phase 3: the position report parameters (3.6.5) change
+          --  the position report parameters (3.6.5) change
           --  nothing of the position itself
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
@@ -258,7 +257,7 @@ is
    --  in this cycle; its networks
    function Networks_List_Due return Boolean
      with Global => State;
-   --  5.4.3.2 S4 E7 -> A42: the registration was not achieved in time
+   --  5.4.3.2 S4 -> A42: the registration was not achieved in time
    function Registration_Timed_Out return Boolean
      with Global => State;
    function Networks_Count return Natural
@@ -284,7 +283,7 @@ is
    function EoM_Sent return Natural
      with Global => State;
 
-   --  Phase 3, for the tests: the position reports 136 sent (3.6.5) and
+   --  For the tests: the position reports 136 sent (3.6.5) and
    --  the position report parameters (packet 58) applied
    function Position_Reports_Sent return Natural
      with Global => State;

@@ -1,14 +1,13 @@
 --  ETCS on-board (EVC)
---  Phase E5, the authority by radio half (doc/EVC-PLAN.md
---  §13): the MA by radio (messages 3 and 33, 3.8.5 the update, 3.8.6
---  the co-operative shortening with message 9 and 137/138), the MA
---  request of 3.8.2 (message 132, packet 57, Q_MARQSTREASON), the
---  emergency messages of 3.10 (15, 16, their acknowledgement 147, the
---  revocation 18), the authorisations of the modes by the RBC (4.4 and
---  chapter 5: SR authorisation 2, the recognition of the exit from Trip
---  6 and the reports of 5.11, the shunting request 130 and its answers
---  27, 28 of 5.6, track ahead free 34 and 149, the Supervised Manoeuvre
---  of 5.21), the Train Data to the RBC and its changes (5.17), the
+--  The authority by radio half (doc/EVC-PLAN.md §13): the MA by radio
+--  (messages 3 and 33, 3.8.5 the update, 3.8.6 the co-operative shortening
+--  with message 9 and 137/138), the MA request of 3.8.2 (message 132, packet
+--  57, Q_MARQSTREASON), the emergency messages of 3.10 (15, 16, their
+--  acknowledgement 147, the revocation 18), the authorisations of the modes by
+--  the RBC (4.4 and chapter 5: SR authorisation 2, the recognition of the exit
+--  from Trip 6 and the reports of 5.11, the shunting request 130 and its
+--  answers 27, 28 of 5.6, track ahead free 34 and 149, the Supervised
+--  Manoeuvre of 5.21), the Train Data to the RBC and its changes (5.17), the
 --  text message acknowledgements (message 158).
 --
 --  The joint gave the entry points EVC_Core calls with

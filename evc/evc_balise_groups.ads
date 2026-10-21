@@ -27,7 +27,7 @@
 --      balise, from the movement of the odometer at its detection.
 --
 --  The telegrams themselves are kept for the evaluation of the message
---  at the end of the passage (packets 5, 16, 79 in phase E2).
+--  at the end of the passage (packets 5, 16, 79).
 
 with EVC_Distances;  use EVC_Distances;
 with ETCS_Telegram;

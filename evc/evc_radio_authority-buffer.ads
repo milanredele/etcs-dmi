@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the authority by radio half: the state of the acceptance of
+--  The authority by radio half: the state of the acceptance of
 --  radio information (4.8, the tables in EVC_Radio_Acceptance): the
 --  context of the tables and the transition buffer of 4.8.5. Part of
 --  EVC_Radio_Authority.State.

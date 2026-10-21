@@ -1,7 +1,7 @@
 --  ETCS on-board (EVC)
 --  Distances along the track and the directions of the odometer frame.
 --
---  Every distance the position of phase E2 handles is in centimetres,
+--  Every distance the position handles is in centimetres,
 --  as an integer (no floating point under evc/). The arithmetic is done
 --  in Cm_T, wide enough for the sum or the difference of any two values
 --  of Dist_T, and brought back into Dist_T by Clamp: a result never

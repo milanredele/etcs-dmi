@@ -13,15 +13,16 @@
 --  driver is to be shown (the brake applied, the acknowledgement asked
 --  at standstill, 3.14.1.9). The brake reasons of trip, linking, radio,
 --  reversing, train data, acknowledgements and consist length (3.14.1.3,
---  3.14.1.6 to 3.14.1.7.6) come with the modes and procedures of the
---  later phases; the mode change handling of 3.14.1.11 with 4.12 (E4).
+--  3.14.1.6 to 3.14.1.7.6) come from the procedures and the modes
+--  (EVC_Procedures.Brake_Demand, EVC_Core); the mode change handling of
+--  3.14.1.11 is EVC_Core's, with 4.12.
 --
 --  The protections supervise the distance run away from where the
 --  unwanted movement was detected: the change of the estimated front
 --  end plus the growth of the confidence interval since (3.6.7: the
 --  distance is measured with the odometer's accuracy), against
---  D_NVROLL. Until the mode machine of E4, "a mode with speed and
---  distance monitoring" is the snapshot's Supervise (EVC_SDM): the roll
+--  D_NVROLL. "A mode with speed and distance monitoring" is the
+--  snapshot's Supervise (EVC_SDM): the roll
 --  away protection and the unauthorised direction movement protection
 --  run under it (and in the other modes of 4.5.2 Figure 1 that have
 --  them), the standstill supervision in Stand By without it.
@@ -42,7 +43,7 @@ package EVC_Brake_Commands
   with SPARK_Mode => On
 is
 
-   --  The brake reasons of this phase
+   --  The brake reasons of this unit
    type Reason_T is
      (Speed_Distance,          -- 3.13.10 (3.14.1.4)
       Service_Brake_Failed,    -- 3.14.1.2

@@ -59,7 +59,8 @@ is
 
    --  "Linking consistency is checked" (3.4.4.2.1.1 a and c): linking is
    --  stored and the window of the furthest announced group is still to
-   --  be supervised. Its b), the modes, is phase E4.
+   --  be supervised. Its b), the modes, is the caller's
+   --  (EVC_Position.Set_Linking_Context).
    function Checked (L : Linking_T) return Boolean is
      (L.Stored and then L.Expected <= L.Count);
 

@@ -1,11 +1,11 @@
 --  ETCS on-board (EVC)
---  The radio communication of the on-board that the halves of phase E5
---  share (doc/EVC-PLAN.md §13): the communication sessions with RBCs
---  (SUBSET-026 3.5), their time stamps (3.16.3), the roles of two RBCs in
---  a handover (3.15.1), the RBC contact information (kept over No Power,
---  4.10) and the outbox of what the on-board sends on the RTM port
---  (EVC_Ports: the messages of chapter 8 and the requests to the radio).
---  This unit decides nothing; it holds the state and its queries.
+--  The radio communication of the on-board that its two halves share
+--  (EVC_Sessions, EVC_Radio_Authority; doc/EVC-PLAN.md §13): the communication
+--  sessions with RBCs (SUBSET-026 3.5), their time stamps (3.16.3), the roles
+--  of two RBCs in a handover (3.15.1), the RBC contact information (kept over
+--  No Power, 4.10) and the outbox of what the on-board sends on the RTM port
+--  (EVC_Ports: the messages of chapter 8 and the requests to the radio). This
+--  unit decides nothing; it holds the state and its queries.
 --
 --  Ownership of the state (who writes what):
 --    - EVC_Sessions (the session and link half) is the only

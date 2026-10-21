@@ -52,11 +52,11 @@
 --  their "estimated" items; the estimated front end passes the first,
 --  the max safe front end the second, along the sense of the message.
 --
---  Not here (with the phase that brings it): the radio (5.10.3.1, .2,
---  .3, .6, .7, .10: sessions and reports, E5), 4.9.1.3 (the MA request
---  and position report parameters and the TAF request deleted on
---  entering level 1, the inhibition of revocable TSRs from balises in
---  level 2: E5 stores), 4.11.1.4 (an order of SH, PS or SM kept over No
+--  Not here: the radio parts (5.10.3.1, .2, .3, .6, .7, .10: EVC_Sessions
+--  and its reports), 4.9.1.3 (the MA request and position report
+--  parameters and the TAF request deleted on entering level 1, the
+--  inhibition of revocable TSRs from balises in level 2: the radio
+--  units' stores), 4.11.1.4 (an order of SH, PS or SM kept over No
 --  Power: not kept; the level and the table of priority are, see
 --  Restore and Revalidate below and EVC_Retained).
 

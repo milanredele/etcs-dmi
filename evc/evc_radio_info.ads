@@ -1,8 +1,8 @@
 --  ETCS on-board (EVC)
---  Phase E5, the authority by radio half (EVC_Radio_Authority): the
---  radio messages of the cycle whose information goes to the stores of
---  phase E3 (EVC_Stored_Information), as the balise groups the position
---  took into account go there (EVC_Position.Taken).
+--  For the authority by radio half (EVC_Radio_Authority): the radio messages
+--  of the cycle whose information goes to the stores (EVC_Stored_Information),
+--  as the balise groups the position took into account go there
+--  (EVC_Position.Taken).
 --
 --  EVC_Radio_Authority.Take_Message (step 1 of the cycle) puts here a
 --  message the session half passed (4.8 is its verdict) that carries

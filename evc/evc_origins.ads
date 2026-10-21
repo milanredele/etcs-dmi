@@ -4,7 +4,7 @@
 --
 --  The location based information a balise group gives is processed
 --  into location items referred to that group (3.6.4.2.3). The stored
---  information of phase E3 keeps its distances as offsets from one
+--  information keeps its distances as offsets from one
 --  origin per group message: the location reference of the group as
 --  three location items at distance 0 along the sense of the distances,
 --  one of each kind of Table 2a ("estimated", "min", "max"). Every

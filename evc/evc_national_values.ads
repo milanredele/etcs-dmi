@@ -35,7 +35,7 @@
 --  EVC_Retained), the one not yet applicable is lost.
 --
 --  Not here: the subsets of 3.18.2.6 by system version (one set of
---  4.0.0), Q_NVLOCACC in the position (a constant of E2).
+--  4.0.0), Q_NVLOCACC in the position (a constant there).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -132,7 +132,7 @@ is
    function Pending_At return Location_T
      with Global => State;
 
-   --  The values E0 used
+   --  V_NVALLOWOVTRP of the set in use
    function V_NVALLOWOVTRP return Speed_Cms_T is
      (Current.Values.V_NVALLOWOVTRP)
      with Global => State;

@@ -1,6 +1,6 @@
 --  The display of the Lowest Supervised Speed within the Movement
 --  Authority in Limited Supervision (SUBSET-026 4.4.19.1.4 to
---  4.4.19.1.4.8, phase E4): the generic LS function
+--  4.4.19.1.4.8): the generic LS function
 --  marker (packet 181, 7.4.2.37.4), the toggle orders (packet 180,
 --  7.4.2.37.3) with their delay timer, whether the LSSMA is shown and its
 --  value, for MSG_MODE_LEVEL (EVC_DMI_Port).

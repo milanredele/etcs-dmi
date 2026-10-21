@@ -1,10 +1,9 @@
 --  ETCS on-board (EVC)
---  Phase E6, the session and link half: the procedure Supervised
---  Manoeuvre of 5.21 up to the RBC's answer (S0, E015, A045 the request,
---  message 131, S050 the wait with the repetitions of 5.21.4.1, the
---  answers 4 and 5 matched by their time stamp, 4.8.4 [14], A220 "SM
---  refused"). What message 4 authorises (the MA, C_81, the mode) is the
---  authority half's (EVC_Radio_Authority).
+--  The session and link half of the procedure Supervised Manoeuvre of 5.21 up
+--  to the RBC's answer (S0, E015, A045 the request, message 131, S050 the wait
+--  with the repetitions of 5.21.4.1, the answers 4 and 5 matched by their time
+--  stamp, 4.8.4 [14], A220 "SM refused"). What message 4 authorises (the MA,
+--  C_81, the mode) is the authority half's (EVC_Radio_Authority).
 --
 --  A private child of EVC_Sessions, its state a part of the parent's:
 --  the parent calls it from its entry points and shows the system

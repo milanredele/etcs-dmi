@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the authority by radio half: the acceptance of the
+--  The authority by radio half: the acceptance of the
 --  information received from the RBC, SUBSET-026 4.8, as tables (the
 --  balise information is EVC_Acceptance's). The first filter of Figure
 --  3 by the level (4.8.3, the rows "From RBC: Yes") and the third filter

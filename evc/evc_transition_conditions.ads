@@ -505,8 +505,8 @@ is
    --  stored information and the Train Data; the procedures
    --  evaluate theirs in EVC_Procedures (Evaluate, once
    --  per cycle before the mode machine; every trip condition is theirs,
-   --  so that the trip has one reason, 4.4.13.1.3); the two halves of
-   --  phase E5 theirs in EVC_Sessions and EVC_Radio_Authority (Evaluate,
+   --  so that the trip has one reason, 4.4.13.1.3); the two radio
+   --  halves theirs in EVC_Sessions and EVC_Radio_Authority (Evaluate,
    --  likewise). [1], [4] and [29]
    --  are stated (the transitions out of No Power that EVC_Core.Tick
    --  proves).

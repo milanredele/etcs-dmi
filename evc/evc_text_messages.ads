@@ -38,7 +38,8 @@
 --  Shunting, Sleeping, Non Leading, National System or No Power is
 --  entered; 4.12: their brake ("text message not acknowledged") is
 --  revoked there too. The report of the acknowledgement to the RBC
---  (3.12.3.5, Q_TEXTREPORT) is phase E5; 3.12.3.5.3 already applies.
+--  (3.12.3.5, Q_TEXTREPORT) is EVC_Sessions.Reports' (Produce_Text_Acks);
+--  3.12.3.5.3 applies here.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -157,7 +158,7 @@ is
           Post => Output_Count = 0 and then not Service_Brake
                   and then not Emergency_Brake;
 
-   --  Phase E5, 3.12.3: the text messages (packets 73, 74) of the radio
+   --  3.12.3: the text messages (packets 73, 74) of the radio
    --  messages of the cycle (EVC_Radio_Info, called before the authority
    --  half empties it), referred to the LRBG of their message; stored by
    --  the next Evaluate; from the message First of the table on
