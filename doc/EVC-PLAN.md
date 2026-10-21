@@ -9677,3 +9677,92 @@ every RBC message from the train's clock, rising, so the on-board never
 sees the old stamp: Se3a238ca retriaged model, B1261 for the runner,
 B1161 left open with the design (the trip's stamp in
 `EVC_Sessions.Network`, Exit_Seen only for a later message 6).
+
+### E5 integration after the fortieth round, the ninth of E6 (2026-10-21)
+
+The round of System Failure by the BTM alarm and of the planning's
+Indication marker.
+
+Merged: e6/consistency-defects (the linking against an unknown identity,
+B1182, 3.16.2.4.3.1 a) done: a group crossed against the announced
+direction whose expected identity is unknown is recorded and not
+reacted to, `EVC_Position.React_Inconsistent` with the group's
+orientation; 3160200_34 itself a sequence defect, one telegram of a
+two-balise group; B1183 not found at the source, no mode guard, the
+passage lost in NL for another reason, B1281, the runner and a wrong
+CRC, B1280; B1180 dropped, a sequence defect: OS's intervention speed
+equals SR's; the event 13 reading not reached), e6/btm-sf (the BTM
+alarm's reaction as System Failure, B1200: `EVC_Procedures.BTM_Alarm_Failure`
+set by `EVC_Core.Supervise_BTM_Alarm`, 4.6.3 [13] held by
+`EVC_Transition_Conditions`, SF cycling with the emergency brake, left
+by NP only, `Scenario_BTM_Alarm` reworked; the runner's alarm steps,
+B1201, `S076_Bench.BTM_Alarm`, `S076_Run.Columns` looking past a
+window's later steps, 20 improvements, 4100103_41 passes, 5 regressions
+explained: the alarm over a big metal mass passed backwards, B1240 ours,
+a sequence's columns, B1242; record 21 bit 56 after SF untraced, B1241;
+the 3.18.6 re-read, 3.18.6.2 done, 3.18.6.1 partial, the data view's
+values the on-board does not send, B1243; 3.18.5 not started),
+e6/planning-rereads (the planning per 3.15.10, B1202 in three of five
+parts: the first Indication location in Ceiling Speed monitoring,
+`EVC_Stored_Information.Set_Planning_Indication`, 3.15.10.1 and
+3.15.10.3.1 done; the distances from the front end each item is
+supervised by, 3.15.10.2 partial; the closer of the temporary EOA and
+the MA's, 3.15.10.5 done; the on-board goldens re-recorded after review;
+18 improvements, the sequences waited for the marker; 3.15.10.4, the
+orders' locations, the re-reads and B1181 left) and e6/sm-handover
+(message 133 to the Accepting RBC in SM once its session is
+established, B1220 and B008, 3.15.1.3.3 done,
+`EVC_Sessions.Manoeuvre.Send_Consist_To`; 3170200_11 to step 98, the
+system version to the DMI never sent by evc/, B1260; the SM authorised
+direction to the DMI, B1221, 4.4.21.1.9 done, `EVC_Position.Manoeuvre_Direction`,
+the status frame's byte by `EVC_Core.Send_Status`, the runner judging
+the symbol, 20 steps; the consist in front at the first authorisation
+in the own direction, B1160; B1161 traced: the runner restamps every
+RBC message, B1261).
+
+Merge by hand: the backlog three-way by id, the plan subsections and
+the triage lines appended (consistency-defects fast-forwarded); the two
+edits of `EVC_Core` (btm-sf at the alarm, sm-handover at the status
+frame, planning-rereads one call in `Evaluate_Stored_Information`)
+merged by git without a conflict; no matrix, baseline or source
+conflict; the on-board goldens of planning-rereads only.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12660
+checks, dmi_test 2172), the full proof 0 unproved (12906 checks, margin
+47726 steps, 6 checks of 16 VCs or more at the limit of 6), cross build
+and stack (margin 5784 B), wasm and both smokes 0 failures. SUBSET-076:
+1040 / 1110 / 1040 before, 1060 / 1113 / 1017 after (the alarm steps
+turned 23 blocked sequences into judged ones, 20 of them passing it),
+steps not judged 4354 -> 4315, 6 regressions explained on the branches
+and re-recorded, 0 on the union, 0 untriaged. Matrix: 147 -> 141
+clauses left; E6 done 172 -> 177, todo 13 -> 9, partial 41 -> 40.
+
+Measurements (doc/ROUNDS.csv): btm-sf 120 calls (budget 130, one
+resumption inside it: the 3.18.6 re-read in 17) / 170k / 6.9 USD;
+sm-handover 151 (160, one resumption inside it: B1161 traced in 16) /
+217k / 9.9; consistency-defects 122 (130, one resumption inside it:
+B1180 in 14) / 161k / 7.2; planning-rereads 125 (130, one resumption
+inside it: 3.15.10.5 in 18) / 158k / 6.6; the round 30.7 USD, none
+over budget. Items 8 of 15 done, 2 dropped as sequence defects;
+premises wrong 5 of 25 (4.4.3 is Isolation, SF is 4.4.5; the DMI
+goldens record against `EVC_Mock`, not MSG_PLANNING; 3160200_34 a
+sequence defect; B1183's "no check in NL" not a mode guard; the SF
+sequences needed the runner's column check too). Source-tree reading:
+21, 23, 22, 24 runs against 18, 16, 24, 13 outline runs.
+
+Lessons: all four agents were resumed inside their budget for one named
+item, four conversions of four, 14 to 18 calls each: the rule holds.
+Items done fell to two per builder because two briefs carried
+suspicions, not clauses (B1183, B1180), and both ended in traces, not
+builds: a backlog line that names a symptom is an item of tracing, and
+a brief should say so and budget it as one. The runner's stricter
+judgements keep finding on-board defects (B1240, B1241, B1260, B1281) and
+sequence defects at the same rate. Open items: doc/BACKLOG.csv (69 open
+after this round; 9 added, 9 closed or dropped). Next: SM eighth
+(B1260 the system version to the DMI, B1161 with B1261 on the runner,
+B031, B991, 4.4.21.1.12 / .13, 3.18.3.2.4's rear length, packet 12 of
+131, the target-distance check of B1160); the BTM alarm's leftovers
+(B1240, B1241, 3.18.5); the planning's 3.15.10.4 and the orders'
+locations, the re-reads of 3.15.11.2, 3.20.1.2, A.3.2, B1181; the
+consistency traces B1281, B1280, the PS sequences, the event 13
+reading.
