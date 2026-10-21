@@ -7,6 +7,11 @@
                                                       declaration with its contract
                                                       (spec) and the body, with the
                                                       comment that heads each
+  test/tools/outline.py evc_sessions --spec Evaluate  that subprogram's declaration
+                                                      with its contract and heading
+                                                      comment only, no body (a
+                                                      private subprogram: the profile
+                                                      of its body, up to `is`)
   test/tools/outline.py --refs Position_To_Delete     every use outside its own
                                                       declaration, as file:line
   test/tools/outline.py --refs Evaluate --in evc/     limit the search
@@ -277,6 +282,31 @@ def show(path, name):
     return found
 
 
+def show_spec(path, name):
+    """The declaration with its contract, without the body: what a caller
+    needs. A spec declaration is printed whole (it ends at its ';'); a
+    body is cut after its profile, so that a private subprogram still
+    shows its parameters and the comment heading it."""
+    lines = open(os.path.join(ROOT, path)).readlines()
+    found = False
+    for indent, kind, n, first, last, is_body, expr in declarations(lines):
+        if n.lower() != name.lower():
+            continue
+        found = True
+        print(f'== {path}:{first + 1}-{last + 1} ({"body, profile only" if is_body else "spec"})')
+        for l in heading(lines, first):
+            print(l)
+        if is_body:
+            prof = profile(lines, first, last)
+            for k, l in enumerate(prof):
+                print(f'{first + k + 1:5d}  {l}')
+        else:
+            for k in range(first, last + 1):
+                print(f'{k + 1:5d}  {lines[k].rstrip()}')
+        print()
+    return found
+
+
 def refs(name, roots):
     pat = r'\b' + re.escape(name) + r'\b'
     cmd = ['grep', '-rn', '-E', pat, '--include=*.ads', '--include=*.adb'] + roots
@@ -317,6 +347,16 @@ def main(argv):
             ok = show_decl(f, argv[2]) or ok
         if not ok:
             print(f'outline: no declaration {argv[2]} in {", ".join(files)}', file=sys.stderr)
+            return 1
+        return 0
+    if len(argv) > 2 and argv[1] == '--spec':
+        ok = False
+        for f in files:       # the spec first: a body's profile only when
+            ok = show_spec(f, argv[2])   # the subprogram is private
+            if ok:
+                break
+        if not ok:
+            print(f'outline: no subprogram {argv[2]} in {", ".join(files)}', file=sys.stderr)
             return 1
         return 0
     if len(argv) > 1:
