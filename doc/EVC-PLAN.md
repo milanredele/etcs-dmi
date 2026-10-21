@@ -9534,3 +9534,50 @@ the SM direction byte, B1160, B1161, B008, B031, B991, 4.4.21.1.12 /
 (B1200 then B1201); consistency B1182, B1183; the re-reads of 3.18.5,
 3.18.6, 3.15.11.2, 3.20.1.2, A.3.2 and the planning gaps B1202; the
 runner B1180, B1181.
+
+### Supervised Manoeuvre, message 133 at the handover, the SM direction to the DMI, the consist in front (e6/sm-handover) (2026-10-21)
+
+The seventh Supervised Manoeuvre package.
+
+B1220 and B008 done, 3.15.1.3.3 done: in SM the step of 3.15.1.3.3 in
+`EVC_Sessions.Produce` sends the safe consist length information on the
+session of the Accepting RBC once established, by the new
+`EVC_Sessions.Manoeuvre.Send_Consist_To` (message 133, its message 7
+awaited and matched on that session), instead of the Train Data.
+Scenario `EVC_Test_Manoeuvre.Scenario_SM_Handover`. 3170200_11 SV30 91
+-> 98: the System version window expects 3.0, and the on-board of evc/
+never sends MSG_SYSTEM_VERSION to the DMI (only `EVC_Mock` does):
+B1260, S2a912886 onboard.
+
+B1221 done, 4.4.21.1.9 done: `EVC_Position.Manoeuvre_Direction` (1
+forward when the orientation of the authorisation is the active cab's
+side, 2 backward, 0 none; decision: forward and backward of the active
+cab's direction controller) goes to the DMI as sm_direction of
+`EVC_DMI_Port.Status_Frame` (a new `SM_Dir`), sent by
+`EVC_Core.Send_Status` in SM only, a change resending the frame
+(`Status_SM_Sent`; an edit in `EVC_Core` outside the named units:
+`EVC_DMI_Port` is Pure and `Send_Status` its only caller). The DMI
+already draws SM01 / SM02 from the byte. `S076_Run.DMI_Expect` judges
+the supervised-manoeuvre-symbol steps by `Shown` on
+`S076_Bench.State_T.SM_Dir`: not judged 4354 -> 4334, steps passed
+207379 -> 207396. One regression understood: 5180500_05 SV30 84 -> 78
+expects SM02 after a message 4 whose packet 15 is in the train
+orientation (Q_DIR 1; the comment says opposite; 3110300_03 has the
+same comment with Q_DIR 0 and passes): Sdd5fb0f2 s076. Scenario
+`Scenario_SM_Direction` (helper `EVC_Test_Support.Status_SM_Direction`).
+
+B1160 done (3.18.3.2.5.1): `EVC_Position.Shift_For_Manoeuvre` with
+Opposite False takes `Consist_End` in the train orientation at the first
+authorisation (the front end at the far end of the consist in front of
+the engine, the interval widened by its minimum and maximum, for the
+supervision and the reports of 136 and 131); a later one keeps it. Its
+post keeps the doubts only when the orientation was already fixed
+(`Manoeuvre_Orientation'Old`); the posts of `Adjust_For_Manoeuvre` and
+of the Tick unchanged. Scenario `Scenario_SM_Authorisation` extended.
+
+SUBSET-076: 1040 / 1110 / 1040 before and after, 1 regression explained
+and re-recorded, 1 improvement. Left of the mode: B1161, B031, B991,
+B1260, 4.4.21.1.12, 4.4.21.1.13, 3.18.3.2.4's max rear length, packet
+12 of 131 from the configured set; the EOA supervised from the moved
+front end is covered by the position only (no scenario on the target
+distance).

@@ -378,6 +378,21 @@ is
       end if;
    end Count;
 
+   --  The fields of MSG_STATUS sent last: none yet (Start)
+   procedure Reset_Status_Sent
+     with Global => (Output => (Status_Rev_Sent, Status_Slip_Sent,
+                                Status_BMM_Sent, Status_SM_Sent,
+                                Status_Tunnel_Sent, Status_Radio_Sent))
+   is
+   begin
+      Status_Rev_Sent := False;
+      Status_Slip_Sent := False;
+      Status_BMM_Sent := False;
+      Status_SM_Sent := 0;
+      Status_Tunnel_Sent := (others => <>);
+      Status_Radio_Sent := 0;
+   end Reset_Status_Sent;
+
    --  The power-up of Initialise and Power_Up: everything cleared but the
    --  store of the data kept over No Power
    procedure Start is
@@ -455,12 +470,7 @@ is
       Unsuitable_Shown := (others => False);
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
-      Status_Rev_Sent := False;
-      Status_Slip_Sent := False;
-      Status_BMM_Sent := False;
-      Status_SM_Sent := 0;
-      Status_Tunnel_Sent := (others => <>);
-      Status_Radio_Sent := 0;
+      Reset_Status_Sent;
       TC_Sent := False;
       Contact_Sent := EVC_Radio.No_Contact;
       EVC_JRU_Records.Reset;
