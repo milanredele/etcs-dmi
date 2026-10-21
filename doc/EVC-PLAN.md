@@ -9766,3 +9766,34 @@ B031, B991, 4.4.21.1.12 / .13, 3.18.3.2.4's rear length, packet 12 of
 locations, the re-reads of 3.15.11.2, 3.20.1.2, A.3.2, B1181; the
 consistency traces B1281, B1280, the PS sequences, the event 13
 reading.
+
+### Supervised Manoeuvre, the system version to the DMI, the stamps of 4.8.4 [1], gamma without valid Train Data (e6/sm-version) (2026-10-21)
+
+The eighth Supervised Manoeuvre package.
+
+B1260 done: `EVC_Core.Send_System_Version` sends
+`EVC_DMI_Port.System_Version_Frame` (MSG_SYSTEM_VERSION, x and y of the
+operated version) in the first cycle and again when the operated X
+changes, beside `Send_RBC_Contact`. No SUBSET-026 row: the window is
+DMI 11.5.2. Scenario `EVC_Test_Core.Scenario_System_Version_To_DMI`.
+15 on-board goldens re-recorded after review (one MSG_SYSTEM_VERSION
+3.0 added in the first cycle, nothing else; bench_level2 hash-only, its
+summary line the same with and without the sender). 3170200_11 SV30 98
+-> 120 (S24b29e6c, model).
+
+B1161 done, 4.8.4 [1]: `EVC_Sessions.Network` keeps the on-board's
+T_TRAIN at the entry into TR and takes a message 6 in PT as the
+recognition only when its T_TRAIN is later (`Later_Than_Trip`; decision:
+"with a more recent time stamp" is message 6 against the trip). Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Post_Trip`. B1261 not built, the brief's
+premise wrong: all 45 messages 6 of the corpus carry T_TRAIN 0, and
+4080455_03 (positive) and 4080455_04 (negative) give the same message
+6, so the workbook has no stamp to keep. Only the comment of step 111
+tells the cases apart: a stamp keyed on the comment with a look-ahead,
+as for 3160300.1. Se3a238ca stays model. B1320 found:
+`EVC_Radio_Authority` keeps its own Exit_Recognised without the stamp.
+
+SUBSET-076: 1060 / 1113 / 1017 before and after, 0 regressions, 1
+improvement. Left: B031 (not started), B1261, B1320, B991,
+4.4.21.1.12, 4.4.21.1.13, 3.18.3.2.4's max rear length, packet 12 of
+131, the target-distance check of B1160.
