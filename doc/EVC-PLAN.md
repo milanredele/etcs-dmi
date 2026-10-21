@@ -9581,3 +9581,12 @@ B1260, 4.4.21.1.12, 4.4.21.1.13, 3.18.3.2.4's max rear length, packet
 12 of 131 from the configured set; the EOA supervised from the moved
 front end is covered by the position only (no scenario on the target
 distance).
+
+B1161 traced, not built (a resumption): the reading of 4.8.4 [1] is that
+message 6 must carry a T_TRAIN more recent than the trip (that message 5
+is newer than message 6 already follows from 3.16.3.3.3). 4080455_04
+gives message 6 with T_TRAIN 0, a negative case, but the runner stamps
+every RBC message from the train's clock, rising, so the on-board never
+sees the old stamp: Se3a238ca retriaged model, B1261 for the runner,
+B1161 left open with the design (the trip's stamp in
+`EVC_Sessions.Network`, Exit_Seen only for a later message 6).
