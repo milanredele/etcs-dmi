@@ -9879,3 +9879,84 @@ improvement. Left: B031 (not started), B1261, B1320, B991,
 - B1183 done, premise wrong: the error is recorded in PS too, without the service brake (the PS case of `Scenario_Consistency_NL`: the passive shunting input on and the desk closed, else 4.6.3 [26]'s exit to SH). 4042000_02 step 81 and _03 step 114 are a group of one balise detected without a decoded telegram (3.16.2.5.1 b): the BTM port has no record for a detection without a telegram, B1380 (S99eb8ae1 retriaged).
 - The event 13 reading done (resumed inside the budget): the event 13 of a JRU record's view (`EVC_JRU_Messages.View`) is both the radio error (NID 13) and an unlinked group's inconsistent message (`EVC_Position.Event_Code`, a proprietary record, 255). The runner judged both by the view, so a radio error's expectation could pass on a balise group error and the reverse (and through an identity byte equal to M_ERROR 3 to 5); no sequence was taken for the other (0 moved). Fixed: `S076_Bench.JRU_Record_T` keeps the NID, `S076_Run.Any_Rec_13` judges the JRU 13 by NID 13 and the balise group error M_ERROR 2 by NID 255. In evc_test, `JRU_Count` and `Byte_At (I, 1)` read the view event, now said in their headings; their uses are unambiguous (event 13 in the radio and session scenarios without balise errors, in `Scenario_Consistency_NL` without radio). The looked-wrong remark of e6/consistency-left is closed.
 - SUBSET-076: 1060 / 1113 / 1017 before, 1067 / 1103 / 1020 after, 0 regressions, 10 improvements (3160200_15 and _11 and _30 pass, _33 to step 59 where M_LEVELTEXTDISPLAY 5 blocks it); S1bdb7ccd and S54f1704c resolved in their notes.
+
+### E5 integration after the forty-first round, the tenth of E6 (2026-10-21)
+
+The round of the traces that reversed their premises.
+
+Merged: e6/btm-left (the alarm over a big metal mass passed backwards,
+B1240, a sequence defect: the mass ends at 1600 m by its own packet 67,
+the steps say 1650, our SF right by 3.12.1.2.1.2, `Scenario_BTM_Alarm`
+checking the mass passed backwards both ways; the record 21 after SF,
+B1241, a sequence convention, bit 56 used for ST01 where 215 sequences
+use bit 38, the runner leaves it unjudged in SF, 8 improvements; the
+3.18.5 re-read, UTC in `EVC_JRU_Messages.Set_Time`, the local time
+without a source, B1340 an installation offset for E8; the alarm
+sequences' columns, B1242, `S076_Run.Columns` admitting SF after an
+alarm), e6/planning-left (the planning's last limits, B1202 closed: the
+gradients and orders before the planning's EOA, 3.15.10.4 done; each
+order at the location item its supervision compares and from that front
+end, `EVC_Track_Conditions.Order_Start` / `Order_End`, 3.15.10.2 done,
+`bench_onboard` reviewed; 3.15.11.2 deferred to the ATO module;
+3.20.1.2 partial with the 21 SUBSET-027 messages not written in B1360;
+A.3.2 and its table done in `EVC_National_Values.Default_Values`; B1181
+not started), e6/sm-version (the operated system version to the DMI,
+B1260, `EVC_DMI_Port.System_Version_Frame` sent by
+`EVC_Core.Send_System_Version` in the first cycle and on a change of X,
+15 on-board goldens re-recorded, 3170200_11 to step 120; the stamps of
+4.8.4 [1], B1161, `EVC_Sessions.Network.Trip_Stamp` at the entry into
+TR, a message 6 in PT counting only when later, `Scenario_SM_Post_Trip`;
+B1261 not built, every message 6 of the corpus carries T_TRAIN 0, the
+runner's stamp must come from the step's comment; B1320 the authority
+half's own exit recognition; B031 not started) and e6/consistency-traces
+(nothing lost in NL, B1281 and B1183's NL part: the previous probe read
+the view event for the NID and stopped before the second group,
+`Scenario_Consistency_NL`; the runner leaves out a telegram the step's
+text names as undecodable, B1280, `S076_Run.Undecodable`, 3160200_15,
+_11 and _30 pass; PS records the error without the brake, the two PS
+sequences a balise detected without a telegram the BTM port cannot
+express, B1380; the event 13 reading: the radio error record and the
+proprietary record of an unlinked group's inconsistency shared the
+runner's view event, judged by the NID now).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended (btm-left fast-forwarded); the goldens `bench_onboard` and
+`bench_level2` changed on two branches (planning-left's gradient beyond
+the EOA, sm-version's system version record): re-recorded on the union
+after `golden_review.py` against 80fd32b, the union's change the sum of
+the two reviewed ones, no side effect; no source conflict.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12726
+checks, dmi_test 2172), the full proof 0 unproved (12922 checks, margin
+47726 steps, 6 checks of 16 VCs or more at the limit of 6), cross build
+and stack (margin 5784 B), wasm and both smokes 0 failures. SUBSET-076:
+1060 / 1113 / 1017 before, 1075 / 1095 / 1020 after, steps not judged
+4315 -> 4327 (bit 56 in SF left unjudged), 0 regressions, 0 untriaged.
+Matrix: 141 -> 136 clauses left; E6 done 177 -> 181, todo 9 -> 3,
+partial 40 -> 41, deferred 4 -> 5.
+
+Measurements (doc/ROUNDS.csv): sm-version 152 calls (budget 160) /
+189k / 9.4 USD; btm-left 125 (130, one resumption inside it: B1242 in
+11) / 163k / 6.7; planning-left 130 (130) / 177k / 6.9;
+consistency-traces 131 (130, one resumption inside it: the event 13
+reading in 16) / 178k / 7.7; the round 30.7 USD, one agent one call
+over. Items 13 of 15 done, 1 dropped as a sequence defect; premises
+wrong 4 of 24 (the mass's end at 1650 m; "beside Send_Status"; the NL
+probe's count; the runner's stamp of message 6 from a workbook that has
+none). Source-tree reading: 32, 18, 15, 12 runs against 22, 16, 15, 30
+outline runs.
+
+Lessons: three traces of this round reversed the premise they were given
+(the mass's end, the NL passage, the runner's stamp): a backlog line
+written at the end of a package records what the agent believed, and
+the next brief must say "verify, then fix", which the round brief now
+does. Two resumptions inside the budget converted again (two of two).
+The E6 rows are down to 3 todo and 41 partial: the next round opens
+the partial rows by family (consistency's 3.16.2.x, Train Data's
+3.18.3.2, the version's 3.17.x) as re-reads with a build where small.
+Open items: doc/BACKLOG.csv (64 open after this round; 4 added, 9
+closed or dropped). Next: SM ninth (B031, B991, 4.4.21.1.12 / .13,
+3.18.3.2.4's rear length, packet 12 of 131, the target-distance check,
+B1320); the BTM port's balise detected without a telegram, B1380, with
+3.16.2.5.1 b); the runner's B1181 and B1261; the E6 partial rows by
+family; then the Gamma model, NL.
