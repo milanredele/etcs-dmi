@@ -740,6 +740,18 @@ package body EVC_Test_Consistency is
                            SB, Read_Error : out Boolean) is
    begin
       Inconsistent_Track (Linking => False, Linked => False);
+      if EVC_Modes."=" (Mode, EVC_Modes.M_PS) then
+         --  4.6.3 [26]: the desk closed with the passive shunting
+         --  input on, as PS is left when the desk opens
+         Input (EVC_Ports.TIU,
+                (Unsigned_8 (EVC_Ports.TIU_Signal_T'Pos
+                               (EVC_Ports.Passive_Shunting_Permitted) + 1),
+                 1));
+         Input (EVC_Ports.TIU,
+                (Unsigned_8 (EVC_Ports.TIU_Signal_T'Pos
+                               (EVC_Ports.Cab_A_Active) + 1),
+                 0));
+      end if;
       EVC_Core.Set_Mode_For_Test (Mode, EVC_Modes.L1);
       Rec_13 := 0;
       Rec_Paired := 0;
@@ -773,6 +785,18 @@ package body EVC_Test_Consistency is
              & "group taken (4.4.15.1.10, 3.16.2.5.1.1 b), got"
              & Img (Rec_13) & Img (Rec_Paired)
              & Img (Natural (EVC_Position.LRBG.Id.NID_BG)));
+      --  4.4.20.1.15: the same in Passive Shunting
+      Run_Unlinked (EVC_Modes.M_PS, Rec_13, Rec_Paired, SB, Read_Error);
+      Check (Rec_13 >= 1 and then Rec_Paired >= 1 and then not SB
+             and then not Read_Error
+             and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_PS)
+             and then EVC_Position.LRBG.Id.NID_BG = 30,
+             "consistency PS: an unlinked group's inconsistent message "
+             & "recorded (JRU 12, M_ERROR 2), no service brake, the next "
+             & "group taken (4.4.20.1.15, 3.16.2.5.1.1 b), got"
+             & Img (Rec_13) & Img (Rec_Paired)
+             & Img (Natural (EVC_Position.LRBG.Id.NID_BG)) & " "
+             & EVC_Modes.Mode_T'Image (EVC_Core.Mode));
    end Scenario_Consistency_NL;
 
 end EVC_Test_Consistency;

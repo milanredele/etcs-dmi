@@ -2313,18 +2313,20 @@ package body S076_Run is
    --  not decodable (a wrong CRC): the sequences give its bits decodable
    --  all the same. The BTM port has no undecodable telegram, so it is
    --  left out, a balise missed (EVC_Ports, BTM). Decision: "second
-   --  balise" names the telegram 2/n; else the one carrying no packet
-   --  when another telegram of the group at the step carries one; "balise
-   --  #i" and a group of one telegram name none
+   --  balise" names the telegram 2/n, "balise #i" the last, n/n; else the
+   --  one carrying no packet when another telegram of the group at the
+   --  step carries one; a group of one telegram none (the port has no
+   --  balise detected without a telegram)
    function Undecodable (St : Step_T; T : Telegram_T) return Boolean is
       C : constant String := Image (St.Text) & " " & Image (St.Comment);
    begin
       if T.Parts < 2
         or else not (Has (C, "cannot be decoded") or else Has (C, "wrong CRC")
                      or else Has (C, "CRC error"))
-        or else Has (C, "balise #i")
       then
          return False;
+      elsif Has (C, "balise #i") then
+         return T.Part = T.Parts;
       elsif Has (C, "second balise") then
          return T.Part = 2;
       elsif T.Packet_Count > 0 then
