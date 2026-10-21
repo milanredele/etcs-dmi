@@ -9766,3 +9766,11 @@ B031, B991, 4.4.21.1.12 / .13, 3.18.3.2.4's rear length, packet 12 of
 locations, the re-reads of 3.15.11.2, 3.20.1.2, A.3.2, B1181; the
 consistency traces B1281, B1280, the PS sequences, the event 13
 reading.
+
+### The consistency traces: NL, the undecodable telegram, PS, the record 13 reading (e6/consistency-traces) (2026-10-21)
+
+- B1281 done, no passage lost in NL: the probe of e6/consistency-defects counted `JRU_Count (12)`, which counts the records whose view is the event 12 (a linked group's inconsistency), while an unlinked group's inconsistency is the event 13 (with its balise group error record, NID 12); its 800 m run also ended before group 30. In NL the error is recorded, no service brake, no Balise read error, group 30 taken. `Scenario_Consistency_NL` (`Run_Unlinked`, `BG_Errors` counting the NID 12 records), rows 4.4.15.1.10 and 4.4.20.1.15 name it.
+- B1280 done: `S076_Run.Undecodable`, called by `BTM_Input`, leaves out the telegram a step names undecodable (cannot be decoded, wrong CRC, CRC error), a balise missed for the BTM port. Decision: a second balise named is 2/n, a balise #i the last (n/n), else the telegram without a packet beside one with one; a group of one telegram none.
+- B1183 done, premise wrong: the error is recorded in PS too, without the service brake (the PS case of `Scenario_Consistency_NL`: the passive shunting input on and the desk closed, else 4.6.3 [26]'s exit to SH). 4042000_02 step 81 and _03 step 114 are a group of one balise detected without a decoded telegram (3.16.2.5.1 b): the BTM port has no record for a detection without a telegram, B1380 (S99eb8ae1 retriaged).
+- Not taken (bound): the event 13 reading. Seen on the way: `EVC_Test_Support.JRU_Count` and `Byte_At (I, 1)` read the JRU record's view event, not its NID_MESSAGE (`JRU_NID`), so `Run_Records`' "record 12" is the event 12 only; the runner's `Any_Rec (13, ...)` was not read.
+- SUBSET-076: 1060 / 1113 / 1017 before, 1067 / 1103 / 1020 after, 0 regressions, 10 improvements (3160200_15 and _11 and _30 pass, _33 to step 59 where M_LEVELTEXTDISPLAY 5 blocks it); S1bdb7ccd and S54f1704c resolved in their notes.
