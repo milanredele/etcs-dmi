@@ -76,7 +76,7 @@ package body EVC_Core
                                    Runaway_Shown,
                                    Odometer_Shown,
                                    Unsuitable_Shown,
-                                   --  the procedures (phase E4)
+                                 --  the procedures
                                    Proc_Ctx,
                                    Ack_For_Protection,
                                    Status_Rev_Sent, Status_Slip_Sent,
@@ -103,7 +103,7 @@ is
    --  detection (Power_Up)
    Kept_Pending         : Boolean := False;
    Current_Mode         : Mode_T := M_NP;
-   --  (the level and its status are EVC_Levels', phase E4)
+   --  (the level and its status are EVC_Levels')
    Cycle_Count          : Cycle_T := 0;
    Clock_Ms             : Time_Ms_T := 0;
    --  The UTC time at the on-board time 0 (Set_UTC), seconds since
@@ -132,7 +132,7 @@ is
    --  (3.18.3.2 b), its lengths when available, for EVC_Train_Data
    Latched_SCL       : EVC_Train_Data.Consist_T := (others => 0);
    Latched_SCL_Fresh : Boolean := False;
-   --  (the driver's requests are EVC_Driver_Requests', phase E4)
+   --  (the driver's requests are EVC_Driver_Requests')
 
    --  Telegrams and radio messages latched since the last cycle, as
    --  they arrived: at most the telegrams of one balise group (8,
@@ -147,8 +147,8 @@ is
    end record;
    type BTM_Slots_T is array (1 .. BTM_Latch_Size) of BTM_Slot_T;
 
-   --  phase E5: a message with its session (1 for a message without a
-   --  tag, EVC_Ports)
+   --  a message with its session (1 for a message without a tag,
+   --  EVC_Ports)
    type RTM_Slot_T is record
       Session : RTM_Session_T := 1;
       Length  : Natural range 0 .. RTM_Max_Length := 0;
@@ -156,8 +156,8 @@ is
    end record;
    type RTM_Slots_T is array (1 .. RTM_Latch_Size) of RTM_Slot_T;
 
-   --  phase E5: the connection events of the RTM port latched since the
-   --  last cycle (as many as messages)
+   --  the connection events of the RTM port latched since the last
+   --  cycle (as many as messages)
    type Event_Slot_T is record
       Session : RTM_Session_T := 1;
       Event   : RTM_Event_T := Connection_Set_Up;
@@ -264,8 +264,8 @@ is
       D_Target => 16#FFFF_FFFF#);
    SDM_Shown_Reported : SDM_Shown_T := No_SDM_Shown;
    Overrun_Reported     : EVC_Bytes.Byte := 0;
-   --  phase E4: the indication "Entering FS" (4.4.9.1.4) or "Entering
-   --  OS" (4.4.12.1.7) shown: its catalogue entry, 0 none
+   --  the indication "Entering FS" (4.4.9.1.4) or "Entering OS"
+   --  (4.4.12.1.7) shown: its catalogue entry, 0 none
    Entering_Shown       : EVC_Bytes.Byte := 0;
    --  3.14.2.6, 3.14.3.4, 4.4.7.1.5.4: "Runaway movement" shown (the DMI's
    --  catalogue entry 9) while a protection commands the brake
@@ -296,7 +296,7 @@ is
    Status_SM_Sent : EVC_Bytes.Byte := 0;
    --  the tunnel stopping area sent last (MSG_STATUS, 5.18.8)
    Status_Tunnel_Sent : EVC_Track_Conditions.Tunnel_T;
-   --  phase E5: the radio byte sent last (3.5.7.1)
+   --  the radio byte sent last (3.5.7.1)
    Status_Radio_Sent : EVC_Bytes.Byte := 0;
    --  5.20: an item of the information for an external function was
    --  sent in the last cycle (the TIU track condition output)
@@ -482,21 +482,20 @@ is
       --  the installation: the antenna of the configuration
       EVC_Position.Set_Antenna (EVC_Config.Current.Antenna_To_Cab_A,
                                 EVC_Config.Current.Antenna_To_Cab_B);
-      --  phase E3: nothing stored (phase E4: no valid Train Data)
+      --  nothing stored, no valid Train Data
       EVC_Stored_Information.Clear;
-      --  phase E4: no request, no input, the level and the mission data
-      --  unknown
+      --  no request, no input, the level and the mission data unknown
       EVC_Driver_Requests.Clear;
       EVC_Train_Inputs.Clear;
       EVC_Levels.Clear;
       EVC_Mission.Clear;
-      --  phase E4: no procedure running, no text message
+      --  no procedure running, no text message
       EVC_Procedures.Clear;
       EVC_Text_Messages.Clear;
       --  4.4.19.1.4: no marker, no order, no LSSMA shown
       EVC_LS_Display.Clear;
-      --  phase E5: no session, no contact, the sessions of the
-      --  installation (EVC_Config: two, or one)
+      --  no session, no contact, the sessions of the installation
+      --  (EVC_Config: two, or one)
       EVC_Radio.Clear
         (EVC_Config.Current.Radio.Sessions,
          ETCS_Variables.NID_ENGINE_T (EVC_Config.Current.Radio.Engine_Id));
@@ -537,7 +536,7 @@ is
          EVC_National_Values.Restore (K.National);
          --  3.15.9.5: the Virtual Balise Covers, applicable again
          EVC_VBC.Restore (K.VBC);
-         --  phase E5: the RBC contact information, to be revalidated
+         --  the RBC contact information, to be revalidated
          EVC_Radio.Restore_Contact (K.RBC);
          --  3.5.6.2: the network memorized, no mobile
          --  registered (EVC_Sessions.Network orders the registration)
@@ -656,7 +655,7 @@ is
                end if;
             end;
          when DMI =>
-            --  phase E4: the driver's actions and data, decoded
+            --  the driver's actions and data, decoded
             --  (EVC_Driver_Requests; the isolation, 4.6.3 condition [1],
             --  among them)
             EVC_Driver_Requests.Receive (Payload);
@@ -843,7 +842,7 @@ is
       end if;
    end Report_Configuration;
 
-   --  1a. The telegrams latched since the last cycle, in the order the
+   --  1b. The telegrams latched since the last cycle, in the order the
    --  BTM delivered them: parsed (EVC_Received, chapter 7, 8), those
    --  accepted recorded on the JRU port (event 2, the balise group,
    --  NID_C and NID_BG) and handed, with the stamp of their balise, to
@@ -959,8 +958,8 @@ is
       Latched_BTM_Count := 0;
    end Read_Telegrams;
 
-   --  1b. Phase E5: the connection events of the RTM port latched since
-   --  the last cycle, in their order, to the session and link half
+   --  1c. The connection events of the RTM port latched since the last
+   --  cycle, in their order, to the session and link half
    procedure Read_Radio_Events
      with Global => (Input  => (Latched_Events, Clock_Ms),
                      In_Out => (Latched_Event_Count, EVC_Sessions.State,
@@ -1008,11 +1007,11 @@ is
       end if;
    end Record_Radio_Error;
 
-   --  1c. The radio messages latched since the last cycle, in the order
+   --  1d. The radio messages latched since the last cycle, in the order
    --  the RTM delivered them: recorded on the JRU port (event 3:
    --  NID_MESSAGE, L_MESSAGE), parsed (EVC_Received, chapter 8)
    --  and given, with their session, to the session and link half; the
-   --  messages it passes go on to the authority half (phase E5)
+   --  messages it passes go on to the authority half
    --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11
    procedure Read_Radio_Messages
      with Global => (Input  => (Latched_RTM, Clock_Ms, Current_Mode,
@@ -1117,7 +1116,7 @@ is
       Latched_RTM_Count := 0;
    end Read_Radio_Messages;
 
-   --  1d. Phase E5, 4.8.5: the messages the transition buffer of the
+   --  1e. 4.8.5: the messages the transition buffer of the
    --  session half releases, parsed again (in the first slot of the
    --  latch, free now) and given to the authority half as received in
    --  this cycle; at most RTM_Latch_Size in a cycle
@@ -1285,8 +1284,8 @@ is
            (Latched_TIU (Safe_Consist_Length), Latched_SCL);
       end if;
       Latched_SCL_Fresh := False;
-      --  phase E4: the driver's requests and the inputs of the train
-      --  interface of the cycle; nothing switched the level yet
+      --  the driver's requests and the inputs of the train interface of
+      --  the cycle; nothing switched the level yet
       EVC_Driver_Requests.Take;
       EVC_Train_Inputs.Set
         (Cab_A            => TIU_Now (Cab_A_Active),
@@ -1302,7 +1301,7 @@ is
       Read_Released_Messages;
    end Read_Ports;
 
-   --  4.8 (phase E4): the context of the filters in the cycle, for the
+   --  4.8: the context of the filters in the cycle, for the
    --  information the position takes itself (the linking) and the
    --  information of the procedures and the text messages
    function Acceptance_Context return EVC_Acceptance.Context_T is
@@ -1340,7 +1339,7 @@ is
 
    --  2. Update the position (EVC_Position): the cab status, the
    --  telegrams of the cycle, the odometer sample; its events go to the
-   --  JRU. E0's standstill and override speed come from the sample.
+   --  JRU. The standstill and the override speed come from the sample.
    --  @req 3.14.3.6, 4.8.3.1.1 Table-footnote [1], 5.8.2.1 a)
    procedure Update_Position
      with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
@@ -1373,7 +1372,7 @@ is
                              >= EVC_Position.Doubt_Under'Old)
    is
    begin
-      --  phase E4: the linking accepted by 4.8 and checked in the modes
+      --  the linking accepted by 4.8 and checked in the modes
       --  of 4.5.2 (3.4.4.2.1.1 b)
       EVC_Position.Set_Linking_Context
         (Accept_Info => EVC_Acceptance.Accepted
@@ -1426,13 +1425,13 @@ is
         Natural (Odometer_Now.V_Est) <= EVC_National_Values.V_NVALLOWOVTRP;
    end Update_Position;
 
-   --  3. Evaluate the stored information (EVC_Stored_Information, phase
-   --  E3): the information of the groups taken into account, its
-   --  replacement and deletion, the timers of the MA, the snapshot for
-   --  the supervision; its records go to the JRU, the indications of the
-   --  track conditions (MSG_TRACK_COND, when they change) and the
-   --  planning (MSG_PLANNING, while an MA is supervised) to the DMI. The
-   --  data status changes of 4.10 on a mode transition are phase E4.
+   --  3. Evaluate the stored information (EVC_Stored_Information): the
+   --  information of the groups taken into account, its replacement and
+   --  deletion, the timers of the MA, the snapshot for the supervision;
+   --  its records go to the JRU, the indications of the track conditions
+   --  (MSG_TRACK_COND, when they change) and the planning (MSG_PLANNING,
+   --  while an MA is supervised) to the DMI. The data status changes of
+   --  4.10 on a mode transition are made on entering the mode (7a).
    JRU_Stored : constant := EVC_Stored_Information.JRU_Event;
 
    --  The mode related speed restriction (3.11.7, 3.11.10) of the mode
@@ -1496,12 +1495,12 @@ is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
    begin
-      --  phase E5, 3.12.3: the text messages of the radio messages, while
+      --  3.12.3: the text messages of the radio messages, while
       --  the origins of their LRBG are kept
       EVC_Text_Messages.Take_Radio;
       --  3.18.4.6.2.1: the driver's adhesion choice
       EVC_Stored_Information.Take_Driver_Adhesion;
-      --  phase E4: the mode profile of the mode in use is no temporary
+      --  the mode profile of the mode in use is no temporary
       --  EOA (3.12.4.7)
       EVC_Movement_Authority.Set_Mode_In_Use
         (case Current_Mode is
@@ -1512,7 +1511,7 @@ is
       --  the mode related speed restriction (3.11.7, Mode_Speed); the
       --  status of the special brakes for the speed restrictions to
       --  ensure a permitted braking distance (3.11.11.4); the mode and
-      --  the inputs of 4.8 and the SR distance (phase E4; in Trip, 4.8.4
+      --  the inputs of 4.8 and the SR distance (in Trip, 4.8.4
       --  refuses the MA and the track description, 5.11.2.2 A035); the
       --  virtual limits of the last cycle (5.18.4.2, 5.18.8.3)
       --  the profile of the work area of the supervision (EVC_SDM.Step
@@ -1576,7 +1575,7 @@ is
       end if;
    end Evaluate_Stored_Information;
 
-   --  4.8.3 [1]: the linking held by
+   --  3a. 4.8.3 [1]: the linking held by
    --  Update_Position (its group carries its own level transition order)
    --  judged again now that the stores evaluated that order: taken when
    --  accepted and not kept in the balise transition buffer (the
@@ -1678,7 +1677,7 @@ is
       end loop;
    end Release_Unit_Packets;
 
-   --  3a. 4.8.5.5 "at the same time": the level became 2 in
+   --  5a. 4.8.5.5 "at the same time": the level became 2 in
    --  this cycle (by an order of the stored information or at the
    --  location of an announced one, Evaluate_Modes_And_Levels): the
    --  transition buffer released at once, its messages judged in level 2
@@ -1763,13 +1762,13 @@ is
         (First, Unsigned_64 (Clock_Ms), Ctx);
    end Release_Transition_Buffer;
 
-   --  4e. Phase E5, 3.6.6.4.1, 4.8.3, 4.8.4.2,
+   --  5c. Take_Radio_Geo, 3.6.6.4.1, 4.8.3, 4.8.4.2,
    --  4.8.5: the packets 79 of the radio messages of the cycle (and of
    --  those the transition buffer released) to the position, judged in
    --  the level and mode after the transitions of the cycle (4.8.5.5: a
    --  packet kept for the level 2 transition is used at the transition)
    --  @req 3.6.6.4.1
-   --  4d. Phase E5, 3.4.4.1.1, 4.8.1.6: the linking (packet 5) of the
+   --  2c. 3.4.4.1.1, 4.8.1.6: the linking (packet 5) of the
    --  radio messages of the cycle to the position, before any other
    --  location related information (while the origins of their LRBG
    --  are kept): the RBC's in level 2 (4.8.3), in the modes of the row
@@ -1827,7 +1826,7 @@ is
                                EVC_Radio.Established (S))));
    end Take_Radio_Geo;
 
-   --  3b. 4.8.3 [2], 4.8.5: the LSSMA display
+   --  5b. 4.8.3 [2], 4.8.5: the LSSMA display
    --  toggle on order of the RBC held for level 2 (EVC_LS_Display.
    --  Hold_Order) released at the transition (4.8.5.5) and judged in the
    --  mode of the cycle: taken in LS (its timer from the transition,
@@ -1975,7 +1974,7 @@ is
       Run (Snapshot);
    end Monitor_Speed_And_Distance;
 
-   --  5. The modes and the levels (phase E4): the level transitions and
+   --  5. The modes and the levels: the level transitions and
    --  the driver's level (EVC_Levels, 5.10), the mission data, the start
    --  of mission and the mode proposed to the driver (EVC_Mission, 5.4),
    --  on the requests of the cycle; the desk closed during the start of
@@ -2074,13 +2073,13 @@ is
       end if;
    end Evaluate_Modes_And_Levels;
 
-   --  Phase E5: the context of the cycle for the halves of the radio
+   --  The context of the cycle for the halves of the radio
    function Radio_Context return EVC_Radio.Context_T is
      ((Mode       => Current_Mode, Now_Ms => Unsigned_64 (Clock_Ms),
        Radio_Hole => EVC_Track_Conditions.Engine_In_Radio_Hole))
      with Global => (Current_Mode, Clock_Ms, EVC_Track_Conditions.State);
 
-   --  5a. Phase E5, after the levels and the mission: the session and
+   --  5d. After the levels and the mission: the session and
    --  link half, then the authority half (the sessions, the reports and
    --  requests to make, the conditions of 4.6.3 they own)
    --  @req 3.6.2.2.2.1, 5.4.3.2 A24, 5.4.3.2 A39
@@ -2157,7 +2156,7 @@ is
             EVC_Driver_Requests.Selected (EVC_Driver_Requests.TAF_Yes)));
    end Evaluate_Radio;
 
-   --  6b. Phase E5: the mode changed (after the mode machine)
+   --  7d. The mode changed, to the radio (after the mode machine)
    procedure Radio_Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State),
@@ -2168,8 +2167,8 @@ is
       EVC_Radio_Authority.Mode_Changed (From, To);
    end Radio_Mode_Changed;
 
-   --  5b. Phase E4, the procedures (EVC_Procedures, EVC_Text_Messages),
-   --  after the levels and the mission: the context of the cycle, the
+   --  5e. The procedures (EVC_Procedures, EVC_Text_Messages), after
+   --  the levels and the mission: the context of the cycle, the
    --  conditions of 4.6.3 they own
    --  @req 4.4.11.1.6.5
    procedure Run_Procedures
@@ -2198,7 +2197,7 @@ is
    is
       --  the snapshot in use, taken by the first statement
       S : EVC_Supervision_Input.Snapshot_T renames Snapshot;
-      --  5.17.2.2 E0: the train configuration changed
+      --  5.17.2.2 S0 -> D0: the train configuration changed
       Config : constant EVC_Bytes.Byte :=
         TIU_Value_Now (Train_Configuration);
       Config_Changed : constant Boolean :=
@@ -2469,7 +2468,7 @@ is
       EVC_Sessions.Revoke_Contact_Brake (To);
    end Revoke_Brake_Reasons;
 
-   --  7. What entering the mode To from From means (phase E4): the data
+   --  7. What entering the mode To from From means: the data
    --  of 4.10 (the stores, the position, the level, the mission, the
    --  information of the procedures and the text messages), the brake
    --  command reasons of 4.12 (the speed and distance monitoring, the
@@ -2544,12 +2543,13 @@ is
       Revoke_Brake_Reasons (From, To);
    end Enter_Mode;
 
-   --  7b. After the mode machine: the brake demand of the procedures in
-   --  the mode of the end of the cycle (EVC_Procedures.Finish_Cycle);
+   --  7e. Finish_Procedures, after the mode machine: the brake demand of
+   --  the procedures in the mode of the end of the cycle
+   --  (EVC_Procedures.Finish_Cycle);
    --  3.11.6.4: a trip order (V_MAIN 0) is used in the cycle in level 1
    --  (the trip [18], inhibited by the override, 5.8.3.6), and kept in
    --  the other levels until the level switches to 1 ([67])
-   --  7c. The train length of the valid Train Data to the position
+   --  7g. The train length of the valid Train Data to the position
    --  (3.6.1.7, 3.18.3): the min safe rear end and its triggers (packet 58
    --  rear locations, 3.6.5.1.5 c; the RBC/RBC border passed by the rear
    --  end, 3.15.1.3.1 c) need it; no valid Train Data, no rear end. Once
@@ -2614,7 +2614,7 @@ is
       end if;
    end Finish_Procedures;
 
-   --  JRU events of phase E4 (EVC_Ports): 40 the levels, 41 the mission
+   --  JRU events (EVC_Ports): 40 the levels, 41 the mission
    --  (Put_Mission_Event), 23 the procedures, 24 the text messages
    JRU_Levels  : constant := EVC_Ports.JRU_Levels;
 
@@ -2624,7 +2624,7 @@ is
 
    --  8a. JRU: the mode changed since the last report (event 1); the
    --  events of the levels (5.10, event 40) and of the mission (5.4,
-   --  5.5, event 41) of the cycle (phase E4)
+   --  5.5, event 41) of the cycle
    procedure Record_Mode_Levels_Mission
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 EVC_Levels.State, EVC_Mission.State,
@@ -2875,7 +2875,7 @@ is
       end if;
    end Send_Mode_Level;
 
-   --  8d. DMI (phase E4): the system status messages of the procedures
+   --  8d. DMI: the system status messages of the procedures
    --  (the reason of a trip, 5.11; the reverse movement distances, 5.13;
    --  5.17), the text messages (3.12.3: shown with the hour and the
    --  minute of the on-board time, or removed)
@@ -2898,7 +2898,7 @@ is
                                          EVC_Bytes.Byte (E.Event)));
          end;
       end loop;
-      --  phase E5: those of the session half (3.5.3.7 d, 3.16.3.4.4)
+      --  those of the session half (3.5.3.7 d, 3.16.3.4.4)
       for I in 1 .. EVC_Sessions.Status_Event_Count loop
          declare
             E : constant EVC_Sessions.Status_Event_T :=
@@ -2975,7 +2975,7 @@ is
       end if;
    end Record_Text_Display;
 
-   --  8e. JRU (phase E4): the records of the procedures of chapter 5
+   --  8e. JRU: the records of the procedures of chapter 5
    --  (event 23) and of the text messages (3.12.3, event 24)
    procedure Record_Procedures
      with Global => (Input  => (Clock_Ms, EVC_Procedures.State,
@@ -3005,11 +3005,11 @@ is
 
    --  8f. DMI: MSG_STATUS. SUBSET-026 3.6.6: the geographical position,
    --  while it is known, and once "unknown" when it stops (the DMI shows
-   --  it on request); phase E3: the brake indication (3.14.1.9, 3.14.2.6,
+   --  it on request); the brake indication (3.14.1.9, 3.14.2.6,
    --  3.14.3.4) and the time to Indication (3.13.10.3.10), whenever they
-   --  change; phase E4: the reversing possible (5.13), the tunnel
-   --  stopping area (5.18.8). D, Text_SB, Text_EB: the brake demands of
-   --  the procedures and of the text messages (phase E4)
+   --  change; the reversing possible (5.13), the tunnel stopping area
+   --  (5.18.8). D, Text_SB, Text_EB: the brake demands of the procedures
+   --  and of the text messages
    --  @req 3.5.7.1, 5.22.4.1
    procedure Send_Status (D                : EVC_Procedures.Brake_Demand_T;
                           Text_SB, Text_EB : Boolean)
@@ -3025,7 +3025,7 @@ is
                                 Status_Tunnel_Sent, Status_Radio_Sent,
                                 EVC_Outbox.Queue))
    is
-      --  phase E4: the brakes of the procedures; 3 (DMI 8.2.2.3.4.1)
+      --  the brakes of the procedures; 3 (DMI 8.2.2.3.4.1)
       --  while only an acknowledgement of a level (5.10.4.2), a mode or
       --  a text is missing; in IS the on-board is isolated from the
       --  brakes (4.4.3.1.1)
@@ -3045,10 +3045,10 @@ is
         (if SDM_Result.TTI = EVC_SDM.No_TTI then TTI_None
          else Unsigned_16 (SDM_Result.TTI));
       Rev   : constant Boolean := EVC_Procedures.Reversing_Possible;
-      --  phase E4, 5.18.8: the tunnel stopping area
+      --  5.18.8: the tunnel stopping area
       Tun   : constant EVC_Track_Conditions.Tunnel_T :=
         EVC_Stored_Information.Tunnel;
-      --  phase E5, 3.5.7.1: the indication of the safe radio connection
+      --  3.5.7.1: the indication of the safe radio connection
       Radio : constant EVC_Bytes.Byte :=
         EVC_Sessions.Indication_T'Pos (EVC_Sessions.Indication);
       --  3.18.4.6.2.3: the driver's "slippery rail" (the DMI's ST02)
@@ -3127,7 +3127,7 @@ is
 
    --  The session byte of MSG_ONBOARD: a session established with the
    --  supervising RBC (2), or one being established (1, 3.5.3.8)
-   --  phase E6: 3 when it is the only one and the RBC's system version
+   --  and 3 when that session is the only one and the RBC's system version
    --  is above 2.2 (M_VERSION 2#010_0010#; DMI Table 33 #11)
    function Session_Byte return EVC_Bytes.Byte is
      (if EVC_Radio.Supervising /= EVC_Radio.No_Session
@@ -3170,7 +3170,7 @@ is
                      or (if EVC_Position.Status = EVC_Position.Valid
                            and then EVC_Position.LRBG.Valid
                          then Data_Position_Valid else 0)
-                     --  phase E4: the data of the start of mission
+                     --  the data of the start of mission
                      or (if EVC_Mission.Driver_ID_Status = EVC_Mission.Valid
                          then Data_Driver_ID_Valid else 0)
                      or (if EVC_Mission.Train_Data_Status
@@ -3182,7 +3182,7 @@ is
                      or (if EVC_Radio.Contact.Known
                            and then EVC_Radio.Contact.Valid
                          then Data_RBC_Valid else 0)
-                     --  phase E6: the safe consist length (Table 33 #11)
+                     --  the safe consist length (Table 33 #11)
                      or (if EVC_Train_Data.Consist_Available
                          then Data_Consist_Available else 0)
                      or (if EVC_Train_Data.Consist_Available
@@ -3209,15 +3209,15 @@ is
          National => National_Bits,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
          --  desk is open and no session with an RBC exists or is being
-         --  established, so the start of mission may begin (phase E4:
-         --  the desk is the cab status input, EVC_Mission)
+      --  established, so the start of mission may begin (the desk is
+      --  the cab status input, EVC_Mission)
          --  5.17.2.2 S6: the re-entry or re-validation of the Train Data
          --  requested, outside a start of mission (which asks for them)
          SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible
                       elsif EVC_Procedures.Train_Data_Revalidation
                       then SoM_Train_Data_Then
                       else 0),
-         --  phase E5: the request for shunting of level 2 (5.6.2.2 S050)
+      --  the request for shunting of level 2 (5.6.2.2 S050)
          --  (one value: the two do not overlap, the request for shunting
          --  needs the session established); else 5.4.3.2 A31, the
          --  session of the start of mission being opened; else 5.4.3.2
@@ -3228,7 +3228,7 @@ is
                       elsif EVC_Sessions.SM_Waiting then 5
                       elsif EVC_Sessions.SoM_Opening
                       then (if EVC_Sessions.Network_Ready then Waiting_RBC
-                            --  5.4.3.2 S4 E7 -> A42
+                            --  5.4.3.2 S4 -> A42, timed out
                             elsif EVC_Sessions.Registration_Timed_Out
                             then 0
                             else Waiting_Registration)
@@ -3337,9 +3337,9 @@ is
       end if;
    end Send_System_Version;
 
-   --  The commands of the TIU output (EVC_Ports): phase E3 the speed and
-   --  distance monitoring and the protections (3.13, 3.14); phase E4 the
-   --  service brake of 5.10.4.2 (the levels), in SF the emergency brake,
+   --  The commands of the TIU output (EVC_Ports): the speed and distance
+   --  monitoring and the protections (3.13, 3.14); the service brake of
+   --  5.10.4.2 (the levels), in SF the emergency brake,
    --  permanently (4.4.5.1.2), the brakes of the procedures and of the
    --  text messages (D, Text_SB, Text_EB); in IS no command (4.4.3.1.1)
    function TIU_Commands (D                : EVC_Procedures.Brake_Demand_T;
@@ -3386,7 +3386,7 @@ is
      with Global => (Current_Mode, Brake_Output, EVC_Levels.State);
 
    --  8h. The speed and distance monitoring and the brake commands
-   --  (phase E3, 3.13, 3.14): MSG_SPEED_STATE every cycle; the JRU records
+   --  (3.13, 3.14): MSG_SPEED_STATE every cycle; the JRU records
    --  of what changed (events 20 the brake commands, 21 the supervision
    --  or any of the information displayed to the driver (record 20 of
    --  SUBSET-027 4.2.3, 4.2.4.20; at most one a cycle), 22 an overrun of
@@ -3505,7 +3505,7 @@ is
       Last := Last + 4;
    end Put_I32;
 
-   --  8i. TIU (phase E4, 5.20): the information for an external function
+   --  8i. TIU (5.20): the information for an external function
    --  (EVC_Ports, the TIU track condition output), every cycle while an
    --  item is generated and once when none is any more
    procedure Send_External_Info
@@ -3667,7 +3667,7 @@ is
       end loop;
    end Record_Actions_Cabs_Conditions;
 
-   --  8j. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .48, .50, .51,
+   --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .48, .50, .51,
    --  EVC_JRU_Records): the sleeping, passive shunting and non leading
    --  inputs and the direction controller of the train interface and the
    --  state permitting remote shunting (SH, SUBSET-026 4.4.8.1.4) when
@@ -3734,7 +3734,7 @@ is
       end if;
    end Record_Inputs_Radio_Data;
 
-   --  8k. RTM (phase E5): the messages and requests of the session half,
+   --  8l. RTM: the messages and requests of the session half,
    --  then of the authority half (EVC_Radio.Send), moved to the RTM port
    --  as far as they fit (EVC_Radio.Drain)
    procedure Send_Radio
@@ -3899,11 +3899,11 @@ is
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_VBC.State))
    is
-      --  phase E4: the brake demands of the procedures and of the text
+      --  the brake demands of the procedures and of the text
       --  messages (MSG_STATUS and the TIU output)
       D       : constant EVC_Procedures.Brake_Demand_T :=
         EVC_Procedures.Brake_Demand;
-      --  phase E5: with the service brake of the supervision of the safe
+      --  with the service brake of the supervision of the safe
       --  radio connection (3.16.3.4.2 b), EVC_Sessions)
       Text_SB : constant Boolean :=
         EVC_Text_Messages.Service_Brake or else EVC_Sessions.Service_Brake;
@@ -3932,7 +3932,7 @@ is
       Flush_Juridical;              -- JRU, the messages of the cycle
    end Produce_Outputs;
 
-   --  5.21.2.2 A075, 3.6.1.5.1, 3.7.3.4: a Supervised Manoeuvre
+   --  2a. 5.21.2.2 A075, 3.6.1.5.1, 3.7.3.4: a Supervised Manoeuvre
    --  authorisation taken in this cycle fixes the train orientation;
    --  when its MA is in the opposite direction, the position is shifted
    --  to the other end of the consist and the location based information
@@ -3997,7 +3997,7 @@ is
       end if;
    end Adjust_For_Manoeuvre;
 
-   --  4.11.1.1, 4.11.1.3: the data kept over No Power, once the cold
+   --  2b. 4.11.1.1, 4.11.1.3: the data kept over No Power, once the cold
    --  movement detection is known after the power-up: no cold movement,
    --  the train position and the level become valid; a cold movement
    --  detected or the information not available, the table of priority
@@ -4035,7 +4035,7 @@ is
       end if;
    end Revalidate_Kept;
 
-   --  5.4.3.2 S22, S23, S24 (after E30, E31, E32), 5.4.5.3 a), f), g)
+   --  7c. 5.4.3.2 S22, S23, S24 (after E30, E31, E32), 5.4.5.3 a), f), g)
    --  and the table of 5.4.3.3: the start of mission leaves Stand By to
    --  SN, UN, SR (also by override), NL or SH: a position still invalid
    --  is deleted (an invalid position is one kept over No Power, always
@@ -4067,7 +4067,7 @@ is
       end if;
    end Delete_Invalid_Position;
 
-   --  4.10 column NP: what is kept over No Power, as it is at the end of
+   --  9. 4.10 column NP: what is kept over No Power, as it is at the end of
    --  each cycle (EVC_Retained)
    --  @req 3.17.2.9, 3.18.2.7, 3.15.9.5
    procedure Save_Retained
@@ -4078,7 +4078,7 @@ is
                                 EVC_VBC.State),
                      Output => EVC_Retained.State)
    is
-      --  every field is set below (phase E5 the last one, the RBC)
+      --  every field is set below
       K : EVC_Retained.Kept_T;
    begin
       K.Saved := True;
@@ -4086,7 +4086,7 @@ is
       K.Level := EVC_Levels.Level;
       K.Table := EVC_Levels.Table;
       EVC_Position.Keep (K.Position);
-      --  phase E5: the RBC contact information (EVC_Sessions writes it)
+      --  the RBC contact information (EVC_Sessions writes it)
       K.RBC := EVC_Radio.Contact;
       --  3.5.6.2
       K.Network := EVC_Radio.Network;
@@ -4100,7 +4100,7 @@ is
       EVC_Retained.Save (K);
    end Save_Retained;
 
-   --  3.15.7: the safety reaction to the BTM alarm of the port, after
+   --  7f. 3.15.7: the safety reaction to the BTM alarm of the port, after
    --  the procedures and the mode machine (the inhibition of 5.22 and the
    --  mode of the cycle): decision (3.15.7.6.1), the reaction is a fault
    --  that affects safety, 4.6.3 [13] in the next cycle's mode machine
@@ -4186,7 +4186,7 @@ is
       Release_Transition_Buffer;
       Release_LS_Held;
       Take_Radio_Geo;
-      --  5.17.2.2 E6: the Train Data validated by the driver end the
+      --  5.17.2.2 S6 -> A7: the Train Data validated by the driver end the
       --  re-validation the procedures asked
       if EVC_Mission.Train_Data_Validated then
          EVC_Procedures.Train_Data_Revalidated;
