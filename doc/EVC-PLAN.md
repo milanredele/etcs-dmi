@@ -9766,3 +9766,37 @@ B031, B991, 4.4.21.1.12 / .13, 3.18.3.2.4's rear length, packet 12 of
 locations, the re-reads of 3.15.11.2, 3.20.1.2, A.3.2, B1181; the
 consistency traces B1281, B1280, the PS sequences, the event 13
 reading.
+
+### The BTM alarm's leftovers: the mass passed backwards, the record 21 in SF, date and time, the alarm sequences' columns (e6/btm-left) (2026-10-21)
+
+B1240, traced, a sequence defect: 9990600_07's packet 67 of BG1d (the
+group at 50 m, D_TRACKCOND 1050, L_TRACKCOND 500) ends the big metal
+mass at 1600 m, its steps 71, 75 and 81 place the end at 1650 m; at
+step 76 the min safe antenna is beyond 1600 m, so the train is not over
+the mass and the reaction is right (3.12.1.2.1.2, 3.15.7.5). The mass
+passed stays stored until 300 m behind the min safe rear end
+(A.3.6.2.1) and is compared in the store's sense in both directions:
+evc_test_procedures `Scenario_BTM_Alarm` gains the train moving back
+over a passed mass (ignored) and beyond its start (the reaction).
+Scdc1cbf2 triaged s076 for that cause.
+
+B1241, traced, a sequence defect: the runner judges a bit of record 21
+by the DMI's facts (`S076_Tables.Symbol_Fact`); bit 56 is TC13
+(SUBSET-027 4.2.4.21), which the sequences entering SF give for ST01
+shown the step before (bit 38 in 215 sequences). `S076_Run.Bit_Set`
+leaves bit 56 in SF not judged (S076-defect). SUBSET-076 1060 / 1113 /
+1017 -> 1068 / 1105 / 1017, 8 improvements, 0 regressions;
+Se46a6c87, S9543783a, S6088f7b4 triaged s076.
+
+3.18.5, a re-read with a tag and no build: the UTC of the juridical
+data is `EVC_JRU_Messages.Set_Time` from `EVC_Core.Set_UTC` (the port's
+clock, "unknown" until given); the local time has no source, the driver
+is shown the on-board clock since time 0 (MSG_STATUS, the text
+messages' hour). 3.18.5.1 and 3.18.5.2 partial. Decision proposed, not
+built (EVC_Core is not this package's): an installation value of
+`EVC_Config`, the offset of the local time to UTC, the local time
+UTC + clock + offset once UTC is known (B1340, with the port's clock of
+E8). Two E6 rows todo -> partial.
+
+Left: B1242 (`S076_Run.Columns`, 4080444_03 SV21 / SV22 step 65, the
+alarm's SF judged against the FS columns), not started; B1340.
