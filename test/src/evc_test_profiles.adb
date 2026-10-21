@@ -1157,6 +1157,12 @@ package body EVC_Test_Profiles is
              and then SI.Current.Temporary.SvL = 40_000,
              "3.12.2.4: the unsuitable location both temporary EOA and "
              & "SvL (3.13.1.5: the closer than the EOA)");
+      Check (Plan_Frames > 0
+             and then Plan_U16 (0)
+                        = Natural ((40_000 - Integer_64
+                                      (SI.Current.Train.Est_Front)) / 100),
+             "planning: the temporary EOA, closer than the MA's, as the "
+             & "EOA (3.15.10.5)");
       --  a change of the Train Data: C4 now, the location suitable
       Cat.Axle_Load := 6;
       EVC_Train_Data.Set (Data, Cat);

@@ -2690,15 +2690,17 @@ is
    end Plan_Orders;
 
    --  The planning (ERA_ERTMS_015560 8.3) for MSG_PLANNING: due when the
-   --  MRSP is supervised (Supervise), an MA is and the position is valid
-   --  @req 3.15.10.1, 3.15.10.2, 3.15.10.4
+   --  MRSP is supervised (Supervise), an MA is and the position is valid;
+   --  the EOA the closer of the MA's and the temporary one (Temporary)
+   --  @req 3.15.10.1, 3.15.10.2, 3.15.10.4, 3.15.10.5
    procedure Build_Planning (Train     : Train_Frame_T;
                              Ahead     : Sense_T;
                              Supervise : Boolean;
                              MA_R      : Movement_Authority_T;
                              G_Steps   : Steps_T;
                              Default_G : Gradient_T;
-                             Orders    : EVC_Track_Conditions.Orders_T)
+                             Orders    : EVC_Track_Conditions.Orders_T;
+                             Temporary : Temporary_Target_T)
      with Global => (Output => (Plan, Plan_Due), Input => Steps),
           Pre  => Sorted (Steps) and then Sorted (G_Steps)
                   and then (for all K in 1 .. Steps.Count =>
@@ -2710,11 +2712,18 @@ is
       if Plan_Due then
          declare
             Front : constant Dist_T := Train.Est_Front;
-            EOA   : constant Dist_T := MA_R.EOA;
+            --  3.15.10.5: the closest of the temporary EOA and the EOA
+            Closer : constant Boolean :=
+              Temporary.Present
+              and then A (Ahead, Temporary.EOA) < A (Ahead, MA_R.EOA);
+            EOA   : constant Dist_T :=
+              (if Closer then Temporary.EOA else MA_R.EOA);
+            LOA_Speed : constant Speed_Cms_T :=
+              (if Closer then 0 else MA_R.LOA_Speed);
             --  3.15.10.2: an EOA from the estimated front end, an LOA
             --  (an EBD based target) from the max safe one
             MA_M  : constant Natural :=
-              Metres_Ahead (Ahead, (if MA_R.LOA_Speed > 0
+              Metres_Ahead (Ahead, (if LOA_Speed > 0
                                     then Train.Max_Front else Front),
                             EOA, 65_534);
          begin
@@ -2722,7 +2731,7 @@ is
             --  the gradient at the front, then its changes ahead
             Plan_Gradients (Ahead, Front, G_Steps, Default_G);
             --  the MRSP ahead up to the EOA, then the EOA or the LOA
-            Plan_Speeds (Train, Ahead, EOA, MA_M, MA_R.LOA_Speed);
+            Plan_Speeds (Train, Ahead, EOA, MA_M, LOA_Speed);
             --  the orders of the track conditions ahead
             Plan_Orders (Train, Ahead, Orders);
          end;
@@ -2833,7 +2842,7 @@ is
       Build_LX_Indications (T, Train, Ahead);
       Build_Track_Cond_Due;
       Build_Planning (Train, Ahead, Snap.Supervise, MA_R, G_Steps,
-                      Default_G, Orders);
+                      Default_G, Orders, Snap.Temporary);
    end Build;
 
    --  3.16.3.4.5 b): the service brake of the supervision of the safe
