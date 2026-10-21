@@ -37,7 +37,6 @@ package body EVC_Core
                                    Latched_BTM,
                                    Latched_BTM_Count,
                                    Latched_BTM_Alarm, BTM_Alarm_Run,
-                                   BTM_Alarm_Brake,
                                    Latched_RTM,
                                    Latched_RTM_Count,
                                    Latched_Events,
@@ -175,7 +174,6 @@ is
    --  (EVC_BTM_Alarm)
    Latched_BTM_Alarm : Boolean := False;
    BTM_Alarm_Run     : EVC_Odometry.Virtual_T;
-   BTM_Alarm_Brake   : Boolean := False;
    Latched_RTM       : RTM_Slots_T;
    Latched_RTM_Count : Natural range 0 .. RTM_Latch_Size := 0;
    Latched_Events      : Event_Slots_T;
@@ -408,7 +406,6 @@ is
       Latched_BTM_Count := 0;
       Latched_BTM_Alarm := False;
       BTM_Alarm_Run := (others => <>);
-      BTM_Alarm_Brake := False;
       Latched_RTM := (others => (Session => 1, Length => 0,
                                  Data => (others => 0)));
       Latched_RTM_Count := 0;
@@ -3815,7 +3812,7 @@ is
    --  (the goldens are their byte stream)
    --  @req 3.6.6.1, 4.4.2.1, 4.4.5.1.2
    procedure Produce_Outputs
-     with Global => (Input  => (Current_Mode, Clock_Ms, BTM_Alarm_Brake,
+     with Global => (Input  => (Current_Mode, Clock_Ms,
                                 UTC_Known, UTC_Seconds,
                                 EVC_System_Version.State, EVC_Config.State,
                                 Standstill, Below_Override, TIU_Now,
@@ -3859,9 +3856,7 @@ is
       --  phase E5: with the service brake of the supervision of the safe
       --  radio connection (3.16.3.4.2 b), EVC_Sessions)
       Text_SB : constant Boolean :=
-        EVC_Text_Messages.Service_Brake or else EVC_Sessions.Service_Brake
-        --  3.15.7.6: the reaction to the BTM alarm
-        or else BTM_Alarm_Brake;
+        EVC_Text_Messages.Service_Brake or else EVC_Sessions.Service_Brake;
       Text_EB : constant Boolean := EVC_Text_Messages.Emergency_Brake;
    begin
       Record_Mode_Levels_Mission;   -- JRU 1, 40, 41
@@ -4056,23 +4051,25 @@ is
 
    --  3.15.7: the safety reaction to the BTM alarm of the port, after
    --  the procedures and the mode machine (the inhibition of 5.22 and the
-   --  mode of the cycle). The distance of 3.15.7.2 is counted from where
+   --  mode of the cycle): decision (3.15.7.6.1), the reaction is a fault
+   --  that affects safety, 4.6.3 [13] in the next cycle's mode machine
+   --  (EVC_Procedures.BTM_Alarm_Failure), System Failure with its
+   --  emergency brake (4.4.5.1.2), which the on-board keeps cycling to
+   --  command and show. The distance of 3.15.7.2 is counted from where
    --  the alarm was raised (3.6.7.1 d), in either direction; it starts
    --  again with the next alarm
    --  @req 3.15.7.2, 3.15.7.4, 3.15.7.5, 3.15.7.6, 3.6.7.1 d), 5.22.4.2
    procedure Supervise_BTM_Alarm
      with Global => (Input  => (Latched_BTM_Alarm, Current_Mode, Proc_Ctx,
-                                Snapshot, EVC_Procedures.State,
-                                EVC_Track_Conditions.State,
+                                Snapshot, EVC_Track_Conditions.State,
                                 EVC_Origins.State, EVC_Position.State,
                                 EVC_Odometry.State),
-                     In_Out => BTM_Alarm_Run,
-                     Output => BTM_Alarm_Brake)
+                     In_Out => (BTM_Alarm_Run, EVC_Procedures.State))
    is
    begin
       if not Latched_BTM_Alarm then
          BTM_Alarm_Run := (others => <>);
-         BTM_Alarm_Brake := False;
+         EVC_Procedures.Set_BTM_Alarm_Failure (False);
          return;
       end if;
       if not BTM_Alarm_Run.Active then
@@ -4080,8 +4077,8 @@ is
            EVC_Odometry.Start_Virtual (EVC_BTM_Alarm.Immunity_Distance_Cm,
                                        EVC_Position.Orientation);
       end if;
-      BTM_Alarm_Brake :=
-        EVC_BTM_Alarm.Reaction
+      EVC_Procedures.Set_BTM_Alarm_Failure
+        (EVC_BTM_Alarm.Reaction
           (Raised    => True,
            Level     => Proc_Ctx.Level,
            Mode      => Current_Mode,
@@ -4097,7 +4094,7 @@ is
                  others    => <>),
                 Proc_Ctx.Antenna_Offset),
            Moved     =>
-             EVC_Odometry.Away (BTM_Alarm_Run, EVC_Distances.Unknown));
+             EVC_Odometry.Away (BTM_Alarm_Run, EVC_Distances.Unknown)));
    end Supervise_BTM_Alarm;
 
    procedure Tick (Dt_Ms : Natural) is

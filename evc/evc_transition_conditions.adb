@@ -263,9 +263,10 @@ is
             --  this code runs: the on-board is powered
             return True;
          when C_13 =>
-            --  the faults are the host's: EVC_Core.Enter_Failure
-            --  takes SF, the cycle does not run after it
-            return False;
+            --  3.15.7.6: the BTM alarm's safety reaction, a fault that
+            --  affects safety found by the cycle; the host's faults are
+            --  EVC_Core.Enter_Failure, the cycle does not run after it
+            return EVC_Procedures.BTM_Alarm_Failure;
          when C_29 =>
             --  this code runs: the on-board is powered
             return False;
