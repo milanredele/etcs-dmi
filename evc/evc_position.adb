@@ -2041,6 +2041,12 @@ is
    function Manoeuvre_Orientation return Boolean is (Manoeuvre.Fixed)
      with Refined_Global => Manoeuvre;
 
+   function Manoeuvre_Direction return Natural is
+     (if not Manoeuvre.Fixed or else Cab_In = No_Cab then 0
+      elsif Orient = (if Cab_In = Cab_A then Plus else Minus) then 1
+      else 2)
+     with Refined_Global => (Manoeuvre, Cab_In, Orient);
+
    --  The front end of the consist C along the orientation O: the far end
    --  of the consist in front of the engine when O is the side of the
    --  active cab, else of the consist in rear of it (which includes the

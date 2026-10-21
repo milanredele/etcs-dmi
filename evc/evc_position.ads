@@ -503,6 +503,17 @@ is
    function Manoeuvre_Orientation return Boolean
      with Global => State;
 
+   --  4.4.21.1.9, DMI 8.2.3.10: the direction controller position that
+   --  moves the train in the direction of the Supervised Manoeuvre
+   --  authorisation: 1 forward (the train orientation of the authorisation
+   --  is the active cab's side), 2 backward, 0 none (no authorisation's
+   --  orientation, or no active cab). Decision: forward and backward
+   --  are those of the active cab's direction controller
+   --  @req 4.4.21.1.9
+   function Manoeuvre_Direction return Natural
+     with Global => State,
+          Post   => Manoeuvre_Direction'Result <= 2;
+
    --  3.6.1.5: after Update with the cab inputs A and B, the active cab
    --  defines the orientation (Cab_One), with none (or both, SUBSET-034
    --  2.5.1.4.7) the last active one (Old_O, Old_Known) stays (Cab_None);

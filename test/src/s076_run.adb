@@ -3125,11 +3125,17 @@ package body S076_Run is
       elsif Same (Kind, "ato-symbol") then
          return NJ (R_ATO, "ATO symbol");
       elsif Same (Kind, "supervised-manoeuvre-symbol") then
-         --  the SM authorised direction (DMI 8.2.3.10) is decoded by the
-         --  bench (S076_Bench.State_T.SM_Dir), but the on-board sends
-         --  sm_direction 0 in MSG_STATUS (EVC_DMI_Port): judged once it
-         --  sends the direction (B1221), as Shown on S.SM_Dir
-         return NJ (R_Radio, "SM symbol");
+         --  the SM authorised direction (DMI 8.2.3.10, SM01 forward,
+         --  SM02 backward): sm_direction of MSG_STATUS, decoded by the
+         --  bench (S076_Bench.State_T.SM_Dir: 1 forward, 2 backward)
+         declare
+            D : constant Natural :=
+              (if Same (Name, "SM-authorised-direction-indicator-backward")
+               then 2 else 1);
+         begin
+            return Shown (St_W, S.SM_Dir = D, S.SM_Dir = D,
+                          "SM symbol " & Name);
+         end;
       elsif Same (Kind, "data-value")
         and then (Same (Name, "Train-Running-Number")
                   or else Same (Name, "Driver-ID")

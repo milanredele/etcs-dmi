@@ -351,8 +351,11 @@ is
    --  connection (3.5.7.1: 0 none, 1 up, 2 lost / set-up failed);
    --  Slippery, the adhesion factor "slippery rail" selected by the driver
    --  (3.18.4.6.2.3, the DMI's ST02); BMM, the "BTM alarm reaction
-   --  inhibition" active (5.22.4.1, the DMI's ST07); the other fields as
+   --  inhibition" active (5.22.4.1, the DMI's ST07); SM_Dir, the
+   --  Supervised Manoeuvre authorised direction (4.4.21.1.9, the DMI's
+   --  SM01 / SM02: 0 none, 1 forward, 2 backward); the other fields as
    --  Status_Frame
+   --  @req 4.4.21.1.9
    function Status_Frame (Geo         : Unsigned_32;
                           Seconds     : Unsigned_64;
                           Brake       : Byte;
@@ -362,7 +365,8 @@ is
                           Tunnel_Dist : Unsigned_32 := 0;
                           Radio       : Byte := 0;
                           Slippery    : Boolean := False;
-                          BMM         : Boolean := False)
+                          BMM         : Boolean := False;
+                          SM_Dir      : Byte := 0)
      return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 

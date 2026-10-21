@@ -483,6 +483,50 @@ package body EVC_Test_Manoeuvre is
              "SM handover: sent once (3.15.1.3.3)");
    end Scenario_SM_Handover;
 
+   --  The sm_direction of the last MSG_STATUS sent in Max_Ms, 16#FFFF#
+   --  when none was sent
+   function Last_SM_Direction (Max_Ms : Natural) return Natural is
+      Last : Natural := 16#FFFF#;
+   begin
+      for C in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         if Status_SM_Direction /= 16#FFFF# then
+            Last := Status_SM_Direction;
+         end if;
+      end loop;
+      return Last;
+   end Last_SM_Direction;
+
+   --  4.4.21.1.9, DMI 8.2.3.10: the SM authorised direction to the DMI,
+   --  forward (SM01) after an authorisation in the orientation of the
+   --  active cab, backward (SM02) after one opposite to it, none outside
+   --  Supervised Manoeuvre
+   procedure Scenario_SM_Direction is
+      T : Unsigned_64;
+   begin
+      Start_L2_SM;
+      Check (Last_SM_Direction (300) in 0 | 16#FFFF#,
+             "SM direction: none in FS (4.4.21.1.9)");
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Check (Last_SM_Direction (500) = 1 and then EVC_Core.Mode = M_SM,
+             "SM direction: the authorisation in the active cab's "
+             & "orientation shown forward, SM01 (4.4.21.1.9, DMI "
+             & "8.2.3.10)");
+      EVC_Core.Set_Mode_For_Test (M_FS, L2);
+      Check (Last_SM_Direction (300) = 0,
+             "SM direction: none once the mode is no longer SM "
+             & "(4.4.21.1.9)");
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+      Check (Last_SM_Direction (500) = 2 and then EVC_Core.Mode = M_SM,
+             "SM direction: the authorisation opposite to the active "
+             & "cab shown backward, SM02 (4.4.21.1.9, DMI 8.2.3.10)");
+   end Scenario_SM_Direction;
+
    procedure Scenario_SM_Request is
       T : Unsigned_64;
    begin
