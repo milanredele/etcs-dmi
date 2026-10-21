@@ -101,6 +101,17 @@ is
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State, EVC_Train_Data.State));
 
+   --  3.15.1.3.3: in Supervised Manoeuvre the safe consist length
+   --  information (message 133) to the Accepting RBC instead of the Train
+   --  Data, once its session S is established; message 7 is then awaited
+   --  on S
+   --  @req 3.15.1.3.3
+   procedure Send_Consist_To (S : EVC_Radio.Session_T;
+                              Ctx : EVC_Radio.Context_T)
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State, EVC_Train_Data.State));
+
    --  S050: the answer is awaited (MSG_ONBOARD waiting 5)
    function Waiting return Boolean
      with Global => State;

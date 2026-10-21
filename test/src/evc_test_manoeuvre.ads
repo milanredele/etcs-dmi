@@ -26,4 +26,7 @@ package EVC_Test_Manoeuvre is
    --  3.18.3.10: the safe consist length information for SM
    procedure Scenario_SM_Consist_Info;
 
+   --  3.15.1.3.3: message 133 to the Accepting RBC in SM
+   procedure Scenario_SM_Handover;
+
 end EVC_Test_Manoeuvre;

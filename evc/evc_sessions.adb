@@ -1660,7 +1660,12 @@ is
          Also   : Reports.Targets_T := Reports.No_Targets;
          Forced : Reports.Targets_T := Reports.No_Targets;
       begin
-         if TD /= R.No_Session and then R.Usable (R.Session_T (TD)) then
+         if TD /= R.No_Session and then R.Usable (R.Session_T (TD))
+           and then Ctx.Mode = M_SM
+         then
+            Manoeuvre.Send_Consist_To (R.Session_T (TD), Ctx);
+            Handover.Train_Data_Sent;
+         elsif TD /= R.No_Session and then R.Usable (R.Session_T (TD)) then
             Mission.Send_Train_Data (R.Session_T (TD), Ctx);
             Handover.Train_Data_Sent;
          end if;

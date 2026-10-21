@@ -123,6 +123,27 @@ package body EVC_Test_Manoeuvre is
       return 0;
    end Wait_For;
 
+   --  Wait_For on session S only
+   function Wait_On (Kind : MCat.Message_Kind_T; S : Natural; Max_Ms : Natural)
+     return Unsigned_64
+   is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+   begin
+      for C in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, St);
+            if St = ETCS_Message.Accepted and then M.Kind = Kind
+              and then Radio_Output (N).Session = S
+            then
+               return M.Values (3);
+            end if;
+         end loop;
+      end loop;
+      return 0;
+   end Wait_On;
+
    --  The level 2 start of the authority scenarios: FS in level 2, the
    --  LRBG 10 at 100 m passed, an established session 1 whose RBC
    --  acknowledged the Train Data (message 8), the safe consist length
@@ -424,6 +445,43 @@ package body EVC_Test_Manoeuvre is
       Check (not EVC_Sessions.SM_Consist_Awaited,
              "SM consist: the resent one acknowledged (3.18.3.10.1)");
    end Scenario_SM_Consist_Info;
+
+   --  3.15.1.3.3: in Supervised Manoeuvre the session with the Accepting
+   --  RBC, once established, gets the safe consist length information
+   --  (message 133) instead of the Train Data (129); message 7 on that
+   --  session acknowledges it (3.18.3.10.1)
+   procedure Scenario_SM_Handover is
+      T  : Unsigned_64;
+      N0 : Natural;
+      D0 : Natural;
+   begin
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM, "SM handover: SM entered");
+      N0 := EVC_Sessions.SM_Consist_Sent;
+      D0 := EVC_Sessions.Train_Data_Sent;
+      EVC_Radio.Set_Peer (2, (NID_C => 123, NID_RBC => 2), 0);
+      EVC_Radio.Set_State (2, EVC_Radio.Established);
+      EVC_Radio.Set_Version (2, 33);
+      EVC_Radio.Set_Roles (1, 2);
+      T := Wait_On (MCat.Train_M133, 2, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Sent = N0 + 1
+             and then EVC_Sessions.Train_Data_Sent = D0
+             and then EVC_Sessions.SM_Consist_Awaited,
+             "SM handover: the session with the Accepting RBC established, "
+             & "message 133 sent on it, not the Train Data (3.15.1.3.3)");
+      Give_Radio_Message (2, Consist_Ack (T));
+      Stand_X (300);
+      Check (not EVC_Sessions.SM_Consist_Awaited,
+             "SM handover: message 7 of the Accepting RBC acknowledges it "
+             & "(3.18.3.10.1)");
+      Check (Wait_On (MCat.Train_M133, 2, 1_000) = 0
+             and then EVC_Sessions.Train_Data_Sent = D0,
+             "SM handover: sent once (3.15.1.3.3)");
+   end Scenario_SM_Handover;
 
    procedure Scenario_SM_Request is
       T : Unsigned_64;
