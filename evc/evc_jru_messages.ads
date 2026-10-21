@@ -150,6 +150,7 @@ is
 
    --  The UTC date and time (4.2.3.3, 4.2.3.4) of Seconds since
    --  2000-01-01 00:00:00 UTC and Ms more milliseconds
+   --  @req 3.18.5.1, 3.18.5.2
    procedure Set_Time (H       : in out Header_T;
                        Seconds : Unsigned_32;
                        Ms      : Natural)
