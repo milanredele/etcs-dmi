@@ -3587,6 +3587,16 @@ package body S076_Run is
                         return NJ (R_S076_Defect, "JRU 21 spare bit"
                                    & Bit_S & " set");
                      end if;
+                     --  bit 56 is TC13, the inhibition of the magnetic
+                     --  shoe brake (4.2.4.21); the sequences entering SF
+                     --  give it for ST01 shown the step before, which 215
+                     --  sequences give as bit 38: a defect of the sequence
+                     if Message = "21" and then Bit = 56 and then V_S = "1"
+                       and then Our_Mode = M_SF
+                     then
+                        return NJ (R_S076_Defect, "JRU 21 bit 56 (TC13) "
+                                   & "for the brake intervention in SF");
+                     end if;
                      if Fact.Kind = No_Fact then
                         return NJ (R_JRU_Not_Modelled,
                                    Message & "/Bit" & Bit_S & "=" & V_S);
