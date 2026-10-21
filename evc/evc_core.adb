@@ -1762,12 +1762,6 @@ is
         (First, Unsigned_64 (Clock_Ms), Ctx);
    end Release_Transition_Buffer;
 
-   --  5c. Take_Radio_Geo, 3.6.6.4.1, 4.8.3, 4.8.4.2,
-   --  4.8.5: the packets 79 of the radio messages of the cycle (and of
-   --  those the transition buffer released) to the position, judged in
-   --  the level and mode after the transitions of the cycle (4.8.5.5: a
-   --  packet kept for the level 2 transition is used at the transition)
-   --  @req 3.6.6.4.1
    --  2c. 3.4.4.1.1, 4.8.1.6: the linking (packet 5) of the
    --  radio messages of the cycle to the position, before any other
    --  location related information (while the origins of their LRBG
@@ -1797,6 +1791,12 @@ is
          and then EVC_Acceptance.Third_Filter (EVC_Acceptance.Linking, C));
    end Take_Radio_Linking;
 
+   --  5c. Take_Radio_Geo, 3.6.6.4.1, 4.8.3, 4.8.4.2,
+   --  4.8.5: the packets 79 of the radio messages of the cycle (and of
+   --  those the transition buffer released) to the position, judged in
+   --  the level and mode after the transitions of the cycle (4.8.5.5: a
+   --  packet kept for the level 2 transition is used at the transition)
+   --  @req 3.6.6.4.1
    procedure Take_Radio_Geo
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Train_Inputs.State, EVC_Train_Data.State,
@@ -2543,12 +2543,6 @@ is
       Revoke_Brake_Reasons (From, To);
    end Enter_Mode;
 
-   --  7e. Finish_Procedures, after the mode machine: the brake demand of
-   --  the procedures in the mode of the end of the cycle
-   --  (EVC_Procedures.Finish_Cycle);
-   --  3.11.6.4: a trip order (V_MAIN 0) is used in the cycle in level 1
-   --  (the trip [18], inhibited by the override, 5.8.3.6), and kept in
-   --  the other levels until the level switches to 1 ([67])
    --  7g. The train length of the valid Train Data to the position
    --  (3.6.1.7, 3.18.3): the min safe rear end and its triggers (packet 58
    --  rear locations, 3.6.5.1.5 c; the RBC/RBC border passed by the rear
@@ -2597,6 +2591,12 @@ is
       end if;
    end Sync_Train_Length;
 
+   --  7e. Finish_Procedures, after the mode machine: the brake demand of
+   --  the procedures in the mode of the end of the cycle
+   --  (EVC_Procedures.Finish_Cycle);
+   --  3.11.6.4: a trip order (V_MAIN 0) is used in the cycle in level 1
+   --  (the trip [18], inhibited by the override, 5.8.3.6), and kept in
+   --  the other levels until the level switches to 1 ([67])
    procedure Finish_Procedures
      with Global => (Input  => (Current_Mode, Proc_Ctx, Test_Snapshot_Set,
                                 EVC_Stored_Information.State,
