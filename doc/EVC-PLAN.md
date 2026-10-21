@@ -9563,10 +9563,13 @@ the condition). SUBSET-076: 1040 / 1110 / 1040 -> 1057 / 1092 / 1041, 0
 regressions, 18 improvements (the sequences waited for the indication
 marker).
 
+After a resumption: 3.15.10.5 done, `Build_Planning` takes
+`Snap.Temporary` and the closer of it and `MA_R.EOA` as the EOA,
+without the LOA speed then (`Scenario_Route_Suitability`; no golden
+moved).
+
 Left (B1202): 3.15.10.4, the gradients and the orders restricted to the
 MA and to the first target at zero speed (`Plan_Gradients`,
-`Plan_Orders` up to 32 km today); 3.15.10.5, the closest temporary EOA
-of `Build_Temporary` (`Snap.Temporary.EOA`, the same frame as
-`MA_R.EOA`) as the planning's EOA, without the LOA speed when it is the
-closer; the orders' max / min location items (3.15.10.2). Not started:
+`Plan_Orders` up to 32 km today); the orders' max / min location items
+(3.15.10.2). Not started:
 the re-reads of 3.15.11.2, 3.20.1.2, A.3.2 and B1181.
