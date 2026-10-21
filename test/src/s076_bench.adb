@@ -375,6 +375,9 @@ package body S076_Bench is
       V := EVC_JRU_Messages.View (P);
       if V.Event /= 0 then
          Observe_Event ((V.Event, V.B2, V.B3, V.B4));
+         if JRU_N >= 1 then
+            JRU_List (JRU_N).NID := Natural (P (P'First));
+         end if;
       end if;
    end Observe_JRU;
 
@@ -384,7 +387,8 @@ package body S076_Bench is
          JRU_N := JRU_N + 1;
          JRU_List (JRU_N) := (Natural (P (P'First)), Natural (P (P'First + 1)),
                               Natural (P (P'First + 2)),
-                              Natural (P (P'First + 3)), Last_Commands);
+                              Natural (P (P'First + 3)), Last_Commands,
+                              0);
       end if;
       if P (P'First) = 1 then
          Last_Mode := Natural (P (P'First + 1));

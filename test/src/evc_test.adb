@@ -245,6 +245,7 @@ begin
    Scenario_Consistency_Reactions;
    Scenario_Consistency_Modes;
    Scenario_Consistency_Error_Report;
+   Scenario_Consistency_NL;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

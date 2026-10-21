@@ -2325,8 +2325,42 @@ package body S076_Run is
    function N_TOTAL (T : Telegram_T) return Natural is (Field (T, 12, 3));
    function NID_BG (T : Telegram_T) return Natural is (Field (T, 35, 14));
 
+   --  A telegram of a balise group input that the step's text names as
+   --  not decodable (a wrong CRC): the sequences give its bits decodable
+   --  all the same. The BTM port has no undecodable telegram, so it is
+   --  left out, a balise missed (EVC_Ports, BTM). Decision: "second
+   --  balise" names the telegram 2/n, "balise #i" the last, n/n; else the
+   --  one carrying no packet when another telegram of the group at the
+   --  step carries one; a group of one telegram none (the port has no
+   --  balise detected without a telegram)
+   function Undecodable (St : Step_T; T : Telegram_T) return Boolean is
+      C : constant String := Image (St.Text) & " " & Image (St.Comment);
+   begin
+      if T.Parts < 2
+        or else not (Has (C, "cannot be decoded") or else Has (C, "wrong CRC")
+                     or else Has (C, "CRC error"))
+      then
+         return False;
+      elsif Has (C, "balise #i") then
+         return T.Part = T.Parts;
+      elsif Has (C, "second balise") then
+         return T.Part = 2;
+      elsif T.Packet_Count > 0 then
+         return False;
+      end if;
+      for I in 1 .. Seq.Telegram_Count loop
+         if Seq.Telegrams (I).Tag = T.Tag
+           and then Seq.Telegrams (I).Step = T.Step
+           and then Seq.Telegrams (I).Packet_Count > 0
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Undecodable;
+
    --  The telegrams of a balise group input: placed on the track and
-   --  passed by the antenna
+   --  passed by the antenna, but those the step names undecodable
    function BTM_Input (St : Step_T) return Judgement_T is
       Far   : Integer_64 := St.Dist_Cm;
       Found : Natural := 0;
@@ -2407,7 +2441,9 @@ package body S076_Run is
                         for J in Data'Range loop
                            Data (J) := T.Data (J);
                         end loop;
-                        B.Place_Balise (At_Cm, T.Bits, Data);
+                        if not Undecodable (St, T) then
+                           B.Place_Balise (At_Cm, T.Bits, Data);
+                        end if;
                         if (At_Cm - Far) * Integer_64 (B.Direction) > 0 then
                            Far := At_Cm;
                         end if;
@@ -3291,6 +3327,13 @@ package body S076_Run is
                          Sub, B3 : Integer) return Boolean is
      (R.Event = Event and then (Sub < 0 or else R.B2 = Sub)
       and then (B3 < 0 or else R.B3 = B3));
+
+   --  A record of the window viewed as the event 13 whose message is the
+   --  JRU record NID: 13 the radio error, 255 the proprietary record of an
+   --  unlinked group's inconsistent message (both are the event 13)
+   function Any_Rec_13 (NID : Natural; Sub : Integer) return Boolean is
+     (for some I in 1 .. Rec_Count =>
+        Rec_Matches (Rec (I), 13, Sub, -1) and then Rec (I).NID = NID);
 
    function Any_Rec (Event : Natural; Sub, B3 : Integer) return Boolean is
    begin
@@ -4409,7 +4452,7 @@ package body S076_Run is
                   if E >= 0 and then E not in 3 .. 5 then
                      return NJ (R_JRU_Not_Modelled, "13.M_ERROR=" & Img (E));
                   end if;
-                  return Check (Any_Rec (13, E, -1) = Positive,
+                  return Check (Any_Rec_13 (13, E) = Positive,
                                 "JRU13 radio error"
                                 & (if E >= 0 then " M_ERROR" & Img (E) else "")
                                 & (if Positive then "" else " not"),
@@ -4465,14 +4508,14 @@ package body S076_Run is
                                        or else Any_Rec (5, -1, -1)
                                        or else Any_Rec (6, -1, -1),
                              when 1 => Any_Rec (12, -1, -1),
-                             when 2 => Any_Rec (13, -1, -1),
+                             when 2 => Any_Rec_13 (255, -1),
                              when 7 => Any_Rec (4, -1, 5),
                              when 8 => Any_Rec (4, -1, 6),
                              when others =>
                                Any_Rec (4, -1, -1) or else Any_Rec (5, -1, -1)
                                or else Any_Rec (6, -1, -1)
                                or else Any_Rec (12, -1, -1)
-                               or else Any_Rec (13, -1, -1));
+                               or else Any_Rec_13 (255, -1));
                   return Check (Hit = Positive,
                                 "JRU balise group error"
                                 & (if E >= 0 then " M_ERROR" & Img (E) else "")

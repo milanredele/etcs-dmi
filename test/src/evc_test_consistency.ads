@@ -21,5 +21,9 @@ package EVC_Test_Consistency is
    --  Through EVC_Core in a level 2 session: the balise group errors
    --  reported to the RBC, M_ERROR 0, 1, 2 and 7 (3.16.4.1)
    procedure Scenario_Consistency_Error_Report;
+   --  Non Leading and Passive Shunting: an unlinked group's message
+   --  inconsistent recorded (JRU 12), no service brake (4.4.15.1.10,
+   --  4.4.20.1.15)
+   procedure Scenario_Consistency_NL;
 
 end EVC_Test_Consistency;
