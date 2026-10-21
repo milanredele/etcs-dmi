@@ -626,5 +626,36 @@ package body EVC_Test_PBD is
              & "the max item of the change to it");
    end Scenario_SSP_Gaps;
 
+   --  3.15.10.1, 3.15.10.3.1: the first Indication location in
+   --  MSG_PLANNING, in Ceiling Speed monitoring, at the distance the
+   --  supervision computed (3.13.10.3.8) in the cycle before; none in
+   --  Target Speed monitoring
+   procedure Scenario_Planning is
+      Ind_M : Natural;
+   begin
+      Start_X;
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 1000));
+      Carry (1, 0, SSP ((1 => (0, 160, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((1 => 3000), 160));
+      Run_X (30_000);
+      Ind_M := Natural (Res.Indication_D / 100);
+      Check (Plan_Frames > 0 and then Res.Monitoring in SDM.CSM
+             and then Res.Indication
+             and then Plan_U16 (2) >= Ind_M
+             and then Plan_U16 (2) <= Ind_M + 12,
+             "planning: the first Indication location in Ceiling Speed "
+             & "monitoring (3.15.10.1, 3.15.10.3.1, 3.13.10.3.8):"
+             & Natural'Image (Plan_U16 (2)) & " m against"
+             & Natural'Image (Ind_M) & " m now");
+      Run_X (Train_Cm + Integer_64 (Ind_M) * 100 + 5_000);
+      Check (Res.Monitoring in SDM.TSM and then Plan_U16 (2) = 16#FFFF#,
+             "planning: no Indication location in Target Speed "
+             & "monitoring (3.15.10.1) "
+             & SDM.Monitoring_T'Image (Res.Monitoring)
+             & Natural'Image (Plan_U16 (2)));
+   end Scenario_Planning;
+
 
 end EVC_Test_PBD;

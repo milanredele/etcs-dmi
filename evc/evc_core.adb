@@ -1546,6 +1546,13 @@ is
                            Frame, Last);
          EVC_Outbox.Put (DMI, Frame (1 .. Last));
       end if;
+      --  3.15.10.3.1: the first Indication location of the last cycle's
+      --  supervision, in Ceiling Speed monitoring only (3.15.10.1)
+      EVC_Stored_Information.Set_Planning_Indication
+        (SDM_Result.Active and then SDM_Result.Indication
+           and then SDM_Result.Monitoring in EVC_SDM.CSM,
+         Natural (EVC_Fixed.Num'Max
+           (0, EVC_Fixed.Num'Min (SDM_Result.Indication_D, 6_553_400))));
       if EVC_Stored_Information.Planning_Due then
          Planning_Frame (EVC_Stored_Information.Planning, Frame, Last);
          if Last <= DMI_Max_Length then

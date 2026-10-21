@@ -234,6 +234,14 @@ is
    function Planning return EVC_DMI_Port.Planning_T
      with Global => State;
 
+   --  The planning's first Indication location (3.15.10.1, 3.15.10.3.1):
+   --  Present when the supervision is in Ceiling Speed monitoring with an
+   --  Indication location, Dist_Cm its remaining distance as the
+   --  supervision computed it (3.13.10.3.8, 3.13.10.3.8.1); set after
+   --  Evaluate, kept until the next one
+   procedure Set_Planning_Indication (Present : Boolean; Dist_Cm : Natural)
+     with Global => (In_Out => State);
+
    --  Operations
 
    --  Power-up: nothing stored (the Train Data: the default train)

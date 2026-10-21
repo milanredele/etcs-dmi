@@ -217,6 +217,7 @@ begin
    Scenario_PBD;
    Scenario_Gradient_Gaps;
    Scenario_SSP_Gaps;
+   Scenario_Planning;
 
    Scenario_Bench_Onboard;
    Scenario_Odometer_Wrap;

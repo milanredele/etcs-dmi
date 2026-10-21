@@ -2704,6 +2704,21 @@ is
       end if;
    end Build_Planning;
 
+   --  The first Indication location of the planning, in metres
+   --  (No_Distance: none)
+   --  @req 3.15.10.3.1
+   procedure Set_Planning_Indication (Present : Boolean; Dist_Cm : Natural)
+     with Refined_Global => (In_Out => Plan, Input => Plan_Due)
+   is
+   begin
+      if Plan_Due and then Present then
+         Plan.Indication_Dist := Unsigned_16 (Natural'Min (Dist_Cm / 100,
+                                                          65_534));
+      else
+         Plan.Indication_Dist := EVC_DMI_Port.No_Distance;
+      end if;
+   end Set_Planning_Indication;
+
    --  6. and 7. of Evaluate: the snapshot, the indications of the track
    --  conditions and the planning, from the stores; the parts above in
    --  their order (No_Inline: its locals, the inputs of the PBD and the
