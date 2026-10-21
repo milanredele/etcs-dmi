@@ -9798,5 +9798,12 @@ built (EVC_Core is not this package's): an installation value of
 UTC + clock + offset once UTC is known (B1340, with the port's clock of
 E8). Two E6 rows todo -> partial.
 
-Left: B1242 (`S076_Run.Columns`, 4080444_03 SV21 / SV22 step 65, the
-alarm's SF judged against the FS columns), not started; B1340.
+B1242, after a resumption: `S076_Run.Columns` admits SF after an `INT
+btm-alarm received` in the step's window, the implementation-dependent
+reaction (3.15.7.6.1) the alarm sequences keep their columns before.
+4080444_03 SV21 / SV22 65 -> 76 (S3b3fa12e, s076: after its EB the
+sequence goes on in FS to level 2, our SF is kept until No Power),
+9990600_07 (3 SV) 76 -> 77 (S3bd5d94f, s076, the defect of B1240);
+5 improvements, 0 regressions, the baseline re-recorded.
+
+Left: B1340.

@@ -525,6 +525,22 @@ package body S076_Run is
          --  after the step under other columns are passed over (9990400_32
          --  records SF at step 81 under the columns FS of its BTM alarm,
          --  the window ends in the NP of step 87)
+         --  The alarm sequences keep the mode columns before the reaction
+         --  to the BTM alarm, implementation dependent (3.15.7.6.1): SF
+         --  after an alarm received in the window is that reaction
+         --  (4080444_03 step 65, its EB expected at step 66)
+         if M = M_SF then
+            for K in reverse First .. I loop
+               if Ada.Strings.Fixed.Index
+                    (Image (Seq.Steps (K).Line), "INT btm-alarm received") > 0
+               then
+                  return Pass ("mode SF (the reaction to the BTM alarm of "
+                               & "step" & Seq.Steps (K).Number'Image
+                               & ", columns "
+                               & Trim (Seq.Steps (I).Mode_After) & ")");
+               end if;
+            end loop;
+         end if;
          for K in reverse 1 .. Last loop
             Same_Columns :=
               Trim (Seq.Steps (K).Mode_Before)
