@@ -8,12 +8,10 @@
 --  parts of the start and end of mission (5.4, 5.5), the level transitions
 --  into and out of level 2 (5.10, 5.15) and the RBC handover (3.15.1).
 --
---  The joint gave the entry points EVC_Core calls, in the
---  order of the cycle, with bodies that do nothing but count: the half
---  fills the bodies, adds its private state and widens the Global
---  contracts (and those of the core steps that call them: Read_Radio,
---  Evaluate_Radio, Radio_Mode_Changed, Send_Radio). It is the only
---  writer of the session table of EVC_Radio.
+--  EVC_Core calls the entry points below in the order of the cycle, from
+--  its steps Read_Radio, Evaluate_Radio, Radio_Mode_Changed and
+--  Send_Radio. This half is the only writer of the session table of
+--  EVC_Radio.
 --
 --  The cycle (EVC_Core.Tick):
 --    1. Read_Ports: Take_Event for each connection event of the RTM

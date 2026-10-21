@@ -55,8 +55,8 @@ is
 
    --  SUBSET-026 4.6.2 Figure 2 (PDF page 48 of SUBSET-026-4): the
    --  element (From, To) is the priority of the transition from From to
-   --  To. The conditions are in 4.6.3; EVC_Core evaluates those of the
-   --  current phase.
+   --  To. The conditions are in 4.6.3; EVC_Core evaluates them
+   --  (EVC_Transition_Conditions).
    --  @req 4.3.1.6, 4.4.14.1.4, 4.6.2 Table
    Transitions : constant Transition_Table_T :=
      (M_NP => (M_SB => 2, M_IS => 1, others => 0),

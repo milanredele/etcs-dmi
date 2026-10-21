@@ -10,13 +10,10 @@
 --  Manoeuvre of 5.21), the Train Data to the RBC and its changes (5.17), the
 --  text message acknowledgements (message 158).
 --
---  The joint gave the entry points EVC_Core calls with
---  bodies that do nothing but count; the half fills them, adds its
---  private state, and widens the Global contracts (and those of the core
---  steps that call them). It reads the session table of EVC_Radio and
---  sends through EVC_Radio.Send; it does not write the table. The order
---  of the cycle is in EVC_Sessions: each step of this half follows the
---  same step of the session half.
+--  EVC_Core calls the entry points below from its steps. This half reads the
+--  session table of EVC_Radio and sends through EVC_Radio.Send; it does not
+--  write the table. The order of the cycle is in EVC_Sessions: each step of
+--  this half follows the same step of the session half.
 
 with ETCS_Variables;
 with EVC_Balise_Groups;
