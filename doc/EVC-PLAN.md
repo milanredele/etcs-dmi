@@ -9534,3 +9534,10 @@ the SM direction byte, B1160, B1161, B008, B031, B991, 4.4.21.1.12 /
 (B1200 then B1201); consistency B1182, B1183; the re-reads of 3.18.5,
 3.18.6, 3.15.11.2, 3.20.1.2, A.3.2 and the planning gaps B1202; the
 runner B1180, B1181.
+
+### Two consistency defects, the record 13 naming, the SR speed before an OS entry (e6/consistency-defects, 2026-10-21)
+
+- B1182 done, 3.16.2.4.3.1 a) done: `EVC_Position.React_Inconsistent` takes the group's own orientation (`EVC_Balise_Groups.Geometry`); for an expected group of unknown identity, an inconsistent group whose orientation is known and crossed against the announced direction is recorded and gets no reaction, its window running on (decision: the error recorded in a) as in b), 3.16.1.4). `Scenario_Unknown_Identity` in `Scenario_Consistency_Reactions` (balises 0 and 2 of 3 read: no reaction, the brake only when the window ends, cause 2; balise 0 of 2: the linking reaction, cause 7). 3160200_34 step 49 is a sequence defect: BG2d has two balises (N_TOTAL 1) and the sequence gives one telegram, no orientation from the group, so b) applies (Sd56a8154's first line rewritten, s076 for this sequence).
+- B1183 traced, not fixed (bound): no mode guard in the paths read, yet with `Set_Mode_For_Test (M_NL, L1)` no record 12 comes and no group is taken in evc_test (B1281, where to look); 3160200_15's BG2d reaches the on-board with both telegrams decodable, the wrong CRC in the text only (B1280, runner). 4042000_02 / _03 (PS) not traced.
+- Not reached (bound): the event 13 naming, B1180.
+- SUBSET-076: 1040 / 1110 / 1040 before and after, 0 regressions, 0 improvements.
