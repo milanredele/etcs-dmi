@@ -882,9 +882,29 @@ package body EVC_Test_Profiles is
       Check (Natural (Plan_Payload (13)) = 1
              and then Natural (Plan_Payload (18)) = 4
              and then Natural (Plan_Payload (19)) = 2
-             and then Plan_U16 (19) = (110_000 - 15_300) / 100,
+             and then Plan_U16 (19)
+                        = Natural ((110_000 - Integer_64
+                                      (SI.Current.Train.Max_Safe_Front))
+                                   / 100),
              "planning: the orders of the track conditions ahead (lower "
-             & "and raise pantograph, regenerative brake, DC 3 kV)");
+             & "and raise pantograph, regenerative brake, DC 3 kV), the "
+             & "start from the max safe front end (3.15.10.2)");
+      declare
+         Fin : constant Integer_64 := Est (TCo.Conditions.List (1).Finish);
+         Min : constant Integer_64 :=
+           Integer_64 (SI.Current.Train.Min_Safe_Front);
+         Found : Boolean := False;
+      begin
+         for K in 0 .. Natural (Plan_Payload (18)) - 1 loop
+            Found := Found
+              or else (Natural (Plan_Payload (19 + 3 * K)) = 4
+                       and then Plan_U16 (19 + 3 * K)
+                                  = Natural ((Fin - Min) / 100));
+         end loop;
+         Check (Found,
+                "planning: the end of the powerless section (PL4) from "
+                & "the min safe front end (3.15.10.2)");
+      end;
       Run_X (100_000, 1000);
       Check (TC_Shows (3), "5.18.2.2: lower pantograph announced (TC03)");
       Run_X (112_000, 1000);

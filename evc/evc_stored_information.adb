@@ -2602,11 +2602,15 @@ is
       end loop;
    end Plan_Gradients;
 
-   --  The planning (ERA_ERTMS_015560 8.3): the MRSP ahead of Front up to
-   --  the EOA (MA_M metres), then the EOA or the LOA (3.8.3) with its
-   --  speed
-   procedure Plan_Speeds (Ahead     : Sense_T;
-                          Front     : Dist_T;
+   --  The planning (ERA_ERTMS_015560 8.3): the MRSP ahead of the train
+   --  up to the EOA (frame position EOA), then the EOA or the LOA (3.8.3)
+   --  with its speed, End_M metres ahead; a decrease from the max safe
+   --  front end, an increase from the min safe one, as the ceiling speed
+   --  supervision takes them (3.13.7.2, Plan_Head)
+   --  @req 3.15.10.2
+   procedure Plan_Speeds (Train     : Train_Frame_T;
+                          Ahead     : Sense_T;
+                          EOA       : Dist_T;
                           MA_M      : Natural;
                           LOA_Speed : Speed_Cms_T)
      with Global => (In_Out => Plan, Input => Steps),
@@ -2618,12 +2622,16 @@ is
          exit when Plan.Speed_Count
                      >= EVC_DMI_Port.Max_Planning_Speeds - 1;
          declare
+            F : constant Dist_T :=
+              (if Steps.List (K).Value < Steps.List (K - 1).Value
+               then Train.Max_Front else Train.Min_Front);
             D : constant Natural :=
-              Metres_Ahead (Ahead, Front,
-                            A (Ahead, Steps.List (K).Start), 65_535);
+              Metres_Ahead (Ahead, F, A (Ahead, Steps.List (K).Start),
+                            65_535);
          begin
-            if Steps.List (K).Start > A (Ahead, Front)
-              and then D < MA_M and then D <= 32_000
+            if Steps.List (K).Start > A (Ahead, F)
+              and then Steps.List (K).Start < A (Ahead, EOA)
+              and then D <= 32_000
             then
                Plan.Speed_Count := Plan.Speed_Count + 1;
                Plan.Speeds (Plan.Speed_Count) :=
@@ -2644,10 +2652,20 @@ is
       end if;
    end Plan_Speeds;
 
+   --  The planning symbols of the end of a track condition (PL3, PL4,
+   --  PL7, PL8, PL18, PL20 of ERA_ERTMS_015560 8.3.4, the PL_End of
+   --  EVC_Track_Conditions: the end of a powerless section, of the main
+   --  power switch off, of the air tightness)
+   function End_Order (Symbol : Natural) return Boolean is
+     (Symbol in 3 | 4 | 7 | 8 | 18 | 20);
+
    --  The planning (ERA_ERTMS_015560 8.3): the orders of the track
-   --  conditions ahead (3.12.1, 5.18), up to 32 km
-   procedure Plan_Orders (Ahead  : Sense_T;
-                          Front  : Dist_T;
+   --  conditions ahead (3.12.1, 5.18), up to 32 km; the start of a
+   --  condition from the max safe front end, its end from the min safe
+   --  one, as EVC_Track_Conditions supervises them
+   --  @req 3.15.10.2
+   procedure Plan_Orders (Train  : Train_Frame_T;
+                          Ahead  : Sense_T;
                           Orders : EVC_Track_Conditions.Orders_T)
      with Global => (In_Out => Plan)
    is
@@ -2656,7 +2674,10 @@ is
          exit when Plan.Order_Count = EVC_DMI_Port.Max_Planning_Orders;
          declare
             D : constant Natural :=
-              Metres_Ahead (Ahead, Front, Orders.List (I).At_X, 65_535);
+              Metres_Ahead (Ahead,
+                            (if End_Order (Orders.List (I).Symbol)
+                             then Train.Min_Front else Train.Max_Front),
+                            Orders.List (I).At_X, 65_535);
          begin
             if D <= 32_000 then
                Plan.Order_Count := Plan.Order_Count + 1;
@@ -2690,16 +2711,20 @@ is
          declare
             Front : constant Dist_T := Train.Est_Front;
             EOA   : constant Dist_T := MA_R.EOA;
+            --  3.15.10.2: an EOA from the estimated front end, an LOA
+            --  (an EBD based target) from the max safe one
             MA_M  : constant Natural :=
-              Metres_Ahead (Ahead, Front, EOA, 65_534);
+              Metres_Ahead (Ahead, (if MA_R.LOA_Speed > 0
+                                    then Train.Max_Front else Front),
+                            EOA, 65_534);
          begin
             Plan_Head (Train, Ahead, Front, MA_M, G_Steps, Default_G);
             --  the gradient at the front, then its changes ahead
             Plan_Gradients (Ahead, Front, G_Steps, Default_G);
             --  the MRSP ahead up to the EOA, then the EOA or the LOA
-            Plan_Speeds (Ahead, Front, MA_M, MA_R.LOA_Speed);
+            Plan_Speeds (Train, Ahead, EOA, MA_M, MA_R.LOA_Speed);
             --  the orders of the track conditions ahead
-            Plan_Orders (Ahead, Front, Orders);
+            Plan_Orders (Train, Ahead, Orders);
          end;
       end if;
    end Build_Planning;
