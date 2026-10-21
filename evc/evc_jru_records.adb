@@ -50,7 +50,7 @@ is
                        when others => No_Code);
          --  recorded by their own events (EVC_Mission, EVC_Levels,
          --  EVC_Procedures, the mode change) or without a code (ATO,
-         --  E5/E6)
+         --  the others)
          when Acknowledge | Start | Override | Level | ATO_Engage
             | Skip_Stopping_Point | ATO_Selector | Main_Window_Button
             | BMM_Inhibition | Maintain_Shunting | Isolate

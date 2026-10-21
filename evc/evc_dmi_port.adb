@@ -66,7 +66,7 @@ is
       Byte (Seconds / 60 mod 60),     -- minute
       Byte (Seconds mod 60));         -- second
 
-   --  Phase E3 (profiles)
+   --  The profiles
 
    --  A u16 at Frame (I .. I + 1), little endian
    procedure Put_U16 (Frame : in out Frame_Buffer_T;
@@ -160,7 +160,7 @@ is
       Last := Header_Length + Planning_Length (P);
    end Planning_Frame;
 
-   --  Phase E3 (supervision)
+   --  The supervision
 
    function Speed_State_Frame (S : Speed_State_T) return Speed_State_Frame_T
    is
@@ -182,7 +182,7 @@ is
       S.Status,
       S.MRDT);
 
-   --  Phase E3 (supervision), phase E4 (the procedures)
+   --  The supervision and the procedures
 
    function Status_Frame (Geo         : Unsigned_32;
                           Seconds     : Unsigned_64;

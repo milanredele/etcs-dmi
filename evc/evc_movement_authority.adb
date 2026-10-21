@@ -214,7 +214,7 @@ is
       Outcome.Delete_Before := Before;
    end Delete_Beyond_SvL;
 
-   --  3.10.2.2 b) (phase E5): the stop location Stop of an accepted
+   --  3.10.2.2 b): the stop location Stop of an accepted
    --  conditional emergency stop. Not beyond the EOA: the new EOA and SvL
    --  (1st bullet); beyond the EOA, not beyond the SvL: the new SvL, the
    --  EOA unchanged (2nd); beyond the SvL: nothing (3rd); a LOA: the new

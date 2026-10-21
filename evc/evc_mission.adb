@@ -745,7 +745,7 @@ is
 
       Take_Desk (C, M);
       Take_Identity (C, M);
-      --  5.4.3.2 D2: the driver ID entered or revalidated (E1) in SB
+      --  5.4.3.2 S1 -> D2: the driver ID entered or revalidated in SB
       --  during the start of mission
       D2_Now := Engaged and then M = M_SB
         and then Entered (EVC_Driver_Requests.Driver_ID)

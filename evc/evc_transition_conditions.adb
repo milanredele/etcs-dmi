@@ -1,6 +1,6 @@
 --  ETCS on-board (EVC)
---  Phase E4: every condition answers False until the unit that owns it
---  implements it (doc/EVC-PLAN.md §10). The conditions are grouped by
+--  A condition answers False until the unit that owns it implements
+--  it (doc/EVC-PLAN.md §10). The conditions are grouped by
 --  their owner: the modes and levels half (EVC_Driver_Requests
 --  and EVC_Train_Inputs, EVC_Levels, EVC_Mission and the stored
 --  information, EVC_Odometry), the procedures half (EVC_Procedures, which
@@ -122,7 +122,7 @@ is
    --  Never true in this on-board:
    --    not implemented yet: [24], [33], [48], [53], [80] (AD, the
    --    ERTMS/ATO on-board); [83] (the safe consist length in front of
-   --    the engine: no radio in it, left out of the halves of E5); [35],
+   --    the engine: no radio in it, left out of the radio halves); [35],
    --    [38] (a National System through an STM: NTC is out of scope)
    --    absent from 4.0.0: [55], [57], [64]
    subtype Not_Evaluated_T is Condition_Id_T
@@ -222,7 +222,7 @@ is
                      EVC_Stored_Information.State, EVC_Levels.State,
                      EVC_Radio_Authority.State);
 
-   --  The conditions of the two halves of phase E5
+   --  The conditions of the two halves of the radio
 
    function Session_Holds (C : Session_Condition_T) return Boolean is
      (case C is

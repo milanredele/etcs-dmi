@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, session and link, phase 3: the position reports of 3.6.5
+--  The session and link half: the position reports of 3.6.5
 --  (see the specification).
 
 with ETCS_Bits;

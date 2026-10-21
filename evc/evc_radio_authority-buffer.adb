@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the state of the acceptance of radio information (see the
+--  The state of the acceptance of radio information (see the
 --  specification).
 
 package body EVC_Radio_Authority.Buffer

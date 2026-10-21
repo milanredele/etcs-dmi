@@ -1,6 +1,7 @@
 --  ETCS on-board (EVC)
---  The radio communication shared by the halves of phase E5,
---  implementation: the table and the outbox (see the specification).
+--  The radio communication shared by the session and the authority
+--  halves, implementation: the table and the outbox (see the
+--  specification).
 
 package body EVC_Radio
   with SPARK_Mode => On,

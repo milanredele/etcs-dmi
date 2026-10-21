@@ -90,7 +90,7 @@ is
       --  e); in Post Trip and Reversing the allowed movement is the
       --  reverse one (4.4.14.1.3.1, 4.4.18.1.8: the special cases of
       --  chapter 4), the snapshot's Ahead being the train orientation
-      --  without an MA (phase E4)
+      --  without an MA
       Protect
         (State.Direction,
          Active   => ((Supervised or else Direction_Mode (Inputs.Mode))

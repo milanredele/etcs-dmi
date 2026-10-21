@@ -48,7 +48,7 @@ is
    List_Now  : Boolean := False;
    Def_MN    : ETCS_Variables.NID_MN_T := 0;
    --  5.4.3.2 S4: the time the latest registration order was sent, its
-   --  outcome watched, the time of E7 elapsed without it
+   --  outcome watched, the time of A.3.1 elapsed without it
    Order_At  : R.Time_Ms_T := 0;
    Watching  : Boolean := False;
    Timed_Out : Boolean := False;
@@ -62,9 +62,9 @@ is
    Trip_Stamp   : ETCS_Variables.T_TRAIN_T := 0;
    Trip_Pending : Boolean := False;
 
-   --  5.4.3.2 S4 E7: SUBSET-026 A.3.1 (page 218), "Time from the latest
-   --  Radio Network registration order to a Mobile Terminal after which
-   --  the registration is considered as failed": 40 s
+   --  5.4.3.2 S4, its time out: SUBSET-026 A.3.1 (page 218), "Time from
+   --  the latest Radio Network registration order to a Mobile Terminal
+   --  after which the registration is considered as failed": 40 s
    Registration_Time_Ms : constant := 40_000;
 
    procedure Clear is
@@ -370,7 +370,7 @@ is
          Stop := True;
          if DR.GSMR_Network.Length = 0 then
             --  3.18.4.3.6.2: the list acquired and offered in this
-            --  cycle; S3 E3 -> A29 when it is empty
+            --  cycle; S3 -> A29 when it is empty
             List_Now := True;
             Failed := Offered_Count = 0;
          else
@@ -390,8 +390,8 @@ is
    end Driver_Entries;
 
    --  5.4.3.2 S4, Radio Network type GSM-R or
-   --  GSM-R the only system: E6, a mobile registered, ends the watch
-   --  (-> A31); E7, the time of A.3.1 since the latest order elapsed
+   --  GSM-R the only system: a mobile registered ends the watch
+   --  (-> A31); the time of A.3.1 since the latest order elapsed
    --  without it: A42, the driver informed ("GSM-R network registration
    --  failed", entry 34), then D9 -> S10 (decision: the on-board ends
    --  the wait of S4, MSG_ONBOARD waiting 1, and the set-up request
@@ -400,7 +400,7 @@ is
    --  registered (decision 2), E71 / E72 are not watched. S4 is a step
    --  of the start of mission (In_SoM): outside it the watch goes on
    --  silently, so that a start of mission reaching S4 after the time
-   --  fails at once (E7 counts from the latest order)
+   --  fails at once (the time counts from the latest order)
    --  @req 5.4.3.2 A42, 5.4.3.2 S4
    procedure Supervise_Wait (Now    : R.Time_Ms_T;
                              In_SoM : Boolean;

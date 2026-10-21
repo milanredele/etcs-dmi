@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5: the train integrity information of 3.6.5.2
+--  The train integrity information of 3.6.5.2
 
 with EVC_Ports;
 

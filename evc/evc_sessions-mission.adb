@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, session and link, phase 2: the level 2 start and end of
+--  The session and link half: the level 2 start and end of
 --  mission and the Train Data to the RBC (see the specification).
 
 with ETCS_Bits;
@@ -371,7 +371,7 @@ is
          Reject_Due := False;
          return;
       end if;
-      --  D2 once the Driver ID is entered or revalidated (E1)
+      --  D2 once the Driver ID is entered or revalidated (S1)
       if Step = Idle
         and then EVC_Mission.Driver_ID_Status = EVC_Mission.Valid
       then

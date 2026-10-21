@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the authority by radio half (see the specification).
+--  The authority by radio half (see the specification).
 
 with ETCS_Bits;
 with ETCS_Catalogue;
@@ -478,7 +478,7 @@ is
 
    --  3.8.5, 3.8.4.2.1 a), 3.8.4.3.1 a), 3.6.2.2.2 c): the MA of message
    --  3 or 33 (Shifted: 33, its location reference shifted by D_REF), to
-   --  the stores of E3 through EVC_Radio_Info: referred to the LRBG it
+   --  the stores through EVC_Radio_Info: referred to the LRBG it
    --  names (an LRBG the on-board does not know leaves no origin, and
    --  the stored information rejects the MA), its timers started at
    --  the time stamp of the message; Action: how the stored information

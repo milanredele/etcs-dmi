@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5: the radio messages of the cycle for the stores
+--  The radio messages of the cycle for the stores
 --  (implementation).
 
 package body EVC_Radio_Info

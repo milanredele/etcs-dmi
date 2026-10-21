@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E6: the procedure Supervised Manoeuvre up to the RBC's answer
+--  The procedure Supervised Manoeuvre up to the RBC's answer
 
 with ETCS_Bits;
 with ETCS_Message;

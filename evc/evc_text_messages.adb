@@ -92,7 +92,7 @@ is
    --  the level of the last cycle (the end sub-condition "level")
    Last_Level_Valid : Boolean := False;
    Last_Level       : Level_T := L0;
-   --  Phase E5, 3.12.3: the text messages by radio (packets 73 and 74 of
+   --  3.12.3: the text messages by radio (packets 73 and 74 of
    --  a message the authority half put to EVC_Radio_Info), decoded by
    --  Take_Radio in step 3 of the cycle (the table is emptied before the
    --  procedures run) and stored by the next Evaluate after the groups:
@@ -518,7 +518,7 @@ is
       end if;
    end Take_All;
 
-   --  Phase E5, 3.12.3, 3.6.2.2.2 c): the packets 73 and 74 of the radio
+   --  3.12.3, 3.6.2.2.2 c): the packets 73 and 74 of the radio
    --  messages of the cycle, valid for the train (3.6.3.1.3), referred to
    --  the estimated position of the LRBG their message names (its origin
    --  in EVC_Origins; none, the message is not taken: the stored

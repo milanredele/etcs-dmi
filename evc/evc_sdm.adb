@@ -1029,7 +1029,7 @@ is
                                                       (Work, C, T, True)))));
    end Below_First_Element;
 
-   --  Added by the procedures of phase E4
+   --  For the procedures of chapter 5
 
    --  5.18.4.2, 5.18.8.3: for each foot of S.Virtual, the SBI (SBI1) and
    --  the Permitted limit of an SBD curve with that foot, at the
@@ -1308,7 +1308,7 @@ is
    --  SvL, d) the end of the SR distance. EOA_Index: the EOA target (0:
    --  none), its SvL in SvL; Temporary_SvL: the SvL of the EOA target is
    --  a temporary one, without release speed (3.12.4.7, 3.12.5.8);
-   --  LX_Here (phase E4, 5.16): the EOA of the EOA target is the start of
+   --  LX_Here (5.16): the EOA of the EOA target is the start of
    --  the level crossing of S.LX; Ignore_Temporary: the temporary EOA
    --  and SvL left out (5.16.3.2, the start of the level crossing
    --  substituted by its speed restriction at this cycle)
@@ -2413,7 +2413,7 @@ is
       end if;
    end Passed_Locations;
 
-   --  3.8.6.1 b) (phase E5): the train front end against the Indication
+   --  3.8.6.1 b): the train front end against the Indication
    --  supervision limit of the proposed shortened MA P (frame positions,
    --  S.Extra.Proposal; False without one)
    --  for the current speed, with the curves of the cycle (Work, C): the
@@ -2577,7 +2577,7 @@ is
                       Sv, Result.Indication, Result.Indication_D);
       Result.Proposal_In_Rear := Proposal_In_Rear (S, Work, C);
 
-      --  phase E4: the virtual SBD curves of the track conditions
+      --  the virtual SBD curves of the track conditions
       --  (5.18.4.2, 5.18.8.3), the substitution of a level crossing not
       --  protected (5.16.3.2)
       LX_Substitution (S, Inputs, Work, State, C, EOA_Index, Temporary_SvL,
@@ -2601,7 +2601,7 @@ is
                    Result.D_Target, Result.Shown_At, Result.V_Target,
                    Result.Release_Shown, Result.CSM_Target, Result.TTI);
 
-      --  phase E4, 5.16.1.4 a): the EOA target of the level crossing is
+      --  5.16.1.4 a): the EOA target of the level crossing is
       --  the most relevant displayed target
       Result.LX_MRDT :=
         LX_Here and then EOA_Index > 0 and then Mon /= CSM

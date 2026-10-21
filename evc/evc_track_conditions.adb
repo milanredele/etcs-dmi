@@ -16,7 +16,7 @@ is
    --  the number of the next condition on the DMI (1 .. 127; the
    --  changes of traction system take 128 .. 255)
    Serial     : Natural range 1 .. 127 := 1;
-   --  phase E4: packets 69 and 40
+   --  packets 69 and 40
    Platform_S : Store_T := Empty_Store;
    Current_S  : Store_T := Empty_Store;
    --  Overlaps_Radio_Hole at the last Evaluate
@@ -421,7 +421,7 @@ is
        PL_End   => 0))
      with Pre => V <= 5;
 
-   --  Phase E4: the virtual limit found last cycle for the foot X of
+   --  The virtual limit found last cycle for the foot X of
    --  the condition Id (5.18.4.2, 5.18.8.3)
    procedure Find_Virtual (Last  : Virtual_Limits_T;
                            Id    : Natural;
@@ -575,7 +575,7 @@ is
                      --  limits SBID (max safe front end) and SBIG (min
                      --  safe front end) that the supervision found last
                      --  cycle; without them from point C to the rear end
-                     --  leaving it (E3)
+                     --  leaving it
                      declare
                         F_D, F_G : Boolean;
                         L_D, L_G : Virtual_Limit_T;

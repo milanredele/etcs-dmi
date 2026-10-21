@@ -1,7 +1,6 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half, phase 1 (see the
---  specification): the communication sessions of 3.5 and the link of
---  3.16.3.
+--  The session and link half (see the specification): the
+--  communication sessions of 3.5 and the link of 3.16.3.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -729,7 +728,7 @@ is
    --  on-board does not handle is ignored.
    --  3.5.3.4 a), 3.5.5.1 a): packet 42 of a General message (24) of the
    --  RBC, an order to establish or terminate a session (a
-   --  message 24 goes to no store of phase E3; 4.8.4 accepts session
+   --  message 24 goes to none of the stores; 4.8.4 accepts session
    --  management in the modes in which a session exists). The packet 42
    --  of messages 3 and 33 goes the way of their stored information.
    --  3.6.3.1.3: only an order valid for the train orientation relative

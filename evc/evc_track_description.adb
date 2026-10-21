@@ -610,7 +610,7 @@ is
          Stop_Required => P.Q_STOPLX = 1,
          Stop_Length   => D (Natural (P.L_STOPLX), Scale),
          Msg           => M.Msg,
-         --  phase E4, 5.16: a new information starts the procedure
+         --  5.16: a new information starts the procedure
          --  again
          Released      => False,
          Released_From => 0,
@@ -1093,7 +1093,7 @@ is
                E : constant Dist_T :=
                  Frame (T, LX_S (I).Start, Estimated_Item);
             begin
-               --  phase E4: kept until the min safe front end passed
+               --  kept until the min safe front end passed
                --  its end (a start passed without the substitution of
                --  5.16 is an EOA passed: the trip of 4.6.3 [12], {9})
                if A (Ahead, Frame (T, LX_S (I).Finish, Max_Item))

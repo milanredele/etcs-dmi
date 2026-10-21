@@ -253,7 +253,7 @@ is
    Length_Known       : Boolean := False;
 
    --  The groups taken into account in the last Update and the telegrams
-   --  of their passages (phase E3)
+   --  of their passages
    type Taken_Array_T is array (1 .. Max_Taken) of Taken_T;
    No_Taken : constant Taken_T := (others => <>);
    type Taken_Tels_T is
@@ -525,7 +525,7 @@ is
       end loop;
       Relocate_Item (Border (1));
       Relocate_Item (Border (2));
-      --  the origins of the stored information (phase E3) likewise
+      --  the origins of the stored information likewise
       for I in EVC_Origins.Index_T loop
          pragma Loop_Invariant (SOLR_A = A);
          declare
@@ -1500,8 +1500,7 @@ is
          return;
       end if;
       if not G.Has_Reference then
-         --  the group cannot be located (the consistency of its message
-         --  is phase E6); its window, if any, runs on
+         --  the group cannot be located; its window, if any, runs on
          return;
       end if;
 
@@ -1890,7 +1889,7 @@ is
       end if;
       --  3.15.8: a cold movement detected is recorded once (whether the
       --  information is available is EVC_Odometry.Cold; its use for the
-      --  stored information, 4.11, is phase E4)
+   --  stored information, 4.11, is EVC_Core's Revalidate_Kept)
       if not Cold_Reported
         and then EVC_Odometry.Cold /= EVC_Odometry.Cold_Unknown
       then
