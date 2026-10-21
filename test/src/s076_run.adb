@@ -469,6 +469,7 @@ package body S076_Run is
       Lv : constant Level_Kind_T := Our_Level;
       Any_Level : Boolean := False;
       Any_Mode  : Boolean := False;
+      Same_Columns : Boolean;
 
       procedure Add (St : Step_T) is
          Mb : constant Mode_Set_T := Mode_Of (Trim (St.Mode_Before));
@@ -520,26 +521,34 @@ package body S076_Run is
          --  B661: the columns contradicted by the sequence's own latest
          --  expectation of the mode under the same columns (5190200_03
          --  records FS at steps 95 and 97, its columns keep LS to step
-         --  116): judged on that expectation
+         --  116): judged on that expectation; the steps of the window
+         --  after the step under other columns are passed over (9990400_32
+         --  records SF at step 81 under the columns FS of its BTM alarm,
+         --  the window ends in the NP of step 87)
          for K in reverse 1 .. Last loop
-            exit when Trim (Seq.Steps (K).Mode_Before)
-                        /= Trim (Seq.Steps (I).Mode_Before)
-              or else Trim (Seq.Steps (K).Mode_After)
-                        /= Trim (Seq.Steps (I).Mode_After);
-            declare
-               E : constant Mode_Set_T := Expected_Modes (Seq.Steps (K));
-            begin
-               if E /= No_Modes then
-                  if E (M) and then (E and Modes) = No_Modes then
-                     return Pass ("mode " & Mode_Abbrev (M)
-                                  & " (the sequence's expectation at step"
-                                  & Seq.Steps (K).Number'Image
-                                  & ", columns "
-                                  & Trim (Seq.Steps (I).Mode_After) & ")");
+            Same_Columns :=
+              Trim (Seq.Steps (K).Mode_Before)
+                = Trim (Seq.Steps (I).Mode_Before)
+              and then Trim (Seq.Steps (K).Mode_After)
+                         = Trim (Seq.Steps (I).Mode_After);
+            exit when not Same_Columns and then K <= I;
+            if Same_Columns then
+               declare
+                  E : constant Mode_Set_T := Expected_Modes (Seq.Steps (K));
+               begin
+                  if E /= No_Modes then
+                     if E (M) and then (E and Modes) = No_Modes then
+                        return Pass ("mode " & Mode_Abbrev (M)
+                                     & " (the sequence's expectation at "
+                                     & "step" & Seq.Steps (K).Number'Image
+                                     & ", columns "
+                                     & Trim (Seq.Steps (I).Mode_After)
+                                     & ")");
+                     end if;
+                     exit;
                   end if;
-                  exit;
-               end if;
-            end;
+               end;
+            end if;
          end loop;
          return Fail ("mode " & Trim (Seq.Steps (I).Mode_After) & ", got "
                       & Mode_Abbrev (M));
@@ -2659,6 +2668,13 @@ package body S076_Run is
       elsif Iface = "INT" then
          if Same (Kind, "timer-expires") then
             return Timer_Input (St);
+         elsif Same (Kind, "btm-alarm") then
+            --  the BTM port's alarm byte, raised or ended (3.15.7)
+            if not B.Powered then
+               return Fail ("INT btm-alarm: the on-board is not powered");
+            end if;
+            B.BTM_Alarm (Raised => Same (W (4), "received"));
+            return Pass ("INT btm-alarm " & W (4));
          end if;
          return NJ (R_Not_Modelled, "INT " & Kind);
       elsif Iface = "BTM" then
