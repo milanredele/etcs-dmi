@@ -41,7 +41,9 @@ def offenders():
     out = []
     for f in files():
         for n, line in enumerate(open(f), 1):
-            if COMMENT.match(line) and PHASE.search(line):
+            # a comment line, or the comment at the end of a code line
+            k = line.find('--')
+            if k >= 0 and PHASE.search(line[k:]):
                 out.append((os.path.relpath(f, ROOT), n, line.rstrip()))
     return out
 
@@ -63,6 +65,9 @@ def comments_only(rev):
         body = line[1:]
         if body.strip() == '' or COMMENT.match(body):
             continue
+        # an end-of-line comment changed on an otherwise unchanged code
+        # line counts as a comment change when the code part is the same
+        # in a removed and an added line: left to the reader of the diff
         bad.append((f, line[:120]))
     return bad
 

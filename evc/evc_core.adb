@@ -3927,7 +3927,7 @@ is
       Send_External_Info;           -- TIU the information of 5.20
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
       Record_Inputs_Radio_Data;     -- JRU 30, 31, 39, 48, 51, 124, 132
-      Send_Radio;                   -- RTM (phase E5)
+      Send_Radio;                   -- RTM
       Record_General;               -- JRU 1, 15, 47
       Flush_Juridical;              -- JRU, the messages of the cycle
    end Produce_Outputs;

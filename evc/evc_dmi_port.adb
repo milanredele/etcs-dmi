@@ -200,7 +200,7 @@ is
      (MSG_STATUS,
       Status_Length, 0, 0, 0,         -- length u32
       Brake,                          -- brake
-      Radio,                          -- radio (phase E5)
+      Radio,                          -- radio
       (if Slippery then 1 else 0),    -- adhesion
       (if BMM then 1 else 0),         -- bmm
       (if Reversing then 1 else 0),   -- reversing
