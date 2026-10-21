@@ -9584,3 +9584,41 @@ any value after a DMI restart cannot be viewed (B1243, a protocol item).
 The tags sit above the three frames. E6 todo 13 -> 11.
 
 Left: the re-read of 3.18.5, not started; B1240, B1241, B1242, B1243.
+### The planning per 3.15.10, the re-reads of 3.15.11.2, 3.20.1.2 and A.3.2, the other-train-data input (e6/planning-rereads) (2026-10-21)
+
+Done (B1202, two of its four parts): the first Indication location in
+MSG_PLANNING, `EVC_Stored_Information.Set_Planning_Indication`, from the
+last cycle's supervision (`EVC_SDM` `Result_T.Indication_D`, 3.13.10.3.8)
+in Ceiling Speed monitoring only, else none; it is called by
+`EVC_Core.Evaluate_Stored_Information` before the planning frame (one
+call outside the package's units: the planning is built before the
+supervision of the cycle, so the distance is one cycle old, a decision).
+The distances per supervision (3.15.10.2): a decrease of the MRSP from
+the max safe front end, an increase from the min safe one
+(`Plan_Speeds`), the EOA from the estimated front end and an LOA from
+the max safe one (`Build_Planning`), the start of a track condition from
+the max safe front end and its end from the min safe one (`Plan_Orders`,
+`End_Order` by the PL symbol). The tunnel stopping areas give no order
+(their symbols are 0 in `EVC_Track_Conditions`); big metal masses,
+platforms and current consumption are other stores: 3.15.10.1 done.
+Scenario `EVC_Test_PBD.Scenario_Planning`; `Scenario_PBD`,
+`Scenario_SSP_Gaps`, `Scenario_Track_Conditions` check the safe front
+ends. Goldens: evc/bench_onboard, evc/profiles_track_conditions (planning
+bytes only, as intended) and evc/bench_level2 (a digest); no DMI golden
+moved (the premise that the DMI goldens follow MSG_PLANNING was wrong:
+dmi_test records against `EVC_Mock`). Rows: 3.15.10.1 and 3.15.10.3.1
+done, 3.15.10.2 partial (the orders keep the estimated location item of
+the condition). SUBSET-076: 1040 / 1110 / 1040 -> 1057 / 1092 / 1041, 0
+regressions, 18 improvements (the sequences waited for the indication
+marker).
+
+After a resumption: 3.15.10.5 done, `Build_Planning` takes
+`Snap.Temporary` and the closer of it and `MA_R.EOA` as the EOA,
+without the LOA speed then (`Scenario_Route_Suitability`; no golden
+moved).
+
+Left (B1202): 3.15.10.4, the gradients and the orders restricted to the
+MA and to the first target at zero speed (`Plan_Gradients`,
+`Plan_Orders` up to 32 km today); the orders' max / min location items
+(3.15.10.2). Not started:
+the re-reads of 3.15.11.2, 3.20.1.2, A.3.2 and B1181.

@@ -2602,11 +2602,15 @@ is
       end loop;
    end Plan_Gradients;
 
-   --  The planning (ERA_ERTMS_015560 8.3): the MRSP ahead of Front up to
-   --  the EOA (MA_M metres), then the EOA or the LOA (3.8.3) with its
-   --  speed
-   procedure Plan_Speeds (Ahead     : Sense_T;
-                          Front     : Dist_T;
+   --  The planning (ERA_ERTMS_015560 8.3): the MRSP ahead of the train
+   --  up to the EOA (frame position EOA), then the EOA or the LOA (3.8.3)
+   --  with its speed, End_M metres ahead; a decrease from the max safe
+   --  front end, an increase from the min safe one, as the ceiling speed
+   --  supervision takes them (3.13.7.2, Plan_Head)
+   --  @req 3.15.10.2
+   procedure Plan_Speeds (Train     : Train_Frame_T;
+                          Ahead     : Sense_T;
+                          EOA       : Dist_T;
                           MA_M      : Natural;
                           LOA_Speed : Speed_Cms_T)
      with Global => (In_Out => Plan, Input => Steps),
@@ -2618,12 +2622,16 @@ is
          exit when Plan.Speed_Count
                      >= EVC_DMI_Port.Max_Planning_Speeds - 1;
          declare
+            F : constant Dist_T :=
+              (if Steps.List (K).Value < Steps.List (K - 1).Value
+               then Train.Max_Front else Train.Min_Front);
             D : constant Natural :=
-              Metres_Ahead (Ahead, Front,
-                            A (Ahead, Steps.List (K).Start), 65_535);
+              Metres_Ahead (Ahead, F, A (Ahead, Steps.List (K).Start),
+                            65_535);
          begin
-            if Steps.List (K).Start > A (Ahead, Front)
-              and then D < MA_M and then D <= 32_000
+            if Steps.List (K).Start > A (Ahead, F)
+              and then Steps.List (K).Start < A (Ahead, EOA)
+              and then D <= 32_000
             then
                Plan.Speed_Count := Plan.Speed_Count + 1;
                Plan.Speeds (Plan.Speed_Count) :=
@@ -2644,10 +2652,20 @@ is
       end if;
    end Plan_Speeds;
 
+   --  The planning symbols of the end of a track condition (PL3, PL4,
+   --  PL7, PL8, PL18, PL20 of ERA_ERTMS_015560 8.3.4, the PL_End of
+   --  EVC_Track_Conditions: the end of a powerless section, of the main
+   --  power switch off, of the air tightness)
+   function End_Order (Symbol : Natural) return Boolean is
+     (Symbol in 3 | 4 | 7 | 8 | 18 | 20);
+
    --  The planning (ERA_ERTMS_015560 8.3): the orders of the track
-   --  conditions ahead (3.12.1, 5.18), up to 32 km
-   procedure Plan_Orders (Ahead  : Sense_T;
-                          Front  : Dist_T;
+   --  conditions ahead (3.12.1, 5.18), up to 32 km; the start of a
+   --  condition from the max safe front end, its end from the min safe
+   --  one, as EVC_Track_Conditions supervises them
+   --  @req 3.15.10.2
+   procedure Plan_Orders (Train  : Train_Frame_T;
+                          Ahead  : Sense_T;
                           Orders : EVC_Track_Conditions.Orders_T)
      with Global => (In_Out => Plan)
    is
@@ -2656,7 +2674,10 @@ is
          exit when Plan.Order_Count = EVC_DMI_Port.Max_Planning_Orders;
          declare
             D : constant Natural :=
-              Metres_Ahead (Ahead, Front, Orders.List (I).At_X, 65_535);
+              Metres_Ahead (Ahead,
+                            (if End_Order (Orders.List (I).Symbol)
+                             then Train.Min_Front else Train.Max_Front),
+                            Orders.List (I).At_X, 65_535);
          begin
             if D <= 32_000 then
                Plan.Order_Count := Plan.Order_Count + 1;
@@ -2669,15 +2690,17 @@ is
    end Plan_Orders;
 
    --  The planning (ERA_ERTMS_015560 8.3) for MSG_PLANNING: due when the
-   --  MRSP is supervised (Supervise), an MA is and the position is valid
-   --  @req 3.15.10.1, 3.15.10.2, 3.15.10.4
+   --  MRSP is supervised (Supervise), an MA is and the position is valid;
+   --  the EOA the closer of the MA's and the temporary one (Temporary)
+   --  @req 3.15.10.1, 3.15.10.2, 3.15.10.4, 3.15.10.5
    procedure Build_Planning (Train     : Train_Frame_T;
                              Ahead     : Sense_T;
                              Supervise : Boolean;
                              MA_R      : Movement_Authority_T;
                              G_Steps   : Steps_T;
                              Default_G : Gradient_T;
-                             Orders    : EVC_Track_Conditions.Orders_T)
+                             Orders    : EVC_Track_Conditions.Orders_T;
+                             Temporary : Temporary_Target_T)
      with Global => (Output => (Plan, Plan_Due), Input => Steps),
           Pre  => Sorted (Steps) and then Sorted (G_Steps)
                   and then (for all K in 1 .. Steps.Count =>
@@ -2689,20 +2712,46 @@ is
       if Plan_Due then
          declare
             Front : constant Dist_T := Train.Est_Front;
-            EOA   : constant Dist_T := MA_R.EOA;
+            --  3.15.10.5: the closest of the temporary EOA and the EOA
+            Closer : constant Boolean :=
+              Temporary.Present
+              and then A (Ahead, Temporary.EOA) < A (Ahead, MA_R.EOA);
+            EOA   : constant Dist_T :=
+              (if Closer then Temporary.EOA else MA_R.EOA);
+            LOA_Speed : constant Speed_Cms_T :=
+              (if Closer then 0 else MA_R.LOA_Speed);
+            --  3.15.10.2: an EOA from the estimated front end, an LOA
+            --  (an EBD based target) from the max safe one
             MA_M  : constant Natural :=
-              Metres_Ahead (Ahead, Front, EOA, 65_534);
+              Metres_Ahead (Ahead, (if LOA_Speed > 0
+                                    then Train.Max_Front else Front),
+                            EOA, 65_534);
          begin
             Plan_Head (Train, Ahead, Front, MA_M, G_Steps, Default_G);
             --  the gradient at the front, then its changes ahead
             Plan_Gradients (Ahead, Front, G_Steps, Default_G);
             --  the MRSP ahead up to the EOA, then the EOA or the LOA
-            Plan_Speeds (Ahead, Front, MA_M, MA_R.LOA_Speed);
+            Plan_Speeds (Train, Ahead, EOA, MA_M, LOA_Speed);
             --  the orders of the track conditions ahead
-            Plan_Orders (Ahead, Front, Orders);
+            Plan_Orders (Train, Ahead, Orders);
          end;
       end if;
    end Build_Planning;
+
+   --  The first Indication location of the planning, in metres
+   --  (No_Distance: none)
+   --  @req 3.15.10.3.1
+   procedure Set_Planning_Indication (Present : Boolean; Dist_Cm : Natural)
+     with Refined_Global => (In_Out => Plan, Input => Plan_Due)
+   is
+   begin
+      if Plan_Due and then Present then
+         Plan.Indication_Dist := Unsigned_16 (Natural'Min (Dist_Cm / 100,
+                                                          65_534));
+      else
+         Plan.Indication_Dist := EVC_DMI_Port.No_Distance;
+      end if;
+   end Set_Planning_Indication;
 
    --  6. and 7. of Evaluate: the snapshot, the indications of the track
    --  conditions and the planning, from the stores; the parts above in
@@ -2793,7 +2842,7 @@ is
       Build_LX_Indications (T, Train, Ahead);
       Build_Track_Cond_Due;
       Build_Planning (Train, Ahead, Snap.Supervise, MA_R, G_Steps,
-                      Default_G, Orders);
+                      Default_G, Orders, Snap.Temporary);
    end Build;
 
    --  3.16.3.4.5 b): the service brake of the supervision of the safe

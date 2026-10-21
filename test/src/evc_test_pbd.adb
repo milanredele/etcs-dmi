@@ -301,6 +301,22 @@ package body EVC_Test_PBD is
       return False;
    end Plan_Has_Speed;
 
+   --  MSG_PLANNING distance of the frame position X (along Plus) from the
+   --  max safe (Max) or the min safe front end of the last snapshot
+   function Plan_From (X : Integer_64; Max : Boolean) return Natural is
+      T : constant SIn.Train_State_T := SI.Current.Train;
+      F : constant Integer_64 :=
+        Integer_64 (if Max then T.Max_Safe_Front else T.Min_Safe_Front);
+   begin
+      return (if X <= F then 0 else Natural ((X - F) / 100));
+   end Plan_From;
+
+   --  The last MSG_PLANNING has the change of the MRSP to V (cm/s) at the
+   --  frame position X, a decrease from the max safe front end, an
+   --  increase from the min safe one (3.15.10.2)
+   function Plan_Change (X : Integer_64; V : Integer) return Boolean is
+     (Plan_Has_Speed (Plan_From (X, MRSP_At (X - 1) > V), Kmh_Plan (V)));
+
    --  3.11.11, 3.7.3.1 d), 3.7.3.1.4, 3.7.3.2 a): packet 52 through the
    --  track, the store, the MRSP and MSG_PLANNING
    procedure Scenario_PBD is
@@ -338,8 +354,8 @@ package body EVC_Test_PBD is
              "PBD: the restriction in the MRSP over the section, front end "
              & "only (3.13.7, 3.11.2.2 k, Table 2a)");
       Check (Plan_Frames > 0
-             and then Plan_Has_Speed ((60_000 - 15_300) / 100, Kmh_Plan (V1))
-             and then Plan_Has_Speed ((80_000 - 15_300) / 100, 160),
+             and then Plan_Change (60_000, V1)
+             and then Plan_Change (80_000, 4_444),
              "PBD: the restriction in MSG_PLANNING");
       Check (SI_Seen (SI.Info_PBD, SI.Change_Stored) = 1
              and then SI_Seen (SI.Info_PBD, SI.Change_Recalculated) = 0,
@@ -387,9 +403,8 @@ package body EVC_Test_PBD is
              and then MRSP_At (150_000) = VE
              and then MRSP_At (160_000) = 4_444,
              "PBD: the sections in the MRSP");
-      Check (Plan_Has_Speed ((85_000 - 25_300) / 100, Kmh_Plan (VB))
-             and then Plan_Has_Speed ((145_000 - 25_300) / 100,
-                                      Kmh_Plan (VE)),
+      Check (Plan_Change (85_000, VB)
+             and then Plan_Change (145_000, VE),
              "PBD: the sections in MSG_PLANNING");
       Check (SI_Seen (SI.Info_PBD, SI.Change_Stored) = 2
              and then SI_Seen (SI.Info_PBD, SI.Change_Recalculated) = 0,
@@ -528,12 +543,8 @@ package body EVC_Test_PBD is
       St    : Prof.Store_T;
       V     : array (1 .. 6) of Integer := (others => 0);
       Apart : Boolean := True;
-      Front : Integer_64;
       Ceil  : Boolean := False;
 
-      --  MSG_PLANNING distance of the frame position X
-      function Plan_M (X : Integer_64) return Natural is
-        (Natural ((X - Front) / 100));
       function Lo (A, B : Integer) return Integer renames Integer'Min;
    begin
       Start_X;
@@ -555,8 +566,6 @@ package body EVC_Test_PBD is
                          5 => (100, 120, False))));
       Run_X (32_000);
       St := TD.SSP;
-      --  the estimated front end, 3 m ahead of the antenna
-      Front := Train_Cm + 300;
       for K in 1 .. Integer'Min (St.Count, 6) loop
          V (K) := St.List (K).Value;
       end loop;
@@ -613,18 +622,45 @@ package body EVC_Test_PBD is
          end loop;
       end;
       Check (Plan_Frames > 0 and then not Ceil
-             and then Plan_Has_Speed (Plan_M (Min_X (St.List (3).Start)),
-                                      Kmh_Plan (V (3)))
-             and then Plan_Has_Speed (Plan_M (Max_X (St.List (4).Start)),
-                                      Kmh_Plan (V (4)))
-             and then Plan_Has_Speed (Plan_M (Max_X (St.List (5).Start)),
-                                      Kmh_Plan (V (5)))
-             and then Plan_Has_Speed (Plan_M (Max_X (St.List (6).Start)),
-                                      Kmh_Plan (V (4))),
+             and then Plan_Change (Min_X (St.List (3).Start), V (3))
+             and then Plan_Change (Max_X (St.List (4).Start), V (4))
+             and then Plan_Change (Max_X (St.List (5).Start), V (5))
+             and then Plan_Change (Max_X (St.List (6).Start), V (4)),
              "SSP gaps: MSG_PLANNING without the maximum train speed, 60 "
              & "km/h from the min item of the change to it, 80 km/h from "
              & "the max item of the change to it");
    end Scenario_SSP_Gaps;
+
+   --  3.15.10.1, 3.15.10.3.1: the first Indication location in
+   --  MSG_PLANNING, in Ceiling Speed monitoring, at the distance the
+   --  supervision computed (3.13.10.3.8) in the cycle before; none in
+   --  Target Speed monitoring
+   procedure Scenario_Planning is
+      Ind_M : Natural;
+   begin
+      Start_X;
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 1000));
+      Carry (1, 0, SSP ((1 => (0, 160, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((1 => 3000), 160));
+      Run_X (30_000);
+      Ind_M := Natural (Res.Indication_D / 100);
+      Check (Plan_Frames > 0 and then Res.Monitoring in SDM.CSM
+             and then Res.Indication
+             and then Plan_U16 (2) >= Ind_M
+             and then Plan_U16 (2) <= Ind_M + 12,
+             "planning: the first Indication location in Ceiling Speed "
+             & "monitoring (3.15.10.1, 3.15.10.3.1, 3.13.10.3.8):"
+             & Natural'Image (Plan_U16 (2)) & " m against"
+             & Natural'Image (Ind_M) & " m now");
+      Run_X (Train_Cm + Integer_64 (Ind_M) * 100 + 5_000);
+      Check (Res.Monitoring in SDM.TSM and then Plan_U16 (2) = 16#FFFF#,
+             "planning: no Indication location in Target Speed "
+             & "monitoring (3.15.10.1) "
+             & SDM.Monitoring_T'Image (Res.Monitoring)
+             & Natural'Image (Plan_U16 (2)));
+   end Scenario_Planning;
 
 
 end EVC_Test_PBD;
