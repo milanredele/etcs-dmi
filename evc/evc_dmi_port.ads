@@ -443,6 +443,18 @@ is
    is ((MSG_SYSTEM_STATUS, System_Status_Length, 0, 0, 0,
         Entry_Number, Event));
 
+   --  MSG_SYSTEM_VERSION (common/dmi_protocol.ads): the operated system
+   --  version X.Y (3.17.2.1.1) that the DMI's System version window
+   --  shows (DMI 11.5.2): x u8, y u8
+   MSG_SYSTEM_VERSION    : constant Byte := 16#0E#;
+   System_Version_Length : constant := 2;
+   subtype System_Version_Frame_T is
+     Byte_Array (1 .. Header_Length + System_Version_Length);
+
+   function System_Version_Frame (X, Y : Byte)
+     return System_Version_Frame_T
+   is ((MSG_SYSTEM_VERSION, System_Version_Length, 0, 0, 0, X, Y));
+
    --  MSG_TEXT: id u16, flags u8 (bit 0 ack required, bit 1 first group,
    --  bits 2-3 class: 0 fixed text, 1 plain text), hour u8, minute u8,
    --  length u8, the text (Latin-1); MSG_TEXT_REMOVE: id u16

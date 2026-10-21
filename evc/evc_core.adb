@@ -83,7 +83,7 @@ package body EVC_Core
                                    Status_BMM_Sent, Status_SM_Sent,
                                    Status_Tunnel_Sent,
                                    Status_Radio_Sent,
-                                   TC_Sent, Contact_Sent,
+                                   TC_Sent, Contact_Sent, Version_Sent,
                                    Config_Last, Config_Seen))
 is
 
@@ -304,6 +304,9 @@ is
    --  the stored RBC contact sent last to the DMI (MSG_RBC_CONTACT;
    --  none before the first contact is stored)
    Contact_Sent : EVC_Radio.RBC_Contact_T := EVC_Radio.No_Contact;
+   --  the X of the operated system version sent last to the DMI
+   --  (MSG_SYSTEM_VERSION; 16#FF# none since the start)
+   Version_Sent : EVC_Bytes.Byte := 16#FF#;
    --  5.17: the train configuration of the train interface seen last
    --  (EVC_Ports, TIU input 13), whether one was seen since power-up
    Config_Last : EVC_Bytes.Byte := 0;
@@ -470,6 +473,7 @@ is
       Reset_Status_Sent;
       TC_Sent := False;
       Contact_Sent := EVC_Radio.No_Contact;
+      Version_Sent := 16#FF#;
       EVC_JRU_Records.Reset;
       Config_Last := 0;
       Config_Seen := False;
@@ -3314,6 +3318,25 @@ is
       end if;
    end Send_RBC_Contact;
 
+   --  MSG_SYSTEM_VERSION: the operated system version X.Y (3.17.2.1.1)
+   --  for the DMI's System version window (DMI 11.5.2), sent at the
+   --  start and again when the operated X changes (Y follows from X)
+   procedure Send_System_Version
+     with Global => (Input  => EVC_System_Version.State,
+                     In_Out => (Version_Sent, EVC_Outbox.Queue))
+   is
+      X : constant EVC_System_Version.Major_T :=
+        EVC_System_Version.Operated;
+   begin
+      if EVC_Bytes.Byte (X) /= Version_Sent then
+         EVC_Outbox.Put
+           (DMI, System_Version_Frame
+              (X => EVC_Bytes.Byte (X),
+               Y => EVC_Bytes.Byte (EVC_System_Version.Operated_Y (X))));
+         Version_Sent := EVC_Bytes.Byte (X);
+      end if;
+   end Send_System_Version;
+
    --  The commands of the TIU output (EVC_Ports): phase E3 the speed and
    --  distance monitoring and the protections (3.13, 3.14); phase E4 the
    --  service brake of 5.10.4.2 (the levels), in SF the emergency brake,
@@ -3871,7 +3894,7 @@ is
                                 Status_BMM_Sent, Status_SM_Sent,
                                 Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
-                                Contact_Sent,
+                                Contact_Sent, Version_Sent,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_VBC.State))
@@ -3898,6 +3921,7 @@ is
       Send_Networks;                -- DMI MSG_RADIO_NETWORKS
       Send_VBC_List;                -- DMI MSG_VBC_LIST
       Send_RBC_Contact;             -- DMI MSG_RBC_CONTACT
+      Send_System_Version;          -- DMI MSG_SYSTEM_VERSION
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20

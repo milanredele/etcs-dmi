@@ -9,6 +9,7 @@ package EVC_Test_Core is
 
       procedure Scenario_Protocol_Constants;
       procedure Scenario_Power_Up;
+      procedure Scenario_System_Version_To_DMI;
       procedure Scenario_Malformed;
       procedure Scenario_Valid_Inputs;
       procedure Scenario_Isolation;

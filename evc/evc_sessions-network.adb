@@ -14,7 +14,8 @@ package body EVC_Sessions.Network
        Refined_State => (State => (Reg, Due, Started, Systems, One_Radio,
                                    Awaiting, Ordered, Ord_Type, Ord_MN,
                                    List_Now, Def_MN, Order_At, Watching,
-                                   Timed_Out, Mode_Now, Exit_Seen))
+                                   Timed_Out, Mode_Now, Exit_Seen,
+                                   Trip_Stamp, Trip_Pending))
 is
 
    package R renames EVC_Radio;
@@ -55,6 +56,11 @@ is
    --  6 was received since PT was entered ([1])
    Mode_Now  : Mode_T := M_NP;
    Exit_Seen : Boolean := False;
+   --  the on-board's T_TRAIN at the entry into TR (taken by the next
+   --  Evaluate, Trip_Pending until then): a message 6 counts for [1]
+   --  only with a more recent time stamp
+   Trip_Stamp   : ETCS_Variables.T_TRAIN_T := 0;
+   Trip_Pending : Boolean := False;
 
    --  5.4.3.2 S4 E7: SUBSET-026 A.3.1 (page 218), "Time from the latest
    --  Radio Network registration order to a Mobile Terminal after which
@@ -79,6 +85,8 @@ is
       Timed_Out := False;
       Mode_Now := M_NP;
       Exit_Seen := False;
+      Trip_Stamp := 0;
+      Trip_Pending := False;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -177,6 +185,16 @@ is
       Ord_MN := NID_MN;
    end Take_Order;
 
+   --  4.8.4 [1]: the time stamp Stamp is more recent than the on-board's
+   --  T_TRAIN at the entry into TR (modulo the clock, up to half of it
+   --  ahead; 2**32 - 1 is "unknown", never more recent)
+   --  @req 4.8.4.2 Table-footnote [1]
+   function Later_Than_Trip (Stamp : Unsigned_64) return Boolean is
+     (Stamp < 2**32 - 1
+      and then (Stamp + (2**32 - 1) - Unsigned_64 (Trip_Stamp))
+                 mod (2**32 - 1) in 1 .. (2**32 - 1) / 2)
+     with Global => Trip_Stamp;
+
    procedure Take_Radio_Order
      (Kind       : ETCS_Message_Catalogue.Message_Kind_T;
       Cab_Active : Boolean)
@@ -195,7 +213,13 @@ is
    begin
       --  4.8.4 [1]: the recognition of the exit from TR, accepted in PT
       --  only (EVC_Radio_Acceptance, Trip_Exit)
+      --  decision: "with a more recent time stamp" is the T_TRAIN of
+      --  message 6 later than the on-board's at the entry into TR; a
+      --  message 6 sent before the trip does not count
       if Kind = ETCS_Message_Catalogue.Track_M6 and then Mode_Now = M_PT
+        and then not Trip_Pending
+        and then Later_Than_Trip
+                   (EVC_Received.Last_Value (ETCS_Variables.T_TRAIN))
       then
          Exit_Seen := True;
       end if;
@@ -230,6 +254,9 @@ is
    begin
       if To /= Mode_Now then
          Exit_Seen := False;
+         if To = M_TR then
+            Trip_Pending := True;
+         end if;
       end if;
       Mode_Now := To;
    end Mode_Changed;
@@ -403,6 +430,10 @@ is
    begin
       Stop := False;
       Failed := False;
+      if Trip_Pending then
+         Trip_Stamp := R.T_Train_At (Now);
+         Trip_Pending := False;
+      end if;
       if not Started then
          Started := True;
          Power_Up;

@@ -15,6 +15,7 @@ with EVC_Driver;
 with EVC_Mock;
 with EVC_Modes;
 with EVC_Outbox;
+with EVC_System_Version;
 with EVC_Ports;
 with General_Parameters;
 with Interfaces;
@@ -56,7 +57,41 @@ package body EVC_Test_Core is
              and then Driver_Ack_Length = EVC_DMI_Port.Driver_Ack_Length
              and then Header_Length = EVC_DMI_Port.Header_Length,
              "message lengths equal DMI_Protocol");
+      Check (Unsigned_8 (MSG_SYSTEM_VERSION)
+               = EVC_DMI_Port.MSG_SYSTEM_VERSION
+             and then System_Version_Length
+                        = EVC_DMI_Port.System_Version_Length,
+             "MSG_SYSTEM_VERSION equals DMI_Protocol");
    end Scenario_Protocol_Constants;
+
+   --  The operated system version to the DMI's System version window
+   --  (DMI 11.5.2, 3.17.2.1.1): sent at the start, again only when the
+   --  operated X changes (here by a country mismatch, 3.17.2.6)
+   procedure Scenario_System_Version_To_DMI is
+      I : Natural;
+   begin
+      EVC_Core.Initialise;
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      Take;
+      I := Find_DMI (EVC_DMI_Port.MSG_SYSTEM_VERSION);
+      Check (I > 0 and then Byte_At (I, 6) = 3 and then Byte_At (I, 7) = 0,
+             "system version: 3.0 to the DMI in the first cycle");
+      EVC_Core.Tick (100);
+      Take;
+      Check (Find_DMI (EVC_DMI_Port.MSG_SYSTEM_VERSION) = 0,
+             "system version: not resent while unchanged");
+      EVC_System_Version.Take_Balise_Group (1, False, 0, True);
+      EVC_Core.Tick (100);
+      Take;
+      I := Find_DMI (EVC_DMI_Port.MSG_SYSTEM_VERSION);
+      Check (I > 0 and then Byte_At (I, 6) = 1 and then Byte_At (I, 7) = 1,
+             "system version: 1.1 to the DMI once operated");
+      EVC_Core.Tick (100);
+      Take;
+      Check (Find_DMI (EVC_DMI_Port.MSG_SYSTEM_VERSION) = 0,
+             "system version: once per change");
+   end Scenario_System_Version_To_DMI;
    pragma Warnings (On, "condition is always*");
 
    --  Power-up: NP until the first cycle, then SB and the DMI messages
@@ -80,25 +115,31 @@ package body EVC_Test_Core is
       --  the juridical messages of the cycle come last (SUBSET-027 4.3:
       --  the general message at the mode change, EVC_JRU_Messages)
       --  and at the start-up the messages 15 and 47 (SUBSET-027 4.3.1.1)
-      Check (Rec_Count = 9, "power-up: nine records, got" & Img (Rec_Count));
-      if Rec_Count = 9 then
+      Check (Rec_Count = 10, "power-up: ten records, got" & Img (Rec_Count));
+      if Rec_Count = 10 then
          Check (Recs (1).Port = DMI and then Recs (2).Port = DMI
                 and then Recs (3).Port = DMI,
-                "power-up: three DMI frames");
-         Check (Recs (4).Port = RTM and then Recs (5).Port = RTM
+                "power-up: four DMI frames");
+         --  the operated system version, 3.0 with nothing retained
+         --  (3.17.2.9.1, 3.17.2.1.1), for the System version window
+         Check (Recs (4).Port = DMI
+                and then Find_DMI (EVC_DMI_Port.MSG_SYSTEM_VERSION) = 3
+                and then Byte_At (3, 6) = 3 and then Byte_At (3, 7) = 0,
+                "power-up: then MSG_SYSTEM_VERSION 3.0 (DMI 11.5.2)");
+         Check (Recs (5).Port = RTM and then Recs (6).Port = RTM
                 and then Radio_Output (1).Request
                 and then Radio_Output (1).Kind = 3
                 and then Radio_Output (2).Session = 2,
                 "power-up: then the registration of each mobile to the "
                 & "GSM-R network (3.5.6.1 a, 3.5.6.3)");
-         Check (Recs (6).Port = JRU
-                and then JRU_NID (6) = EVC_JRU_Messages.NID_General
-                and then Recs (7).Port = JRU
-                and then JRU_NID (7) = EVC_JRU_Messages.NID_Proprietary
-                and then Byte_At (7, 1) = 1
-                and then Byte_At (7, 2) = Mode_T'Pos (M_SB)
-                and then JRU_NID (8) = EVC_JRU_Messages.NID_Cold_Movement
-                and then JRU_NID (9) = EVC_JRU_Messages.NID_Brake_Config,
+         Check (Recs (7).Port = JRU
+                and then JRU_NID (7) = EVC_JRU_Messages.NID_General
+                and then Recs (8).Port = JRU
+                and then JRU_NID (8) = EVC_JRU_Messages.NID_Proprietary
+                and then Byte_At (8, 1) = 1
+                and then Byte_At (8, 2) = Mode_T'Pos (M_SB)
+                and then JRU_NID (9) = EVC_JRU_Messages.NID_Cold_Movement
+                and then JRU_NID (10) = EVC_JRU_Messages.NID_Brake_Config,
                 "power-up: then the JRU messages of the change to SB and "
                 & "of the start-up");
       end if;
@@ -557,8 +598,8 @@ package body EVC_Test_Core is
          Pump_To_EVC;
       end loop;
       DMI_Core.Render;
-      Check (Frames = 15,
-             "end to end: three frames per cycle reach the DMI");
+      Check (Frames = 16,
+             "end to end: the frames of five cycles reach the DMI");
       Check (not DMI_Core.EVC_Link_Lost, "end to end: the DMI hears the EVC");
       Check (EVC_Core.Rejected (DMI) = 0,
              "end to end: the on-board accepts what the DMI sends");
