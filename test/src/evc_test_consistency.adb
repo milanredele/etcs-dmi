@@ -715,4 +715,64 @@ package body EVC_Test_Consistency is
              & Img (Count) & Img (Error));
    end Scenario_Consistency_Error_Report;
 
+   --  The JRU records of the last Take of a balise group error
+   --  (SUBSET-027 4.2.4.12, NID_BG_Error)
+   function BG_Errors return Natural is
+      N : Natural := 0;
+   begin
+      for I in 1 .. Rec_Count loop
+         if EVC_Ports."=" (Recs (I).Port, EVC_Ports.JRU)
+           and then JRU_NID (I) = NID_BG_Error
+         then
+            N := N + 1;
+         end if;
+      end loop;
+      return N;
+   end BG_Errors;
+
+   --  Runs a mode set for the test over Inconsistent_Track with group 20
+   --  unlinked, balise 0 of 2 missed, to 1100 m: the records of an
+   --  unlinked group's inconsistent message (the event 13 and the
+   --  balise group errors), the service brake, the
+   --  Balise read error seen, and the LRBG at the end
+   procedure Run_Unlinked (Mode : EVC_Modes.Mode_T;
+                           Rec_13, Rec_Paired : out Natural;
+                           SB, Read_Error : out Boolean) is
+   begin
+      Inconsistent_Track (Linking => False, Linked => False);
+      EVC_Core.Set_Mode_For_Test (Mode, EVC_Modes.L1);
+      Rec_13 := 0;
+      Rec_Paired := 0;
+      SB := False;
+      while Train_Cm < 110_000 loop
+         Step_X (1_000);
+         if TIU_Out /= 16#FFFF# and then TIU_Out mod 256 / 2 mod 2 = 1 then
+            SB := True;
+         end if;
+         Rec_13 := Rec_13 + JRU_Count (13);
+         Rec_Paired := Rec_Paired + BG_Errors;
+      end loop;
+      Read_Error := SS_Seen (EVC_DMI_Port.SS_Balise_Read_Error_Brake) > 0;
+   end Run_Unlinked;
+
+   procedure Scenario_Consistency_NL is
+      SB, Read_Error     : Boolean;
+      Rec_13, Rec_Paired : Natural;
+   begin
+      --  4.4.15.1.10: in Non Leading the balise group's inconsistent
+      --  message is rejected and recorded (3.16.2.5.1.1 b), the event 13
+      --  with the balise group error of M_ERROR 2, SUBSET-027 4.2.4.12),
+      --  without the service brake; the next consistent group is taken
+      Run_Unlinked (EVC_Modes.M_NL, Rec_13, Rec_Paired, SB, Read_Error);
+      Check (Rec_13 >= 1 and then Rec_Paired >= 1 and then not SB
+             and then not Read_Error
+             and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_NL)
+             and then EVC_Position.LRBG.Id.NID_BG = 30,
+             "consistency NL: an unlinked group's inconsistent message "
+             & "recorded (JRU 12, M_ERROR 2), no service brake, the next "
+             & "group taken (4.4.15.1.10, 3.16.2.5.1.1 b), got"
+             & Img (Rec_13) & Img (Rec_Paired)
+             & Img (Natural (EVC_Position.LRBG.Id.NID_BG)));
+   end Scenario_Consistency_NL;
+
 end EVC_Test_Consistency;
