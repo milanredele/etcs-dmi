@@ -126,6 +126,7 @@ procedure EVC_Test is
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
+   Scenario_System_Version_To_DMI;
    Scenario_Malformed;
    Scenario_Valid_Inputs;
    Scenario_Isolation;
