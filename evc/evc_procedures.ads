@@ -1,95 +1,55 @@
 --  ETCS on-board (EVC)
---  The procedures of SUBSET-026 chapter 5 that phase E4 implements in its
---  second half (doc/EVC-PLAN.md §10): shunting
+--  The procedures of SUBSET-026 chapter 5 around the modes: shunting
 --  initiated by the driver and ordered by the trackside (5.6, 5.7) with
---  Passive Shunting, override (5.8, the override function related speed
---  restriction of 3.11.10), On Sight (5.9), train trip and post trip
---  (5.11), reversing (5.13), passing a level crossing not protected
---  (5.16), changing Train Data from sources different from the driver
---  (5.17), Limited Supervision (5.19), supervised manoeuvre (its exit,
---  5.21), the inhibition of the balise transmission alarm reaction
---  (5.22) and the mode related speed restrictions of 3.11.7. The text
---  messages of 3.12.3 are EVC_Text_Messages; the indication of track
---  conditions (5.18) and the information for an external function
---  (5.20) are EVC_Track_Conditions.
+--  Passive Shunting, override (5.8, with 3.11.10), On Sight (5.9), train
+--  trip and post trip (5.11), reversing (5.13), passing a level crossing
+--  not protected (5.16), changing Train Data from sources different from
+--  the driver (5.17), Limited Supervision (5.19), the exit of supervised
+--  manoeuvre (5.21), the inhibition of the BTM alarm reaction (5.22) and
+--  the mode related speed restrictions of 3.11.7. The text messages of
+--  3.12.3 are EVC_Text_Messages; 5.18 and 5.20 are EVC_Track_Conditions.
 --
---  The joint with the mode machine. A transition of 4.6.2 is taken by
---  the mode machine of EVC_Core when one of its conditions of 4.6.3
---  holds (EVC_Transition_Conditions.Holds). The conditions of this half
---  are computed here once per cycle by Evaluate, between the speed and
---  distance monitoring and the mode machine, and read with Condition;
---  after the mode machine EVC_Core calls Mode_Changed with the mode left
---  and the mode entered, and the procedures do what entering the mode
---  means for them (the trip of 5.11 A025 / A035, the end of override
---  5.8.4.1 i, the acknowledgement asked after an entry, the brake
---  reasons revoked or kept by 4.12).
+--  Entry points in the cycle of EVC_Core:
+--  - Evaluate, between the supervision and the mode machine, with the
+--    context of the cycle (Context_T: mode, level, desk, train interface,
+--    the filters of 4.8), the snapshot and the supervision's result,
+--    writes State: the packets the procedures own (132, 135, 49, 137,
+--    138, 139; 73 and 74 to EVC_Text_Messages), the override (5.8.2.1,
+--    5.8.3.1.1, 5.8.4.1 a to h), the mode profile against the train
+--    position (the areas and the requests for acknowledgement, never
+--    taken back: 5.7.3.3, 5.9.3.4, 5.19.3.4), the trip conditions and the
+--    linking reaction (3.16.2.3, 3.14.1.6), post trip, reversing, the BTM
+--    alarm, the level crossing (5.16), the Train Data of another source
+--    (5.17), then the conditions of 4.6.3 of this unit (Condition);
+--  - Mode_Changed, from EVC_Core's Enter_Mode, does what entering the
+--    mode means here (the trip of 5.11 A025 / A035, the end of override
+--    5.8.4.1 i, the acknowledgement asked, the brake reasons of 4.12);
+--  - Train_Data_Revalidated when the driver validates Train Data
+--    (5.17.2.2);
+--  - Brake_Demand (3.14.1.3, 3.14.1.6, 3.14.1.7.1 to 3.14.1.7.4,
+--    4.4.13.1.2) and the queries, read by the outputs (DMI, JRU).
 --
---  One cycle (Evaluate), with the context of the cycle (Context_T, what
---  EVC_Core knows of the mode, the level, the desk and the train
---  interface), the snapshot the supervision read and its result:
---    1. the packets of the balise groups taken into account in the
---       cycle that the procedures own: danger for shunting (132, "stop
---       if in shunting"), stop shunting on desk opening (135), the list
---       of balise groups for the SH area (49), stop if in SR (137), the
---       reversing area (138) and supervision (139), and the text
---       messages (73, 74, to EVC_Text_Messages);
---    2. the override function (5.8): selection (5.8.2.1), the former
---       EOA (5.8.3.1.1), its end conditions (5.8.4.1 a to h);
---    3. the mode profile (3.12.4) against the train position: which
---       On Sight, Limited Supervision or Shunting area the train
---       position confidence interval overlaps, the furthest one, the
---       acknowledgement areas, the requests for acknowledgement (the
---       "rectangle" of 5.7.3.2, 5.9.3.2, 5.19.3.2), never taken back
---       (5.7.3.3, 5.9.3.4, 5.19.3.4);
---    4. the trip conditions (the EOA passed, the trip order, the linking
---       reactions, the balise groups of a shunting area, the system
---       version, the track description) and the reaction of a linking
---       error set to the service brake (3.16.2.3, 3.14.1.6);
---    5. the post trip supervision (4.4.14.1.3), the reversing (5.13,
---       3.15.4), the inhibition of the BTM alarm reaction (5.22), the
---       level crossing of the temporary EOA (5.16: its substitution, from
---       the stopping area or the location EVC_SDM found, and the
---       indication to the driver), the Train Data changed by another
---       source (5.17, the TIU's train configuration in Context_T);
---    6. the conditions of 4.6.3 of this half.
---  After the mode machine, Brake_Demand is what the procedures command
---  (3.14.1.3, 3.14.1.6, 3.14.1.7.1 to 3.14.1.7.4, 4.4.13.1.2),
---  and the queries below what the DMI and the JRU are told.
+--  Every trip condition of 4.6.3 is computed here, those of the levels
+--  and of SR included ([39], [42], [67]), so that the reason of a trip
+--  (4.4.13.1.3) is the condition of the transition the mode machine took.
+--  "Continue Shunting on desk closure" is EVC_Mission's ([26], [27]).
+--  An acknowledgement of a mode that the start of mission took is not
+--  the procedures'.
 --
 --  Positions are frame positions of the odometer frame (EVC_Distances),
---  "ahead" the sense of the snapshot (EVC_Supervision_Input). The
---  locations the procedures keep (the former EOA, the reversing area, the
---  start of the post trip movement, the substitution of a level
---  crossing) are frame positions taken when the
---  information is received or the procedure starts, not relocated with
---  the reference balise group: a choice, the relocation moves a location
---  by less than the confidence interval it already had.
+--  "ahead" the sense of the snapshot. Decision: the locations kept (the
+--  former EOA, the reversing area, the start of the post trip movement,
+--  the substitution of a level crossing) are taken when the information
+--  is received or the procedure starts and not relocated with the
+--  reference balise group: the relocation moves a location by less than
+--  the confidence interval it already had.
 --
---  The joint with the modes and the levels. The
---  context comes from their units: the level and whether it switched to
---  1 or 2 in the cycle (EVC_Levels: [34], [61], [71], and the trips [39],
---  [67]), the desk and the passive shunting input (EVC_Train_Inputs),
---  the train running number (EVC_Mission), the SR distance passed
---  (EVC_Mission: the trip [42], the end h) of the override), the
---  driver's actions (EVC_Driver_Requests; an acknowledgement of a mode
---  that the start of mission took is not the procedures'), the filters
---  of 4.8 (EVC_Acceptance, Context_T.Filters) for the packets this unit
---  takes. Every trip condition of 4.6.3 is computed here, the ones of
---  the levels and of SR included ([39], [42], [67]), so that the reason
---  of a trip (4.4.13.1.3) is the condition of the transition the mode
---  machine took (Mode_Changed). "Continue Shunting on desk closure" is
---  EVC_Mission's ([26], [27] read it in EVC_Transition_Conditions).
---  EVC_Core calls Mode_Changed from its Enter_Mode, with the deletions
---  of 4.10 of the other stores, and Train_Data_Revalidated when the
---  driver validates Train Data (5.17.2.2 E6).
---
---  Not in this unit, with the phase that brings it: the RBC parts (the
---  Shunting and Supervised Manoeuvre requests of level 2, the
---  unconditional emergency stop [20], T_NVCONTACT [41], the balise beyond
---  the EOA in release speed monitoring [11]: E5); the National System
---  ([35], [38], [63] in level NTC: out of scope, PLAN.md); the list of
---  balise groups in SR authority ([36]: E5); the automatic triggering of
---  5.22.3.1.
+--  The radio units detect T_NVCONTACT [41], a group not listed in SR
+--  [36] and the unconditional emergency stop [20]; this unit turns them
+--  into the trip. Not in this unit: the Shunting and Supervised
+--  Manoeuvre requests of level 2, the balise beyond the EOA in release
+--  speed monitoring [11]; the National System ([35], [38], [63]: out of
+--  scope, PLAN.md); the automatic triggering of 5.22.3.1.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -165,7 +125,7 @@ is
       Brake_Release_Ack : Boolean := False;
       --  the on-board time, ms
       Now_Ms           : Unsigned_64 := 0;
-      --  5.17.2.2 E0: a change of the input information from the train
+      --  5.17.2.2, new input information: a change of it from the train
       --  interface that affects Train Data in this cycle (EVC_Ports, TIU
       --  input 13), whether the data need the driver's validation (D0)
       --  and whether they are the train category, axle load category,
@@ -216,13 +176,13 @@ is
       No_Track_Description,  -- [69]
       SR_Distance_Passed,    -- [42]
       No_MA_Level_Switch,    -- [39], [67]
-      --  phase E5: T_NVCONTACT passed, reaction train trip (3.16.3.4,
+      --  T_NVCONTACT passed, reaction train trip (3.16.3.4,
       --  EVC_Sessions)
       Communication_Lost,    -- [41]
-      --  phase E5: a group not in the list of expected balise groups in
+      --  a group not in the list of expected balise groups in
       --  SR of the RBC (4.4.11.1.3 c, EVC_Radio_Authority)
       SR_Balise_Not_Listed,  -- [36]
-      --  phase E5: an unconditional emergency stop accepted (3.10.2.3,
+      --  an unconditional emergency stop accepted (3.10.2.3,
       --  EVC_Radio_Authority)
       Emergency_Stop);       -- [20]
 
@@ -249,8 +209,8 @@ is
      with Global => State;
 
    --  5.17.2.2 S6: the driver is requested to re-enter or re-validate
-   --  the Train Data (the Train Data entry of EVC_Mission; E6, the data
-   --  validated, ends the request: Train_Data_Revalidated)
+   --  the Train Data (the Train Data entry of EVC_Mission; the data
+   --  validated end the request: Train_Data_Revalidated)
    --  @req 5.17.2.2 S6
    function Train_Data_Revalidation return Boolean
      with Global => State;
@@ -397,7 +357,7 @@ is
    procedure Note_Version_Not_Supported
      with Global => (In_Out => State);
 
-   --  5.17.2.2 E6: the Train Data were validated by the driver while
+   --  5.17.2.2: the Train Data were validated by the driver while
    --  the re-validation was requested (EVC_Core calls it when
    --  EVC_Mission took the driver's Train Data entry); A7 follows
    --  @req 5.17.2.2 S6

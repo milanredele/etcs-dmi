@@ -6,92 +6,66 @@
 --
 --  Frame. The position is kept in the frame of the odometer
 --  (EVC_Odometry): a balise group that becomes a reference is an anchor
---  (EVC_Location.Anchor_T), its identity plus the frame position of its
+--  (EVC_Location.Anchor_T), its identity, the frame position of its
 --  location reference and the confidence of the frame at its detection.
---  The estimated front end, the min and max safe front ends against the
---  LRBG, the SOLR or any other reference follow from the anchor, the
---  current frame position and the current orientation; a change of
---  reference (relocation, 3.6.4.2) re-anchors, and the confidence
---  interval restarts from the location accuracy of the new reference.
---  Against a fixed reference and orientation it only widens (Update's
---  postcondition): the odometer's deviations never decrease.
+--  The front ends against any reference follow from the anchor, the
+--  current frame position and the orientation; a change of reference
+--  (relocation, 3.6.4.2) re-anchors and the confidence interval restarts
+--  from the location accuracy of the new reference; against a fixed
+--  reference and orientation it only widens (Update's postcondition).
 --
---  One cycle (Update, called by EVC_Core in the second step of Tick):
---    1. the train orientation from the cab status inputs (3.6.1.5: the
---       active cab is the front; with none active, the last one). It
---       changes with the cab status only (postcondition), and the front
---       position follows by itself from the anchors (5.12.2.5,
---       5.12.4.3). The desk closure and the modes of 5.12 are phase E4.
---    2. the telegrams of the cycle (Receive_Telegram, called while the
---       ports are read) are put together into passages over balise
---       groups (EVC_Balise_Groups). A passage ends when every balise of
---       the group was read, when a balise of another group comes
---       (3.16.2.2.2 b, c), or when the train has moved Group_End_Cm
---       from the last balise read (3.16.2.2.2 a; an engineering
---       constant, above the distance between the balises of a group).
---    3. the odometer sample of the cycle (EVC_Odometry.Apply). The
---       telegrams were placed with the frame before it: the confidence
---       of their detection is then the smaller one, and every interval
---       measured from them the wider one.
---    4. the end of the passage of the group read last, by distance.
---    5. the expectation window of the expected balise group: missed
---       when the min safe antenna position has passed its last possible
---       location plus 1.3 m (3.16.2.3.1.1).
+--  Entry points: Receive_Telegram while EVC_Core reads the ports (the
+--  telegrams of the cycle put together into passages over balise groups,
+--  EVC_Balise_Groups); Update in the second step of Tick, which writes
+--  State in this order:
+--    1. the train orientation from the cab status (3.6.1.5: the active
+--       cab is the front; with none active, the last one; 5.12.2.5,
+--       5.12.4.3);
+--    2. the passages ended: every balise of the group read, a balise of
+--       another group (3.16.2.2.2 b, c), or Group_End_Cm moved from the
+--       last balise (3.16.2.2.2 a; an engineering constant, above the
+--       distance between the balises of a group);
+--    3. the odometer sample (EVC_Odometry.Apply); the telegrams were
+--       placed with the frame before it, so the confidence of their
+--       detection is the smaller one and every interval from them wider;
+--    4. the end of the passage of the group read last, by distance;
+--    5. the window of the expected group: missed when the min safe
+--       antenna passed its last possible location plus 1.3 m
+--       (3.16.2.3.1.1);
 --    6. the geographical position (3.6.6) and the report triggers.
+--  The setters below (linking context, train length, report parameters,
+--  radio origins and packets) are called by EVC_Core between two Updates.
 --
---  End of a passage (Evaluate). The location reference and the
---  orientation of the group come from its telegrams (3.4.2). With
---  linking consistency checked (3.4.4.2.1.1; the mode condition b) is
---  phase E4, E2 checks whenever linking is stored):
---    - a group marked as unlinked is taken into account (3.4.4.4.2.2),
---      it becomes an ORBG, not the LRBG;
---    - the expected group (3.4.4.4.1, one window at a time, 3.4.4.4.5)
---      is accepted when its location reference was detected inside its
---      window (3.4.4.4.3: from the max safe antenna position passing the
---      first possible location to the min safe antenna position passing
---      the last one, both from D_LINK and Q_LOCACC, 3.4.4.4.3.1; for an
---      unknown group with repositioning the first possible location is
---      the previous linked group, 3.4.4.4.4); it becomes LRBG and SOLR,
---      and the next window is supervised (3.4.4.4.6 a). Detected in rear
---      of or beyond its window, it is rejected (3.4.4.4.3.2) and the
---      linking reaction of the expected group is requested (3.16.2.3.1
---      a, b); passed in the direction opposite to the announced one, it
---      is rejected and a train trip is requested (3.4.4.4.7);
---    - the group announced after the expected one: the linking reaction
---      of the expected group is requested (3.16.2.3.1 c) and the group
---      is checked against its own window (3.4.4.4.6.1);
---    - an unknown group expected with repositioning: a linked group is
---      accepted only when its own balises give its orientation, it has
---      packet 16 valid for the train orientation and it is crossed in
---      the announced direction (3.4.4.4.2.1);
---    - any other group marked as linked is rejected, and reported as an
---      unexpected balise group without reaction (3.4.4.4.2, 3.16.2.4.3).
---  With linking not checked every group is taken into account (3.4.4.5.1)
---  and becomes the SOLR (3.6.4.2.2 b); it is LRBG compliant unless it is
---  marked as unlinked (3.6.2.2.2 a).
---  An accepted group: its location accuracy is that of the linking
---  which announced it, else Default_Locacc_Cm (Q_NVLOCACC, A.3.2), and
---  is not changed afterwards (3.6.4.1.3, 3.6.4.1.4). The position becomes
---  valid (3.6.1.4). A single balise group gets the orientation the
---  linking announced (3.4.2.3.2.2). Its packets valid for the train
---  orientation (3.6.3.1.3; the crossing direction in SL, PS and SH,
---  3.6.3.1.3.1; only those for both directions when the orientation of
---  the group is not known, 3.6.3.1.4) are then taken: packet 5 replaces
---  the linking (the group is its reference and the SOLR, 3.6.4.2.2 a;
---  the first window supervised is the first whose end is not reached,
---  3.4.4.4.5.1), packet 79 the geographical position information.
+--  End of a passage (Evaluate): the location reference and orientation
+--  of the group come from its telegrams (3.4.2). With linking checked
+--  (3.4.4.2.1.1): a group marked unlinked becomes an ORBG (3.4.4.4.2.2);
+--  the expected group (one window at a time, 3.4.4.4.5) is accepted
+--  inside its window (3.4.4.4.3, 3.4.4.4.3.1; an unknown group with
+--  repositioning: from the previous linked group, 3.4.4.4.4) and becomes
+--  LRBG and SOLR; outside it, it is rejected with the linking reaction
+--  (3.4.4.4.3.2, 3.16.2.3.1 a, b), passed in the opposite direction it is
+--  rejected with a trip (3.4.4.4.7); the group announced after the
+--  expected one requests the reaction (3.16.2.3.1 c) and is checked
+--  against its own window (3.4.4.4.6.1); an unknown group with
+--  repositioning is accepted per 3.4.4.4.2.1; any other linked group is
+--  rejected as unexpected, without reaction (3.4.4.4.2, 3.16.2.4.3).
+--  Linking not checked: every group is taken (3.4.4.5.1), becomes the
+--  SOLR (3.6.4.2.2 b), LRBG compliant unless unlinked (3.6.2.2.2 a).
+--  An accepted group keeps the accuracy of the linking that announced it,
+--  else Default_Locacc_Cm (Q_NVLOCACC, A.3.2; 3.6.4.1.3, 3.6.4.1.4); the
+--  position becomes valid (3.6.1.4); a single balise group gets the
+--  announced orientation (3.4.2.3.2.2); its packets valid for the train
+--  orientation (3.6.3.1.3, 3.6.3.1.3.1, 3.6.3.1.4) are taken: packet 5
+--  replaces the linking (3.6.4.2.2 a, 3.4.4.4.5.1), packet 79 the
+--  geographical position information.
 --
---  Reactions: E2 detects and reports, it neither brakes nor changes the
---  mode. The events of a cycle are queries (Linking_Reaction_Requested,
---  Unexpected_Group, Missed_Group, the odometer and position status) and
---  records (Event) that EVC_Core writes to the JRU; phases E3 and E4 act
---  on them.
---
---  Position report (3.6.5): Position_Report fills packet 0 and, when the
---  LRBG is a single balise group without co-ordinate system, packet 1
---  with the previous LRBG (3.4.2.3.3.1 to .5); Report_Triggers are the
---  events of 3.6.5.1.4 the position knows and the parameters of packet
---  58 (3.6.5.1.5, Set_Report_Parameters). Sending is phase E5.
+--  Reactions: this unit detects and reports, it neither brakes nor
+--  changes the mode: the events of a cycle are queries
+--  (Linking_Reaction_Requested, Unexpected_Group, Missed_Group, the
+--  odometer and position status) and records (Event) for the JRU.
+--  Position report (3.6.5): Position_Report fills packet 0 and packet 1
+--  (3.4.2.3.3.1 to .5); Report_Triggers are the events of 3.6.5.1.4 the
+--  position knows and the parameters of packet 58 (3.6.5.1.5).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -235,7 +209,7 @@ is
      with Global => State;
 
    --  3.6.1.3: the last two groups marked as unlinked passed, ORBGs
-   --  for the information they give (phase E3)
+   --  for the information they give
    function Unlinked_ORBG (I : Positive) return Anchor_T
      with Global => State,
           Pre => I <= 2;
@@ -347,7 +321,7 @@ is
 
    --  The content of the position report (3.6.5.1.2): packet 0, and
    --  packet 1 for Report_P1. Q_INTEGRITY is "no train integrity
-   --  information" (3.6.5.2, phase E5).
+   --  information" (3.6.5.2).
    --  @req 3.6.2.2.2.1, 3.6.5.1.2, 3.6.5.1.2 a), 3.6.5.1.2 b), 3.6.5.1.2 c)
    --  @req 3.6.5.1.2 d), 3.6.5.1.2 e), 3.6.5.1.2 f), 3.6.5.1.2 h)
    --  @req 3.6.5.1.2 i), 3.8.2.1.7
@@ -483,7 +457,7 @@ is
                   and then Doubt_Under >= Doubt_Under'Old)
             and then Pending_Count = 0;
 
-   --  The train length of the valid Train Data (phase E4), cm
+   --  The train length of the valid Train Data, cm
    --  @req 4.4.6.1.4, 4.4.8.1.3, 4.4.20.1.4
    procedure Set_Train_Length (Length : Length_T)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
@@ -588,7 +562,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  3.15.1.3.1 b), c) (phase E5, the RBC/RBC handover): the border
+   --  3.15.1.3.1 b), c) (the RBC/RBC handover): the border
    --  of an RBC transition order, D along the orientation from the
    --  balise group Ref (an anchor the position keeps, as for packet 58).
    --  Its passage by the max safe front end and by the min safe rear end
@@ -616,7 +590,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  Packet 58 (3.6.5.1.5, 3.6.5.1.7), received by radio (phase E5)
+   --  Packet 58 (3.6.5.1.5, 3.6.5.1.7), received by radio
    --  referring to the balise group Ref: one of the anchors the position
    --  keeps (LRBG, SOLR, the LRBGs of 3.6.2.2.2 c). OK False when Ref is
    --  none of them or the packet cannot be used.
@@ -634,7 +608,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  A position report was sent (phase E5): the periods restart
+   --  A position report was sent: the periods restart
    procedure Report_Sent (Now_Ms : Unsigned_64)
      with Global => (In_Out => State, Input => EVC_Odometry.State),
           Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
@@ -645,7 +619,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  4.9.1.3 (phase E5): the position report parameters are deleted on
+   --  4.9.1.3: the position report parameters are deleted on
    --  entering level 1
    procedure Delete_Report_Parameters
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
@@ -671,7 +645,7 @@ is
                                        OK      : out Boolean)
      with Global => (In_Out => State);
 
-   --  Phase E5, 3.6.2.2.2 c), 3.6.4.2.3: the location reference of an
+   --  3.6.2.2.2 c), 3.6.4.2.3: the location reference of an
    --  information received by radio, the balise group Id named in the
    --  message (NID_LRBG): the LRBG, the SOLR or one of the last LRBGs
    --  the on-board keeps (the last eight, Max_Recent of the body), its
@@ -747,7 +721,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  Phase E4 (4.10, 4.11): the position becomes invalid, or is deleted
+   --  4.10, 4.11: the position becomes invalid, or is deleted
    procedure Invalidate
      with Global => (In_Out => State),
           Post => (if Status'Old = Unknown then Status = Unknown
@@ -780,7 +754,7 @@ is
    --  the linking of packet 5 is accepted (4.8, in
    --  the level and the mode of the on-board) and its consistency is
    --  checked (3.4.4.2.1.1 b, the modes of 4.5.2 Figure 1); both until
-   --  EVC_Core sets them, as in phase E2. The settings apply from the
+   --  EVC_Core sets them. The settings apply from the
    --  next Update. Accept_P79, packet 79
    --  of a balise group accepted (4.8.4.2, e.g. rejected in SH).
    --  4.8.3 [1]: Defer_On_Order,
@@ -850,7 +824,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  Phase E5, 3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
+   --  3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
    --  the packets 79 of the radio messages of the cycle (EVC_Radio_Info,
    --  those whose LRBG was known at reception) in the verdict of the
    --  tables (EVC_Acceptance.Radio_Geo_Verdict). Accepted: taken in the
@@ -877,7 +851,7 @@ is
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
 
-   --  Phase E5, 3.4.4.1.1, 4.8.1.6, 4.8.4: the linking (packet 5) of the
+   --  3.4.4.1.1, 4.8.1.6, 4.8.4: the linking (packet 5) of the
    --  radio messages of the cycle (EVC_Radio_Info: messages 3, 33 and
    --  24), referred to the LRBG the message names (its origin,
    --  Radio_Origin) and valid for the train (Q_DIR, 3.6.3.1.3), taken
@@ -918,7 +892,7 @@ is
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
 
-   --  For the stored information (phase E3)
+   --  For the stored information
 
    --  3.6.3.1: information with this Q_DIR from a group of orientation
    --  G is valid for a train whose direction (orientation, or crossing
