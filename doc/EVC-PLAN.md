@@ -9960,3 +9960,81 @@ closed or dropped). Next: SM ninth (B031, B991, 4.4.21.1.12 / .13,
 B1320); the BTM port's balise detected without a telegram, B1380, with
 3.16.2.5.1 b); the runner's B1181 and B1261; the E6 partial rows by
 family; then the Gamma model, NL.
+
+### E5 integration after the forty-second round: the comments cleaned, EVC_Core split (2026-10-21)
+
+A round of the repository's own shape, no clause moved.
+
+The measurement before it (the 16 agents of rounds 38 to 41): a body was
+read twice as often as a spec; for a unit an agent only had to
+understand, the spec sufficed in 45 % of the cases, in 13 % the agent
+read the spec and then the body; the data and interface units were read
+spec-only every time (`EVC_Ports`, `EVC_Location`, `EVC_Distances`,
+`EVC_Supervision_Input`), the behaviour units never (`EVC_Core` 0 of 8,
+`EVC_Stored_Information` 0 of 5, `EVC_Sessions` 0 of 4), their
+questions being the cycle's order, where a state is set and what a
+private helper does. The specs are rich (64 % of 1084 declarations
+carry a contract, 72 % a heading, 41 % of the spec lines are
+comments against 13 % of the body's) but 33 of 61 headers opened with
+a phase-by-phase history and 330 comment lines in 67 files named a
+phase. Three things followed:
+
+- `outline.py <unit> --spec <Subprogram>`: a declaration with its
+  contract and heading, no body (0136a17).
+- The comment rule: no phase name in a comment; a header says what the
+  unit is and its entry points in the cycle, in a screen at most;
+  `test/tools/comment_check.py --check` in the whole check, its
+  `--comments-only <rev>` the proof that a cleanup changed nothing else
+  (2bb1cce, a6728ba). Two cleanup packages, the specs and the bodies,
+  took the count to zero: the twelve longest headers rewritten
+  (`evc_core.ads` 60 -> 25 lines, `evc_procedures` 104 -> 53,
+  `evc_stored_information` 80 -> 63, `evc_ports` kept at 136 for its
+  port formats), five stale statements corrected with the phase that
+  carried them (`evc_dmi_port`'s TAF heading, `evc_system_version`'s
+  balise side, `evc_retained`'s network, `evc_mission`'s level 2 start,
+  `evc_procedures`' [20] [36] [41]), `evc_core.adb`'s section comments
+  renumbered in Tick's order, two strayed headings put back above their
+  subprograms (Take_Radio_Geo with its tag, Finish_Procedures).
+- `EVC_Core` split into six private children along the steps of its
+  cycle, by a deterministic script (the subprograms moved by name with
+  their headings and contracts; the state variables and the body's
+  types into the parent's private part as `Part_Of => State`, so the
+  children name them in their Global aspects; `Count` and
+  `Controller_Now` declared in the private part for the children,
+  `Start` kept local since its callers prove by inlining; the with
+  clauses pruned by the compiler's warnings until silent; the matrix,
+  backlog and triage notes renamed): `EVC_Core.Inputs` (the latches and
+  Read_Ports with its readers), `.Stored` (Update_Position,
+  Evaluate_Stored_Information, the takes and releases), `.Monitoring`
+  (the speed and distance monitoring, the BTM alarm's distance),
+  `.Modes` (the levels and mission, the radio halves, the procedures,
+  the mode machine and what entering a mode means, the manoeuvre
+  adjustment, the data kept over No Power), `.Outputs` (the DMI frames,
+  the TIU outputs, the radio drain, Produce_Outputs), `.Records` (the
+  juridical records). The parent keeps the hosts' entry points, the
+  accessors and the power-up: 4238 -> 496 body lines. No behaviour
+  changed: evc_test, dmi_test, the goldens and the SUBSET-076 baseline
+  are identical; the full proof 12916 checks, 0 unproved; the worst-case
+  stack fell by 456 B (margin 5784 -> 6240 B).
+
+Verification on master: `test/check.sh` ok (evc_test 12728 checks,
+dmi_test 2172, the comment check in), the full proof 0 unproved, cross
+build and stack (margin 6240 B), wasm and both smokes 0 failures.
+SUBSET-076 unchanged, 1075 / 1095 / 1020. Matrix unchanged, 136
+clauses left.
+
+Measurements (doc/ROUNDS.csv): comments-specs 123 calls (budget 160) /
+179k / 6.1 USD; comments-bodies 64 (160) / 129k / 2.9, the cheapest
+package of E6; the split by the coordinator's script, no agent. The
+round 9.0 USD.
+
+Lessons: a cleanup of comments is cheap when a checker names its target
+and a diff checker proves its bounds; both agents stayed inside the
+bounds without a single code line changed. The split script found two
+things an agent would have inherited blind: a heading that binds a tag
+to the wrong declaration, and a name that is both a local variable and
+a parent subprogram (`Start`). A child's spec answers the agents'
+question of the cycle's order by its header; the next rounds will show
+whether the body reads of `EVC_Core` fall. Next: round 43 as planned
+after the forty-first (SM ninth, B1380, B1181 and B1261, the E6 partial
+rows by family), with the briefs naming the children.

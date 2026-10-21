@@ -25,7 +25,14 @@ ETCS on-board (EVC). The on-board is being built in phases, see
     - `Display-Frame_Buffer`: pixel drawing ([dmi/display-frame_buffer.ads](dmi/display-frame_buffer.ads)).
 - **`evc/`** — the ETCS on-board, SUBSET-026. `EVC_Core` has the same shape as
   `DMI_Core` (Initialise / Handle_Input / Tick / Take_Outputs) behind enumerated
-  ports (BTM, RTM, odometer, TIU, DMI, ATO, JRU). Its safety kernel is SPARK
+  ports (BTM, RTM, odometer, TIU, DMI, ATO, JRU); its cycle's steps are its
+  private children, one per step of Tick, which name the parent's state in
+  their contracts: `EVC_Core.Inputs` (the ports read), `.Stored` (the
+  position and the stored information), `.Monitoring` (the speed and distance
+  monitoring), `.Modes` (the levels, the mission, the procedures, the mode
+  machine), `.Outputs` (the DMI, TIU and RTM outputs) and `.Records` (the
+  juridical records); the parent keeps the hosts' entry points, the
+  accessors and the power-up. Its safety kernel is SPARK
   (`SPARK_Mode`), proven with gnatprove: see the plan for what is in the kernel.
   The radio of phase E5: `EVC_Radio` holds the communication sessions, the RBC
   contact and the RTM outbox shared by the session and link half
