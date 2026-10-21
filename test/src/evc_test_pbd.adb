@@ -1,7 +1,9 @@
 with EVC_Test_Support;  use EVC_Test_Support;
 with Ada.Text_IO;
 with ETCS_Track_Packets.P52;
+with ETCS_Track_Packets.P68;
 with ETCS_Variables;
+with EVC_DMI_Port;
 with EVC_Distances;
 with EVC_Fixed;
 with EVC_Limits;
@@ -9,6 +11,7 @@ with EVC_PBD;
 with EVC_Profiles;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
+with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
 with Interfaces;
@@ -20,6 +23,7 @@ package body EVC_Test_PBD is
    package Prof renames EVC_Profiles;
    package SIn renames EVC_Supervision_Input;
    package T52 renames ETCS_Track_Packets.P52;
+   package T68 renames ETCS_Track_Packets.P68;
 
    use type EVC_Distances.Cm_T;
    use type EVC_Limits.Margin_Kind_T;
@@ -634,17 +638,53 @@ package body EVC_Test_PBD is
    --  3.15.10.1, 3.15.10.3.1: the first Indication location in
    --  MSG_PLANNING, in Ceiling Speed monitoring, at the distance the
    --  supervision computed (3.13.10.3.8) in the cycle before; none in
-   --  Target Speed monitoring
+   --  Target Speed monitoring; 3.15.10.4: the gradients and the orders
+   --  only before the EOA (3100 m: a gradient change at 2100 m shown, at
+   --  3600 m not; an air tightness area from 2900 m to 3300 m, its start
+   --  at the max item from the max safe front end (3.15.10.2), its end
+   --  beyond the EOA not)
    procedure Scenario_Planning is
       Ind_M : Natural;
+      C     : T68.Packet_T;
    begin
       Start_X;
       Add_Group (Group (10, 100));
       Add_Group (Group (20, 1000));
+      C.Q_DIR := 1;
+      C.Q_SCALE := 1;
+      C.Q_TRACKINIT := 0;
+      C.Has_D_TRACKCOND := True;
+      C.D_TRACKCOND := 2800;
+      C.L_TRACKCOND := 400;
+      C.M_TRACKCOND := 5;
+      C.N_ITER := 0;
       Carry (1, 0, SSP ((1 => (0, 160, False))));
-      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 0, Grad ((1 => (0, 0), 2 => (2000, 2), 3 => (3500, 3))));
+      Carry (1, 0, C);
       Carry (1, 1, MA_Of ((1 => 3000), 160));
       Run_X (30_000);
+      declare
+         P : constant EVC_DMI_Port.Planning_T := SI.Planning;
+         Start_M : constant Integer_64 :=
+           (Max_X (EVC_Track_Conditions.Conditions.List (1).Start)
+            - Integer_64 (SI.Current.Train.Max_Safe_Front)) / 100;
+         Shown, Beyond : Boolean := False;
+      begin
+         for K in 1 .. P.Order_Count loop
+            Shown := Shown
+              or else (P.Orders (K).Symbol = 19
+                       and then Integer_64 (P.Orders (K).Dist) = Start_M);
+            Beyond := Beyond or else P.Orders (K).Symbol = 20;
+         end loop;
+         Check (P.Gradient_Count = 2
+                and then Natural (P.Gradients (2).Start) < Natural (P.MA_Dist)
+                and then Shown and then not Beyond,
+                "planning: the gradients and the orders within the MA "
+                & "(3.15.10.4), the start of the air tightness at its max "
+                & "item from the max safe front end (3.15.10.2):"
+                & Natural'Image (P.Gradient_Count)
+                & Natural'Image (P.Order_Count));
+      end;
       Ind_M := Natural (Res.Indication_D / 100);
       Check (Plan_Frames > 0 and then Res.Monitoring in SDM.CSM
              and then Res.Indication

@@ -596,12 +596,22 @@ is
                   when others =>
                      null;
                end case;
-               --  8.3.4: the orders ahead of the estimated front end
+               --  8.3.4: the orders ahead of the estimated front end, at
+               --  the location item the supervision compares (3.15.10.2,
+               --  Table 2a): the estimated one for the sound horn and the
+               --  radio hole, else the max item of a start, the min of
+               --  an end
                if DE > Est_F then
-                  Order (Sym.PL_Start, Frame (T, E.Start, Estimated_Item));
+                  Order (Sym.PL_Start,
+                         Frame (T, E.Start, (if E.Value in 2 | 4
+                                             then Estimated_Item
+                                             else Max_Item)));
                end if;
                if FE > Est_F then
-                  Order (Sym.PL_End, Frame (T, E.Finish, Estimated_Item));
+                  Order (Sym.PL_End,
+                         Frame (T, E.Finish, (if E.Value in 2 | 4
+                                              then Estimated_Item
+                                              else Min_Item)));
                end if;
             end;
          end loop;
@@ -636,8 +646,9 @@ is
                then
                   Show (Id, Sym.Active);
                end if;
+               --  the order at the max item the supervision compares
                if FE > Est_F then
-                  Order (Sym.PL_Start, Frame (T, E.Start, Estimated_Item));
+                  Order (Sym.PL_Start, Frame (T, E.Start, Max_Item));
                end if;
             end;
          end loop;

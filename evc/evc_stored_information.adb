@@ -2572,10 +2572,13 @@ is
    end Plan_Head;
 
    --  The planning (ERA_ERTMS_015560 8.3): the changes of the gradient
-   --  ahead of Front, up to 32 km
-   --  @req 3.15.10.3
+   --  ahead of Front, up to 32 km and before the EOA (3.15.10.4: within
+   --  the MA and up to the first target at zero speed; decision: a
+   --  change at the EOA starts an element beyond it and is not shown)
+   --  @req 3.15.10.3, 3.15.10.4
    procedure Plan_Gradients (Ahead     : Sense_T;
                              Front     : Dist_T;
+                             EOA       : Dist_T;
                              G_Steps   : Steps_T;
                              Default_G : Gradient_T)
      with Global => (In_Out => Plan)
@@ -2585,6 +2588,7 @@ is
          exit when Plan.Gradient_Count
                      = EVC_DMI_Port.Max_Planning_Gradients;
          if G_Steps.List (K).Start > A (Ahead, Front)
+           and then G_Steps.List (K).Start < A (Ahead, EOA)
            and then Metres_Ahead (Ahead, Front,
                                   A (Ahead, G_Steps.List (K).Start),
                                   65_535) <= 32_000
@@ -2659,13 +2663,26 @@ is
    function End_Order (Symbol : Natural) return Boolean is
      (Symbol in 3 | 4 | 7 | 8 | 18 | 20);
 
+   --  The planning symbols of the sound horn (PL24) and of the radio hole
+   --  (PL10), supervised by the estimated front end on the estimated item
+   --  (Table 2a: 5.18.9.2, 5.18.5.2)
+   function Estimated_Order (Symbol : Natural) return Boolean is
+     (Symbol in 10 | 24);
+
    --  The planning (ERA_ERTMS_015560 8.3): the orders of the track
-   --  conditions ahead (3.12.1, 5.18), up to 32 km; the start of a
-   --  condition from the max safe front end, its end from the min safe
-   --  one, as EVC_Track_Conditions supervises them
-   --  @req 3.15.10.2
+   --  conditions ahead (3.12.1, 5.18), up to 32 km and before the EOA
+   --  (3.15.10.4, as Plan_Gradients); each from the front end its
+   --  supervision takes (3.15.10.2, Table 2a) to the location item
+   --  EVC_Track_Conditions gives: a start from the max safe front end, an
+   --  end from the min safe one, the horn and the radio hole from the
+   --  estimated one. Decision: the end of a condition, supervised by the
+   --  min safe rear end (5.18.2.5, 5.18.6.4), is shown from the min safe
+   --  front end: the planning's distances are from the train front (DMI
+   --  8.3), where the condition ends on the track
+   --  @req 3.15.10.2, 3.15.10.4
    procedure Plan_Orders (Train  : Train_Frame_T;
                           Ahead  : Sense_T;
+                          EOA    : Dist_T;
                           Orders : EVC_Track_Conditions.Orders_T)
      with Global => (In_Out => Plan)
    is
@@ -2673,13 +2690,17 @@ is
       for I in 1 .. Orders.Count loop
          exit when Plan.Order_Count = EVC_DMI_Port.Max_Planning_Orders;
          declare
+            Sym : constant Natural := Orders.List (I).Symbol;
             D : constant Natural :=
               Metres_Ahead (Ahead,
-                            (if End_Order (Orders.List (I).Symbol)
-                             then Train.Min_Front else Train.Max_Front),
+                            (if End_Order (Sym) then Train.Min_Front
+                             elsif Estimated_Order (Sym) then Train.Est_Front
+                             else Train.Max_Front),
                             Orders.List (I).At_X, 65_535);
          begin
-            if D <= 32_000 then
+            if D <= 32_000
+              and then A (Ahead, Orders.List (I).At_X) < A (Ahead, EOA)
+            then
                Plan.Order_Count := Plan.Order_Count + 1;
                Plan.Orders (Plan.Order_Count) :=
                  (Symbol => Unsigned_8 (Orders.List (I).Symbol),
@@ -2729,11 +2750,11 @@ is
          begin
             Plan_Head (Train, Ahead, Front, MA_M, G_Steps, Default_G);
             --  the gradient at the front, then its changes ahead
-            Plan_Gradients (Ahead, Front, G_Steps, Default_G);
+            Plan_Gradients (Ahead, Front, EOA, G_Steps, Default_G);
             --  the MRSP ahead up to the EOA, then the EOA or the LOA
             Plan_Speeds (Train, Ahead, EOA, MA_M, LOA_Speed);
             --  the orders of the track conditions ahead
-            Plan_Orders (Train, Ahead, Orders);
+            Plan_Orders (Train, Ahead, EOA, Orders);
          end;
       end if;
    end Build_Planning;

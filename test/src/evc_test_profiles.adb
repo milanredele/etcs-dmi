@@ -1142,7 +1142,7 @@ package body EVC_Test_Profiles is
       RS.D_SUITABILITY_List (1).Has_M_LINEGAUGE := True;
       RS.D_SUITABILITY_List (1).M_LINEGAUGE := 16#03#;
       Carry (1, 0, SSP ((1 => (0, 100, False))));
-      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 0, Grad ((1 => (0, 0), 2 => (150, 1), 3 => (350, 2))));
       Carry (1, 0, RS);
       Carry (1, 1, MA_Of ((1 => 900)));
       Run_X (15_000);
@@ -1163,6 +1163,11 @@ package body EVC_Test_Profiles is
                                       (SI.Current.Train.Est_Front)) / 100),
              "planning: the temporary EOA, closer than the MA's, as the "
              & "EOA (3.15.10.5)");
+      Check (SI.Planning.Gradient_Count = 2,
+             "planning: the gradients up to the temporary EOA, the first "
+             & "target at zero speed (3.15.10.4): the change at 250 m "
+             & "shown, at 450 m not" & Natural'Image
+               (SI.Planning.Gradient_Count));
       --  a change of the Train Data: C4 now, the location suitable
       Cat.Axle_Load := 6;
       EVC_Train_Data.Set (Data, Cat);
