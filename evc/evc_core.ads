@@ -76,6 +76,8 @@ use type EVC_Location.Anchor_T;
 use type EVC_Position.Cab_T;
 use type EVC_Position.Status_T;
 
+with EVC_DMI_Port; use EVC_DMI_Port;
+
 --  @req 3.5.6.2, 3.12.1.5 a), 3.14.1.8, 3.14.1.10, 3.15.1.3.6, A.3.5.2
 --  @req 4.4.9.1.4, 4.4.11.1.5.1, 4.4.12.1.7, 4.4.18.1.6, 4.5.1.4, 5.4.3.2 A35
 --  @req 5.11.2.2 A035
@@ -442,5 +444,326 @@ is
    --  The commands to the train interface of the last cycle (3.14.1)
    function Brake_Commands return EVC_Brake_Commands.Commands_T
      with Global => State;
+
+private
+
+   use Interfaces;
+
+   --  State
+
+   type TIU_Signals_T is array (TIU_Signal_T) of Boolean;
+   type Counts_T is array (Port_T) of Natural;
+
+   Failed_Flag          : Boolean := False
+     with Part_Of => State;
+   --  4.11.1.1: data kept over No Power wait for the cold movement
+   --  detection (Power_Up)
+   Kept_Pending         : Boolean := False
+     with Part_Of => State;
+   Current_Mode         : Mode_T := M_NP
+     with Part_Of => State;
+   --  (the level and its status are EVC_Levels')
+   Cycle_Count          : Cycle_T := 0
+     with Part_Of => State;
+   Clock_Ms             : Time_Ms_T := 0
+     with Part_Of => State;
+   --  The UTC time at the on-board time 0 (Set_UTC), seconds since
+   --  2000-01-01 00:00:00
+   UTC_Known            : Boolean := False
+     with Part_Of => State;
+   UTC_Seconds          : Unsigned_32 := 0
+     with Part_Of => State;
+   --  The mode last reported to the juridical recording
+   Reported_Mode        : Mode_T := M_NP
+     with Part_Of => State;
+   --  The time, operated version, level and mode of the last general
+   --  message (Record_General), the messages of the start-up written
+   General_Ms           : Time_Ms_T := 0
+     with Part_Of => State;
+   General_Version      : Natural := 0
+     with Part_Of => State;
+   General_Level        : Level_T := L0
+     with Part_Of => State;
+   General_Mode         : Mode_T := M_NP
+     with Part_Of => State;
+   Started_Up           : Boolean := False
+     with Part_Of => State;
+
+   --  Inputs latched by Handle_Input since the last cycle
+   Latched_Odometer  : Odometer_Sample_T := Standstill_Sample
+     with Part_Of => State;
+   --  a sample arrived since the last cycle
+   Latched_Odometer_Fresh : Boolean := False
+     with Part_Of => State;
+   Latched_TIU       : TIU_Signals_T := (others => False)
+     with Part_Of => State;
+   --  the last TIU input "train integrity" since the last cycle, its
+   --  value plus one (0: none), for EVC_Sessions (3.6.5.2)
+   Latched_Integrity : EVC_Bytes.Byte := 0
+     with Part_Of => State;
+   --  the last TIU input "safe consist length" since the last cycle
+   --  (3.18.3.2 b), its lengths when available, for EVC_Train_Data
+   Latched_SCL       : EVC_Train_Data.Consist_T := (others => 0)
+     with Part_Of => State;
+   Latched_SCL_Fresh : Boolean := False
+     with Part_Of => State;
+   --  (the driver's requests are EVC_Driver_Requests')
+
+   --  Telegrams and radio messages latched since the last cycle, as
+   --  they arrived: at most the telegrams of one balise group (8,
+   --  N_TOTAL of 7.5.1.82) and RTM_Latch_Size messages (an engineering
+   --  constant); more are dropped and counted (Overflowed)
+   BTM_Latch_Size : constant := 8;
+   RTM_Latch_Size : constant := 4;
+
+   type BTM_Slot_T is record
+      Length : Natural range 0 .. BTM_Max_Length := 0;
+      Data   : EVC_Bytes.Byte_Array (1 .. BTM_Max_Length) := (others => 0);
+   end record;
+   type BTM_Slots_T is array (1 .. BTM_Latch_Size) of BTM_Slot_T;
+
+   --  a message with its session (1 for a message without a tag,
+   --  EVC_Ports)
+   type RTM_Slot_T is record
+      Session : RTM_Session_T := 1;
+      Length  : Natural range 0 .. RTM_Max_Length := 0;
+      Data    : EVC_Bytes.Byte_Array (1 .. RTM_Max_Length) := (others => 0);
+   end record;
+   type RTM_Slots_T is array (1 .. RTM_Latch_Size) of RTM_Slot_T;
+
+   --  the connection events of the RTM port latched since the last
+   --  cycle (as many as messages)
+   type Event_Slot_T is record
+      Session : RTM_Session_T := 1;
+      Event   : RTM_Event_T := Connection_Set_Up;
+      --  the RBC identity reported with a connection set up
+      RBC     : EVC_Radio.RBC_Id_T;
+   end record;
+   type Event_Slots_T is array (1 .. RTM_Latch_Size) of Event_Slot_T;
+
+   Latched_BTM       : BTM_Slots_T
+     with Part_Of => State;
+   Latched_BTM_Count : Natural range 0 .. BTM_Latch_Size := 0
+     with Part_Of => State;
+   --  3.15.7: the BTM alarm of the port (EVC_Ports: it holds from the
+   --  input 1 to the input 0), the distance travelled since it was
+   --  raised (3.6.7.1 d) and the safety reaction of the cycle
+   --  (EVC_BTM_Alarm)
+   Latched_BTM_Alarm : Boolean := False
+     with Part_Of => State;
+   BTM_Alarm_Run     : EVC_Odometry.Virtual_T
+     with Part_Of => State;
+   Latched_RTM       : RTM_Slots_T
+     with Part_Of => State;
+   Latched_RTM_Count : Natural range 0 .. RTM_Latch_Size := 0
+     with Part_Of => State;
+   Latched_Events      : Event_Slots_T
+     with Part_Of => State;
+   Latched_Event_Count : Natural range 0 .. RTM_Latch_Size := 0
+     with Part_Of => State;
+
+   --  The inputs of the current cycle (Read_Ports)
+   Odometer_Now  : Odometer_Sample_T := Standstill_Sample
+     with Part_Of => State;
+   Odometer_Fresh : Boolean := False
+     with Part_Of => State;
+   --  a geographical position was sent to the DMI in the last cycle
+   Geo_Sent      : Boolean := False
+     with Part_Of => State;
+   TIU_Now       : TIU_Signals_T := (others => False)
+     with Part_Of => State;
+
+   --  What the position step knows of the movement (Update_Position):
+   --  the train stands still, its speed is not above the limit for
+   --  triggering the override function
+   Standstill     : Boolean := True
+     with Part_Of => State;
+   Below_Override : Boolean := True
+     with Part_Of => State;
+
+   Accepted_Count : Counts_T := (others => 0)
+     with Part_Of => State;
+   Rejected_Count : Counts_T := (others => 0)
+     with Part_Of => State;
+   Overflow_Count : Counts_T := (others => 0)
+     with Part_Of => State;
+
+   --  Speed and distance monitoring
+
+   --  The value bytes of the TIU inputs (the direction controller, the
+   --  brake pressure) and which signals were ever received, latched and
+   --  of the cycle; the driver's acknowledgement of a brake release
+   type TIU_Values_T is array (TIU_Signal_T) of EVC_Bytes.Byte;
+   Latched_TIU_Value : TIU_Values_T := (others => 0)
+     with Part_Of => State;
+   Latched_TIU_Known : TIU_Signals_T := (others => False)
+     with Part_Of => State;
+   Latched_Brake_Ack : Boolean := False
+     with Part_Of => State;
+   TIU_Value_Now     : TIU_Values_T := (others => 0)
+     with Part_Of => State;
+   TIU_Known_Now     : TIU_Signals_T := (others => False)
+     with Part_Of => State;
+   Brake_Ack_Now     : Boolean := False
+     with Part_Of => State;
+
+   --  The snapshot the speed and distance monitoring and the procedures
+   --  read: the snapshot of the tests (Set_Snapshot_For_Test), once set,
+   --  in every cycle until Initialise, else the one of the stored
+   --  information (EVC_Stored_Information, 3.13.2), taken by Take_Snapshot
+   --  where it is read. It is package state and goes by reference to its
+   --  readers: a function returning it would build a copy of over 11 KB
+   --  on the stack of every caller.
+   Snapshot          : EVC_Supervision_Input.Snapshot_T
+     with Part_Of => State;
+   Test_Snapshot_Set : Boolean := False
+     with Part_Of => State;
+
+   --  EVC_SDM's work area and state, its result; the brake commands
+   SDM_Work     : EVC_SDM.Work_T
+     with Part_Of => State;
+   SDM_State    : EVC_SDM.State_T
+     with Part_Of => State;
+   SDM_Result   : EVC_SDM.Result_T
+     with Part_Of => State;
+   Brake_State  : EVC_Brake_Commands.State_T
+     with Part_Of => State;
+   Brake_Output : EVC_Brake_Commands.Commands_T
+     with Part_Of => State;
+   --  MSG_SPEED_STATE of the cycle
+   Speed_State  : Speed_State_T
+     with Part_Of => State;
+
+   --  What was sent last: the brake and TTI of MSG_STATUS, the TIU
+   --  output, the monitoring / status / MRDT and the overruns recorded
+   --  on the JRU
+   Status_Brake_Sent    : EVC_Bytes.Byte := Brake_None
+     with Part_Of => State;
+   Status_TTI_Sent      : Unsigned_16 := TTI_None
+     with Part_Of => State;
+   TIU_Sent             : EVC_Bytes.Byte := 0
+     with Part_Of => State;
+   TIU_Reasons_Sent     : TIU_Reasons_T := 0
+     with Part_Of => State;
+   No_Supervision       : constant Unsigned_32 := 16#FFFF_FFFF#;
+   Supervision_Reported : Unsigned_32 := No_Supervision
+     with Part_Of => State;
+
+   --  The speed and distance monitoring information as displayed to the
+   --  driver (MSG_SPEED_STATE, the TTI of MSG_STATUS) at the resolution of
+   --  record 20 of SUBSET-027 4.2.4.20 (1 km/h, 1 m): the target only
+   --  where the DMI shows it, the release speed only while shown
+   type SDM_Shown_T is record
+      V_Perm, V_SBI, V_Target, V_Release, TTI : Unsigned_16 := 0;
+      D_Target : Unsigned_32 := 0;
+   end record;
+   No_SDM_Shown : constant SDM_Shown_T :=
+     (V_Perm | V_SBI | V_Target | V_Release | TTI => 16#FFFF#,
+      D_Target => 16#FFFF_FFFF#);
+   SDM_Shown_Reported : SDM_Shown_T := No_SDM_Shown
+     with Part_Of => State;
+   Overrun_Reported     : EVC_Bytes.Byte := 0
+     with Part_Of => State;
+   --  the indication "Entering FS" (4.4.9.1.4) or "Entering OS"
+   --  (4.4.12.1.7) shown: its catalogue entry, 0 none
+   Entering_Shown       : EVC_Bytes.Byte := 0
+     with Part_Of => State;
+   --  3.14.2.6, 3.14.3.4, 4.4.7.1.5.4: "Runaway movement" shown (the DMI's
+   --  catalogue entry 9) while a protection commands the brake
+   Runaway_Shown        : Boolean := False
+     with Part_Of => State;
+   --  3.6.8.5, 3.6.8.6.2: "Odometer impaired" shown (the DMI's catalogue
+   --  entry 36) while the odometer performance is impaired
+   Odometer_Shown       : Boolean := False
+     with Part_Of => State;
+   --  3.12.2.4: "Route unsuitable" shown, per Q_SUITABILITY (the DMI's
+   --  catalogue entries 30 loading gauge, 32 axle load, 31 traction)
+   type Unsuitable_Shown_T is array (0 .. 2) of Boolean;
+   Unsuitable_Shown     : Unsuitable_Shown_T := (others => False)
+     with Part_Of => State;
+
+   --  The procedures
+
+   --  The context of the procedures in the cycle (Run_Procedures)
+   Proc_Ctx : EVC_Procedures.Context_T
+     with Part_Of => State;
+   --  the acknowledgement of a brake release of the cycle went to the
+   --  protections of 3.14.1.5 (EVC_Brake_Commands asked for it)
+   Ack_For_Protection : Boolean := False
+     with Part_Of => State;
+   --  the reversing indication sent last (MSG_STATUS)
+   Status_Rev_Sent : Boolean := False
+     with Part_Of => State;
+   --  the driver's "slippery rail" sent last (MSG_STATUS, 3.18.4.6.2.3)
+   Status_Slip_Sent : Boolean := False
+     with Part_Of => State;
+   --  the "BTM alarm reaction inhibition" sent last (MSG_STATUS, 5.22.4.1)
+   Status_BMM_Sent : Boolean := False
+     with Part_Of => State;
+   --  the Supervised Manoeuvre authorised direction sent last (MSG_STATUS,
+   --  4.4.21.1.9)
+   Status_SM_Sent : EVC_Bytes.Byte := 0
+     with Part_Of => State;
+   --  the tunnel stopping area sent last (MSG_STATUS, 5.18.8)
+   Status_Tunnel_Sent : EVC_Track_Conditions.Tunnel_T
+     with Part_Of => State;
+   --  the radio byte sent last (3.5.7.1)
+   Status_Radio_Sent : EVC_Bytes.Byte := 0
+     with Part_Of => State;
+   --  5.20: an item of the information for an external function was
+   --  sent in the last cycle (the TIU track condition output)
+   TC_Sent : Boolean := False
+     with Part_Of => State;
+   --  the stored RBC contact sent last to the DMI (MSG_RBC_CONTACT;
+   --  none before the first contact is stored)
+   Contact_Sent : EVC_Radio.RBC_Contact_T := EVC_Radio.No_Contact
+     with Part_Of => State;
+   --  the X of the operated system version sent last to the DMI
+   --  (MSG_SYSTEM_VERSION; 16#FF# none since the start)
+   Version_Sent : EVC_Bytes.Byte := 16#FF#
+     with Part_Of => State;
+   --  5.17: the train configuration of the train interface seen last
+   --  (EVC_Ports, TIU input 13), whether one was seen since power-up
+   Config_Last : EVC_Bytes.Byte := 0
+     with Part_Of => State;
+   Config_Seen : Boolean := False
+     with Part_Of => State;
+
+   --  Queries
+
+   --  Declared beside their use before the split
+
+   No_Data : constant EVC_Bytes.Byte_Array (1 .. 0) := (others => 0);
+
+   JRU_Mode_Change : constant := 1;
+
+   --  3. Evaluate the stored information (EVC_Stored_Information): the
+   --  information of the groups taken into account, its replacement and
+   --  deletion, the timers of the MA, the snapshot for the supervision;
+   --  its records go to the JRU, the indications of the track conditions
+   --  (MSG_TRACK_COND, when they change) and the planning (MSG_PLANNING,
+   --  while an MA is supervised) to the DMI. The data status changes of
+   --  4.10 on a mode transition are made on entering the mode (7a).
+   JRU_Stored : constant := EVC_Stored_Information.JRU_Event;
+
+   --  JRU events (EVC_Ports): 40 the levels, 41 the mission
+   --  (Put_Mission_Event), 23 the procedures, 24 the text messages
+   JRU_Levels  : constant := EVC_Ports.JRU_Levels;
+
+   --  The second TIU output, the information for an external function
+   --  (5.20, EVC_Ports): header, then per item kind, id, the distances to
+   --  its start and its end, its value
+   subtype TIU_TC_Frame_T is EVC_Bytes.Byte_Array (1 .. TIU_Out_Max_Length);
+
+   --  The parent's own subprograms the children call
+
+   --  The direction controller of the active desk in the cycle (TIU
+   --  input 6, EVC_Ports: 0 neutral, 1 forward, 2 reverse), unknown until
+   --  its first input; one reading for the supervision (roll away and
+   --  reverse movement protection, 3.14.2, 3.14.3) and the procedures
+   function Controller_Now return EVC_Brake_Commands.Controller_T
+     with Global => (TIU_Value_Now, TIU_Known_Now);
+
+   procedure Count (Counter : in out Natural);
 
 end EVC_Core;
