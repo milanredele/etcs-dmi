@@ -48,7 +48,7 @@ with EVC_JRU_Messages;
 with EVC_Track_Conditions;
 with Interfaces;           use Interfaces;
 
---  @req 3.16.3.1.1.2
+--  @req 3.16.3.1.1.2, 3.20.1.2
 package EVC_JRU_Records
   with SPARK_Mode => On,
        Abstract_State => State,

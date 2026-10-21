@@ -738,6 +738,43 @@ package body EVC_Test_Profiles is
       Check (SI.Current.National = NVa.Default_Values
              and then Onboard_Field (5) / 2 mod 2 = 0,
              "national values: the defaults of A.3.2 at power-up");
+      declare
+         D : constant NVa.Set_T := NVa.Default_Set;
+         function Kmh (V : Natural) return Natural is (V * 36 / 1_000 + 1);
+      begin
+         --  A.3.2 Table, in the table's units (a speed rounded down to
+         --  cm/s is one km/h short when multiplied back)
+         Check (not D.Values.Q_NVDRIVER_ADHES
+                and then Kmh (D.Values.V_NVSHUNT) = 30
+                and then Kmh (D.Values.V_NVSTFF) = 40
+                and then Kmh (D.Values.V_NVONSIGHT) = 30
+                and then Kmh (D.Values.V_NVLIMSUPERV) = 100
+                and then Kmh (D.Values.V_NVUNFIT) = 100
+                and then Kmh (D.Values.V_NVREL) = 40
+                and then D.Values.D_NVROLL = 200
+                and then D.Values.Q_NVSBTSMPERM
+                and then not D.Values.Q_NVEMRRLS
+                and then not D.Values.Q_NVGUIPERM
+                and then not D.Values.Q_NVSBFBPERM
+                and then not D.Values.Q_NVINHSMICPERM
+                and then D.Values.V_NVALLOWOVTRP = 0
+                and then Kmh (D.Values.V_NVSUPOVTRP) = 30
+                and then D.Values.D_NVOVTRP = 20_000
+                and then D.Values.T_NVOVTRP = 60_000
+                and then D.M_NVDERUN and then D.M_NVCONTACT = 2
+                and then D.Values.D_NVPOTRP = 20_000
+                and then D.Q_NVLOCACC = 1_200
+                and then D.Values.M_NVAVADH = 0
+                and then D.Values.M_NVEBCL = 9
+                and then D.Values.Kr_Int.Steps (1).Factor = 900
+                and then D.Values.Kv_Int_Fresh.Steps (1).Factor = 700
+                and then D.Values.Kv_Int_Passenger.Steps (1).Factor = 700
+                and then D.Values.Kt_Int = 1_100
+                and then D.Values.A_NVMAXREDADH1 = 1_000
+                and then D.Values.A_NVMAXREDADH2 = 700
+                and then D.Values.A_NVMAXREDADH3 = 700,
+                "national values: every default of the A.3.2 table");
+      end;
       Add_Group (Group (10, 100));
       Add_Group (Group (20, 200));
       Add_Group (Group (30, 600));
@@ -1142,7 +1179,7 @@ package body EVC_Test_Profiles is
       RS.D_SUITABILITY_List (1).Has_M_LINEGAUGE := True;
       RS.D_SUITABILITY_List (1).M_LINEGAUGE := 16#03#;
       Carry (1, 0, SSP ((1 => (0, 100, False))));
-      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 0, Grad ((1 => (0, 0), 2 => (150, 1), 3 => (350, 2))));
       Carry (1, 0, RS);
       Carry (1, 1, MA_Of ((1 => 900)));
       Run_X (15_000);
@@ -1163,6 +1200,11 @@ package body EVC_Test_Profiles is
                                       (SI.Current.Train.Est_Front)) / 100),
              "planning: the temporary EOA, closer than the MA's, as the "
              & "EOA (3.15.10.5)");
+      Check (SI.Planning.Gradient_Count = 2,
+             "planning: the gradients up to the temporary EOA, the first "
+             & "target at zero speed (3.15.10.4): the change at 250 m "
+             & "shown, at 450 m not" & Natural'Image
+               (SI.Planning.Gradient_Count));
       --  a change of the Train Data: C4 now, the location suitable
       Cat.Axle_Load := 6;
       EVC_Train_Data.Set (Data, Cat);
