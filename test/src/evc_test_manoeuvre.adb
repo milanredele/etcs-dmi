@@ -15,9 +15,11 @@ with EVC_Ports;           use EVC_Ports;
 with EVC_Mission;
 with EVC_Movement_Authority;
 with EVC_Position;
+with EVC_Procedures;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_Stored_Information;
 with EVC_Train_Data;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
@@ -47,6 +49,8 @@ package body EVC_Test_Manoeuvre is
       end loop;
       return Frame;
    end SCL_Frame;
+
+   procedure Consist_Lost_In_SM;
 
    procedure Scenario_Safe_Consist is
       Valid_Before : Boolean;
@@ -97,6 +101,7 @@ package body EVC_Test_Manoeuvre is
              and then EVC_Train_Data.Consist.Front_Max = 21
              and then EVC_Train_Data.Entry_Possible,
              "SCL: unavailable, the safe consist length kept (3.18.3.2.5)");
+      Consist_Lost_In_SM;
    end Scenario_Safe_Consist;
 
    --  The on-board's T_TRAIN now
@@ -254,6 +259,56 @@ package body EVC_Test_Manoeuvre is
         and then Near (Scaled (Natural (C.L_DOUBTUNDER), Q),
                        Scaled (Natural (P.L_DOUBTUNDER), Q) + More_Under);
    end Front_Moved;
+
+   --  4.4.21.1.12 in SM: the safe consist length of the TIU lost while
+   --  moving, the service brake (3.14.1.7.6), message 133 to the RBC
+   --  (3.18.3.10), the MA shortened to the train at standstill, which
+   --  releases the brake; lost at standstill, shortened at once
+   procedure Consist_Lost_In_SM is
+      T    : Unsigned_64;
+      Sent : Natural;
+   begin
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Run_X (Train_Cm + 5_000, 500);
+      Sent := EVC_Sessions.SM_Consist_Sent;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      Run_X (Train_Cm + 500, 250);
+      Check (EVC_Core.Mode = M_SM
+             and then EVC_Stored_Information.Consist_Brake
+             and then EVC_Procedures.Brake_Demand.SB
+             and then EVC_Movement_Authority.MA.Present
+             and then not EVC_Movement_Authority.MA.Withdrawn,
+             "SCL: lost in SM while moving, the service brake, the MA "
+             & "kept until standstill (4.4.21.1.12, 3.14.1.7.6); mode "
+             & Mode_T'Image (EVC_Core.Mode));
+      Check (EVC_Sessions.SM_Consist_Sent > Sent,
+             "SCL: lost in SM, the trackside informed by message 133 "
+             & "(4.4.21.1.12, 3.18.3.10)");
+      Stand_X (1_000);
+      Check (not EVC_Stored_Information.Consist_Brake
+             and then not EVC_Procedures.Brake_Demand.SB
+             and then EVC_Movement_Authority.MA.Withdrawn,
+             "SCL: lost in SM, at standstill the MA shortened to the "
+             & "train and the brake released (4.4.21.1.12, A.3.4.1.2 o), "
+             & "3.14.1.7.6)");
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM
+             and then not EVC_Stored_Information.Consist_Brake
+             and then not EVC_Procedures.Brake_Demand.SB
+             and then EVC_Movement_Authority.MA.Withdrawn,
+             "SCL: lost in SM at standstill, the MA shortened at once, "
+             & "no brake (4.4.21.1.12)");
+   end Consist_Lost_In_SM;
 
    procedure Scenario_SM_Authorisation is
       T : Unsigned_64;

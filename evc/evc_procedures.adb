@@ -31,8 +31,8 @@ package body EVC_Procedures
                     Use_V, PT_Start, PT_Sense, PT_Over, PT_SB,
                     Stop_On_Desk, SH_List_Known, SH_List_N, SH_List,
                     Now_Flags, Rev, Rev_Possible, RV_Over,
-                    RV_EB, BMM_On, BMM_From, BTM_Failure, Link_SB, Demand,
-                    Demand_Sent,
+                    RV_EB, BMM_On, BMM_From, BTM_Failure, Link_SB, Consist_SB,
+                    Demand, Demand_Sent,
                     Status_N, Status_List, Event_N, Events,
                     TD_Step, TD_Then_Revalidate, TD_Revalidate,
                     TD_Moving_Due, SH_Profile_Seen))
@@ -258,6 +258,10 @@ is
 
    --  3.14.1.6: the service brake of a linking reaction, to standstill
    Link_SB : Boolean := False;
+   --  4.4.21.1.12: the service brake of the safe consist length lost
+   --  while moving, released at standstill by the shortening
+   --  (EVC_Stored_Information.Consist_Brake, 3.14.1.7.6)
+   Consist_SB : Boolean := False;
 
    --  5.17: Train Data changed by another source. The step of the
    --  procedure (5.17.2.2: S1 waiting for the end of the trip, S2 / S4
@@ -432,6 +436,7 @@ is
       BMM_From := 0;
       BTM_Failure := False;
       Link_SB := False;
+      Consist_SB := False;
       Demand := (others => <>);
       Demand_Sent := (others => <>);
       Status_N := 0;
@@ -1641,6 +1646,7 @@ is
          end if;
          Link_SB := True;
       end if;
+      Consist_SB := EVC_Stored_Information.Consist_Brake;
       --  2.
       Override_Step (C, S);
       --  3.
@@ -1954,10 +1960,12 @@ is
       Demand :=
         (EB           => Mode = M_TR or else RV_EB,
          SB           => Ack_SB or else PT_SB or else Link_SB
+                         or else Consist_SB
                          or else TD_Step in TD_Brake | TD_Ack,
          Trip         => Mode = M_TR,
          Ack_Missing  => Ack_SB,
          Other        => PT_SB or else RV_EB or else Link_SB
+                         or else Consist_SB
                          or else TD_Step in TD_Brake | TD_Ack,
          Ack_Required => S.Train.Standstill
                          and then (PT_SB or else RV_EB
