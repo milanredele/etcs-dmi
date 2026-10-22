@@ -10290,3 +10290,37 @@ the terms); the SM tenth (B991's build, 4.4.21.1.13 with 4.4.8.1.4,
 rest (3.16.2.3.1.1 a) and b), B1423, 3.16.2.6.2, B1420, B1441); the
 Train Data builds (B1460 to B1462); the runner's B1440 and B481's
 remainder; then the Gamma model, NL.
+
+### The consistency rest: the time after the margin with Tn, the missed linked group, the detection's moment, the duplicate's orientation (e6/consistency-rest) (2026-10-22)
+
+- B1441 traced, not ours: 3040400_05 step 94's emergency brake (the
+  trace's `EB r516` earlier is a reason code, not 516 m) is the roll away
+  protection of 3.14.2: case 3140100 3 sets the direction controller
+  neutral for its roll away test (steps 39 to 68), case 3050300 22 then
+  moves the train without a TIU direction input and
+  `S076_Run.Controller_For_Movement` keeps a controller the sequence set;
+  the runner's train runs on under the brake to 500 m, the min safe
+  antenna is placed at the nominal 500 m, short of the window's end plus
+  1.3 m (BG1d's packet 5: D_LINK 50, Q_LOCACC 5), and the brake stops the
+  train at 516 m before it gets there. With the controller forward (a
+  copy of the sequence) the record 12 and TR come at step 94 and the
+  sequence passes. S99eb8ae1 triaged `model`; B1540 the runner gap.
+- 3.16.2.3.1.1 a) and b) done (B822): `EVC_Position.Supervise_Windows`
+  takes `End_Cycle`'s clock; the cycle in which the min safe antenna
+  first passes the window's end plus 1.3 m stamps it (`Crossed_Link`,
+  `Crossed_Ms`, `Crossed_Wait_Ms`, cleared when it is no longer beyond),
+  and the group is missed once it has stayed there 100 ms in the nominal
+  direction, Tn in reverse. Decisions: the time is the on-board's, on its
+  own clock, whatever the BTM's latency (B822's wait for E8 re-made);
+  Tn of SUBSET-036 4.2.9 for an undetected group is its worst case, the
+  location reference the 8th balise of the cluster, 2.3 m apart (the
+  smallest spacing of SUBSET-036 5.x), passed at the odometer's max speed
+  at the crossing: Tn = 100 + 7 (100 - t) ms with t = 2.3 m / V, 100 ms
+  when t >= 100 ms (`Reverse_Wait_Ms`, at most 800 ms). At 100 ms cycles
+  every missed-window reaction comes one cycle later: one position check
+  moved (630 -> 640 m), no golden, no sequence.
+  `Scenario_Consistency_Reactions` (`Missed_Window`).
+- Left at the bound: B1420 (narrowed in its line: the difference needs the
+  withdrawn build of a detection completing its passage, in no commit),
+  B1423, 3.16.2.6.2's remainder.
+- SUBSET-076: 1084 / 1098 / 1008 before and after, 0 regressions.
