@@ -1546,6 +1546,72 @@ package body EVC_Test_Sessions is
       end loop;
    end Integrity_Of_Report;
 
+   --  The TIU frame of an available safe consist length (EVC_Ports signal
+   --  15): the lengths in front of the engine (nominal, min, max), then
+   --  in rear of it, metres
+   function Consist_Frame (F_Nom, F_Min, F_Max, R_Nom, R_Min, R_Max : Natural)
+     return Byte_Array
+   is
+      L     : constant array (0 .. 5) of Natural :=
+        (F_Nom, F_Min, F_Max, R_Nom, R_Min, R_Max);
+      Frame : Byte_Array (1 .. TIU_SCL_Length) := (others => 0);
+   begin
+      Frame (1) := 15;
+      Frame (2) := 1;
+      for K in L'Range loop
+         Frame (3 + 2 * K) := Byte (L (K) mod 256);
+         Frame (4 + 2 * K) := Byte (L (K) / 256);
+      end loop;
+      return Frame;
+   end Consist_Frame;
+
+   --  Table 2c without valid Train Data, with the safe consist length
+   --  (4.4.7.1.6 b), 3.6.1.7): a length in front of the engine
+   --  invalidates the Train Data (3.18.3.5 a)
+   procedure Integrity_With_Consist is
+      Q, L : Natural;
+   begin
+      Stand;
+      EVC_Core.Handle_Input (TIU, Consist_Frame (20, 19, 21, 400, 398, 402));
+      Stand;
+      Check (not EVC_Train_Data.Valid
+             and then EVC_Train_Data.Consist_Available
+             and then EVC_Sessions.Integrity_Status = 0,
+             "integrity with the safe consist length: no valid Train Data, "
+             & "no information yet");
+      --  [2] with the safe consist length: 19 m in front (min) and 402 m
+      --  in rear (max) when the orientation is the active cab's (3.6.1.7)
+      Send (Frame (16#40#, (10, 0, 0)));
+      Integrity_Of_Report (Q, L);
+      Check (Q = 2 and then L >= 421 and then L <= 441,
+             "integrity with the safe consist length: confirmed by the "
+             & "driver, the confirmed length from the consist's (Table 2c "
+             & "[2], 4.4.7.1.6 b), 3.6.1.7), got" & Img (Q) & Img (L));
+      Stand;
+      --  [3] then [7]: the consist changed
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Stand;
+      Check (EVC_Sessions.Integrity_Status = 1,
+             "integrity with the safe consist length: confirmed by the TIU "
+             & "(Table 2c [3]), got" & Img (EVC_Sessions.Integrity_Status));
+      EVC_Core.Handle_Input (TIU, Consist_Frame (20, 19, 21, 410, 405, 412));
+      Stand;
+      Check (EVC_Sessions.Integrity_Status = 0,
+             "integrity with the safe consist length: the consist changed, "
+             & "no information (Table 2c [7])");
+      --  [4]: the on-board captures the consist from the train interface
+      EVC_Core.Handle_Input (TIU, (14, 2));
+      Stand;
+      Integrity_Of_Report (Q, L);
+      Check (EVC_Sessions.Integrity_Status = 3 and then Q = 3,
+             "integrity with the safe consist length: lost, reported at "
+             & "once (Table 2c [4], decision 6), got" & Img (Q));
+      Stand;
+      Check (EVC_Sessions.Integrity_Status = 3,
+             "integrity with the safe consist length: lost kept, no valid "
+             & "Train Data is not [1]");
+   end Integrity_With_Consist;
+
    procedure Scenario_Train_Integrity is
       Q, L    : Natural;
       Length  : Natural;
@@ -1609,6 +1675,7 @@ package body EVC_Test_Sessions is
       Check (EVC_Sessions.Integrity_Status = 0,
              "integrity: the driver's confirmation only at standstill "
              & "(3.6.5.2.2)");
+      Integrity_With_Consist;
    end Scenario_Train_Integrity;
 
    procedure Scenario_Report_Packet is

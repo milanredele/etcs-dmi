@@ -119,6 +119,19 @@ is
    function Consist_Length return EVC_Distances.Length_T
      with Global => State;
 
+   --  3.6.1.7: the length subtracted from the min safe front end when no
+   --  valid Train Data is available but the safe consist length is: the
+   --  min safe consist length in front of the engine and the max in rear
+   --  of it when the train orientation is the active cab's (Same), the
+   --  min in rear and the max in front when opposite, cm
+   --  @req 3.6.1.7 1st bullet, 3.6.1.7 2nd bullet
+   function Consist_Train_Length (Same : Boolean)
+     return EVC_Distances.Length_T is
+     (EVC_Distances.Length_T
+        (100 * (if Same then Consist.Front_Min + Consist.Rear_Max
+                else Consist.Rear_Min + Consist.Front_Max)))
+     with Global => State;
+
    --  A safe consist length input (EVC_Ports TIU signal 15): available
    --  with its lengths, or not available (the lengths kept, 3.18.3.2.5).
    --  3.18.3.5 a): with a length in front of the engine, no valid Train

@@ -12,10 +12,19 @@
 --      a reception of that information (Table 2c [3], [4], [6]) and the
 --      time the train was last known to be integer is the cycle of the
 --      reception (3.6.5.2.4.1 leaves it to the source).
---  (2) The safe consist length and Supervised Manoeuvre are not
---      modelled: the train length is the one of valid Train Data, [2] and
---      [3] take their second alternative, [10] never holds; the "new
---      Train Data pending the driver's validation" is never pending.
+--  (2) The train length is the one of valid Train Data, else the safe
+--      consist length's of the min safe rear end (3.6.1.7, 4.4.7.1.6 b);
+--      [2] and [3] take their first alternative with the safe consist
+--      length without its Supervised Manoeuvre part: the acknowledgement
+--      of the consist information of a Supervised Manoeuvre request is
+--      not asked, and [10] and the "no SM authorisation changing the
+--      orientation" of [3] never hold; the "new Train Data pending the
+--      driver's validation" is never pending. [7]'s change of the safe
+--      consist length is a change of any of its six lengths.
+--  (6) [4]'s on-board "configured to capture the safe consist length
+--      from the Train Interface": no installation datum says it, a train
+--      interface that delivered one in this mission is
+--      (EVC_Train_Data.Consist_Known).
 --  (3) [2] asks also the position valid and referred to an LRBG
 --      (3.6.5.2.7: no confirmed length can be reported without it, the
 --      DMI's enabling condition of the button asks it).
@@ -64,9 +73,10 @@ is
    --  The conditions of Table 2c in the cycle, after the session's
    --  establishment (3.6.5.2.6); Report: 3.6.5.1.4 c) or d) happened.
    --  In NL no train integrity information is reported (4.4.15.1.3); in
-   --  SB only with valid Train Data (4.4.7.1.6 a), which every condition
-   --  of Table 2c that leaves "No information" asks)
-   --  @req 4.4.15.1.3, 4.4.7.1.6 a)
+   --  SB only with valid Train Data (4.4.7.1.6 a) or, without them, with
+   --  the safe consist length (4.4.7.1.6 b), which every condition of
+   --  Table 2c that leaves "No information" asks)
+   --  @req 4.4.15.1.3, 4.4.7.1.6 a), 4.4.7.1.6 b)
    procedure Evaluate (Mode : EVC_Modes.Mode_T; Report : out Boolean)
      with Global => (In_Out => State,
                      Input  => (EVC_Radio.State, EVC_Position.State,
