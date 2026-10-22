@@ -6,7 +6,21 @@
 --  Run by evc_test (test/src/evc_test.adb); shared machinery is in
 --  EVC_Test_Support.
 
+with ETCS_Track_Packets.P41;
+with ETCS_Variables;
+with EVC_Bytes;
+
 package EVC_Test_Levels is
+
+   --  Packet 41: an order to the level M at D_M metres from the group,
+   --  or now (D_M < 0)
+   function Order (M : ETCS_Variables.M_LEVELTR_T; D_M : Integer)
+     return ETCS_Track_Packets.P41.Packet_T;
+
+   --  Message 24 referring to the group NID_BG with the packet 41 P
+   function Level_Message (NID_BG : Natural;
+                           P      : ETCS_Track_Packets.P41.Packet_T)
+     return EVC_Bytes.Byte_Array;
 
    procedure Scenario_L2_Buffer_Same_Cycle;
    --  4.8.1.3.1: the level 1 MA of the group of an immediate order to

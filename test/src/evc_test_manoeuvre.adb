@@ -5,6 +5,7 @@ with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
+with ETCS_Track_Packets.P41;
 with ETCS_Train_Packets.P0;
 with ETCS_Variables;
 with EVC_Core;
@@ -12,6 +13,7 @@ with EVC_DMI_Port;
 with EVC_Distances;       use EVC_Distances;
 with EVC_Modes;           use EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
+with EVC_Levels;
 with EVC_Mission;
 with EVC_Movement_Authority;
 with EVC_Position;
@@ -21,6 +23,7 @@ with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Stored_Information;
 with EVC_Train_Data;
+with EVC_Test_Levels;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
 
@@ -311,6 +314,19 @@ package body EVC_Test_Manoeuvre is
    end Consist_Lost_In_SM;
 
    procedure Scenario_SM_Authorisation is
+      --  An immediate order to level 1 by message 24, stored in SM for
+      --  later evaluation (4.8.4 [7], 4.4.21.1.11)
+      procedure Give_Level_Order is
+         P : ETCS_Track_Packets.P41.Packet_T :=
+           EVC_Test_Levels.Order (ETCS_Variables.M_LEVELTR_Level_1, -1);
+      begin
+         P.Q_DIR := 2;
+         Give_Radio_Message (1, EVC_Test_Levels.Level_Message (10, P));
+         Stand_X (200);
+         Check (EVC_Levels.Deferred,
+                "SM authorisation: the level transition order stored in SM "
+                & "(4.8.4 [7])");
+      end Give_Level_Order;
       T  : Unsigned_64;
       --  the distance to the EOA of the same MA (500 m from the LRBG 10)
       --  with the front end at the engine's end, cm
@@ -433,12 +449,32 @@ package body EVC_Test_Manoeuvre is
       begin
          --  'Continue in SM' (MSG_DRIVER_ACTION 17, argument 1)
          Input (DMI, (16#40#, 3, 0, 0, 0, 17, 1, 0));
-         Check (Wait_For (MCat.Train_M131, 1_000) /= 0
-                and then JRU_Actions (8) = Selected + 1,
+         T := Wait_For (MCat.Train_M131, 1_000);
+         Check (T /= 0 and then JRU_Actions (8) = Selected + 1,
                 "SM: 'Continue in SM' sends 131 and is recorded as "
                 & "Supervised Manoeuvre selected (5.21.2.2 S0, E015, "
                 & "SUBSET-027 4.2.4.11 M_DRIVERACTIONS 8)");
       end;
+      --  3.7.3.4 b) in SM (entering SM deleted the orders already, 4.10):
+      --  an order stored in SM, an authorisation opposite to the train
+      --  orientation (turned back to the LRBG's) deletes it; one in the
+      --  same direction keeps it (3.7.3.4 a))
+      Give_Level_Order;
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 1));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM
+             and then not EVC_Levels.Deferred
+             and then not EVC_Sessions.RBC_Order_Stored,
+             "SM in SM, opposite: the level transition order and the RBC "
+             & "transition order deleted (3.7.3.4 b), 3.6.1.1 a))");
+      Input (DMI, (16#40#, 3, 0, 0, 0, 17, 1, 0));
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Level_Order;
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 1));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM and then EVC_Levels.Deferred,
+             "SM in SM, same direction: the level transition order kept "
+             & "(3.7.3.4 a))");
    end Scenario_SM_Authorisation;
 
    --  3.18.3.9, 3.18.3.2.4, 3.18.3.2.5.1, 4.4.21.1.8, 4.4.21.3.1: SM
