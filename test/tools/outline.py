@@ -25,7 +25,8 @@
                                                       with the comment heading it
 
 A unit is given by file name or by Ada name (evc_sessions, EVC_Sessions,
-EVC_Sessions.Mission); the search roots are evc/, common/, sim/, test/src/.
+EVC_Sessions.Mission, Display.A_Area); the search roots are evc/, dmi/, common/,
+sim/, ports/hosted/, test/src/.
 The outline shows for each declaration its first and last line, so that a
 following `sed -n A,Bp` is exact, and the first line of each aspect
 (Global, Depends, Pre, Post, Contract_Cases, Refined_*).
@@ -42,7 +43,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ROOTS = ['evc', 'common', 'sim', 'test/src']
+ROOTS = ['evc', 'dmi', 'common', 'sim', 'ports/hosted', 'test/src']
 START = re.compile(r'^(\s*)(?:overriding\s+)?(procedure|function)\s+("?[\w\.]+"?)', re.I)
 ASPECT = re.compile(r'\b(Global|Depends|Pre|Post|Contract_Cases|Refined_Global|Refined_Depends|'
                     r'Refined_Post|Refined_State|Abstract_State|Initializes|Convention|Import|'
@@ -51,7 +52,7 @@ ASPECT = re.compile(r'\b(Global|Depends|Pre|Post|Contract_Cases|Refined_Global|R
 
 def unit_files(name):
     """The files of a unit given as path, file name or Ada name."""
-    if os.path.exists(name):
+    if os.path.isfile(name):
         return [name]
     base = name.lower().replace('.', '-')
     base = re.sub(r'\.ad[sb]$', '', base)
