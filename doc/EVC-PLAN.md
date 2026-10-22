@@ -10559,5 +10559,9 @@ before, 1090 / 1092 / 1008 after, 0 regressions, 10 improvements.
   after the step where their sequences stop (5040300_08, _11, _13, _17),
   and the runner enters no GSM-R network ID, so a comparison would judge
   nothing; B481 narrowed.
-- Left: B481's record 11 FRMCS codes 51 to 55 (10 steps, not taken: the
-  bound); B1620 (a trace of 4120100_02 step 203).
+- B481's record 11 codes 51 to 55 re-read, not built (a resumption): the
+  radio network type and "only one radio system" selections have no code
+  in `EVC_JRU_Records.Action_Code` (B1621, SUBSET-027 4.2.4.11), and the
+  ten steps lie after where their sequences stop; not judged as before.
+- Left: B1620 (a trace of 4120100_02 step 203), B1621 (the on-board's
+  codes 51 to 55), B481 (record 48 with the network ID entry).
