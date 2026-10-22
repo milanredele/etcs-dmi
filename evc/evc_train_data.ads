@@ -69,7 +69,10 @@ is
 
    function Data return Train_Data_T
      with Global => State;
-   --  The train length of the Train Data (L_TRAIN, cm), without the record
+   --  The train length of the Train Data (L_TRAIN, cm), without the record;
+   --  3.18.3.2.4: with the safe consist length captured as part of valid
+   --  Train Data, the max safe consist length in rear of the engine
+   --  @req 3.18.3.2.4
    function Length return EVC_Distances.Length_T
      with Global => State;
 

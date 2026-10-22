@@ -10323,5 +10323,12 @@ scenario; `EVC_Sessions` (the parent) for the wrapper of the private
 `Handover`.
 
 SUBSET-076: 1084 / 1098 / 1008 before and after, 0 regressions, 0
-improvements. Left: 4.4.21.1.13 with 4.4.8.1.4 (the TIU output of
-remote shunting), 3.18.3.2.4's max rear length, packet 12 of 131.
+improvements.
+
+3.18.3.2.4 done (a resumption): `EVC_Train_Data.Length` gives the max
+safe consist length in rear of the engine when the safe consist length
+is available while the Train Data are valid (decision; a rear max of 0
+keeps the length entered); its users read `EVC_Train_Data` unchanged
+(the sm-gamma agent reads it only). `Scenario_Safe_Consist` extended.
+Left: 4.4.21.1.13 with 4.4.8.1.4 (the TIU output of remote shunting),
+packet 12 of 131.

@@ -84,6 +84,15 @@ package body EVC_Test_Manoeuvre is
              "SCL: available from the TIU, nothing in front of the engine, "
              & "the train length the sum of the max lengths (3.18.3.2 b), "
              & "3.18.3.2.4)");
+      --  3.18.3.2.4 last sentence: captured as part of valid Train Data,
+      --  the train length is the max safe consist length in rear of the
+      --  engine, not the overall length entered
+      Check (EVC_Train_Data.Valid
+             and then Natural (EVC_Train_Data.Length) = 40_200,
+             "SCL: with valid Train Data the train length the max length "
+             & "in rear of the engine (3.18.3.2.4):"
+             & Boolean'Image (EVC_Train_Data.Valid)
+             & EVC_Distances.Length_T'Image (EVC_Train_Data.Length));
 
       --  3.18.3.5 a) b): a length in front of the engine
       Valid_Before := EVC_Train_Data.Valid;
