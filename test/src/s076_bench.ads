@@ -203,7 +203,8 @@ package S076_Bench is
    --  A balise at the track position At_Cm with its telegram of Bits
    --  bits (Data, the first bit in the msb of the first byte): delivered
    --  on the BTM when the antenna passes it, stamped with the odometer
-   --  reading at the balise. Cleared when passed.
+   --  reading at the balise. Cleared when passed. Bits 0: a balise
+   --  detected without a decoded telegram (EVC_Ports, BTM).
    procedure Place_Balise (At_Cm : Integer_64; Bits : Natural;
                            Data : Byte_Array);
    function Balises_Pending return Natural;

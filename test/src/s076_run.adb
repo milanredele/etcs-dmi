@@ -2327,20 +2327,21 @@ package body S076_Run is
 
    --  A telegram of a balise group input that the step's text names as
    --  not decodable (a wrong CRC): the sequences give its bits decodable
-   --  all the same. The BTM port has no undecodable telegram, so it is
-   --  left out, a balise missed (EVC_Ports, BTM). Decision: "second
-   --  balise" names the telegram 2/n, "balise #i" the last, n/n; else the
-   --  one carrying no packet when another telegram of the group at the
-   --  step carries one; a group of one telegram none (the port has no
-   --  balise detected without a telegram)
+   --  all the same. Its balise is placed with no telegram, the BTM's
+   --  record of a balise detected without a decoded telegram (EVC_Ports,
+   --  BTM). Decision: "second balise" names the telegram 2/n, "balise
+   --  #i" the last, n/n; else the one carrying no packet when another
+   --  telegram of the group at the step carries one; a group of one
+   --  telegram its only one
    function Undecodable (St : Step_T; T : Telegram_T) return Boolean is
       C : constant String := Image (St.Text) & " " & Image (St.Comment);
    begin
-      if T.Parts < 2
-        or else not (Has (C, "cannot be decoded") or else Has (C, "wrong CRC")
-                     or else Has (C, "CRC error"))
+      if not (Has (C, "cannot be decoded") or else Has (C, "wrong CRC")
+              or else Has (C, "CRC error"))
       then
          return False;
+      elsif T.Parts < 2 then
+         return True;
       elsif Has (C, "balise #i") then
          return T.Part = T.Parts;
       elsif Has (C, "second balise") then
@@ -2441,7 +2442,10 @@ package body S076_Run is
                         for J in Data'Range loop
                            Data (J) := T.Data (J);
                         end loop;
-                        if not Undecodable (St, T) then
+                        if Undecodable (St, T) then
+                           --  detected, no telegram decoded
+                           B.Place_Balise (At_Cm, 0, Data);
+                        else
                            B.Place_Balise (At_Cm, T.Bits, Data);
                         end if;
                         if (At_Cm - Far) * Integer_64 (B.Direction) > 0 then
