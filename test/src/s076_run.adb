@@ -5011,6 +5011,28 @@ package body S076_Run is
    --  step at or before it with row 1: 3110500_02 step 70, case 3110500
    --  10 begins in FS at step 67): the step is not taken when the
    --  case's initial mode is another
+   function Initial_Mode_Excludes (I : Positive) return Boolean;
+
+   --  An optional step conditioned on the movement that follows ("only
+   --  if no backward movement occurs after this TC", 4041800_02 step 60)
+   --  when the following steps move backwards: the next step at another
+   --  distance is at a smaller one (steps 62 to 70, 400 -> 330 -> 250 m)
+   function Backward_Follows (I : Positive) return Boolean is
+      C : constant String := Image (Seq.Steps (I).Comment);
+   begin
+      if not Has (C, "Optional step")
+        or else not Has (C, "no backward movement")
+      then
+         return False;
+      end if;
+      for K in I + 1 .. Seq.Step_Count loop
+         if Seq.Steps (K).Dist_Cm /= Seq.Steps (I).Dist_Cm then
+            return Seq.Steps (K).Dist_Cm < Seq.Steps (I).Dist_Cm;
+         end if;
+      end loop;
+      return False;
+   end Backward_Follows;
+
    function Initial_Mode_Excludes (I : Positive) return Boolean is
       C     : constant String := Up (Image (Seq.Steps (I).Comment));
       Tag   : constant String := "ONLY IF INITIAL MODE ";
@@ -6550,7 +6572,13 @@ package body S076_Run is
                   begin
                      Hold_Speed := W (2) = "ODO"
                        and then Same (W (3), "reach-point");
-                     J := Apply_Input (St);
+                     --  an optional input whose condition the following
+                     --  steps contradict is not made: the other
+                     --  alternative, as an optional input that fails
+                     J := (if Backward_Follows (I)
+                           then Fail ("optional input not made: a backward "
+                                      & "movement follows")
+                           else Apply_Input (St));
                      if W (2) = "BTM" then
                         Group_Input_Ms := B.Now_Ms;
                      end if;
@@ -6641,6 +6669,7 @@ package body S076_Run is
                                            "Implementation dependent")
                                  or else Has (Image (St.Comment),
                                               "only if USE_FT")
+                                 or else Backward_Follows (I)
                                  or else Only_In_L2_Elsewhere (St))
                      then
                         Record_Result (I, NJ (R_Optional, Image (J.Sig)));
