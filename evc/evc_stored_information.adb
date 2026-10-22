@@ -1526,9 +1526,18 @@ is
    begin
       for J in Tk.First .. Tk.First + Tk.Count - 1 loop
          pragma Loop_Invariant (True);
-         Group_X := Natural'Max
-           (Group_X,
-            EVC_System_Version.Major (EVC_Position.Taken_Version (J)));
+         --  3.17.2.3: only the telegrams not ignored as per Table 17;
+         --  one of an X the on-board does not read (3.17.3.5 a, d, e:
+         --  outside the envelope) is kept for its group's consistency
+         --  with its header alone (EVC_Position.Receive_Refused) and
+         --  does not count
+         if EVC_System_Version.Major (EVC_Position.Taken_Version (J))
+              in EVC_System_Version.Major_T
+         then
+            Group_X := Natural'Max
+              (Group_X,
+               EVC_System_Version.Major (EVC_Position.Taken_Version (J)));
+         end if;
          for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
             pragma Loop_Invariant (True);
             declare

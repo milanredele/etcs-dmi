@@ -282,6 +282,26 @@ package body EVC_Test_Version is
       EVC_Core.Initialise;
    end Version_Level_Switch;
 
+   --  3.17.2.3, 3.17.3.5 d): a telegram of 4.0, above the envelope, is
+   --  ignored: the X of the group is that of its other telegram
+   procedure Version_Ignored is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Add_Version_Group (1, 50, 16#30#, True, 16#21#);
+      Add_Version_Group (2, 150, 16#30#);
+      Version_Second (Track_N) := 16#40#;
+      Run_X (10_000);
+      Check (SV.Operated = 2, "version: ordered to 2.1 (3.17.2.5)");
+      Run_X (20_000);
+      Check (SV.Operated = 3,
+             "version: a group of a 3.0 and a 4.0 telegram: the 4.0 one "
+             & "ignored (3.17.3.5 d), the group's X is 3 and raises the "
+             & "operated X (3.17.2.3)");
+      EVC_Core.Initialise;
+   end Version_Ignored;
+
    --  3.17.2.3, 3.17.2.5, 3.17.2.7, 3.17.2.8 d): the operated version
    --  in relation to the balise groups, in level 1
    procedure Scenario_Version_Balise_Groups is
@@ -331,6 +351,7 @@ package body EVC_Test_Version is
       Check (SV.Operated = 3,
              "version: out of level 2 the control by the groups applies "
              & "again (3.17.2.8 d)");
+      Version_Ignored;
       Version_Level_Switch;
    end Scenario_Version_Balise_Groups;
 

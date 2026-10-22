@@ -713,7 +713,9 @@ package body EVC_Test_Support is
       OK : Boolean;
       H  : constant Tel.Header_T :=
         (Q_UPDOWN  => 1,
-         M_VERSION => Version (G),
+         M_VERSION =>
+           (if K = 1 and then ETCS_Variables."/=" (Version_Second (G), 0)
+            then Version_Second (G) else Version (G)),
          Q_MEDIA   => 0,
          N_PIG     => ETCS_Variables.N_PIG_T (K),
          N_TOTAL   => ETCS_Variables.N_TOTAL_T (D.Balises - 1),
@@ -896,6 +898,7 @@ package body EVC_Test_Support is
       Extras := (others => (others => <>));
       Country := (others => 123);
       Version := (others => 48);
+      Version_Second := (others => 0);
       TC_Length := 0;
       TC_Frames := 0;
       Plan_Length := 0;
