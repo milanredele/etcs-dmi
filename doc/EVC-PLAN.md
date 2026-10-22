@@ -10450,3 +10450,87 @@ tag ignores the record. Decision: the mode is the condition (the
 clauses name none other). `Scenario_SM_Remote_Shunting` decodes the
 frame (SM same and opposite, out of SM, SH). B015's part closed. No
 golden changed; SUBSET-076 1084 / 1098 / 1008, 0 regressions.
+
+### E5 integration after the forty-fourth round, the twelfth of E6 (2026-10-22)
+
+The round the user opened with the tooling: SUBSET-023 and SUBSET-040
+imported (f3ddd7b), the clause tool over every document.
+
+Merged: e5/spec-tools (B1481: `clause.py --spec <document>` over the
+thirteen folders of doc/SRS, `--specs`, `--page part:page`; B1480:
+`--cites` and `--term`, the index computed on every run in a tenth of
+a second; `evc/prove.sh -u` by unit name; the DMI specification's pages
+from its footers; the tool sentences of AGENTS.md; B1482 for citations
+of another document and ranges; 80 of 130 calls, fast-forwarded),
+e6/consistency-rest (B1441 traced to the runner: the emergency brake of
+3040400_05 is the roll away protection with the direction controller
+the sequence left neutral, "EB r516" a reason code, not a distance,
+S99eb8ae1 model, B1540 for the runner; 3.16.2.3.1.1 a) and b) built,
+`EVC_Position.Supervise_Windows` stamping the crossing of the 1.3 m
+margin, the group missed after 100 ms in the nominal direction and
+after Tn of SUBSET-036 4.2.9 in reverse, Tn from the worst case of a
+cluster of eight at the odometer's maximum speed, B822 closed;
+3.16.2.6.2's remainder a scenario; B1420 narrowed, B1423 left),
+e6/sm-tenth (B1442 a premise wrong: the Start of 4080455_04 step 120 is
+disabled by the DMI's Main window while the SM request of step 109
+awaits its answer, the sequence's composition; the acknowledgement of
+the PT report by any message 6 built apart from the stamped
+recognition, `EVC_Radio_Authority.Trip_Exit_Acknowledged`; B991 built,
+`EVC_Core.Modes.Adjust_For_Manoeuvre` deleting the level and RBC
+transition orders at an opposite authorisation, `EVC_Levels.Delete_Orders`
+and `EVC_Sessions.Delete_RBC_Order`, 3.7.3.4 b) done; 3.18.3.2.4's rear
+length in `EVC_Train_Data.Length`; packet 12 of 131 left) and
+e6/sm-gamma (the Tick post package: the 3.6.4.1.2 clause kept as it
+is, the gamma terms of 3.6.4.1.5 split out of the odometer's part,
+`EVC_Position.Gamma_Over` / `Gamma_Under` and `Interval_Over` /
+`Interval_Under` for the readers, `Set_Gamma` from
+`EVC_Core.Modes.Sync_Train_Length` in SB without valid Train Data with
+the consist and while an SM request waits, one term with the
+manoeuvre's; B1400's own proposal of a fourth condition does not prove;
+a double count of the consist in message 131 found and fixed;
+`Scenario_SM_Gamma`; B031 and B1400 closed; then, in a resumption,
+4.4.21.1.13 with 4.4.8.1.4: a third TIU output, `TIU_RS_Tag` with ready
+and opposite, `EVC_Core.Outputs.Send_Remote_Shunting` in SH and SM,
+`Scenario_SM_Remote_Shunting`, B015's part closed).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended; no source conflict, no triage conflict. The full chain green
+on the first run.
+
+Verification on the merged master: `test/check.sh` ok, the full proof
+0 unproved (12990 checks, margin 47726 steps, 6 checks of 16 VCs or
+more at the limit of 6), cross build and stack (margin 6184 B), wasm
+and both smokes 0 failures. SUBSET-076: 1084 / 1098 / 1008 before and
+after, 0 regressions, 0 improvements (the round built what the
+sequences do not reach: gamma, the TIU output, the time after the
+margin; the two traces ended in the runner and in the sequence).
+Matrix: 119 -> 111 clauses left; E6 done 197 -> 202, partial 27 -> 23,
+todo 1 -> 0, deferred 5.
+
+Measurements (doc/ROUNDS.csv): spec-tools 80 calls (budget 130) /
+116k / 3.2 USD; sm-gamma 130 (160, one resumption inside it: the TIU
+output in 35) / 200k / 9.2; sm-tenth 160 (160, one resumption: the
+rear length in 20) / 193k / 9.4; consistency-rest 118 (130, one
+resumption: 3.16.2.6.2 in 12) / 160k / 6.5; the round 28.3 USD, none
+over budget. Items 14 of 17 done, 0 dropped; premises wrong 5 of 22
+(`--term` misses A.3.4, which says it in other words; the Comments
+section of AGENTS.md names no clause.py; B1400's fourth condition; the
+Start disabled by the recognition; "the emergency brake at 516 m").
+Source-tree reading: 3, 22, 40, 9 grep and 3, 22, 29, 8 `sed -n` runs
+against 0, 16, 25, 22 outline runs (`--spec` 0, 1, 6, 0).
+
+Lessons: the two traces of the round reversed their premise again (a
+reason code read as a distance; a DMI window read as the on-board's
+recognition): a trace brief states the symptom and nothing else. Three
+of the four agents were resumed inside their budgets, three of three
+converted (nine of nine over three rounds); the gamma agent took an
+item of another package in its resumption and finished it, so a
+finished agent with calls left is given the next package's smallest
+item. The Tick post package kept the post: the odometer's part is what
+3.6.4.1.2 protects, a term of the Train Data state is outside it. Open
+items: doc/BACKLOG.csv (68 open after this round; 2 added, 8 closed).
+Next: the consistency pair B1420 and B1423 (the detection's moment, the
+duplicate's orientation); packet 12 of 131 and the "Initiate SM" offered
+before any message 6 (5.11.2.2 S140 after D130, noticed by sm-tenth);
+the Train Data builds (B1460 to B1462); the runner's B1440 and B1540,
+B481's remainder; then the Gamma model, NL.
