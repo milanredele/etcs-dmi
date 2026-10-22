@@ -1404,6 +1404,16 @@ package body S076_Run is
             return Fail ("DMI modify " & Item & ": the Train Data window is "
                          & "not open, top is " & Top_Image);
          end if;
+         if not DMI_Data_Entry.Has_Value (1) then
+            --  4.10.1.3: Train Data is deleted on entering NP, so after a
+            --  power-up the window proposes no value to revalidate (the
+            --  sequences presume one); decision: the driver enters the
+            --  whole set as at the start of mission (Enter_Train_Data),
+            --  the entry ended, the validation window next
+            Enter_Train_Data (St.Dist_Cm);
+            return Pass ("DMI Train Data entered, " & Item & " with it (no "
+                         & "stored value after No Power, 4.10.1.3)");
+         end if;
          declare
             I : constant Positive :=
               (if Same (Item, "Length") then 2
