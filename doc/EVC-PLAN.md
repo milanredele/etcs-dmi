@@ -10565,3 +10565,35 @@ before, 1090 / 1092 / 1008 after, 0 regressions, 10 improvements.
   ten steps lie after where their sequences stop; not judged as before.
 - Left: B1620 (a trace of 4120100_02 step 203), B1621 (the on-board's
   codes 51 to 55), B481 (record 48 with the network ID entry).
+### The consistency pair and two reached sequences: the duplicate's orientation, the detection's moment, Enter RBC data after PS, the unknown position in SR (e6/consistency-pair) (2026-10-22)
+
+- B1423 done: 3.16.2.4.4.1 a) and 3.16.2.5.1.1 a) with their bullets.
+  Decision: the orientation of the group can still be evaluated from its
+  balises read (3.4.2.2), from linking information naming it
+  (3.4.2.3.2.2) or, in level 2, from the RBC's assignment after the
+  position report on two groups (3.4.2.3.3.1: 3040200_01 step 64's
+  packet 1); the train's own orientation gives none (3.4.2.3.1, a
+  single balise has no co-ordinate system; the brief's "3.4.2.3.2.2 to
+  .5" do not exist). Directional information: a standard-header packet
+  of Q_DIR 0 or 1 other than 44 (`EVC_Balise_Groups.Directional`);
+  `Duplicated` and `Consistent` take `Oriented` from
+  `EVC_Position.Evaluate`. `Scenario_Duplicated_Pair` (the bullets),
+  `Scenario_Consistency_Undecoded` (level 1 without linking: the service
+  brake; level 2: taken).
+- B1420 traced, closed with the reading: the reaction does not depend on
+  the moment. BG3d of 3160200_33 is read 127 m after its announced
+  location, both windows of BG1's linking passed: linking is no longer
+  checked and BG3 is not the last announced, so
+  `EVC_Position.React_Inconsistent` commands the service brake of
+  3.16.2.4.4 b) at the detection and by distance alike; by distance it
+  comes at about 262 m, after step 57's window at 255 m (a copy of the
+  sequence run on to 280 m gets it). The passage keeps ending by
+  distance. What step 57 expects is a reading of 3.16.2.4.4.4 (any
+  announced group whose window is no longer supervised, or the last
+  only, as built): B1560, a decision.
+- B1421 narrowed, left at the bound: the DMI validates the level on
+  Table 50 S4, not in its start-up sequence (no edge of MSG_ONBOARD
+  start of mission to Initiated seen after PS), and returns to Main with
+  RBC contact valid; the line says what to check next.
+- B1422 not taken (the bound).
+- SUBSET-076: 1084 / 1098 / 1008 before and after, 0 regressions.

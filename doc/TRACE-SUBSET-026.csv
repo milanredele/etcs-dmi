@@ -892,9 +892,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.4.4 a),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent
 3.16.2.4.4 b),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent (as 3.16.2.4.1 b); Scenario_Consistency_Undecoded
 3.16.2.4.4 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
-3.16.2.4.4.1,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited
-3.16.2.4.4.1 a),3,x,,,,,E6,partial,"EVC_Balise_Groups.Duplicated (the content bullets not told apart: the exception applies to every duplicating telegram read and decoded; withholding it for directional information while the orientation cannot be evaluated, Q_DIR 0 or 1 with a single balise read and no linking, contradicts 3040200_01 step 64, B1423)"
-3.16.2.4.4.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
+3.16.2.4.4.1,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited
+3.16.2.4.4.1 a),3,x,,,,,E6,done,"EVC_Balise_Groups.Duplicated, EVC_Balise_Groups.Directional, EVC_Position.Evaluate (decision: the orientation of the group can still be evaluated from its balises read, from linking information naming it (3.4.2.3.2.2) or in level 2 from the RBC's assignment after the position report on two groups (3.4.2.3.3.1); directional information is a standard-header packet of Q_DIR 0 or 1 other than 44)"
+3.16.2.4.4.1 a) 1st bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Directional; EVC_Position.Evaluate (the orientation evaluable as 3.16.2.4.4.1 a))
 3.16.2.4.4.1 a) 2nd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
 3.16.2.4.4.1 a) 3rd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
 3.16.2.4.4.1 a) 4th bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
@@ -913,13 +913,13 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.5.1 a),3,x,,,,,E6,done,"EVC_Balise_Groups.Consistent; EVC_Balise_Groups.In_Order (decision: a balise read after one numbered beyond it was missed at its place, SUBSET-076 3160200_12)"
 3.16.2.5.1 b),3,x,,,,,E6,done,"EVC_Balise_Groups.Consistent, EVC_Position.Evaluate_Detected (a group of one balise detected and not decoded: unlinked, inconsistent, the reaction of EVC_Position.React_Inconsistent with the identity unknown); Scenario_Consistency_Undecoded"
 3.16.2.5.1 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
-3.16.2.5.1.1,3,x,,,,,E6,partial,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited (as 3.16.2.4.4.1)
-3.16.2.5.1.1 a),3,x,,,,,E6,partial,"EVC_Balise_Groups.Duplicated (the content bullets not told apart: the exception applies to every duplicating telegram read and decoded; withholding it for directional information while the orientation cannot be evaluated, Q_DIR 0 or 1 with a single balise read and no linking, contradicts 3040200_01 step 64, B1423)"
-3.16.2.5.1.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
-3.16.2.5.1.1 a) 2nd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
-3.16.2.5.1.1 a) 3rd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
-3.16.2.5.1.1 a) 4th bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
-3.16.2.5.1.1 a) 5th bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
+3.16.2.5.1.1,3,x,,,,,E6,done,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited (as 3.16.2.4.4.1)
+3.16.2.5.1.1 a),3,x,,,,,E6,done,"EVC_Balise_Groups.Duplicated, EVC_Balise_Groups.Directional, EVC_Position.Evaluate (decision: the orientation of the group can still be evaluated from its balises read, from linking information naming it (3.4.2.3.2.2) or in level 2 from the RBC's assignment after the position report on two groups (3.4.2.3.3.1); directional information is a standard-header packet of Q_DIR 0 or 1 other than 44)"
+3.16.2.5.1.1 a) 1st bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Directional; EVC_Position.Evaluate (the orientation evaluable as 3.16.2.4.4.1 a))
+3.16.2.5.1.1 a) 2nd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Directional (not directional: the exception whatever the orientation)
+3.16.2.5.1.1 a) 3rd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Directional (not directional: the exception whatever the orientation)
+3.16.2.5.1.1 a) 4th bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Directional (not directional: the exception whatever the orientation)
+3.16.2.5.1.1 a) 5th bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Directional (not directional: the exception whatever the orientation)
 3.16.2.5.1.1 b),3,x,,,,,E6,done,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Reaction_Inhibited (packet 145)
 3.16.2.5.2,3,x,,,,,E6,done,EVC_Stored_Information.Linking_Shortening (the service brake of an inconsistent message is a linking reaction; A.3.4.1.2 g) in the column of h) and i))
 3.16.2.5.3,3,x,,,,,E6,done,"EVC_Position.React_Inconsistent (the service brake reaction: EVC_Procedures shows Balise read error); SUBSET-076 3160200_08, _12"

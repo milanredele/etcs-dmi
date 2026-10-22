@@ -30,6 +30,7 @@
 --  at the end of the passage (packets 5, 16, 79).
 
 with EVC_Distances;  use EVC_Distances;
+with ETCS_Catalogue; use type ETCS_Catalogue.Packet_Kind_T;
 with ETCS_Telegram;
 with ETCS_Variables; use ETCS_Variables;
 with Interfaces;     use Interfaces;
@@ -104,24 +105,44 @@ is
    function Complete (P : Passage_T) return Boolean is
      (P.Count > Natural (P.N_TOTAL));
 
-   --  3.16.2.4.2, 3.16.2.4.4.1 a): balise N, missed, is duplicated by a
-   --  neighbour read and decoded (M_DUP, 7.5.1.63: 1 the duplicate of
-   --  the next balise, 2 of the previous one). Decision: the content
-   --  bullets of 3.16.2.4.4.1 a) are not told apart; a duplicate left
-   --  alone has no orientation of its own, which linking may assign
-   --  (3.4.2.3.2.2)
-   function Duplicated (P : Passage_T; N : N_PIG_T) return Boolean is
+   --  3.16.2.4.4.1 a), 3.16.2.5.1.1 a), 1st bullet: the telegram holds
+   --  directional information, a packet with the standard header
+   --  (7.3.3.2) valid in one direction only (Q_DIR 0 or 1, 7.5.1.103);
+   --  packet 44, data for applications outside ERTMS/ETCS, is the 4th
+   --  and 5th bullets' and does not count
+   function Directional (T : ETCS_Telegram.Telegram_T) return Boolean is
+     (for some K in 1 .. T.Count =>
+        T.Index (K).Q_DIR < 2
+        and then T.Index (K).NID /= 44
+        and then (T.Index (K).Kind = ETCS_Catalogue.Unknown
+                  or else ETCS_Catalogue.Has_Length (T.Index (K).Kind)));
+
+   --  3.16.2.4.2, 3.16.2.4.4.1 a), 3.16.2.5.1.1 a): balise N, missed, is
+   --  duplicated by a neighbour read and decoded (M_DUP, 7.5.1.63: 1 the
+   --  duplicate of the next balise, 2 of the previous one) whose content
+   --  lets the message be taken: directional information only while the
+   --  orientation of the group can still be evaluated (Oriented, decided
+   --  by EVC_Position.Evaluate), anything else whatever the orientation
+   --  (the 2nd to 5th bullets)
+   --  @req 3.16.2.4.4.1 a) 1st bullet, 3.16.2.5.1.1 a) 1st bullet
+   function Duplicated
+     (P : Passage_T; N : N_PIG_T; Oriented : Boolean) return Boolean
+   is
      ((N < N_PIG_T'Last
        and then (for some I in 1 .. P.Count =>
                    P.Readings (I).N_PIG = N + 1
                    and then P.Readings (I).Decoded
-                   and then P.Readings (I).M_DUP = 2))
+                   and then P.Readings (I).M_DUP = 2
+                   and then (Oriented
+                             or else not Directional (P.Telegrams (I)))))
       or else
         (N > 0
          and then (for some I in 1 .. P.Count =>
                      P.Readings (I).N_PIG = N - 1
                      and then P.Readings (I).Decoded
-                     and then P.Readings (I).M_DUP = 1)));
+                     and then P.Readings (I).M_DUP = 1
+                     and then (Oriented
+                               or else not Directional (P.Telegrams (I))))));
 
    --  The telegram holds packet 254, "default balise information"
    --  (3.16.2.4.8, 7.4.2.40)
@@ -200,13 +221,15 @@ is
    --  (b, Detect) leaves the place of its number empty as a missed one
    --  (a), with the exception for duplicates of 3.16.2.4.4.1 a); a
    --  telegram the codec refuses is not compliant (3.16.1.1), without
-   --  that exception
+   --  that exception; Oriented: the orientation of the group can still be
+   --  evaluated (Duplicated)
    --  @req 3.16.2.4.1 b), 3.16.2.4.4 b), 3.16.2.5.1 b)
-   function Consistent (P : Passage_T) return Boolean is
+   function Consistent (P : Passage_T; Oriented : Boolean) return Boolean is
      ((for all I in 1 .. P.Count => P.Readings (I).Decoded)
       and then In_Order (P)
       and then (for all K in 0 .. Natural (P.N_TOTAL) =>
-                  Has (P, N_PIG_T (K)) or else Duplicated (P, N_PIG_T (K)))
+                  Has (P, N_PIG_T (K))
+                  or else Duplicated (P, N_PIG_T (K), Oriented))
       and then Counters_Match (P));
 
    --  3.16.2.4.4.1 b), 3.16.2.5.1.1 b): a telegram correctly read in the

@@ -1578,7 +1578,19 @@ is
       Passage.Open := False;
       --  3.16.2.7.1.1: a balise detected
       Missed_Last := False;
-      if not Consistent (Passage) then
+      --  3.16.2.4.4.1 a), 3.16.2.5.1.1 a), 1st bullet. Decision: the
+      --  orientation of the group can still be evaluated from its balises
+      --  read (3.4.2.2), from linking information naming it (3.4.2.3.2.2)
+      --  or, in level 2, from the RBC's assignment after a position report
+      --  on two groups (3.4.2.3.3.1); the train's own orientation gives
+      --  none (3.4.2.3.1: a single balise has no co-ordinate system)
+      if not Consistent
+        (Passage,
+         Oriented => G.Orientation /= Unknown
+                     or else (Links.Stored
+                              and then EVC_Linking.Find (Links, Id, 1) /= 0)
+                     or else Last_Level = L2)
+      then
          React_Inconsistent (Id, G.Orientation);
          return;
       end if;
