@@ -46,6 +46,14 @@ is
       end if;
    end Take_Balise_Group;
 
+   --  3.17.2.8.2
+   procedure Release
+     with Refined_Global => (Proof_In => Current, Output => RBC_Governs)
+   is
+   begin
+      RBC_Governs := False;
+   end Release;
+
    --  3.17.2.8 a), b), d), e)
    procedure Follow (Level_2 : Boolean; Session : Boolean; V : M_VERSION_T)
      with Refined_Global => (In_Out => Current, Output => RBC_Governs)
