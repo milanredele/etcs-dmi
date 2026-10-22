@@ -18,8 +18,9 @@ files (`--page 4:43` chapter 4 of SUBSET-026, `--spec 037 --page 2:12` part
 2 of SUBSET-037); a document in one PDF takes `--page N`. Clauses are the
 lines that start with a number, `A.3.4` or a heading `### **4.2.9 Title**`;
 the front matter, modification history and tables of contents are left out.
-Limits: the DMI specification has no page markers (a clause has no page;
-`--page N` works), and the glossary SUBSET-023 has no numbered clauses, its
+The DMI specification's markdown has no page comments: its page footers
+("PAGE 105 OF 317", the PDF page, all 317 kept) stand for them. Limits:
+the glossary SUBSET-023 has no numbered clauses, its
 terms being table rows `|CAB, ACTIVE|definition|`: `--spec 023 --grep`.
 
 It is also the cross-reference index of a document: `--cites 3.6.4.1.5`

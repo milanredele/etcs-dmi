@@ -10290,3 +10290,32 @@ the terms); the SM tenth (B991's build, 4.4.21.1.13 with 4.4.8.1.4,
 rest (3.16.2.3.1.1 a) and b), B1423, 3.16.2.6.2, B1420, B1441); the
 Train Data builds (B1460 to B1462); the runner's B1440 and B481's
 remainder; then the Gamma model, NL.
+
+### The specification tools: every imported document, the cross-reference index, prove.sh by unit name (e5/spec-tools) (2026-10-22)
+
+`doc/SRS/tools/clause.py` reads every folder of doc/SRS with `sections/`
+(B1481): `--spec 036 4.2.9` (a number or a folder: `036`, `SUBSET-036`,
+`015560`; SUBSET-026 the default, `--dmi` kept), `--specs` lists the
+documents, their PDFs and clause lines; `--grep` and `--page` work in each,
+`--page part:page` for a document in several PDFs (`4:43` chapter 4 of
+SUBSET-026, `--spec 037 --page 2:12` part 2 of SUBSET-037), `--page N` for
+one PDF. Appendix clauses (`A.3.4`) are found now; the front matter,
+modification history and tables of contents are left out; the DMI
+specification gets its pages from its footers ("PAGE 105 OF 317"). Every
+numbered entry of the thirteen README indexes is found by the lookup.
+SUBSET-023's terms are table rows: `--spec 023 --grep "cab, active"`.
+
+The cross-reference index (B1480), computed on every run (0.1 s, no
+cache): `--cites 3.6.4.1.5` lists every clause whose text names the number
+(4 clauses: 3.6.4.2.5, 3.13.9.4.8.2, 4.4.21.1.7 and the classification
+table 9.4.3, the 8 lines of a grep less the clause's own), `--cites "Table
+17"` or `--cites "Figure 13a"` a table or a figure, `--term "active cab"`
+the clauses using the words, after SUBSET-023's row ("CAB, ACTIVE") when
+the glossary defines the term; one line per clause with file, page and the
+words around; with `--spec` in any document. Left (B1482): a citation of
+another document by name is not attributed to it, a range names only its
+ends.
+
+`evc/prove.sh -u` takes a unit by its name as well as a file:
+`-u EVC_Core.Modes`, `-u evc_core-modes` and `-u evc_core-modes.adb` prove
+the same file. AGENTS.md and doc/SRS/README.md name the new switches.

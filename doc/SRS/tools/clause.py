@@ -57,9 +57,11 @@ reliable on the PDF page: read it with --page when a table matters (and
 mind that a cell's X is placed by character column under its header in
 layout mode).
 
-Limits: the DMI specification has no page markers (no page with a clause;
---page N works). The glossary SUBSET-023 has no numbered clauses: its terms
-are table rows |TERM|definition|, some inverted ("CAB, ACTIVE"): use
+The DMI specification's markdown has no page comments: its page footers
+("PAGE 105 OF 317", the PDF page, all 317 kept) stand for them.
+
+Limits: the glossary SUBSET-023 has no numbered clauses: its terms are
+table rows |TERM|definition|, some inverted ("CAB, ACTIVE"): use
 --spec 023 --grep "cab, active". --cites and --term search the document
 selected (SUBSET-026 unless --spec): a clause of another document cited
 by name ("Subset-036 clause 4.2.9") is found as 4.2.9, like SUBSET-026's
@@ -77,7 +79,9 @@ SRS = os.path.dirname(HERE)
 DEFAULT = 'SUBSET-026_v400'
 DMI = 'ERA_ERTMS_015560_v400'
 CLAUSE = re.compile(r'^\s*(?:#+\s+)?(?:[-*]\s+)?(?:\*\*)?((?:[A-Z]|\d+)(?:\.\d+)+)(?:\*\*)?(?=[\s.:,)]|$)')
-PAGE = re.compile(r'<!-- end of page (\d+) -->')
+# the end of a PDF page: the import's comment, or the DMI specification's
+# footer (its markdown has no comments; the footer's number is the PDF page)
+PAGE = re.compile(r'(?:<!-- end of page (?=\d+ -->)|\bPAGE (?=\d+ OF \d))(\d+)')
 LEFT_OUT = ('toc', 'table_of_contents', 'list_of_tables', 'table_of_figures',
             'list_of_figures', 'modification_history', 'front')
 
