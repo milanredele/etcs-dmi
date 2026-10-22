@@ -8,7 +8,19 @@ chapter: `clause.py 3.6.5.1.4` prints the clause and its subclauses from
 the PDF page(s) rendered by `pdftotext -layout` (poppler), where a table
 keeps its columns, which the markdown loses; `--page 4:43` renders one
 page; `--grep REGEX` lists the matching lines with their clause and page;
-`--dmi` does the same in the DMI specification (ERA_ERTMS_015560).
+`--spec 036` (a number or a folder name: `036`, `SUBSET-036`, `015560`)
+does the same in any document imported under doc/SRS, SUBSET-026 being the
+default and `--dmi` the DMI specification (ERA_ERTMS_015560); `--specs`
+lists the documents it finds (every folder with `sections/`), their PDFs
+and clause lines. A document in several PDFs takes `--page part:page`, the
+part being the number of the PDF's name and the first field of its section
+files (`--page 4:43` chapter 4 of SUBSET-026, `--spec 037 --page 2:12` part
+2 of SUBSET-037); a document in one PDF takes `--page N`. Clauses are the
+lines that start with a number, `A.3.4` or a heading `### **4.2.9 Title**`;
+the front matter, modification history and tables of contents are left out.
+Limits: the DMI specification has no page markers (a clause has no page;
+`--page N` works), and the glossary SUBSET-023 has no numbered clauses, its
+terms being table rows `|CAB, ACTIVE|definition|`: `--spec 023 --grep`.
 
 ## import_subset026.py
 
