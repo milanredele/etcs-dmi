@@ -10597,3 +10597,43 @@ before, 1090 / 1092 / 1008 after, 0 regressions, 10 improvements.
   RBC contact valid; the line says what to check next.
 - B1422 not taken (the bound).
 - SUBSET-076: 1084 / 1098 / 1008 before and after, 0 regressions.
+### Supervised Manoeuvre, the Entering SM indication, Initiate SM after the acknowledgement, packet 12 of the request (e6/sm-eleventh) (2026-10-22)
+
+The eleventh Supervised Manoeuvre package; two of its three items, in
+one commit (they share `EVC_DMI_Port` and `EVC_Core.Outputs`).
+
+4.4.21.1.5 and 4.4.21.1.6 done: `EVC_Core.Outputs.Show_Mode_Indications`
+sends `EVC_DMI_Port.SS_Entering_SM` (the DMI's entry 8, which the DMI
+had already) in SM while `EVC_Stored_Information.Train_Covered` is false;
+in SM the train length is the sum of the max safe consist lengths
+(3.18.3.2.4), so the stretch from the min safe rear end to the estimated
+front end is the consist's (decision). 4.4.21.1.5 asks nothing more at
+the entry: the authorisation's SSP and gradient start at its LRBG, in
+front of the front end. `Scenario_SM_Entering`. Rows 4.4.21.1.4 (the
+default Train Data, built by 3.18.3.9), .5, .6, .7 b) (its two bullets
+done) and .10 ('Continue in SM' at standstill) done.
+
+5.11.2.2 S120, D130, S130 for the DMI: `EVC_Core.Outputs.Send_Onboard`
+sets MSG_ONBOARD rbc bit1 (`RBC_Pending_Stop`, "a pending emergency stop
+is stored on-board", never sent before) while a stop is pending and, in
+PT in level 2, until a message 6 acknowledged the PT report (decision:
+the DMI's conditions of Start, Initiate SM and Shunting in PT have no
+term of their own for that wait). `Scenario_SM_Post_Trip` extended.
+
+Packet 12 of 131: a premise wrong, it is sent outside SM since the
+request was built (`EVC_Sessions.Manoeuvre.Encode_Default`); in a
+resumption `Scenario_SM_Request` decodes it (`Request_P12_Speed`), the
+row of 5.21.2.2 A045 names the check; 4080455_04 step 109 is not
+reached now (B1580). B902 closed by its re-read: the shift (B1160), the
+deletion of 3.7.3.4 b) (B991) and A095's position report, checked in
+`Scenario_SM_Authorisation`, are all built. Left for the next package:
+S8ba44975 (B1080 is done already: re-run 3110800_02 first), S38d2e6ef
+(the record 51 after the request), B1580 for the runner.
+
+SUBSET-076: 1084 / 1098 / 1008 -> 1087 / 1095 / 1008; 4100103_06 passes
+in three versions; 4070201_04 78 -> 79 (S31ede2f5, s076: the sequence
+expects record 23 Bit04, Entering FS in SUBSET-027 4.2.4.23; Entering SM
+is Bit 30); 4080455_04 120 -> 107 understood (Seddd5965, model: the
+runner stamps the message 6 of step 105 below the trip, older than the
+RBC's message 24 of step 82, and the on-board rejects it, M_ERROR 4;
+B1580). Baseline re-recorded.

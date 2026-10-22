@@ -732,6 +732,7 @@ package body EVC_Test_Procedures is
                = EVC_DMI_Port.SS_Balise_Read_Error_Trip
              and then SS_Entering_FS = EVC_DMI_Port.SS_Entering_FS
              and then SS_Entering_OS = EVC_DMI_Port.SS_Entering_OS
+             and then SS_Entering_SM = EVC_DMI_Port.SS_Entering_SM
              and then SS_Trackside_Not_Compatible_Trip
                         = EVC_DMI_Port.SS_Trackside_Not_Compatible_Trip
              and then SS_Train_Data_Changed
