@@ -122,7 +122,8 @@ is
          Axle_Load       => F.SM_Axle_Load,
          Loading_Gauge   => F.SM_Loading_Gauge,
          Voltages        => F.Voltages,
-         Airtight        => F.SM_Airtight);
+         Airtight        => F.SM_Airtight,
+         N_Axle          => F.N_Axle);
       SM_Set := True;
       Is_Valid := False;
    end Start_Manoeuvre_Set;

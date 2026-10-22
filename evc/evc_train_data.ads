@@ -42,6 +42,9 @@ is
       Voltages        : Natural range 0 .. 2**16 - 1 := 2;  -- bit 1: AC 25
       --  the train is fitted with an airtight system (3.18.3.2 h)
       Airtight        : M_AIRTIGHT_T := 0;
+      --  the number of axles (3.18.3.2 k), not a category: carried with
+      --  them as the traction systems are, from the installation data
+      N_Axle          : N_AXLE_T := 4;
    end record;
 
    Default_Categories : constant Categories_T := (others => <>);
@@ -117,6 +120,27 @@ is
    --  available but the safe consist length is (the max safe consist
    --  lengths in front of and in rear of the engine), cm
    function Consist_Length return EVC_Distances.Length_T
+     with Global => State;
+
+   --  3.6.1.7: the length subtracted from the min safe front end when no
+   --  valid Train Data is available but the safe consist length is: the
+   --  min safe consist length in front of the engine and the max in rear
+   --  of it when the train orientation is the active cab's (Same), the
+   --  min in rear and the max in front when opposite, cm
+   --  @req 3.6.1.7 1st bullet, 3.6.1.7 2nd bullet
+   function Consist_Train_Length (Same : Boolean)
+     return EVC_Distances.Length_T is
+     (EVC_Distances.Length_T
+        (100 * (if Same then Consist.Front_Min + Consist.Rear_Max
+                else Consist.Rear_Min + Consist.Front_Max)))
+     with Global => State;
+
+   --  3.18.3.8: the max safe consist length opposite to the train
+   --  orientation, in rear of the engine when the orientation is the
+   --  active cab's (Same), in front of it when opposite, cm
+   function Consist_Behind (Same : Boolean) return EVC_Distances.Length_T is
+     (EVC_Distances.Length_T
+        (100 * (if Same then Consist.Rear_Max else Consist.Front_Max)))
      with Global => State;
 
    --  A safe consist length input (EVC_Ports TIU signal 15): available

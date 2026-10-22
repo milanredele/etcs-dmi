@@ -54,7 +54,7 @@ package body EVC_Stored_Information
                                    Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
-                                   Former_Length,
+                                   Former_Length, Former_Behind,
                                    Balise_Buffer.State))
 is
 
@@ -127,6 +127,9 @@ is
    --  3.18.3.8: the train length of the last Evaluate with the length
    --  known (0: none yet)
    Former_Length : Length_T := 0;
+   --  and the max safe consist length behind of the last Evaluate without
+   --  valid Train Data with the safe consist length (0: none)
+   Former_Behind : Length_T := 0;
    --  the service brake of T_NVCONTACT (EVC_Sessions.Service_Brake) seen
    --  commanded in an earlier Evaluate, the train not yet at standstill
    Contact_Braking : Boolean := False;
@@ -261,6 +264,7 @@ is
       Radio_SH_Ids := (others => (others => <>));
       Timer_Deletion := False;
       Former_Length := 0;
+      Former_Behind := 0;
       Contact_Braking := False;
       Linking_Braking := False;
       Consist_Braking := False;
@@ -315,6 +319,12 @@ is
       S      : constant Sense_T := EVC_Position.Orientation;
       Front  : constant Dist_T := EVC_Position.Front_X;
       Length : constant Length_T := EVC_Train_Data.Data.Length;
+      --  the train orientation is the active cab's (3.6.1.7)
+      Same   : constant Boolean :=
+        (case EVC_Position.Active_Cab is
+            when EVC_Position.Cab_A  => S = Plus,
+            when EVC_Position.Cab_B  => S = Minus,
+            when EVC_Position.No_Cab => True);
       R      : Train_Frame_T;
    begin
       R.Valid := EVC_Position.Status = EVC_Position.Valid and then Solr.Valid;
@@ -336,6 +346,18 @@ is
       if R.Valid then
          R.Ref_X := Solr.X;
          R.Ref_Locacc := Solr.Locacc;
+      end if;
+      R.Consist_Rear := R.Min_Rear;
+      --  3.18.3.8: no valid Train Data (nor the default ones of Supervised
+      --  Manoeuvre, whose length is the safe consist's) but the safe
+      --  consist length
+      if not EVC_Train_Data.Valid and then not EVC_Train_Data.Manoeuvre_Set
+        and then EVC_Train_Data.Consist_Available
+      then
+         R.Behind := EVC_Train_Data.Consist_Behind (Same);
+         R.Consist_Rear :=
+           Advance (R.Min_Front, Opposite (S),
+                    EVC_Train_Data.Consist_Train_Length (Same));
       end if;
       return R;
    end Train_Frame;
@@ -3063,12 +3085,19 @@ is
    --  unknown. Decision: what ends behind it is deleted, the profiles
    --  (EVC_Track_Description) and the track conditions alike, as A.3.1
    --  deletes behind the train without its 300 m (the Rear given to
-   --  Delete_Behind is shifted ahead by Keep_In_Rear for that); without
-   --  valid Train Data the length is unknown (no safe consist length).
-   --  Then A.3.1: what ends more than 300 m behind the train deleted
+   --  Delete_Behind is shifted ahead by Keep_In_Rear for that). Without
+   --  valid Train Data with the safe consist length, the same for its max
+   --  length opposite to the orientation (Behind of the frame). Decision:
+   --  two former lengths, each compared with the last of its own source
+   --  (a change of source is no increase: the Train Data's validation or
+   --  the consist's arrival is a new length, not a longer one), the
+   --  consist's kept while it is unavailable as its values are
+   --  (3.18.3.2.5). Then A.3.1: what ends more than 300 m behind the
+   --  train deleted
    --  @req 3.18.3.8
    procedure Delete_Behind_Former (T : Origin_Table_T; Train : Train_Frame_T)
-     with Global => (In_Out => (Former_Length, EVC_Track_Description.State,
+     with Global => (In_Out => (Former_Length, Former_Behind,
+                                EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State))
    is
@@ -3087,6 +3116,22 @@ is
             end;
          end if;
          Former_Length := Train.Length;
+      end if;
+      --  3.18.3.8 second case: the max safe consist length opposite to
+      --  the orientation increased, from the min safe rear end of 3.6.1.7
+      if Train.Valid and then Train.Behind > 0 then
+         if Former_Behind > 0 and then Train.Behind > Former_Behind then
+            declare
+               Rear : constant Dist_T :=
+                 A (Train.Sense,
+                    Sum (A (Train.Sense, Train.Consist_Rear),
+                         Clamp (Train.Behind - Former_Behind + Keep)));
+            begin
+               EVC_Track_Description.Delete_Behind (T, Rear);
+               EVC_Track_Conditions.Delete_Behind (T, Rear, Keep);
+            end;
+         end if;
+         Former_Behind := Train.Behind;
       end if;
       if Train.Valid then
          EVC_Track_Description.Delete_Behind (T, Train.Min_Rear);

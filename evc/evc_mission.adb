@@ -280,7 +280,8 @@ is
             else M_LOADINGGAUGE_T (E.Loading_Gauge)),
          Voltages        => F.Voltages,
          Airtight        =>
-           (if E.Airtight = 1 then 1 else Def.Airtight));
+           (if E.Airtight = 1 then 1 else Def.Airtight),
+         N_Axle          => F.N_Axle);
    end Train_Data_Of;
 
    --  4.4.15.1.1.3: the non-leading input lost in NL; 4.4.20.1.5:

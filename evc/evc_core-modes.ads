@@ -246,10 +246,16 @@ is
    --  per cycle, after everything that sets or invalidates the Train Data
    --  (the driver's entry in EVC_Mission, a mode entered)
    --  (and 3.18.3.2.5.1: with the default Train Data of Supervised
-   --  Manoeuvre, the length of the safe consist, EVC_Train_Data.Length);
-   --  the gamma terms of the confidence interval (3.6.4.1.5), which
-   --  leave the odometer's part, Doubt_Over and Doubt_Under, unchanged
+   --  Manoeuvre, the length of the safe consist, EVC_Train_Data.Length;
+   --  and 4.4.7.1.6 b): in SB without valid Train Data with the safe
+   --  consist length, the length of 3.6.1.7 by the orientation, decision:
+   --  from the engine's front end, which 3.6.1.3.4's consist in front
+   --  does not move yet, the rear end on the safe side by the nominal
+   --  length in front); the gamma terms of the confidence interval
+   --  (3.6.4.1.5), which leave the odometer's part, Doubt_Over and
+   --  Doubt_Under, unchanged
    --  @req 4.4.6.1.4, 4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4
+   --  @req 4.4.7.1.6 b), 3.6.1.7 1st bullet, 3.6.1.7 2nd bullet
    --  @req 3.18.3.2.5.1, 3.6.4.1.5 last sentence
    procedure Sync_Train_Length
      with Global => (Input    => (EVC_Train_Data.State, Current_Mode,

@@ -973,6 +973,17 @@ package body EVC_Test_Manoeuvre is
              & "consist length, the interval wider by the consist in front "
              & "of the engine, the orientation the active cab's, 1 m and "
              & "2 m (3.6.4.1.5 last sentence):" & Terms);
+      --  4.4.7.1.6 b), 3.6.1.7: in SB the rear end by the consist, the
+      --  min length in front and the max in rear of the engine
+      Check (EVC_Core.Mode = M_SB
+             and then EVC_Position.Train_Length_Known
+             and then Natural (EVC_Position.Length_Of_Train) = 45_100
+             and then EVC_Position.Min_Safe_Rear
+                      = EVC_Position.Min_Safe_Front - 45_100,
+             "SM gamma: in SB without valid Train Data the min safe rear end "
+             & "by the consist's min in front and max in rear (4.4.7.1.6 b), "
+             & "3.6.1.7):"
+             & EVC_Distances.Length_T'Image (EVC_Position.Length_Of_Train));
       EVC_Train_Data.Set (D, Cat);
       Stand_X (300);
       Check (EVC_Train_Data.Valid and then Widened (0, 0),

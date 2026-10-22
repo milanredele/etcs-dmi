@@ -372,16 +372,32 @@ is
    end Enter_Mode;
 
    procedure Sync_Train_Length is
+      --  4.4.7.1.6 b), 3.6.1.7: Stand-By without valid Train Data with the
+      --  safe consist length, the train's rear end by the consist
+      Consist_SB : constant Boolean :=
+        Current_Mode = M_SB and then not EVC_Train_Data.Valid
+        and then not EVC_Train_Data.Manoeuvre_Set
+        and then EVC_Train_Data.Consist_Available;
+      --  the train orientation is the active cab's (3.6.1.7)
+      Same : constant Boolean :=
+        (case EVC_Position.Active_Cab is
+            when EVC_Position.Cab_A  =>
+               EVC_Position.Orientation = EVC_Distances.Plus,
+            when EVC_Position.Cab_B  =>
+               EVC_Position.Orientation = EVC_Distances.Minus,
+            when EVC_Position.No_Cab => True);
       --  the front and rear end of the engine are the train's
       Engine : constant Boolean :=
         Current_Mode in M_SL | M_SH | M_NL | M_PS
         or else (Current_Mode = M_SB and then not EVC_Train_Data.Valid
-                 and then not EVC_Train_Data.Manoeuvre_Set);
+                 and then not EVC_Train_Data.Manoeuvre_Set
+                 and then not Consist_SB);
       Length : constant EVC_Distances.Length_T :=
         (if Engine then EVC_Config.Current.Train.Engine_Length
+         elsif Consist_SB then EVC_Train_Data.Consist_Train_Length (Same)
          else EVC_Train_Data.Length);
    begin
-      if Engine or else EVC_Train_Data.Valid
+      if Engine or else Consist_SB or else EVC_Train_Data.Valid
         or else EVC_Train_Data.Manoeuvre_Set
       then
          if not EVC_Position.Train_Length_Known

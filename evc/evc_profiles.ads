@@ -114,6 +114,13 @@ is
       --  (3.6.4.1.3), for the trip location of 3.13.9.4.8.2
       Ref_X      : Dist_T := 0;
       Ref_Locacc : Length_T := 0;
+      --  no valid Train Data but the safe consist length (3.18.3.8): the
+      --  max safe consist length in rear of the train's front end along
+      --  the orientation (in rear of the engine when the orientation is
+      --  the active cab's, in front of it when opposite), and the min
+      --  safe rear end of 3.6.1.7; else 0 and Min_Rear
+      Behind       : Length_T := 0;
+      Consist_Rear : Dist_T := 0;
    end record;
 
    --  A group message being evaluated: the origin of its distances (0:

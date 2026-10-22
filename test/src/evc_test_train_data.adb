@@ -159,6 +159,63 @@ package body EVC_Test_Train_Data is
              & "(3.18.3.7 b)");
    end Scenario_Transition_Deleted;
 
+   --  The TIU frame of an available safe consist length (EVC_Ports signal
+   --  15): the lengths in front of the engine (nominal, min, max), then
+   --  in rear of it, metres
+   function Consist_Frame (F_Nom, F_Min, F_Max, R_Nom, R_Min, R_Max : Natural)
+     return Byte_Array
+   is
+      L     : constant array (0 .. 5) of Natural :=
+        (F_Nom, F_Min, F_Max, R_Nom, R_Min, R_Max);
+      Frame : Byte_Array (1 .. TIU_SCL_Length) := (others => 0);
+   begin
+      Frame (1) := 15;
+      Frame (2) := 1;
+      for K in L'Range loop
+         Frame (3 + 2 * K) := Byte (L (K) mod 256);
+         Frame (4 + 2 * K) := Byte (L (K) / 256);
+      end loop;
+      return Frame;
+   end Consist_Frame;
+
+   --  3.18.3.8 second case: no valid Train Data (a length in front of the
+   --  engine, 3.18.3.5 a), the safe consist length in rear of the engine
+   --  increased (the orientation the active cab's)
+   procedure Longer_Consist is
+      G0 : Natural;
+   begin
+      EVC_Test_Modes.Start_E4;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      Send (Train_Entry (200));
+      Send (Text_Entry (1, "5678"));
+      Send (Action (5));
+      Send (Ack_Of (1));
+      Add_Group (Group (10, 50));
+      Carry (Track_N, 0, SSP ((1 => (0, 100, True))));
+      Carry (Track_N, 0, Grad (((0, 0), (100, 5), (1_000, 0))));
+      Carry (Track_N, 1, MA_Of ((1 => 1_000)));
+      Speed_Cms := 500;
+      while Train_Cm < 40_000 loop
+         Step_X (500);
+      end loop;
+      Speed_Cms := 0;
+      Stand_X (2_000);
+      EVC_Core.Handle_Input (TIU, Consist_Frame (10, 9, 11, 100, 98, 102));
+      Stand_X (300);
+      G0 := EVC_Track_Description.Gradients_Count;
+      Check (not EVC_Train_Data.Valid and then G0 = 3,
+             "safe consist length: no valid Train Data, the gradients kept, "
+             & "got" & Img (G0));
+      EVC_Core.Handle_Input (TIU, Consist_Frame (10, 9, 11, 300, 298, 302));
+      Stand_X (300);
+      Check (EVC_Track_Description.Gradients_Count = G0 - 1,
+             "safe consist length: 200 m longer in rear of the engine "
+             & "without valid Train Data: the gradient section ending "
+             & "in rear of the former min safe rear end deleted (3.18.3.8), "
+             & "got" & Img (EVC_Track_Description.Gradients_Count));
+   end Longer_Consist;
+
    procedure Scenario_Longer_Train is
       G0 : Natural;
    begin
@@ -192,6 +249,7 @@ package body EVC_Test_Train_Data is
              & "ending 50 m in rear of the former min safe rear end "
              & "deleted (3.18.3.8), got"
              & Img (EVC_Track_Description.Gradients_Count));
+      Longer_Consist;
    end Scenario_Longer_Train;
 
    --  The NID_OPERATIONAL of packet 5 in the first message 136 of the
