@@ -165,6 +165,9 @@ is
    --  exists; Waiting 2, an answer from the RBC (5.4.3.2 A31)
    Data_RBC_Valid        : constant Bits_T := 16;
    RBC_Train_Data_Acked  : constant Bits_T := 1;
+   --  RBC bit1: a pending emergency stop is stored on-board (DMI Table
+   --  33 #6 and #11 in PT)
+   RBC_Pending_Stop      : constant Bits_T := 2;
    --  RBC bit3: the distance between the current min safe rear end and
    --  the current estimated front end does not exceed the range of the
    --  confirmed train length information (SUBSET-026 3.6.5.2, L_TRAININT)
@@ -407,6 +410,8 @@ is
    SS_Communication_Error_Trip      : constant := 5;   -- [41]
    SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4
    SS_Entering_OS                   : constant := 7;   -- 4.4.12.1.7
+   --  @req 4.4.21.1.6
+   SS_Entering_SM                   : constant := 8;   -- 4.4.21.1.6
    SS_Runaway_Movement              : constant := 9;   -- 3.14.2.4, 3.14.3.2
    --  @req 5.21.2.2 A220
    SS_SM_Refused                    : constant := 10;  -- 5.21.2.2 A220

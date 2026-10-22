@@ -329,6 +329,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Request;
    EVC_Test_Manoeuvre.Scenario_SM_Authorisation;
    EVC_Test_Manoeuvre.Scenario_SM_Default_Data;
+   EVC_Test_Manoeuvre.Scenario_SM_Entering;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Info;
    EVC_Test_Manoeuvre.Scenario_SM_Handover;
    EVC_Test_Manoeuvre.Scenario_SM_Direction;

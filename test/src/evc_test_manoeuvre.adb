@@ -537,6 +537,46 @@ package body EVC_Test_Manoeuvre is
              & "force, the Train Data still not valid (3.18.3.9)");
    end Scenario_SM_Default_Data;
 
+   --  4.4.21.1.5: SM entered with the SSP and gradient of the
+   --  authorisation from its LRBG at 100 m, the front end at 150 m, the
+   --  consist 102 m in rear of the engine; 4.4.21.1.6: "Entering SM"
+   --  shown while they do not reach the consist's rear end, withdrawn
+   --  once its rear end passed the LRBG
+   procedure Scenario_SM_Entering is
+      Entering : constant Natural := Natural (EVC_DMI_Port.SS_Entering_SM);
+      T        : Unsigned_64;
+      Shown    : Natural;
+      Ended    : Natural;
+   begin
+      Start_L2_SM;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 100, 98, 102));
+      Stand_X (300);
+      Shown := SS_Seen (Entering);
+      Ended := SS_Ended (Entering);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Check (SS_Seen (Entering) = Shown,
+             "SM entering: not shown before the authorisation");
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM
+             and then SS_Seen (Entering) = Shown + 1
+             and then SS_Ended (Entering) = Ended,
+             "SM entering: in SM with the consist's rear end behind the "
+             & "SSP and gradient's start, 'Entering SM' shown (4.4.21.1.5, "
+             & "4.4.21.1.6); mode " & Mode_T'Image (EVC_Core.Mode));
+      Speed_Cms := 500;
+      Run_X (26_000);
+      Stand_X (300);
+      Speed_Cms := 1000;
+      Check (EVC_Core.Mode = M_SM
+             and then SS_Ended (Entering) = Ended + 1
+             and then SS_Seen (Entering) = Shown + 1,
+             "SM entering: the rear end past the LRBG, the SSP and gradient "
+             & "known for the whole consist, the indication withdrawn "
+             & "(4.4.21.1.6); mode " & Mode_T'Image (EVC_Core.Mode));
+   end Scenario_SM_Entering;
+
    --  Message 7 acknowledging the message 133 of time stamp Sent
    function Consist_Ack (Sent : Unsigned_64) return Byte_Array is
       V : ETCS_Message.Value_Array := (others => 0);
@@ -800,6 +840,11 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Core.Mode = M_PT,
              "SM post trip: the trip acknowledged, PT, got "
              & EVC_Core.Mode'Image);
+      --  5.11.2.2 S120: before any message 6 the choices of S140 are not
+      --  offered (MSG_ONBOARD rbc bit1, the DMI's "pending emergency stop")
+      Check (Onboard_Field (3) / 2 mod 2 = 1,
+             "SM post trip: before the acknowledgement of the PT report, "
+             & "Initiate SM not offered (5.11.2.2 S120)");
       --  consistent (3.16.3.3.3: above message 16) but before the trip
       Give_Radio_Message (1, M6 (Before + 1));
       Stand_X (200);
@@ -824,6 +869,10 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Radio_Authority.Trip_Exit_Acknowledged,
              "SM post trip: message 6 stamped before the trip acknowledges "
              & "the PT report (5.11.2.2 S120)");
+      Check (EVC_Radio_Authority.Emergency_Stops = 1
+             and then Onboard_Field (3) / 2 mod 2 = 1,
+             "SM post trip: acknowledged, the emergency stop pending, "
+             & "Initiate SM still not offered (5.11.2.2 D130, S130)");
       Give_Radio_Message (1, M6 (Now_Stamp));
       Stand_X (200);
       Check (EVC_Radio.Trip_Exit_Recognised
@@ -837,6 +886,23 @@ package body EVC_Test_Manoeuvre is
                       > Shown,
              "SM post trip: message 6 more recent than the trip, SM "
              & "refused taken and shown (4.8.4 [1])");
+      --  the stop revoked (message 18, E135): S140, Initiate SM offered
+      declare
+         V : ETCS_Message.Value_Array := (others => 0);
+      begin
+         V (3) := Now_Stamp;
+         V (5) := 123;
+         V (6) := 10;
+         V (7) := 3;
+         Give_Radio_Message (1, Message_Of (MCat.Track_M18, V));
+      end;
+      Stand_X (200);
+      Check (EVC_Core.Mode = M_PT
+             and then EVC_Radio_Authority.Emergency_Stops = 0
+             and then Onboard_Field (3) / 2 mod 2 = 0,
+             "SM post trip: the stop revoked, Initiate SM offered "
+             & "(5.11.2.2 E135, S140 c)); rbc"
+             & Natural'Image (Onboard_Field (3)));
    end Scenario_SM_Post_Trip;
 
    procedure Scenario_SM_Gamma is

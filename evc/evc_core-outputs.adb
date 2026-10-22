@@ -59,7 +59,13 @@ is
       --  4.4.9.1.4: in FS, "Entering FS" until SSP and gradient are known
       --  for the whole length of the train (the DMI's catalogue entry 6);
       --  4.4.12.1.7: in OS, "Entering OS" (entry 7) the same (a mode
-      --  change ends either on the DMI as well)
+      --  change ends either on the DMI as well); 4.4.21.1.6: in SM,
+      --  "Entering SM" (entry 8) until they are known for the whole length
+      --  of the consist (decision: the train's length in SM is the sum of
+      --  the max safe consist lengths, 3.18.3.2.4, so the stretch from the
+      --  min safe rear end to the estimated front end is the consist's;
+      --  4.4.21.1.5 asks nothing more at the entry: the SSP and gradient
+      --  of the authorisation start at its LRBG, in front of the front end)
       declare
          Not_Covered : constant Boolean :=
            EVC_Stored_Information.MA_On_Board
@@ -68,6 +74,8 @@ is
            (if Not_Covered and then Current_Mode = M_FS then SS_Entering_FS
             elsif Not_Covered and then Current_Mode = M_OS
             then SS_Entering_OS
+            elsif Not_Covered and then Current_Mode = M_SM
+            then SS_Entering_SM
             else 0);
       begin
          if Entering /= Entering_Shown then
@@ -457,6 +465,19 @@ is
          Session  => Session_Byte,
          RBC      => (if EVC_Radio.Train_Data_Acknowledged
                       then RBC_Train_Data_Acked else 0)
+                     --  5.11.2.2 D130, S130: the pending emergency stops;
+                     --  S120: in PT in level 2, the choices of S140 wait
+                     --  for the RBC's acknowledgement of the PT report too
+                     --  (decision: the DMI's conditions of Start, Initiate
+                     --  SM and Shunting in PT have no term of their own for
+                     --  that wait, so it is reported as the pending stop
+                     --  that keeps them disabled likewise)
+                     or (if EVC_Radio_Authority.Emergency_Stops > 0
+                           or else (Current_Mode = M_PT
+                                    and then EVC_Levels.Level = L2
+                                    and then not EVC_Radio_Authority
+                                                 .Trip_Exit_Acknowledged)
+                         then RBC_Pending_Stop else 0)
                      --  3.6.5.2.5 Table 2c [3], DMI 11.2.3.5 #3: the train
                      --  length and the under-reading amount within
                      --  L_TRAININT's 32767 m (7.5.1.57)
