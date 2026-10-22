@@ -254,6 +254,13 @@ is
    function Trip_Exit_Recognised return Boolean
      with Global => State;
 
+   --  5.11.2.2 A115, S120, E125: the RBC acknowledged the PT report by a
+   --  message 6 received in PT, whatever its time stamp (the "Start" of
+   --  S140 b))
+   --  @req 5.11.2.2 S120
+   function Trip_Exit_Acknowledged return Boolean
+     with Global => State;
+
    --  5.6 in level 2: the request for shunting (message 130) waits for
    --  the answer of the RBC (MSG_ONBOARD waiting 4, dmi_protocol.ads),
    --  and the answer (1 authorised, 0 refused or no reply)

@@ -771,6 +771,11 @@ package body EVC_Test_Manoeuvre is
              and then not EVC_Radio_Authority.Trip_Exit_Recognised,
              "SM post trip: message 6 stamped before the trip, no exit "
              & "from TR recognised by either half (4.8.4 [1])");
+      --  5.11.2.2 A115, S120, E125: any message 6 in PT acknowledges the
+      --  PT report: "Start" requests an MA (S140 b), S150)
+      Check (EVC_Radio_Authority.Trip_Exit_Acknowledged,
+             "SM post trip: message 6 stamped before the trip acknowledges "
+             & "the PT report (5.11.2.2 S120)");
       Give_Radio_Message (1, M6 (Now_Stamp));
       Stand_X (200);
       Check (EVC_Radio.Trip_Exit_Recognised
