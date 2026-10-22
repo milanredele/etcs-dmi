@@ -1,5 +1,7 @@
 --  ETCS on-board (EVC) regression: Supervised Manoeuvre, implementation.
 
+with ETCS_Bits;
+with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
@@ -7,6 +9,7 @@ with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P41;
 with ETCS_Train_Packets.P0;
+with ETCS_Train_Packets.P12;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
@@ -140,6 +143,31 @@ package body EVC_Test_Manoeuvre is
       end loop;
       return 0;
    end Wait_For;
+
+   --  V_MAXTRAIN of the packet 12 of the message 131 among the RTM outputs
+   --  of the last Take; -1 when there is no such packet
+   function Request_P12_Speed return Integer is
+      M  : ETCS_Message.Message_T;
+      S  : ETCS_Message.Status_T;
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Train_Packets.P12.Packet_T;
+      OK : Boolean;
+      use type ETCS_Catalogue.Packet_Kind_T;
+   begin
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted and then M.Kind = MCat.Train_M131 then
+            for I in 1 .. M.Count loop
+               if M.Index (I).Kind = ETCS_Catalogue.Train_P12 then
+                  ETCS_Message.Open_Packet (M, I, R);
+                  ETCS_Train_Packets.P12.Decode (R, P, OK);
+                  return (if OK then Integer (P.V_MAXTRAIN) else -1);
+               end if;
+            end loop;
+         end if;
+      end loop;
+      return -1;
+   end Request_P12_Speed;
 
    --  Wait_For on session S only
    function Wait_On (Kind : MCat.Message_Kind_T; S : Natural; Max_Ms : Natural)
@@ -732,6 +760,13 @@ package body EVC_Test_Manoeuvre is
              and then EVC_Sessions.SM_Requests_Sent = 1,
              "SM request: 'Initiate SM' at standstill sends message 131 "
              & "and waits for the RBC (5.21.2.2 S0, E015, A045, S050)");
+      Check (Request_P12_Speed
+               = Natural'Min
+                   (((Natural (EVC_Train_Data.Data.Max_Speed) * 36 + 500)
+                     / 1000) / 5, 120),
+             "SM request: outside SM the request carries packet 12, "
+             & "V_MAXTRAIN from the Train Data (5.21.2.2 A045 b), 8.6.2.1); "
+             & "got" & Integer'Image (Request_P12_Speed));
       Give_Radio_Message (1, SM_Refused (T + 1));
       Stand_X (200);
       Check (EVC_Sessions.SM_Waiting,
