@@ -10684,3 +10684,90 @@ Three items, three done.
   `EVC_Mission.Train_Data_Of` (one aggregate component),
   `EVC_Train_Data` (two accessors, the field). No golden changed;
   SUBSET-076 1084 / 1098 / 1008 before and after, 0 regressions.
+
+### E5 integration after the forty-fifth round, the thirteenth of E6 (2026-10-22)
+
+Merged: e5/runner-gaps (B1440 traced to the runner: the Train Data are
+deleted over No Power by 4.10's table, `EVC_Core.Modes.Save_Retained`
+keeps none, the sequences presume stored values to revalidate;
+`S076_Run.DMI_Input`'s modify-validate enters the whole set when the
+window has no value; B1540: the direction controller belongs to its
+test case, reset at a case change and put before any movement;
+B481 narrowed twice, the record 48's NID_MN steps lie after where their
+sequences stop and need the runner to enter a network ID, the record
+11's FRMCS codes have no value in `EVC_JRU_Records.Action_Code`,
+B1621; B1620 a brake release in a window; 10 improvements;
+fast-forwarded), e6/consistency-pair (B1423 built: the duplicate
+exception withheld when the duplicate carries directional information
+and the group's orientation cannot be evaluated, which it can from its
+balises, from the linking or, in level 2, by the RBC's assignment
+after the report on two groups, 3.4.2.3.3.1, and never from the
+train's own orientation, 3.4.2.3.1; `EVC_Balise_Groups.Directional`,
+`Duplicated` and `Consistent` with `Oriented` from
+`EVC_Position.Evaluate`; 14 rows done; B1420 closed: the reaction of
+3160200_33's BG3d is the same at the detection and by distance, the
+service brake of 3.16.2.4.4 b), master passes the step because its
+window ends first, B1560 a decision on 3.16.2.4.4.4; B1421 narrowed to
+the DMI's start-up sequence after PS; B1422 not taken), e6/sm-eleventh
+(4.4.21.1.5 and 4.4.21.1.6: "Entering SM" shown by
+`EVC_Core.Outputs.Show_Mode_Indications` while
+`EVC_Stored_Information.Train_Covered` is false, the DMI side existed;
+Initiate SM, Start and Shunting in PT level 2 held by MSG_ONBOARD's
+pending-stop bit until the RBC acknowledges the PT report and no stop
+is pending, 5.11.2.2 S120, D130, S130; the packet 12 of 131 premise
+wrong, sent already, its check added; B902 closed by its re-read;
+4080455_04 regressed 120 -> 107, explained: the runner's old stamp of
+message 6 is stale against the RBC's message 24 sent after the trip,
+B1580 for the runner; 4100103_06 passes) and e6/train-data-builds
+(B1461: `EVC_Train_Data.Consist_Train_Length` of 3.6.1.7 in
+`Sync_Train_Length` in SB without valid Train Data,
+`EVC_Sessions.Integrity` with the consist for [2] [3] [4] [7], its
+decisions rewritten, 3.6.1.7's bullets done, the rows of 3.6.5.2.5
+partial with [10] and the SB front end, B1600; B1462: the consist
+behind in `EVC_Profiles.Train_Frame_T` filled by
+`EVC_Stored_Information.Train_Frame`, a second former length in
+`Delete_Behind_Former`, 3.18.3.8 done; B1460: N_AXLE an installation
+datum of `EVC_Config.Fixed_Train_T` travelling in the Train Data
+record, no Global chain, 3.18.3.2 k) and 3.18.3.4 i) done).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, two new triage lines kept, the matrix row 3.18.3.8 from the
+branch; no source conflict. The full chain green on the first run.
+
+Verification on the merged master: `test/check.sh` ok, the full proof
+0 unproved (13014 checks, margin 47726 steps, 6 checks of 16 VCs or
+more at the limit of 6), cross build and stack (margin 6168 B), wasm
+and both smokes 0 failures. SUBSET-076: 1084 / 1098 / 1008 before,
+1093 / 1089 / 1008 after, 0 regressions on the merged tree (one
+explained inside sm-eleventh), 13 improvements over the branches,
+steps not judged 4346 -> 4347, 0 untriaged. Matrix: 111 -> 98 clauses
+left; E6 done 202 -> 215, partial 23 -> 10, deferred 5.
+
+Measurements (doc/ROUNDS.csv): sm-eleventh 152 calls (budget 160, one
+resumption inside it: the packet 12 check and B902 in 28) / 199k /
+9.6 USD; train-data-builds 134 (160) / 210k / 8.2; consistency-pair 122
+(130) / 176k / 7.7; runner-gaps 117 (130, one resumption: the record
+11 codes in 13) / 152k / 6.3; the round 31.7 USD, none over budget.
+Items 13 of 16 done, 0 dropped; premises wrong 7 of 21 (3.4.2.3.2.2
+to .5 do not exist and the train's orientation gives none; "by
+distance it does not brake"; packet 12 already sent; the frame type's
+unit and its filler; the Global chain of N_AXLE; the empty window as
+an on-board fault). Source-tree reading: 9, 15, 12, 10 grep and 14, 12,
+14, 9 `sed -n` runs against 20, 22, 18, 9 outline runs (`--spec` 3,
+5, 6, 1); clause.py 7, 9, 5, 8.
+
+Lessons: the premises wrong this round were the brief's pointers into
+the code (a unit, a chain of Globals, a clause number that does not
+exist), not the symptoms: the trace briefs with the symptom alone
+converted (three of three traced to their cause). A brief names a
+clause only after `clause.py` printed it, and a unit only after
+`outline.py --refs` placed it. Two of the four agents were resumed
+inside their budgets, two of two converted (eleven of eleven). The E6
+partial rows are down to 10: the family re-reads are done; what is
+left of E6 is traces and the runner. Open items: doc/BACKLOG.csv (65
+open after this round; 5 added, 8 closed). Next: B1580 (the runner's
+stamp of message 6 against an RBC message after the trip) with B1620;
+B1422 and B1421 (the DMI's start-up sequence after PS); the SM
+signatures S8ba44975 and S38d2e6ef with B1600 (the SB front end in
+`EVC_Position`); B1560 (3.16.2.4.4.4's reading); B1621 (the FRMCS
+action codes); then the Gamma model (B100), NL.
