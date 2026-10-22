@@ -739,6 +739,22 @@ is
       TC_Sent := Info.Count > 0;
    end Send_External_Info;
 
+   procedure Send_Remote_Shunting is
+      Info : constant EVC_Bytes.Byte :=
+        (case Current_Mode is
+            when M_SH => TIU_RS_Ready,
+            when M_SM =>
+               TIU_RS_Ready
+               or (if EVC_Position.Manoeuvre_Direction = 2
+                   then TIU_RS_Opposite else 0),
+            when others => 0);
+   begin
+      if Info /= TIU_RS_Sent then
+         EVC_Outbox.Put (TIU, TIU_RS_Output (Info));
+         TIU_RS_Sent := Info;
+      end if;
+   end Send_Remote_Shunting;
+
    procedure Send_Radio is
       Mark : constant Natural := EVC_Outbox.Used;
       RBCs : EVC_Outbox.RBC_Ids_T;
@@ -781,6 +797,7 @@ is
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20
+      Send_Remote_Shunting;         -- TIU remote shunting
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
       Record_Inputs_Radio_Data;     -- JRU 30, 31, 39, 48, 51, 124, 132
       Send_Radio;                   -- RTM

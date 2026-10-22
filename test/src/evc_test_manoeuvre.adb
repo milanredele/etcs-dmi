@@ -864,4 +864,65 @@ package body EVC_Test_Manoeuvre is
              & "0 (3.6.4.1.5):" & Terms);
    end Scenario_SM_Gamma;
 
+   --  The remote shunting information of the TIU output (EVC_Ports,
+   --  TIU_RS_Tag) last sent while standing Max_Ms, -1 when none was
+   function RS_Within (Max_Ms : Natural) return Integer is
+      Last : Integer := -1;
+   begin
+      for C in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = TIU
+              and then Rec_Length (I) = EVC_Ports.TIU_RS_Length
+              and then Byte_At (I, 1) = Natural (EVC_Ports.TIU_RS_Tag)
+            then
+               Last := Byte_At (I, 2);
+            end if;
+         end loop;
+      end loop;
+      return Last;
+   end RS_Within;
+
+   procedure Scenario_SM_Remote_Shunting is
+      T : Unsigned_64;
+      R : Integer;
+   begin
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Check (RS_Within (300) = -1,
+             "SM remote shunting: nothing sent before SM, not permitting "
+             & "(SUBSET-034 2.2.6)");
+      Give_Radio_Message (1, SM_Authorisation (T));
+      R := RS_Within (500);
+      Check (EVC_Core.Mode = M_SM
+             and then R = Natural (EVC_Ports.TIU_RS_Ready),
+             "SM remote shunting: in SM ready for remote shunting, the "
+             & "engine orientation the same as the MA's direction "
+             & "(4.4.21.1.13, SUBSET-034 2.2.6):" & Integer'Image (R));
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      R := RS_Within (300);
+      Check (R = 0, "SM remote shunting: out of SM, not permitting "
+             & "(SUBSET-034 2.2.6):" & Integer'Image (R));
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+      R := RS_Within (500);
+      Check (EVC_Core.Mode = M_SM
+             and then R = Natural (EVC_Ports.TIU_RS_Ready
+                                   or EVC_Ports.TIU_RS_Opposite),
+             "SM remote shunting: the MA opposite, the engine orientation "
+             & "opposite to its direction (4.4.21.1.13):"
+             & Integer'Image (R));
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SH, L1);
+      R := RS_Within (300);
+      Check (EVC_Core.Mode = M_SH
+             and then R = Natural (EVC_Ports.TIU_RS_Ready),
+             "SH remote shunting: in Shunting ready for remote shunting "
+             & "(4.4.8.1.4, SUBSET-034 2.2.6):" & Integer'Image (R)
+             & " mode " & Mode_T'Image (EVC_Core.Mode));
+   end Scenario_SM_Remote_Shunting;
+
 end EVC_Test_Manoeuvre;

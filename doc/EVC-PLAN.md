@@ -10328,3 +10328,19 @@ measures from the odometer's part. Outside the named units:
 `test/src/s076_bench.adb` (`Doubt_Over` / `Doubt_Under` read the whole
 interval). SUBSET-076: 1084 / 1098 / 1008 before and after, 0
 regressions, 0 improvements; no golden changed.
+
+A resumption inside the budget: 4.4.21.1.13 with 4.4.8.1.4 done. The
+TIU output "ready for remote shunting" (SUBSET-034 2.2.6, a two state
+output) is a third TIU output of `EVC_Ports`, `TIU_RS_Tag` then a byte:
+bit 0 ready (SH, 4.4.8.1.4; SM, 4.4.21.1.13), bit 1 in SM the engine
+orientation opposite to the direction of the MA
+(`EVC_Position.Manoeuvre_Direction` 2), sent when it changes by
+`EVC_Core.Outputs.Send_Remote_Shunting` (state `TIU_RS_Sent` in the
+parent's private part). Decision: an output of its own rather than a
+fourth byte of the commands: their length of 3 is what the hosts
+(`Sim_Onboard_Env`) and the test helpers key on, and every recorded
+brake command would change the goldens; a host that does not know the
+tag ignores the record. Decision: the mode is the condition (the
+clauses name none other). `Scenario_SM_Remote_Shunting` decodes the
+frame (SM same and opposite, out of SM, SH). B015's part closed. No
+golden changed; SUBSET-076 1084 / 1098 / 1008, 0 regressions.

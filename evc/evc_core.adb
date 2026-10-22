@@ -63,6 +63,7 @@ package body EVC_Core
                                    Status_TTI_Sent,
                                    TIU_Sent,
                                    TIU_Reasons_Sent,
+                                   TIU_RS_Sent,
                                    Supervision_Reported,
                                    SDM_Shown_Reported,
                                    Overrun_Reported,
@@ -251,6 +252,7 @@ is
       Status_TTI_Sent := TTI_None;
       TIU_Sent := 0;
       TIU_Reasons_Sent := 0;
+      TIU_RS_Sent := 0;
       Supervision_Reported := No_Supervision;
       SDM_Shown_Reported := No_SDM_Shown;
       Overrun_Reported := 0;

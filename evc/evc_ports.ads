@@ -92,7 +92,9 @@
 --     configuration, there too; 14 the train integrity and 15 the safe
 --     consist length at their declaration), value u8 (0 or 1). The
 --     active cab gives the train orientation (SUBSET-026 3.6.1.5,
---     EVC_Position). The TIU output is at the end of this package.
+--     EVC_Position). The TIU outputs are at the end of this package:
+--     the commands (TIU_Output_Length bytes), the track conditions
+--     (TIU_TC_Tag) and the remote shunting information (TIU_RS_Tag).
 --  DMI (in and out): one frame of the DMI protocol v2
 --     (common/dmi_protocol.ads): type u8, length u32, payload. See
 --     EVC_DMI_Port for the frames the on-board accepts and sends.
@@ -728,6 +730,27 @@ is
    function Is_TIU_TC_Output (Payload : Byte_Array) return Boolean is
      (Payload'Length >= TIU_TC_Header_Length
       and then Payload (Payload'First) = TIU_TC_Tag);
+
+   --  The third TIU output (TIU_RS_Length bytes), the remote shunting
+   --  information (SUBSET-034 2.2.6, a two state output; 4.4.8.1.4,
+   --  4.4.21.1.13): the tag TIU_RS_Tag, then a byte: bit 0 (TIU_RS_Ready)
+   --  "ERTMS/ETCS on-board is in a mode permitting remote shunting", at 0
+   --  "not in a mode permitting remote shunting"; bit 1 (TIU_RS_Opposite),
+   --  with bit 0 in Supervised Manoeuvre, the engine orientation opposite
+   --  to the direction of the Movement Authority, at 0 the same. Sent
+   --  when it changes; before the first, not permitting. Decision: an
+   --  output of its own beside the commands, whose length of 3 the hosts
+   --  and the test helpers key on (a host that does not know the tag
+   --  ignores it: neither TIU_Output_Length nor Is_TIU_TC_Output)
+   TIU_RS_Tag      : constant Byte := 16#52#;
+   TIU_RS_Length   : constant := 2;
+   TIU_RS_Ready    : constant Byte := 1;
+   TIU_RS_Opposite : constant Byte := 2;
+
+   subtype TIU_RS_Output_T is Byte_Array (1 .. TIU_RS_Length);
+
+   function TIU_RS_Output (Info : Byte) return TIU_RS_Output_T is
+     ((1 => TIU_RS_Tag, 2 => Info));
 
    --  The RTM port in both directions
 

@@ -40,4 +40,8 @@ package EVC_Test_Manoeuvre is
    --  request and from the first authorisation to Non Leading
    procedure Scenario_SM_Gamma;
 
+   --  4.4.21.1.13, 4.4.8.1.4: the TIU output "ready for remote shunting"
+   --  with the engine orientation against the MA's direction
+   procedure Scenario_SM_Remote_Shunting;
+
 end EVC_Test_Manoeuvre;

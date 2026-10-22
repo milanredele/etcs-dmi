@@ -650,6 +650,9 @@ private
      with Part_Of => State;
    TIU_Reasons_Sent     : TIU_Reasons_T := 0
      with Part_Of => State;
+   --  the remote shunting information last sent (EVC_Ports.TIU_RS_Tag)
+   TIU_RS_Sent          : EVC_Bytes.Byte := 0
+     with Part_Of => State;
    No_Supervision       : constant Unsigned_32 := 16#FFFF_FFFF#;
    Supervision_Reported : Unsigned_32 := No_Supervision
      with Part_Of => State;

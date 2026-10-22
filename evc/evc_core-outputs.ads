@@ -245,6 +245,19 @@ is
      with Global => (Input  => EVC_Stored_Information.State,
                      In_Out => (TC_Sent, EVC_Outbox.Queue));
 
+   --  8j. TIU: the remote shunting information (EVC_Ports.TIU_RS_Tag),
+   --  when it changes: in Shunting the on-board is ready for remote
+   --  shunting (4.4.8.1.4); in Supervised Manoeuvre too, with the engine
+   --  orientation the same as or opposite to the direction of its
+   --  Movement Authority (4.4.21.1.13: the train orientation of the
+   --  authorisation against the active cab's side,
+   --  EVC_Position.Manoeuvre_Direction; no active cab, "the same").
+   --  Decision: the mode is the condition, the clauses name none other
+   --  @req 4.4.8.1.4, 4.4.21.1.13
+   procedure Send_Remote_Shunting
+     with Global => (Input  => (Current_Mode, EVC_Position.State),
+                     In_Out => (TIU_RS_Sent, EVC_Outbox.Queue));
+
    --  8l. RTM: the messages and requests of the session half,
    --  then of the authority half (EVC_Radio.Send), moved to the RTM port
    --  as far as they fit (EVC_Radio.Drain)
@@ -285,7 +298,7 @@ is
                                 General_Mode, Started_Up,
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
-                                TIU_Sent, TIU_Reasons_Sent,
+                                TIU_Sent, TIU_Reasons_Sent, TIU_RS_Sent,
                                 Supervision_Reported, SDM_Shown_Reported,
                                 Overrun_Reported,
                                 Entering_Shown, Runaway_Shown,
