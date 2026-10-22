@@ -27,6 +27,7 @@ package body EVC_Position
                                    Passage,
                                    Pending,
                                    Pending_Stamp,
+                                   Pending_Detected,
                                    Pending_N,
                                    Events,
                                    Event_N,
@@ -111,6 +112,7 @@ is
    subtype Pending_Index_T is Positive range 1 .. Max_Pending;
    type Pending_T is array (Pending_Index_T) of ETCS_Telegram.Telegram_T;
    type Stamps_T is array (Pending_Index_T) of Unsigned_32;
+   type Flags_T is array (Pending_Index_T) of Boolean;
 
    type Events_T is array (1 .. Max_Events) of Event_T;
    No_Event : constant Event_T := (others => <>);
@@ -195,6 +197,8 @@ is
    Passage            : Passage_T;
    Pending            : Pending_T;
    Pending_Stamp      : Stamps_T := (others => 0);
+   --  a balise detected without a decoded telegram (Receive_Detection)
+   Pending_Detected   : Flags_T := (others => False);
    Pending_N          : Natural range 0 .. Max_Pending := 0;
    Events             : Events_T;
    Event_N            : Natural range 0 .. Max_Events := 0;
@@ -1564,6 +1568,24 @@ is
       return Best;
    end Report_Location_To_Go;
 
+   --  3.16.2.2.1, 3.16.2.5.1 b): the passage of balises detected without
+   --  a decoded telegram, none of the group read, is over: a group of
+   --  unknown identity, unlinked, its message inconsistent. Decision: it
+   --  ends when the train is Group_End_Cm beyond the last detection, as
+   --  a passage over a group read (3.16.2.2.2 a); an expected group's
+   --  window runs on (its identity cannot be told)
+   --  @req 3.16.2.2.1, 3.16.2.5.1 b)
+   procedure Evaluate_Detected
+     with Pre => Passage.Open and then Passage.Count = 0,
+          Post => not Passage.Open
+   is
+   begin
+      Passage.Open := False;
+      --  3.16.2.7.1.1: a balise detected
+      Missed_Last := False;
+      React_Inconsistent (Unknown_Identity, Unknown);
+   end Evaluate_Detected;
+
    --  3.15.1.3.1 b), c), 5.15.1.4: the RBC/RBC border passed by the max
    --  safe front end (1), by the min safe rear end (2), as the locations
    --  of packet 58 (Table 2a); each once
@@ -1736,6 +1758,7 @@ is
       Passage.Open := False;
       Pending := (others => ETCS_Telegram.No_Telegram);
       Pending_Stamp := (others => 0);
+      Pending_Detected := (others => False);
       Pending_N := 0;
       Events := (others => No_Event);
       Event_N := 0;
@@ -1786,6 +1809,7 @@ is
       if Pending_N < Max_Pending then
          Pending_N := Pending_N + 1;
          Pending (Pending_N) := T;
+         Pending_Detected (Pending_N) := False;
          Pending_Stamp (Pending_N) := Stamp;
       end if;
    end Receive_Telegram;
@@ -1799,12 +1823,74 @@ is
          Pending_N := Pending_N + 1;
          Pending (Pending_N) := ETCS_Telegram.No_Telegram;
          Pending (Pending_N).Header := H;
+         Pending_Detected (Pending_N) := False;
          if Compliant then
             Pending (Pending_N).Bits := ETCS_Telegram.Short_Bits;
          end if;
          Pending_Stamp (Pending_N) := Stamp;
       end if;
    end Receive_Refused;
+
+   procedure Receive_Detection (Stamp : Unsigned_32) is
+   begin
+      if Pending_N < Max_Pending then
+         Pending_N := Pending_N + 1;
+         Pending (Pending_N) := ETCS_Telegram.No_Telegram;
+         Pending_Detected (Pending_N) := True;
+         Pending_Stamp (Pending_N) := Stamp;
+      end if;
+   end Receive_Detection;
+
+   --  3.16.2.2.2 c): the telegram I of the cycle, placed on the frame
+   --  as it was when its balise was passed, opens, extends or closes the
+   --  passage of its group; a passage of balises detected without a
+   --  telegram is adopted by it (EVC_Balise_Groups.Detect)
+   procedure Take_Telegram (Mode : Mode_T; I : Pending_Index_T) is
+      T    : ETCS_Telegram.Telegram_T renames Pending (I);
+      R    : constant Reading_T :=
+        (N_PIG  => T.Header.N_PIG,
+         M_DUP  => T.Header.M_DUP,
+         X      => EVC_Odometry.To_Frame (Pending_Stamp (I)),
+         Low    => EVC_Odometry.Low,
+         High   => EVC_Odometry.High,
+         Motion => EVC_Odometry.Last_Direction,
+         --  Receive_Refused: the header alone, no bits
+         Decoded => T.Bits /= 0);
+      Kept : Count_T := 0;
+   begin
+      if Passage.Open and then Passage.Count = 0 then
+         --  the balises detected just before, of this group
+         Kept := Passage.Detected;
+         Passage.Open := False;
+      elsif Passage.Open and then Passage.Id /= Identity (T.Header) then
+         --  3.16.2.2.2 c): a balise of another group
+         Evaluate (Mode);
+      end if;
+      if not Passage.Open then
+         Start (Passage, T, R);
+         Passage.Detected := Natural'Min (Kept, Max_Balises - 1);
+         Passage_Ms := Previous_Ms;
+      elsif Passage.Count < Max_Balises
+        and then not Has (Passage, R.N_PIG)
+      then
+         Add (Passage, T, R);
+      end if;
+      if Passage.Open and then Passage.Count >= 1
+        and then Complete (Passage)
+      then
+         Evaluate (Mode);
+      end if;
+   end Take_Telegram;
+
+   --  3.16.2.5.1 b): a balise detected at X without a decoded telegram,
+   --  a balise of the passage open or a passage of its own
+   procedure Take_Detection (X : Dist_T) is
+   begin
+      if not Passage.Open then
+         Passage_Ms := Previous_Ms;
+      end if;
+      Detect (Passage, X);
+   end Take_Detection;
 
    --  3.16.2.2.2 c): the telegrams of the cycle, placed on the
    --  frame as it was when their balises were passed, open, extend or
@@ -1832,39 +1918,11 @@ is
             and then Orient = Orient'Loop_Entry
             and then Orient_Known = Orient_Known'Loop_Entry
             and then Cab_In = Cab_In'Loop_Entry);
-         declare
-            T : ETCS_Telegram.Telegram_T renames Pending (I);
-            R : constant Reading_T :=
-              (N_PIG  => T.Header.N_PIG,
-               M_DUP  => T.Header.M_DUP,
-               X      => EVC_Odometry.To_Frame (Pending_Stamp (I)),
-               Low    => EVC_Odometry.Low,
-               High   => EVC_Odometry.High,
-               Motion => EVC_Odometry.Last_Direction,
-               --  Receive_Refused: the header alone, no bits
-               Decoded => T.Bits /= 0);
-         begin
-            if Passage.Open and then Passage.Id /= Identity (T.Header) then
-               --  3.16.2.2.2 c): a balise of another group
-               if Passage.Count >= 1 then
-                  Evaluate (Mode);
-               end if;
-               Passage.Open := False;
-            end if;
-            if not Passage.Open then
-               Start (Passage, T, R);
-               Passage_Ms := Previous_Ms;
-            elsif Passage.Count < Max_Balises
-              and then not Has (Passage, R.N_PIG)
-            then
-               Add (Passage, T, R);
-            end if;
-            if Passage.Open and then Passage.Count >= 1
-              and then Complete (Passage)
-            then
-               Evaluate (Mode);
-            end if;
-         end;
+         if Pending_Detected (I) then
+            Take_Detection (EVC_Odometry.To_Frame (Pending_Stamp (I)));
+         else
+            Take_Telegram (Mode, I);
+         end if;
       end loop;
       Pending_N := 0;
    end Take_Telegrams;
@@ -1924,6 +1982,11 @@ is
                  > Group_End_Cm
       then
          Evaluate (Mode);
+      elsif Passage.Open and then Passage.Count = 0
+        and then Abs_Dist (Diff (EVC_Odometry.Position, Passage.Detected_X))
+                 > Group_End_Cm
+      then
+         Evaluate_Detected;
       end if;
 
       --  5. the window of the expected group

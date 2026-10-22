@@ -835,7 +835,7 @@ package body EVC_Test_Support is
    begin
       for G in 1 .. Track_N loop
          for K in 0 .. Track (G).Balises - 1 loop
-            if Track (G).Skip /= K + 1
+            if (Track (G).Skip /= K + 1 or else Track (G).Detect_Skip)
               and then Crossed (Balise_At (Track (G), K))
             then
                N := N + 1;
@@ -859,10 +859,17 @@ package body EVC_Test_Support is
          end loop;
       end loop;
       for I in 1 .. N loop
-         Input (BTM, Telegram_X
-                       (List (I).G, List (I).K,
-                        Old_D + (List (I).At_Cm - Old_Train) * Measured
-                                / Step_Cm));
+         if Track (List (I).G).Skip = List (I).K + 1 then
+            Input (BTM, BTM_Of
+                          ((1 .. 0 => 0), 0,
+                           Old_D + (List (I).At_Cm - Old_Train) * Measured
+                                   / Step_Cm));
+         else
+            Input (BTM, Telegram_X
+                          (List (I).G, List (I).K,
+                           Old_D + (List (I).At_Cm - Old_Train) * Measured
+                                   / Step_Cm));
+         end if;
       end loop;
       Train_Cm := New_Train;
       Odo_D := Odo_D + Measured;

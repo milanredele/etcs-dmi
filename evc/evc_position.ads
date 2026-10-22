@@ -401,6 +401,22 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
+   --  3.16.2.5.1 b): a balise detected whose telegram the BTM could not
+   --  decode, and its stamp (EVC_Ports, BTM), for the next Update; a
+   --  balise of the group being passed, else of a group of its own
+   procedure Receive_Detection (Stamp : Unsigned_32)
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Status = Status'Old
+                  and then Passage_Open = Passage_Open'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
+
    --  3.16.1.1: a telegram the codec refused, of which the header H
    --  could be read, and the stamp of its balise: a balise of its group
    --  read but not compliant, which makes the group's message

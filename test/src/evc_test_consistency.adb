@@ -735,11 +735,17 @@ package body EVC_Test_Consistency is
    --  unlinked group's inconsistent message (the event 13 and the
    --  balise group errors), the service brake, the
    --  Balise read error seen, and the LRBG at the end
+   --  (group 20 of Balises balises, its balise 0 detected without a
+   --  decoded telegram when Detect)
    procedure Run_Unlinked (Mode : EVC_Modes.Mode_T;
                            Rec_13, Rec_Paired : out Natural;
-                           SB, Read_Error : out Boolean) is
+                           SB, Read_Error : out Boolean;
+                           Balises : Positive := 2;
+                           Detect  : Boolean := False) is
    begin
-      Inconsistent_Track (Linking => False, Linked => False);
+      Inconsistent_Track (Linking => False, Linked => False,
+                          Balises => Balises);
+      Track (2).Detect_Skip := Detect;
       if EVC_Modes."=" (Mode, EVC_Modes.M_PS) then
          --  4.6.3 [26]: the desk closed with the passive shunting
          --  input on, as PS is left when the desk opens
@@ -798,5 +804,86 @@ package body EVC_Test_Consistency is
              & Img (Natural (EVC_Position.LRBG.Id.NID_BG)) & " "
              & EVC_Modes.Mode_T'Image (EVC_Core.Mode));
    end Scenario_Consistency_NL;
+
+   --  3.16.2.4.1 b), 3.16.2.4.4 b), 3.16.2.5.1 b), 3.16.2.2.1: a balise
+   --  detected without a decoded telegram (the BTM's detection record,
+   --  EVC_Ports), in a group of two and alone
+   procedure Scenario_Consistency_Undecoded is
+      SB, Read_Error     : Boolean;
+      Rec_13, Rec_Paired : Natural;
+      Count, Error       : Natural;
+      Brake_Error : Natural renames
+        SS_Seen (EVC_DMI_Port.SS_Balise_Read_Error_Brake);
+   begin
+      --  linking checked, the expected group's balise 1 not decoded: the
+      --  linking reaction, the service brake
+      Inconsistent_Track (Linking => True, Reaction => 1, Skip => 2);
+      Track (2).Detect_Skip := True;
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1,
+             "undecoded: the expected group's balise 1 detected, its "
+             & "telegram not decoded, the linking reaction (3.16.2.4.1 b)");
+      --  linking not checked, a linked group, balise 0 not decoded
+      --  before balise 1 is read: the service brake
+      Inconsistent_Track (Linking => False, Skip => 1);
+      Track (2).Detect_Skip := True;
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1,
+             "undecoded: linking not checked, a linked group's balise 0 "
+             & "detected and not decoded, the service brake "
+             & "(3.16.2.4.4 b)");
+      --  the balise not decoded duplicated by balise 1, read: no reaction
+      Inconsistent_Track (Linking => False, Skip => 1);
+      Track (2).Detect_Skip := True;
+      Track (2).Dup_1_2 := True;
+      Run_Watch (80_000, SB);
+      Check (not SB and then Brake_Error = 0
+             and then EVC_Position.LRBG.Id.NID_BG = 20,
+             "undecoded: the balise not decoded duplicated by the one "
+             & "read, no reaction, the message taken (3.16.2.4.4.1 a)");
+      --  an unlinked group of two, balise 0 not decoded: the service brake
+      Run_Unlinked (EVC_Modes.M_FS, Rec_13, Rec_Paired, SB, Read_Error,
+                    Detect => True);
+      Check (SB and then Rec_13 >= 1 and then Rec_Paired >= 1,
+             "undecoded: an unlinked group's balise 0 detected and not "
+             & "decoded, the service brake, recorded (3.16.2.5.1 b)");
+      --  a group of one balise detected and not decoded: none of its
+      --  balises read, unlinked (3.16.2.2.1), its message inconsistent
+      Run_Unlinked (EVC_Modes.M_FS, Rec_13, Rec_Paired, SB, Read_Error,
+                    Balises => 1, Detect => True);
+      Check (SB and then Read_Error and then Rec_13 >= 1
+             and then Rec_Paired >= 1
+             and then EVC_Position.LRBG.Id.NID_BG = 30,
+             "undecoded: a group of one balise detected and not decoded "
+             & "in FS, unlinked, the service brake and the record 12 "
+             & "(3.16.2.2.1, 3.16.2.5.1 b), got" & Img (Rec_13)
+             & Img (Rec_Paired));
+      Run_Unlinked (EVC_Modes.M_NL, Rec_13, Rec_Paired, SB, Read_Error,
+                    Balises => 1, Detect => True);
+      Check (not SB and then Rec_13 >= 1 and then Rec_Paired >= 1,
+             "undecoded: a group of one balise not decoded in NL, "
+             & "recorded, no service brake (4.4.15.1.10, 3.16.2.5.1 b)");
+      Run_Unlinked (EVC_Modes.M_PS, Rec_13, Rec_Paired, SB, Read_Error,
+                    Balises => 1, Detect => True);
+      Check (not SB and then Rec_13 >= 1 and then Rec_Paired >= 1
+             and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_PS),
+             "undecoded: a group of one balise not decoded in PS, "
+             & "recorded, no service brake (4.4.20.1.15, 3.16.2.5.1 b)");
+      --  3.16.4.1: reported to the RBC, M_ERROR 2
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 400, 1));
+      Track (2).Skip := 1;
+      Track (2).Detect_Skip := True;
+      Add_Group (Group (30, 700));
+      Run_X (15_000);
+      Establish_Session (1);
+      Run_Errors (60_000, Count, Error);
+      Check (Count = 1 and then Error = 2,
+             "undecoded: a group of one balise not decoded reported to "
+             & "the RBC, M_ERROR 2 (3.16.4.1, 3.16.2.5.1 b), got"
+             & Img (Count) & Img (Error));
+   end Scenario_Consistency_Undecoded;
 
 end EVC_Test_Consistency;

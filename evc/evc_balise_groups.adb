@@ -18,6 +18,8 @@ is
       P.N_TOTAL := T.Header.N_TOTAL;
       P.Linked := T.Header.Q_LINK = 1;
       P.Count := 1;
+      P.Detected := 0;
+      P.Detected_X := 0;
       for I in Slot_T loop
          pragma Loop_Invariant
            (P.Open and then P.Count = 1
@@ -26,6 +28,22 @@ is
          P.Telegrams (I) := T;
       end loop;
    end Start;
+
+   procedure Detect (P : in out Passage_T; X : Dist_T) is
+   begin
+      if not P.Open then
+         P.Open := True;
+         P.Id := Unknown_Identity;
+         P.N_TOTAL := 0;
+         P.Linked := False;
+         P.Count := 0;
+         P.Detected := 0;
+      end if;
+      if P.Count + P.Detected < Max_Balises then
+         P.Detected := P.Detected + 1;
+      end if;
+      P.Detected_X := X;
+   end Detect;
 
    --  The telegram T left out of the message: its header kept, its
    --  packets dropped

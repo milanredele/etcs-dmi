@@ -263,7 +263,8 @@ package EVC_Test_Support is
    subtype Writer_T is ETCS_Bits.Writer (ETCS_Bits.Max_Bytes);
    subtype Reader_T is ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
    --  The BTM payload of a telegram of Bits bits (EVC_Ports), its
-   --  balise detected at the odometer reading Stamp
+   --  balise detected at the odometer reading Stamp; Bits 0: the balise
+   --  detected without a decoded telegram (EVC_Ports, BTM)
       function BTM_Of (Data  : Byte_Array;
                     Bits  : Natural;
                     Stamp : Integer_64 := 0) return Byte_Array;
@@ -303,6 +304,10 @@ package EVC_Test_Support is
       Linked      : Boolean := True;
       --  N_PIG + 1 of a balise that is not read, 0: all are
       Skip        : Natural := 0;
+      --  the balise Skip detected without a decoded telegram (a wrong
+      --  CRC, 3.16.2.5.1 b): the BTM's detection record (BTM_Of with
+      --  Bits 0) in place of nothing (Step_X only)
+      Detect_Skip : Boolean := False;
       --  balises 1 and 2 duplicate each other
       Dup_1_2     : Boolean := False;
       Has_Linking : Boolean := False;

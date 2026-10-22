@@ -25,5 +25,8 @@ package EVC_Test_Consistency is
    --  inconsistent recorded (JRU 12), no service brake (4.4.15.1.10,
    --  4.4.20.1.15)
    procedure Scenario_Consistency_NL;
+   --  3.16.2.4.1 b), 3.16.2.4.4 b), 3.16.2.5.1 b), 3.16.2.2.1: a balise
+   --  detected without a decoded telegram
+   procedure Scenario_Consistency_Undecoded;
 
 end EVC_Test_Consistency;

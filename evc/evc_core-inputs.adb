@@ -152,6 +152,10 @@ is
                then
                   EVC_Procedures.Note_Version_Not_Supported;
                end if;
+            elsif Valid_BTM_Detection (Slot.Data (1 .. Slot.Length)) then
+               --  3.16.2.5.1 b): a balise detected, no telegram decoded
+               EVC_Position.Receive_Detection
+                 (BTM_Stamp (Slot.Data (1 .. Slot.Length)));
             end if;
          end;
       end loop;
