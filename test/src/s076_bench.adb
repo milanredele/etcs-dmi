@@ -1341,9 +1341,9 @@ package body S076_Bench is
    end Balises_Pending;
 
    function Doubt_Over return Integer_64 is
-     (if Is_Powered then Integer_64 (EVC_Position.Doubt_Over) else 0);
+     (if Is_Powered then Integer_64 (EVC_Position.Interval_Over) else 0);
    function Doubt_Under return Integer_64 is
-     (if Is_Powered then Integer_64 (EVC_Position.Doubt_Under) else 0);
+     (if Is_Powered then Integer_64 (EVC_Position.Interval_Under) else 0);
    function Front_Offset return Integer_64 is
      (Integer_64 (EVC_Position.Front_Offset (EVC_Distances.Plus)));
 

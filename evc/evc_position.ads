@@ -235,7 +235,10 @@ is
      with Global => (State, EVC_Odometry.State);
 
    --  Against the LRBG, along the orientation (0 without LRBG): the
-   --  estimated front end (3.6.1.3), the confidence interval (3.6.4.1.5)
+   --  estimated front end (3.6.1.3); the odometer's part of the
+   --  confidence interval, Q_LOCACC and the over- and under-reading
+   --  amounts of 3.6.4.1.5 a) and b), what grows with the distance
+   --  travelled (3.6.4.1.2)
    --  @req 3.6.1.6
    function Estimated_Front return Dist_T
      with Global => (State, EVC_Odometry.State);
@@ -245,6 +248,28 @@ is
    function Doubt_Under return Length_T
      with Global => (State, EVC_Odometry.State),
           Post => (if not LRBG.Valid then Doubt_Under'Result = 0);
+
+   --  3.6.4.1.5: gamma times L_TRAINOVER and L_TRAINUNDER, the consist's
+   --  terms of the confidence interval (0 when gamma is 0): from the
+   --  first Supervised Manoeuvre authorisation to End_Manoeuvre those of
+   --  Shift_For_Manoeuvre, before it those of Set_Gamma
+   function Gamma_Over return Length_T
+     with Global => State;
+   function Gamma_Under return Length_T
+     with Global => State;
+
+   --  The confidence interval of 3.6.4.1.5 against the LRBG (0 without
+   --  LRBG): the odometer's part and the gamma terms
+   function Interval_Over return Length_T
+     with Global => (State, EVC_Odometry.State),
+          Post => Interval_Over'Result
+                    = (if LRBG.Valid then Add (Doubt_Over, Gamma_Over)
+                       else 0);
+   function Interval_Under return Length_T
+     with Global => (State, EVC_Odometry.State),
+          Post => Interval_Under'Result
+                    = (if LRBG.Valid then Add (Doubt_Under, Gamma_Under)
+                       else 0);
    --  @req 3.6.4.1.5, 3.6.4.1.5 a), 3.6.4.1.5 b), 3.6.4.1.5 last sentence
    function Min_Safe_Front return Dist_T
      with Global => (State, EVC_Odometry.State),
@@ -564,6 +589,25 @@ is
                   and then Orientation = Orientation'Old
                   and then Active_Cab = Active_Cab'Old
                   and then LRBG = LRBG'Old;
+
+   --  3.6.4.1.5 last sentence: gamma 1 before the first Supervised
+   --  Manoeuvre authorisation (On), the terms of the consist C (safe
+   --  consist length, metres) in front of the engine when the train
+   --  orientation is the active cab's (or no cab is active), in rear of
+   --  it when opposite; not On, gamma 0. Once a cycle, after the
+   --  orientation of the cycle is decided
+   --  @req 3.6.4.1.5 last sentence
+   procedure Set_Gamma (On : Boolean; C : EVC_Train_Data.Consist_T)
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => Train_Length_Known = Train_Length_Known'Old
+                  and then Length_Of_Train = Length_Of_Train'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
+                  and then LRBG = LRBG'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
 
    --  No valid Train Data (3.18.3): the min safe rear end is the min safe
    --  front end again and the rear end triggers do not fire

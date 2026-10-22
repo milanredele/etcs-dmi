@@ -63,6 +63,7 @@ package body EVC_Core
                                    Status_TTI_Sent,
                                    TIU_Sent,
                                    TIU_Reasons_Sent,
+                                   TIU_RS_Sent,
                                    Supervision_Reported,
                                    SDM_Shown_Reported,
                                    Overrun_Reported,
@@ -251,6 +252,7 @@ is
       Status_TTI_Sent := TTI_None;
       TIU_Sent := 0;
       TIU_Reasons_Sent := 0;
+      TIU_RS_Sent := 0;
       Supervision_Reported := No_Supervision;
       SDM_Shown_Reported := No_SDM_Shown;
       Overrun_Reported := 0;
@@ -430,7 +432,8 @@ is
       Update_Position;
       Adjust_For_Manoeuvre;
       --  3.6.4.1.2 up to here: against the same LRBG, orientation and
-      --  Supervised Manoeuvre the confidence interval did not shrink
+      --  Supervised Manoeuvre the odometer's part of the confidence
+      --  interval did not shrink
       pragma Assert
         (if EVC_Position.LRBG = L_0
            and then EVC_Position.Orientation = O_0

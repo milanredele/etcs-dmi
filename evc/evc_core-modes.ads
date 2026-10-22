@@ -246,12 +246,14 @@ is
    --  per cycle, after everything that sets or invalidates the Train Data
    --  (the driver's entry in EVC_Mission, a mode entered)
    --  (and 3.18.3.2.5.1: with the default Train Data of Supervised
-   --  Manoeuvre, the length of the safe consist, EVC_Train_Data.Length)
+   --  Manoeuvre, the length of the safe consist, EVC_Train_Data.Length);
+   --  the gamma terms of the confidence interval (3.6.4.1.5), which
+   --  leave the odometer's part, Doubt_Over and Doubt_Under, unchanged
    --  @req 4.4.6.1.4, 4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4
-   --  @req 3.18.3.2.5.1
+   --  @req 3.18.3.2.5.1, 3.6.4.1.5 last sentence
    procedure Sync_Train_Length
      with Global => (Input    => (EVC_Train_Data.State, Current_Mode,
-                                  EVC_Config.State),
+                                  EVC_Config.State, EVC_Sessions.State),
                      In_Out   => EVC_Position.State,
                      Proof_In => EVC_Odometry.State),
           Post   => EVC_Position.Active_Cab = EVC_Position.Active_Cab'Old

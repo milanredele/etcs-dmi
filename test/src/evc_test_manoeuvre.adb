@@ -22,6 +22,7 @@ with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Stored_Information;
+with EVC_Supervision_Input;
 with EVC_Train_Data;
 with EVC_Test_Levels;
 with EVC_Test_Support;    use EVC_Test_Support;
@@ -380,6 +381,8 @@ package body EVC_Test_Manoeuvre is
       T := Wait_For (MCat.Train_M131, 1_000);
       declare
          E0 : constant Dist_T := EVC_Position.Estimated_Front;
+         --  the odometer's part (the request's gamma 1 is in the
+         --  interval already, Scenario_SM_Gamma)
          O0 : constant Length_T := EVC_Position.Doubt_Over;
          U0 : constant Length_T := EVC_Position.Doubt_Under;
       begin
@@ -387,14 +390,14 @@ package body EVC_Test_Manoeuvre is
          Stand_X (300);
          Check (EVC_Core.Mode = M_SM
                 and then EVC_Position.Estimated_Front = E0 + 5_000
-                and then EVC_Position.Doubt_Over = O0 + 100
-                and then EVC_Position.Doubt_Under = U0 + 200,
+                and then EVC_Position.Interval_Over = O0 + 100
+                and then EVC_Position.Interval_Under = U0 + 200,
                 "SM same direction: the front end 50 m ahead, 1 m and 2 m "
                 & "wider, from the consist in front (3.18.3.2.5.1):"
                 & Dist_T'Image (E0)
                 & Dist_T'Image (EVC_Position.Estimated_Front)
-                & Length_T'Image (EVC_Position.Doubt_Over - O0)
-                & Length_T'Image (EVC_Position.Doubt_Under - U0));
+                & Length_T'Image (EVC_Position.Interval_Over - O0)
+                & Length_T'Image (EVC_Position.Interval_Under - U0));
          Check (Same_Report,
                 "SM same direction: the report of 131 is the position "
                 & "report from it (5.21.2.2 A045, 3.18.3.2.5.1)");
@@ -418,8 +421,8 @@ package body EVC_Test_Manoeuvre is
       T := Wait_For (MCat.Train_M131, 1_000);
       declare
          E0 : constant Dist_T := EVC_Position.Estimated_Front;
-         O0 : constant Length_T := EVC_Position.Doubt_Over;
-         U0 : constant Length_T := EVC_Position.Doubt_Under;
+         O0 : constant Length_T := EVC_Position.Interval_Over;
+         U0 : constant Length_T := EVC_Position.Interval_Under;
          S0 : constant Sense_T := EVC_Position.Orientation;
       begin
          Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
@@ -433,12 +436,12 @@ package body EVC_Test_Manoeuvre is
                 "SM opposite: the estimated front end 400 m back "
                 & "(4.4.21.1.7 a)):" & Dist_T'Image (E0)
                 & Dist_T'Image (EVC_Position.Estimated_Front));
-         Check (EVC_Position.Doubt_Over = U0 + 200
-                and then EVC_Position.Doubt_Under = O0 + 200,
+         Check (EVC_Position.Interval_Over = U0 + 200
+                and then EVC_Position.Interval_Under = O0 + 200,
                 "SM opposite: the min / max safe front ends from the max / "
                 & "min ones and the min / max consist in rear (4.4.21.1.7 "
-                & "b) c)):" & Length_T'Image (EVC_Position.Doubt_Over)
-                & Length_T'Image (EVC_Position.Doubt_Under));
+                & "b) c)):" & Length_T'Image (EVC_Position.Interval_Over)
+                & Length_T'Image (EVC_Position.Interval_Under));
          Check (not EVC_Position.Linking.Stored,
                 "SM opposite: the location based information deleted "
                 & "(3.7.3.4 b))");
@@ -835,5 +838,141 @@ package body EVC_Test_Manoeuvre is
              "SM post trip: message 6 more recent than the trip, SM "
              & "refused taken and shown (4.8.4 [1])");
    end Scenario_SM_Post_Trip;
+
+   procedure Scenario_SM_Gamma is
+      T   : Unsigned_64;
+      D   : EVC_Supervision_Input.Train_Data_T;
+      Cat : EVC_Train_Data.Categories_T;
+      --  the interval of 3.6.4.1.5 is the odometer's part widened by
+      --  Over and Under (cm)
+      function Widened (Over, Under : Length_T) return Boolean is
+        (EVC_Position.LRBG.Valid
+         and then EVC_Position.Interval_Over
+                    = EVC_Position.Doubt_Over + Over
+         and then EVC_Position.Interval_Under
+                    = EVC_Position.Doubt_Under + Under);
+      function Terms return String is
+        (Length_T'Image (EVC_Position.Gamma_Over)
+         & Length_T'Image (EVC_Position.Gamma_Under)
+         & " mode " & Mode_T'Image (EVC_Core.Mode));
+   begin
+      Start_L2_SM;
+      D := EVC_Train_Data.Data;
+      Cat := EVC_Train_Data.Categories;
+      Check (Widened (0, 0), "SM gamma: FS with valid Train Data, gamma 0 "
+             & "(3.6.4.1.5):" & Terms);
+      --  50 m in front of the engine (49 .. 52), 40 m in rear (398 ..
+      --  402): the Train Data no longer valid (3.18.3.5 a)
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SB and then not EVC_Train_Data.Valid
+             and then Widened (100, 200),
+             "SM gamma: Stand-By without valid Train Data with the safe "
+             & "consist length, the interval wider by the consist in front "
+             & "of the engine, the orientation the active cab's, 1 m and "
+             & "2 m (3.6.4.1.5 last sentence):" & Terms);
+      EVC_Train_Data.Set (D, Cat);
+      Stand_X (300);
+      Check (EVC_Train_Data.Valid and then Widened (0, 0),
+             "SM gamma: valid Train Data in Stand-By, gamma 0 (3.6.4.1.5):"
+             & Terms);
+      EVC_Core.Set_Mode_For_Test (M_FS, L2);
+      Stand_X (300);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Stand_X (200);
+      Check (EVC_Sessions.SM_Waiting and then Widened (100, 200),
+             "SM gamma: a Supervised Manoeuvre request awaiting its answer, "
+             & "gamma 1 (3.6.4.1.5 last sentence):" & Terms);
+      Give_Radio_Message (1, SM_Refused (T));
+      Stand_X (200);
+      Check (not EVC_Sessions.SM_Waiting and then Widened (0, 0),
+             "SM gamma: the request refused, gamma 0 (3.6.4.1.5):" & Terms);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM and then Widened (100, 200),
+             "SM gamma: from the first authorisation the consist's term "
+             & "once, not twice (3.6.4.1.5 last sentence, 4.4.21.1.7):"
+             & Terms);
+      EVC_Core.Set_Mode_For_Test (M_NL, L2);
+      Stand_X (300);
+      Check (not EVC_Position.Manoeuvre_Orientation
+             and then EVC_Core.Mode = M_SB
+             and then not EVC_Train_Data.Valid
+             and then Widened (100, 200),
+             "SM gamma: Non Leading ends the manoeuvre's term; back in "
+             & "Stand-By without valid Train Data with the safe consist "
+             & "length, the Stand-By term (3.6.4.1.5 last sentence):"
+             & Terms);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      Stand_X (300);
+      Check (Widened (0, 0),
+             "SM gamma: the safe consist length no longer available, gamma "
+             & "0 (3.6.4.1.5):" & Terms);
+   end Scenario_SM_Gamma;
+
+   --  The remote shunting information of the TIU output (EVC_Ports,
+   --  TIU_RS_Tag) last sent while standing Max_Ms, -1 when none was
+   function RS_Within (Max_Ms : Natural) return Integer is
+      Last : Integer := -1;
+   begin
+      for C in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = TIU
+              and then Rec_Length (I) = EVC_Ports.TIU_RS_Length
+              and then Byte_At (I, 1) = Natural (EVC_Ports.TIU_RS_Tag)
+            then
+               Last := Byte_At (I, 2);
+            end if;
+         end loop;
+      end loop;
+      return Last;
+   end RS_Within;
+
+   procedure Scenario_SM_Remote_Shunting is
+      T : Unsigned_64;
+      R : Integer;
+   begin
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Check (RS_Within (300) = -1,
+             "SM remote shunting: nothing sent before SM, not permitting "
+             & "(SUBSET-034 2.2.6)");
+      Give_Radio_Message (1, SM_Authorisation (T));
+      R := RS_Within (500);
+      Check (EVC_Core.Mode = M_SM
+             and then R = Natural (EVC_Ports.TIU_RS_Ready),
+             "SM remote shunting: in SM ready for remote shunting, the "
+             & "engine orientation the same as the MA's direction "
+             & "(4.4.21.1.13, SUBSET-034 2.2.6):" & Integer'Image (R));
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      R := RS_Within (300);
+      Check (R = 0, "SM remote shunting: out of SM, not permitting "
+             & "(SUBSET-034 2.2.6):" & Integer'Image (R));
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+      R := RS_Within (500);
+      Check (EVC_Core.Mode = M_SM
+             and then R = Natural (EVC_Ports.TIU_RS_Ready
+                                   or EVC_Ports.TIU_RS_Opposite),
+             "SM remote shunting: the MA opposite, the engine orientation "
+             & "opposite to its direction (4.4.21.1.13):"
+             & Integer'Image (R));
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SH, L1);
+      R := RS_Within (300);
+      Check (EVC_Core.Mode = M_SH
+             and then R = Natural (EVC_Ports.TIU_RS_Ready),
+             "SH remote shunting: in Shunting ready for remote shunting "
+             & "(4.4.8.1.4, SUBSET-034 2.2.6):" & Integer'Image (R)
+             & " mode " & Mode_T'Image (EVC_Core.Mode));
+   end Scenario_SM_Remote_Shunting;
 
 end EVC_Test_Manoeuvre;

@@ -10397,3 +10397,56 @@ keeps the length entered); its users read `EVC_Train_Data` unchanged
 (the sm-gamma agent reads it only). `Scenario_Safe_Consist` extended.
 Left: 4.4.21.1.13 with 4.4.8.1.4 (the TIU output of remote shunting),
 packet 12 of 131.
+### Gamma in the confidence interval, the Tick post's 3.6.4.1.2 clause (e6/sm-gamma) (2026-10-22)
+
+The Tick post package of the round: B1400 and B031 done, 3.6.4.1.5
+last sentence done.
+
+Decision on the clause: 3.6.4.1.2 says the interval grows with the
+distance travelled by the odometer's accuracy; the gamma terms of
+3.6.4.1.5 follow the Train Data and the Supervised Manoeuvre state. The
+Tick post's clause holds for the odometer's part, the gamma terms
+excluded, and its expression is unchanged: `EVC_Position.Doubt_Over` /
+`Doubt_Under` are that part now (Q_LOCACC and the over- and
+under-reading amounts), `Gamma_Over` / `Gamma_Under` the terms in force
+and `Interval_Over` / `Interval_Under` the whole interval (used by
+`Min_Safe_Front`, `Max_Safe_Front`, the SOLR ones, the kept position's
+Q_LOCACC and the position reports). B1400's proposal (the gamma terms
+unchanged as a fourth condition of the antecedent) does not prove
+without a frame "the gamma terms unchanged" in the post of every step
+before `Sync_Train_Length`, across five units; the split needs none
+(every step's `Doubt_Over = Doubt_Over'Old` holds as before).
+
+One term, never two: `Gamma_Over` is `Manoeuvre.Over` from the first
+authorisation (`Shift_For_Manoeuvre`) to `End_Manoeuvre`, else the new
+state set by `EVC_Position.Set_Gamma` (the consist's terms in front of
+the engine when the orientation is the active cab's or no cab is
+active, in rear of it when opposite, by `Consist_End`).
+`EVC_Core.Modes.Sync_Train_Length` sets it once a cycle: SB without
+valid Train Data with the safe consist length available, or a request
+pending (`EVC_Sessions.SM_Waiting`; decision: the safe consist length
+last received), never with the manoeuvre's orientation. The report of
+131 (`Consist_Report`, A045) takes the consist's terms in place of
+those in force (`Fill` and `Report_With` take terms, not a widening).
+
+`Scenario_SM_Gamma`; `Scenario_SM_Authorisation`'s same direction check
+measures from the odometer's part. Outside the named units:
+`test/src/s076_bench.adb` (`Doubt_Over` / `Doubt_Under` read the whole
+interval). SUBSET-076: 1084 / 1098 / 1008 before and after, 0
+regressions, 0 improvements; no golden changed.
+
+A resumption inside the budget: 4.4.21.1.13 with 4.4.8.1.4 done. The
+TIU output "ready for remote shunting" (SUBSET-034 2.2.6, a two state
+output) is a third TIU output of `EVC_Ports`, `TIU_RS_Tag` then a byte:
+bit 0 ready (SH, 4.4.8.1.4; SM, 4.4.21.1.13), bit 1 in SM the engine
+orientation opposite to the direction of the MA
+(`EVC_Position.Manoeuvre_Direction` 2), sent when it changes by
+`EVC_Core.Outputs.Send_Remote_Shunting` (state `TIU_RS_Sent` in the
+parent's private part). Decision: an output of its own rather than a
+fourth byte of the commands: their length of 3 is what the hosts
+(`Sim_Onboard_Env`) and the test helpers key on, and every recorded
+brake command would change the goldens; a host that does not know the
+tag ignores the record. Decision: the mode is the condition (the
+clauses name none other). `Scenario_SM_Remote_Shunting` decodes the
+frame (SM same and opposite, out of SM, SH). B015's part closed. No
+golden changed; SUBSET-076 1084 / 1098 / 1008, 0 regressions.
