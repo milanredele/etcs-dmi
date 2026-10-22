@@ -63,6 +63,9 @@ package S076_Sequences is
       Text        : Text_T;     -- "text:" (cut to Max_Text)
       Comment     : Text_T;     -- "comment:" (cut to Max_Text)
       Line_No     : Natural := 0;
+      --  the test case of the step, the last "case <feature> <n>" line
+      --  before it (0 0 before the first)
+      Case_Feature, Case_No : Natural := 0;
    end record;
    type Steps_T is array (1 .. Max_Steps) of Step_T;
 

@@ -215,6 +215,8 @@ package body S076_Sequences is
    --  index in Telegrams), 2 a message
    Block      : Natural := 0;
    Block_Step : Natural := 0;
+   --  the last "case <feature> <n>" line read
+   Case_Feature, Case_No : Natural := 0;
    --  the bit of the next "var" row of a message block
    Var_Bit    : Natural := 0;
    --  the rows of the labels of the workbook's train
@@ -658,6 +660,9 @@ package body S076_Sequences is
                S.Feature := To_Text (Word (L, I + 1));
             end if;
          end loop;
+      elsif K = "case" and then L.Count >= 3 then
+         Case_Feature := To_Nat (Word (L, 2), OK);
+         Case_No := To_Nat (Word (L, 3), OK);
       elsif K = "step" then
          if S.Step_Count = Max_Steps then
             S.Truncated := True;
@@ -670,6 +675,8 @@ package body S076_Sequences is
          begin
             St := (others => <>);
             St.Line_No := Line_No;
+            St.Case_Feature := Case_Feature;
+            St.Case_No := Case_No;
             St.Number := To_Nat (Word (L, 2), OK1);
             St.Row := To_Nat (Word (L, 3), OK2);
             St.Dist_Cm := To_Cm (Word (L, 4), OK3);
@@ -1035,6 +1042,8 @@ package body S076_Sequences is
       Loaded.SV := 0;
       Loaded.Feature := (others => <>);
       Loaded.Step_Count := 0;
+      Case_Feature := 0;
+      Case_No := 0;
       Loaded.Telegram_Count := 0;
       Loaded.Message_Count := 0;
       Loaded.DMI_Count := 0;

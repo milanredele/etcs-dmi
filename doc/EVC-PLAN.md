@@ -10049,3 +10049,44 @@ The four items; the fourth, 8.5.2 Table, in a resumption inside the budget.
 - Train Data, partial kept, the remainders exact: 3.18.3.2 c) and its 1st, 4th, 5th bullets (the gamma fields missing from `EVC_Config.Fixed_Train_T`, appended to B100); 3.18.3.2 k) and 3.18.3.4 i) (N_AXLE: the field needs `EVC_Config.State` in the Global chain from `EVC_Sessions.Mission.Train_Packet` up to `EVC_Core.Outputs`, B1460); 3.6.5.2.5 with Tables 2a, 2b and 4.4.7.1.6 b) (the safe consist length without valid Train Data in `EVC_Sessions.Integrity` and in Stand By's front and rear, B1461); 3.18.3.8 (the safe consist case, `Delete_Behind_Former` with the max safe consist length in rear in `Train_Frame_T`, B1462).
 - 8.5.2 Table partial -> done on re-reading: the Invariant column (154, 155, 156; 32, 39 in 8.5.3) is a classification no clause of 4.0.0 acts on; the on-board sends and reads only those messages before the RBC's version is known (`EVC_Sessions.Take_Version`, scenario `EVC_Test_Version.Scenario_Version_Negotiation`); messages 131 and 133 are built by `EVC_Sessions.Manoeuvre` (Supervised Manoeuvre packages); the column is absent from the generated catalogue, needed with chapter 6 (B1463, E7).
 - Left for the next package: B1460, B1461, B1462; B1463 with E7.
+### The runner's Train Data change by case, the old stamp of message 6, the optional step by the movement, the records by number (e5/runner-data) (2026-10-22)
+
+Three runner items, nothing under `evc/`. SUBSET-076 1075 / 1095 / 1020
+before, 1084 / 1098 / 1008 after, 0 regressions, 19 improvements.
+
+- B1181 done. `S076_Sequences` reads the `case` line into `Step_T`
+  (`Case_Feature`, `Case_No`). `S076_Run.TIU_Input` sets the validation
+  bit of TIU input 13 for the validation path of 5.17.2.2 D0, cases 9
+  to 12 of 5170200 (the steps without a comment, a Train Data window
+  after: case 9 in FS moving, S4 then S6; case 10 in UN at standstill;
+  cases 11 and 12 in TR, S1), or a comment naming the validation; the
+  category bit only when the comment names the four data without
+  negating them (cases 1 to 8 name them; case 5170200 1, step 43 of
+  5170200_02, "is different from": A1). The brief's premise that step
+  43 is case 4080425 2 was wrong (case 5170200 1). `S076_Run.DMI_Input`
+  modifies and accepts a value of the first Train Data window
+  (`modify-validate` Length, Maximum-Speed, Brake-Percentage; decision:
+  the value the runner entered at the start of mission, the sequences
+  give none); the page-2 items (axle load, gauge, airtight, category, 10
+  of 30 steps) stay not judged. 5170200_02 and 5040300_14 pass (3 SV);
+  3040400_05 runs to step 94 (B1441, a missed linked group, not traced);
+  4100103_21 / _26 one step on (S28ef1e3e, B1440: after a power-up the
+  Train Data window has no values to validate).
+- B1261 done. `S076_Run-Radio_Input.Exit_Not_More_Recent`: at a message 6
+  step, a look-ahead over the steps of the same case for "with a more
+  recent time stamp is not true" (or the step's own "not more recent" /
+  "older than"); the message is then stamped one below the on-board's
+  T_TRAIN at the entry into TR (`S076_Bench.Trip_Ms`, the bench time of
+  the JRU event 1 into TR, mapped as the RBC estimates), or above the
+  RBC's previous message where that one is older than the trip.
+  4080455_04 SV30 113 -> 120: steps 111 to 114 pass; at 120 the Start is
+  disabled in PT, the sequence taking that message 6 as the
+  acknowledgement of 5.11.2.2 S120 (B1442, to be re-read on the
+  on-board: `EVC_Sessions.Network` Exit_Seen, `EVC_Radio_Authority`
+  Exit_Recognised). 4080455_03 unchanged.
+- B750 done. `S076_Run.Backward_Follows`: an optional step conditioned
+  on "no backward movement" is not made (input) or not judged (output)
+  when the next step at another distance is behind it; 4041800_02
+  passes (3 SV).
+- Left: B481 narrowed by a re-read (12 with M_ERROR 1, 2, 7, 8 judged;
+  left 11 with 51 to 55, 10 steps, and 48 NID_MN, 6); B1440 to B1442.

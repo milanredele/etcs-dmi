@@ -153,6 +153,35 @@ function Radio_Input (St : Step_T) return Judgement_T is
          when 8       => 129,
          when 27 | 28 => 130,
          when others  => 0);
+   --  4.8.4 [1]: the message 6 of this step is the negative case, not
+   --  more recent than the trip: its own comment says so, or a later
+   --  step of the same test case says that the recognition "with a more
+   --  recent time stamp is not true" (4080455_04 step 111, case 4080455
+   --  7; the message 6 of step 105 is the one of the positive case
+   --  4080455_03, T_TRAIN 0 like every message 6 of the corpus)
+   function Exit_Not_More_Recent return Boolean is
+      Found : Boolean := False;
+   begin
+      if Has (Image (St.Comment), "not more recent")
+        or else Has (Image (St.Comment), "older than")
+      then
+         return True;
+      end if;
+      for I in 1 .. Seq.Step_Count loop
+         if Found then
+            exit when Seq.Steps (I).Case_Feature /= St.Case_Feature
+              or else Seq.Steps (I).Case_No /= St.Case_No;
+            if Has (Image (Seq.Steps (I).Comment),
+                    "with a more recent time stamp is not true")
+            then
+               return True;
+            end if;
+         elsif Seq.Steps (I).Line_No = St.Line_No then
+            Found := True;
+         end if;
+      end loop;
+      return False;
+   end Exit_Not_More_Recent;
 begin
    if Same (Kind, "connect") then
       --  a new connection: a new session, whose time stamps start again
@@ -238,6 +267,35 @@ begin
             end if;
             if RBC_Stamp_Given and then Stamp <= RBC_Stamp then
                Stamp := RBC_Stamp + 1;
+            end if;
+            if M.NID = 6 and then Exit_Not_More_Recent then
+               --  4.8.4 [1], the negative case: the recognition of the
+               --  exit from TR stamped before the trip (the on-board's
+               --  T_TRAIN at the entry into TR, estimated as the RBC
+               --  estimates it, from the bench time of the JRU's event
+               --  1), above the RBC's previous message where that one
+               --  came before the trip (3.16.3.3.3); decision: the RBC
+               --  sent a message in TR (4080455_04 step 82), so the
+               --  stamp is one below the trip and older than it, the
+               --  message to be rejected either way
+               declare
+                  Trip : constant Unsigned_64 := B.Trip_Ms;
+                  T    : Integer_64 := -1;
+               begin
+                  if Trip > 0 and then Last >= 0 then
+                     T := Last + (Integer_64 (Trip)
+                                  - Integer_64 (B.Last_Sent_Ms (S))) / 10;
+                  end if;
+                  if RBC_Stamp_Given
+                    and then (T < 0 or else Integer_64 (RBC_Stamp) + 1 < T)
+                  then
+                     Stamp := RBC_Stamp + 1;
+                  elsif T > 0 then
+                     Stamp := Unsigned_64 (T - 1);
+                  else
+                     Stamp := Get_Bits (Data, M.T_Train_At (1), 32);
+                  end if;
+               end;
             end if;
             Stamp := Stamp mod 2**32;
             if RBC_Stamp_Given and then RBC_Stamp > 0

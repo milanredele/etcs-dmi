@@ -370,6 +370,9 @@ package S076_Bench is
    --  status and level of the last event 1 or event 40 kind 1 (EVC_Modes
    --  positions), No_Value before any
    function JRU_Mode return Natural;
+   --  the bench time (Time_Ms) of the last entry into TR by the JRU's
+   --  event 1 since the start, 0 when none
+   function Trip_Ms return Unsigned_64;
    function JRU_Level_Status return Natural;
    function JRU_Level return Natural;
    --  the monitoring and the status of the last JRU event 21 since the
