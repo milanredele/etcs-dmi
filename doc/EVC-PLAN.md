@@ -10079,7 +10079,22 @@ and requests an MA (3.8.2.5.1). The trackside: message 133 of 3.18.3.10
 has no system status message for it (B1401). `Scenario_Safe_Consist`
 extended (`Consist_Lost_In_SM`).
 
+The target-distance check of B1160 (a resumption): in
+`Scenario_SM_Authorisation` the distance to the Indication location of
+the same MA is 50 m less with 50 m of consist in front (the EOA
+supervised from the moved front end; the target distance itself is 0 in
+ceiling speed monitoring at standstill); row 3.18.3.2.5.1 names it.
+
+B991 re-read, not built: the level transition order and the RBC
+transition order are location based information (3.6.1.1 a) names the
+level transition orders as location data; the table of 3.6.4.2.4 lists
+both with their location items), so 3.7.3.4 b) deletes them too; the
+decision is in the row's note and in `Adjust_For_Manoeuvre`'s heading.
+To build: `EVC_Levels.Delete_Orders` and the deletion of
+`EVC_Sessions.Handover`'s order at an authorisation opposite to the
+orientation.
+
 SUBSET-076: 1075 / 1095 / 1020 before and after, 0 regressions, 0
-improvements. Left: B1400 (B031, a Tick post package), B1401, B991, the
-target-distance check of B1160, 4.4.21.1.13 with 4.4.8.1.4, 3.18.3.2.4's
-max rear length, packet 12 of 131.
+improvements. Left: B1400 (B031, a Tick post package), B1401, B991's
+build, 4.4.21.1.13 with 4.4.8.1.4, 3.18.3.2.4's max rear length, packet
+12 of 131.
