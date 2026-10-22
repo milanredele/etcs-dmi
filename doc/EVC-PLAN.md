@@ -10090,3 +10090,51 @@ before, 1084 / 1098 / 1008 after, 0 regressions, 19 improvements.
   passes (3 SV).
 - Left: B481 narrowed by a re-read (12 with M_ERROR 1, 2, 7, 8 judged;
   left 11 with 51 to 55, 10 steps, and 48 NID_MN, 6); B1440 to B1442.
+### The BTM port's balise detected without a telegram, the consistency rows re-read (e6/btm-port) (2026-10-22)
+
+- B1380 done on the on-board. The port record (`EVC_Ports`, BTM): the
+  stamp i32 then n_bits u16 = 0 and no bits, `BTM_Detection_Length` (6)
+  bytes, `Valid_BTM_Detection`, admitted by `Valid_Input` beside the
+  telegram and the alarm byte (`Valid_BTM_Input` keeps meaning a telegram,
+  so `BTM_Telegram`'s contract holds). `EVC_Core.Inputs.Read_Telegrams`
+  hands it to `EVC_Position.Receive_Detection` (the pending list carries a
+  flag); no JRU record 6 for it (no telegram).
+- The passage decision: a detection inside an open passage is a balise of
+  that group whose telegram is missing (`EVC_Balise_Groups.Detect` counts
+  it in `Passage_T.Detected`); `Consistent` leaves its number empty as a
+  missed one, so criterion b) gets the duplicate exception of
+  3.16.2.4.4.1 a) as a). A detection with no passage open opens one of
+  unknown identity (`Unknown_Identity`), unlinked (3.16.2.2.1); a telegram
+  that follows adopts it (`Take_Telegram`: the detections kept, the group
+  the telegram's); else `End_Cycle` ends it `Group_End_Cm` (15 m) beyond
+  the detection, as a passage over a group read, and
+  `Evaluate_Detected` rejects it (`React_Inconsistent`: the record 12
+  with NID_BG 16383, the service brake by mode, M_ERROR 2 to the RBC); an
+  expected group's window runs on. A detection does not complete a
+  passage (`Complete` counts the balises read): completing it at the
+  detection moved the reaction of 3160200_33's last announced group
+  (B1420, not traced). `Scenario_Consistency_Undecoded` (`Detect_Skip`
+  of the simulated track, `BTM_Of` with Bits 0, `Run_Unlinked` with
+  `Balises` and `Detect`). Rows 3.16.2.2.1, 3.16.2.4.1 b), 3.16.2.4.4 b),
+  3.16.2.5.1 b) done; `evc_fuzz` shapes the record (raised 0).
+- B1380 done in the runner: `S076_Run.Undecodable` names the only
+  telegram of a one-telegram group, `BTM_Input` places every undecodable
+  balise with Bits 0, which `S076_Bench` delivers as the detection
+  record. 4042000_02 passes step 81 (to 102, S2b10b7bc, B1421) and _03
+  step 114 (to 158, S1815da5c, B1422), in SV21, 22, 30; S99eb8ae1
+  resolved.
+- Left (bound): the consistency rows of item 3 not re-read beyond this:
+  3.16.2.3.1.1 a) needs the time of the crossing of the 1.3 m margin kept
+  and `Supervise_Windows` given the cycle's clock (every missed-window
+  reaction a cycle later at 100 ms: goldens and sequences to expect);
+  3.16.2.3.1.1 b) Tn (B822); 3.16.2.6.2's remainder.
+- Resumed inside the budget: 3.16.4.3 done (`Scenario_Consistency_Error_Report`:
+  linking checked by radio, a group marked linked between the two
+  announced, no error report). 3.16.2.4.4.1 a) and 3.16.2.5.1.1 a), the
+  1st bullet: withholding the duplicate exception for directional
+  information (Q_DIR 0 or 1) while the orientation cannot be evaluated
+  (one balise read, no linking) was built and withdrawn: 3040200_01 step
+  64 takes such a group in SR (B1423, a decision of what keeps the
+  orientation evaluable); the rows stay partial with that note.
+- SUBSET-076: 1075 / 1095 / 1020 before and after, 0 regressions, 6
+  improvements.

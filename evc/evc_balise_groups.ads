@@ -87,13 +87,20 @@ is
       Count     : Count_T := 0;
       Readings  : Readings_T := (others => No_Reading);
       Telegrams : Telegrams_T := (others => ETCS_Telegram.No_Telegram);
+      --  3.16.2.5.1 b): the balises detected without a decoded telegram
+      --  (EVC_Ports, BTM), and the frame position of the last of them
+      Detected   : Count_T := 0;
+      Detected_X : Dist_T := 0;
    end record;
 
    --  A balise of this number was read in the passage
    function Has (P : Passage_T; N_PIG : N_PIG_T) return Boolean is
      (for some I in 1 .. P.Count => P.Readings (I).N_PIG = N_PIG);
 
-   --  Every balise of the group was read
+   --  Every balise of the group was read. Decision: a balise detected
+   --  without a decoded telegram (Detect) does not end the passage, which
+   --  ends Group_End_Cm beyond its last balise read as with a balise
+   --  missed (EVC_Position)
    function Complete (P : Passage_T) return Boolean is
      (P.Count > Natural (P.N_TOTAL));
 
@@ -189,11 +196,12 @@ is
    --  3.16.1.1, 3.16.2.4.1 a), b), d), 3.16.2.4.2: the message of the
    --  passage is consistent: every telegram read is compliant, every
    --  balise of the group read or duplicated by one read, the message
-   --  counters matching. Decision: the BTM port carries the telegrams
-   --  the BTM decoded only (EVC_Ports), so a balise detected without a
-   --  decoded telegram (b) reaches the on-board as a missed one (a); a
+   --  counters matching. A balise detected without a decoded telegram
+   --  (b, Detect) leaves the place of its number empty as a missed one
+   --  (a), with the exception for duplicates of 3.16.2.4.4.1 a); a
    --  telegram the codec refuses is not compliant (3.16.1.1), without
-   --  the exception for duplicates of a) and b)
+   --  that exception
+   --  @req 3.16.2.4.1 b), 3.16.2.4.4 b), 3.16.2.5.1 b)
    function Consistent (P : Passage_T) return Boolean is
      ((for all I in 1 .. P.Count => P.Readings (I).Decoded)
       and then In_Order (P)
@@ -232,6 +240,19 @@ is
           Post => P.Open
                   and then P.Count = P.Count'Old + 1
                   and then P.Id = P.Id'Old;
+
+   --  3.16.2.5.1 b), 3.16.2.2.1: a balise detected at X without a
+   --  decoded telegram. With a passage open, one more balise of its
+   --  group, its telegram missing: the message is consistent only if
+   --  the balise is duplicated (Consistent, as a missed one, 3.16.2.4.4.1
+   --  a). Else it opens a passage of no telegram, of unknown identity
+   --  and unlinked, which a telegram of a group that follows adopts
+   --  @req 3.16.2.2.1
+   procedure Detect (P : in out Passage_T; X : Dist_T)
+     with Post => P.Open
+                  and then (if P.Open'Old then P.Count = P.Count'Old
+                                               and then P.Id = P.Id'Old
+                            else P.Count = 0);
 
    type Geometry_T is record
       Has_Reference       : Boolean := False;

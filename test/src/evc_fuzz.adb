@@ -367,6 +367,12 @@ procedure EVC_Fuzz is
                Telegram;
                return;
             end if;
+            if Chance (10) then
+               --  a balise detected without a decoded telegram (EVC_Ports)
+               Add_Stamp;
+               Add_U16 (0);
+               return;
+            end if;
             declare
                Bits : constant Natural :=
                  (if Chance (90)

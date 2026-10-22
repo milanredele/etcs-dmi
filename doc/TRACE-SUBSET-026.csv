@@ -866,7 +866,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.1.1,3,x,,,,,E6,done,EVC_Position.Receive_Refused (a telegram the codec refuses with its header read is a balise read not compliant); EVC_Balise_Groups.Consistent
 3.16.1.1.1,3,x,,,,,E6,done,EVC_Position.Receive_Refused (a spare value: ETCS_Telegram Invalid_Value)
 3.16.1.4,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the message rejected: EVC_Position.Evaluate takes nothing of it)
-3.16.2.2.1,3,x,,,,,E6,partial,EVC_Balise_Groups.Start (Q_LINK of the first header read; decision: a telegram whose header was read counts as read; the BTM port carries no undecoded balise)
+3.16.2.2.1,3,x,,,,,E6,done,"EVC_Balise_Groups.Detect, EVC_Position.Evaluate_Detected (a balise detected without a decoded telegram and no group read: a passage of unknown identity, unlinked, ended Group_End_Cm beyond the detection; a telegram that follows adopts it); EVC_Balise_Groups.Start (Q_LINK of the first header read; decision: a telegram whose header was read counts as read)"
 3.16.2.2.2,3,x,,,,,E6,done,EVC_Position.Take_Telegrams; EVC_Position.End_Cycle (the passage closed; EVC_Balise_Groups.Consistent)
 3.16.2.2.2 a),3,x,,,,,E6,done,EVC_Position.End_Cycle (beyond Group_End_Cm from the last balise)
 3.16.2.2.2 b),3,x,,,,,E6,done,EVC_Position.Take_Telegrams (a following balise of the group)
@@ -881,7 +881,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.3.4,3,x,,,,,E6,done,"EVC_Balise_Groups.Geometry: balise 1 with M_DUP 2 (the duplicate of balise 0) is the location reference of the group when balise 0 is missed; EVC_Position.Check_Window judges the expectation window on that reference, so a duplicate detected inside it gives no linking reaction; evc_test Scenario_Consistency_Reactions [E6 consistency]"
 3.16.2.4.1,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (linking checked: the reaction of the expected group); EVC_Balise_Groups.Consistent
 3.16.2.4.1 a),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent (every N_PIG up to N_TOTAL read or duplicated)
-3.16.2.4.1 b),3,x,,,,,E6,partial,EVC_Balise_Groups.Consistent (decision: the BTM port carries decoded telegrams only; a balise without one is missed as a)
+3.16.2.4.1 b),3,x,,,,,E6,done,"EVC_Balise_Groups.Consistent (the BTM detection record of EVC_Ports: the balise counted by EVC_Balise_Groups.Detect, its number left empty as a missed one); Scenario_Consistency_Undecoded"
 3.16.2.4.1 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
 3.16.2.4.2,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated (M_DUP of the neighbour read)
 3.16.2.4.3,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (another group than the expected one: no reaction)
@@ -890,10 +890,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.4.3.1 b),3,x,,,,,E6,done,EVC_Position.React_Inconsistent
 3.16.2.4.4,3,x,,,,,E6,done,"EVC_Position.React_Inconsistent (linking not checked: the service brake as a linking reaction of Q_LINKREACTION 1 in EVC_Procedures); EVC_Procedures.Evaluate commands it in every mode reading balises but SL, PT, NL, RV, PS (Msg_SB, apart from the linking reaction's FS, AD, LS, OS, SM); evc_test Scenario_Consistency_Modes (SR)"
 3.16.2.4.4 a),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent
-3.16.2.4.4 b),3,x,,,,,E6,partial,EVC_Balise_Groups.Consistent (as 3.16.2.4.1 b)
+3.16.2.4.4 b),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent (as 3.16.2.4.1 b); Scenario_Consistency_Undecoded
 3.16.2.4.4 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
 3.16.2.4.4.1,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited
-3.16.2.4.4.1 a),3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (decision: the content bullets are not told apart; the exception applies)
+3.16.2.4.4.1 a),3,x,,,,,E6,partial,"EVC_Balise_Groups.Duplicated (the content bullets not told apart: the exception applies to every duplicating telegram read and decoded; withholding it for directional information while the orientation cannot be evaluated, Q_DIR 0 or 1 with a single balise read and no linking, contradicts 3040200_01 step 64, B1423)"
 3.16.2.4.4.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
 3.16.2.4.4.1 a) 2nd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
 3.16.2.4.4.1 a) 3rd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
@@ -911,10 +911,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.4.9,3,x,,,,,E6,done,"EVC_Core.Outputs.Show_Trackside_Malfunction: Trackside malfunction (catalogue entry 3) for packet 254 in a taken (consistent) group's message, valid for the train's direction and accepted by 4.8.3 / 4.8.4 (A.3.3.3); the rest of the message used; evc_test Scenario_Default_Balise"
 3.16.2.5.1,3,x,,,,,E6,done,"EVC_Position.React_Inconsistent (an unlinked group's inconsistent message: the service brake as a linking reaction of Q_LINKREACTION 1, EVC_Procedures); EVC_Balise_Groups.Consistent; EVC_Procedures.Evaluate commands it in every mode reading balises but SL, PT, NL, RV, PS (Msg_SB, apart from the linking reaction's FS, AD, LS, OS, SM); evc_test Scenario_Consistency_Modes (SR)"
 3.16.2.5.1 a),3,x,,,,,E6,done,"EVC_Balise_Groups.Consistent; EVC_Balise_Groups.In_Order (decision: a balise read after one numbered beyond it was missed at its place, SUBSET-076 3160200_12)"
-3.16.2.5.1 b),3,x,,,,,E6,partial,EVC_Balise_Groups.Consistent (as 3.16.2.4.1 b: the BTM port carries decoded telegrams only; a balise without one is missed as a)
+3.16.2.5.1 b),3,x,,,,,E6,done,"EVC_Balise_Groups.Consistent, EVC_Position.Evaluate_Detected (a group of one balise detected and not decoded: unlinked, inconsistent, the reaction of EVC_Position.React_Inconsistent with the identity unknown); Scenario_Consistency_Undecoded"
 3.16.2.5.1 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
 3.16.2.5.1.1,3,x,,,,,E6,partial,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited (as 3.16.2.4.4.1)
-3.16.2.5.1.1 a),3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (decision: the content bullets are not told apart; the exception applies)
+3.16.2.5.1.1 a),3,x,,,,,E6,partial,"EVC_Balise_Groups.Duplicated (the content bullets not told apart: the exception applies to every duplicating telegram read and decoded; withholding it for directional information while the orientation cannot be evaluated, Q_DIR 0 or 1 with a single balise read and no linking, contradicts 3040200_01 step 64, B1423)"
 3.16.2.5.1.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
 3.16.2.5.1.1 a) 2nd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
 3.16.2.5.1.1 a) 3rd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
@@ -946,7 +946,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.3.5.1,3,x,,,,,E5,done,"EVC_Sessions.Take_Message, Produce (message 146); golden received_telegram_message [E5 session]"
 3.16.3.5.3,3,x,,,,,E5,done,EVC_Sessions.Produce (146 carries the T_TRAIN of the message) [E5 session]
 3.16.4.1,3,x,,,,,E6,done,"[E5 session] radio message errors: reported once the session is established (EVC_Sessions.Reports.Produce), evc_test Scenario_Session_Error_Report; [E6 consistency-linking] balise group errors: the linking reactions of EVC_Position reported in level 2 to the supervising RBC with M_ERROR 0, or 7 for the double linking error (EVC_Sessions.Reports.Request_Balise_Errors); M_ERROR 1 and 2 of the message consistency, 8 of 3.16.2.7.2, 9 and 10 of the odometer accuracy monitoring (3.6.8.5, 3.6.8.7) on the cycle the threshold is reached; evc_test Scenario_Consistency_Error_Report"
-3.16.4.3,3,x,,,,,E6,partial,"[E6 consistency-linking] EVC_Sessions.Reports.Request_Balise_Errors: a group marked linked and not in the linking information is no linking reaction of EVC_Position (Unexpected_Group only), so not reported; scenario left"
+3.16.4.3,3,x,,,,,E6,done,"EVC_Sessions.Reports.Request_Balise_Errors: a group marked linked and not in the linking information is no linking reaction of EVC_Position (Unexpected_Group only), so not reported; Scenario_Consistency_Error_Report"
 3.17.2.1,3,x,,,,,E6,done,"EVC_System_Version: the envelope X = 1, 2, 3 (6.4.2), Compatible; evc_test version_negotiation [E5 version]"
 3.17.2.1.1,3,x,,,,,E6,done,"EVC_System_Version.Operated_Y / Operated_Version: 1.1, 2.3, 3.0; evc_test version_negotiation [E5 version]"
 3.17.2.2,3,x,,,,,E6,done,"EVC_System_Version.Operated: one X at a time, the X of the RBC (EVC_System_Version.Follow) or of the balise groups (EVC_System_Version.Take_Balise_Group); for X = 3 the requirements of 4.0.0; the behaviour of an older operated version by chapter 6 comes with its translations [E7 version]; evc_test version_negotiation, version_balise_groups [E5 version]"

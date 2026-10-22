@@ -24,6 +24,10 @@
 --     EVC_Received) and hands it with its stamp to the position
 --     (EVC_Position): the stamp places the balise, hence the balise
 --     group, on the odometer frame (SUBSET-026 3.6.4.1.1 a).
+--     A balise detected whose telegram the BTM could not decode (a
+--     wrong CRC, 3.16.2.5.1 b): the stamp, then n_bits 0 and no bits
+--     (BTM_Detection_Length bytes); the position counts it as a balise
+--     of the group being passed, or of a group of its own (EVC_Position).
 --     The BTM alarm, the "integrity check alarm of balise
 --     transmission" a big metal mass may trigger (3.15.7.1, 5.22.1.2):
 --     one byte, 1 when the alarm is raised, 0 when it ends; the alarm
@@ -216,6 +220,14 @@ is
    function BTM_Stamp (Payload : Byte_Array) return Unsigned_32 is
      (EVC_Bytes.Get_U32 (Payload, Payload'First))
      with Pre => Payload'Length > BTM_Stamp_Length;
+
+   --  A BTM input of a balise detected without a decoded telegram
+   --  (above): the stamp, then n_bits 0
+   BTM_Detection_Length : constant := BTM_Stamp_Length + 2;
+   function Valid_BTM_Detection (Payload : Byte_Array) return Boolean is
+     (Payload'Length = BTM_Detection_Length
+      and then EVC_Bytes.Get_U16 (Payload, Payload'First + BTM_Stamp_Length)
+               = 0);
 
    --  The BTM alarm input (above): one byte, 0 or 1
    BTM_Alarm_Length : constant := 1;
@@ -431,6 +443,7 @@ is
    function Valid_Input (Port : Port_T; Payload : Byte_Array) return Boolean
    is (case Port is
           when BTM      => Valid_BTM_Input (Payload)
+                           or else Valid_BTM_Detection (Payload)
                            or else Valid_BTM_Alarm (Payload),
           when RTM      => Valid_RTM_Input (Payload),
           when Odometer => Valid_Odometer (Payload),
