@@ -10559,10 +10559,14 @@ the DMI's conditions of Start, Initiate SM and Shunting in PT have no
 term of their own for that wait). `Scenario_SM_Post_Trip` extended.
 
 Packet 12 of 131: a premise wrong, it is sent outside SM since the
-request was built (`EVC_Sessions.Manoeuvre.Encode_Default`); left: a
-scenario check of it in `Scenario_SM_Request`, and 4080455_04 step 109
-(not reached now). Not taken: B902's re-read, S8ba44975 (B1080 is done
-already: re-run the sequence), S38d2e6ef.
+request was built (`EVC_Sessions.Manoeuvre.Encode_Default`); in a
+resumption `Scenario_SM_Request` decodes it (`Request_P12_Speed`), the
+row of 5.21.2.2 A045 names the check; 4080455_04 step 109 is not
+reached now (B1580). B902 closed by its re-read: the shift (B1160), the
+deletion of 3.7.3.4 b) (B991) and A095's position report, checked in
+`Scenario_SM_Authorisation`, are all built. Left for the next package:
+S8ba44975 (B1080 is done already: re-run 3110800_02 first), S38d2e6ef
+(the record 51 after the request), B1580 for the runner.
 
 SUBSET-076: 1084 / 1098 / 1008 -> 1087 / 1095 / 1008; 4100103_06 passes
 in three versions; 4070201_04 78 -> 79 (S31ede2f5, s076: the sequence
