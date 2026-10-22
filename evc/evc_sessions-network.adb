@@ -222,6 +222,7 @@ is
                    (EVC_Received.Last_Value (ETCS_Variables.T_TRAIN))
       then
          Exit_Seen := True;
+         R.Set_Trip_Exit_Recognised (True);
       end if;
       --  packet 45 by radio: message 24 (the messages 3 and 33 carry it
       --  through EVC_Stored_Information; message 4, the SM authorisation
@@ -254,6 +255,7 @@ is
    begin
       if To /= Mode_Now then
          Exit_Seen := False;
+         R.Set_Trip_Exit_Recognised (False);
          if To = M_TR then
             Trip_Pending := True;
          end if;

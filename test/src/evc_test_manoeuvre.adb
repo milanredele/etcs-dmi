@@ -640,7 +640,8 @@ package body EVC_Test_Manoeuvre is
    --  4.8.4 [1] in level 2, Post Trip: message 5 (SM refused) is taken
    --  only after the recognition of the exit from TR (message 6) with a
    --  more recent time stamp than the trip; a message 6 stamped before
-   --  the trip does not count
+   --  the trip does not count, for the session half (message 5) and the
+   --  authority half (EVC_Radio_Authority.Trip_Exit_Recognised) alike
    procedure Scenario_SM_Post_Trip is
       T, Before : Unsigned_64;
       Shown     : Natural;
@@ -687,8 +688,18 @@ package body EVC_Test_Manoeuvre is
                       = Shown,
              "SM post trip: message 6 stamped before the trip, SM refused "
              & "rejected (4.8.4 [1])");
+      --  one recognition for both halves: the authority half takes no
+      --  exit from TR the session half did not recognise
+      Check (not EVC_Radio.Trip_Exit_Recognised
+             and then not EVC_Radio_Authority.Trip_Exit_Recognised,
+             "SM post trip: message 6 stamped before the trip, no exit "
+             & "from TR recognised by either half (4.8.4 [1])");
       Give_Radio_Message (1, M6 (Now_Stamp));
       Stand_X (200);
+      Check (EVC_Radio.Trip_Exit_Recognised
+             and then EVC_Radio_Authority.Trip_Exit_Recognised,
+             "SM post trip: message 6 more recent than the trip, the exit "
+             & "from TR recognised by both halves (4.8.4 [1])");
       Give_Radio_Message (1, SM_Refused (T));
       Stand_X (200);
       Check (not EVC_Sessions.SM_Waiting

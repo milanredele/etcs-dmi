@@ -196,6 +196,14 @@ is
    function Train_Data_Acknowledged return Boolean
      with Global => State;
 
+   --  4.8.4 [1], 5.11.2.2 S120: the RBC recognised the exit from TR
+   --  (message 6 received in PT with a T_TRAIN later than the trip),
+   --  False again at a change of mode. Written by EVC_Sessions (the
+   --  session half judges the stamp); the authority half reads it
+   --  @req 4.8.4.2 Table-footnote [1]
+   function Trip_Exit_Recognised return Boolean
+     with Global => State;
+
    --  The one RBC contact information stored at a time (3.18.4.3.1),
    --  written by the driver's entry, an order to establish a session and
    --  the RBC/RBC border (EVC_Sessions and its children)
@@ -435,6 +443,18 @@ is
                   and then Supervising = Supervising'Old
                   and then Accepting = Accepting'Old
                   and then Contact = Contact'Old;
+
+   procedure Set_Trip_Exit_Recognised (Recognised : Boolean)
+     with Global => (In_Out => State),
+          Post => Trip_Exit_Recognised = Recognised
+                  and then Train_Data_Acknowledged
+                           = Train_Data_Acknowledged'Old
+                  and then Sessions = Sessions'Old
+                  and then Engine_Id = Engine_Id'Old
+                  and then Supervising = Supervising'Old
+                  and then Accepting = Accepting'Old
+                  and then Contact = Contact'Old
+                  and then Network = Network'Old;
 
    --  @req 3.15.1.3.7
    procedure Set_Contact (C : RBC_Contact_T)

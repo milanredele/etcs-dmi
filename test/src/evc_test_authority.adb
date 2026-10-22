@@ -1228,6 +1228,15 @@ package body EVC_Test_Authority is
    --  not taken.
    procedure Scenario_Trip_L2 is
       MAs : Natural;
+      --  TR by the test entry of the core, PT by the driver's
+      --  acknowledgement: both halves see the mode change (4.8.4 [1])
+      procedure Enter_PT is
+      begin
+         EVC_Core.Set_Mode_For_Test (M_TR, L2);
+         Stand_X (200);
+         Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+         Stand_X (200);
+      end Enter_PT;
    begin
       Start_L2;
       Run_X (15_000);
@@ -1235,8 +1244,7 @@ package body EVC_Test_Authority is
       Stand_X (200);
       Check (not RA.Trip_Exit_Recognised,
              "post trip, level 2: message 6 outside PT not taken");
-      EVC_Core.Set_Mode_For_Test (M_PT, L2);
-      Stand_X (200);
+      Enter_PT;
       Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
       Check (not Wait_Request (1_000),
              "post trip, level 2: no MA request before the exit from TR "
@@ -1261,8 +1269,7 @@ package body EVC_Test_Authority is
       Run_X (15_000);
       Give_Radio_Message (1, Emergency_Message (MCat.Track_M16, 3));
       Stand_X (500);
-      EVC_Core.Set_Mode_For_Test (M_PT, L2);
-      Stand_X (200);
+      Enter_PT;
       Give_Radio_Message (1, Header_Message (MCat.Track_M6));
       Stand_X (200);
       Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
