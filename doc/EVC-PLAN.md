@@ -10038,3 +10038,48 @@ question of the cycle's order by its header; the next rounds will show
 whether the body reads of `EVC_Core` fall. Next: round 43 as planned
 after the forty-first (SM ninth, B1380, B1181 and B1261, the E6 partial
 rows by family), with the briefs naming the children.
+
+### Supervised Manoeuvre, gamma in the confidence interval, one exit recognition, the safe consist length lost (e6/sm-ninth) (2026-10-22)
+
+The ninth Supervised Manoeuvre package.
+
+B031 not built, stopped at B1400: the brief's premise that the Tick post
+names no doubt is wrong. Its 3.6.4.1.2 clause (against the same LRBG,
+orientation and Manoeuvre_Orientation `EVC_Position.Doubt_Over` and
+`Doubt_Under` never shrink) breaks when gamma goes from 1 to 0 with the
+three unchanged (valid Train Data entered in SB with the safe consist
+length, an SM request refused). Read at the source: the term after the
+first authorisation exists (`EVC_Position.Manoeuvre.Over` / `Under` from
+`Consist_End`, front or rear of the engine by the orientation against
+the active cab, kept to `End_Manoeuvre`): the same term as 3.6.4.1.5's,
+not another. Left: the term before it (SB without valid Train Data with
+the consist, an SM request pending) set by
+`EVC_Core.Modes.Sync_Train_Length`, and the Tick post's antecedent
+extended by the gamma terms unchanged: a Tick post package.
+
+B1320 done, 4.8.4 [1]: `EVC_Sessions.Network.Take_Radio_Order` gives the
+recognition it judged by the trip's stamp as
+`EVC_Radio.Trip_Exit_Recognised` (`Set_Trip_Exit_Recognised`, False
+again in `Network.Mode_Changed`); `EVC_Radio_Authority` sets its
+`Exit_Recognised` for a message 6 in PT only from it.
+`Scenario_SM_Post_Trip` checks both halves. `Scenario_Trip_L2` and
+`PT_L2_At_S150` reach PT by TR and the driver's acknowledgement
+(`Set_Mode_For_Test` to PT reached the authority half only). Outside the
+named units: the Input global of
+`EVC_Core.Inputs.Read_Released_Messages` gains `EVC_Radio.State`.
+
+4.4.21.1.12 and 3.14.1.7.6 done: `EVC_Stored_Information.Consist_Shortening`
+(in `Brake_Shortenings`): the safe consist length of the TIU lost in SM,
+or in SB with the default Train Data of SM (decision: the states where
+the consist is the train's length), shortens to the train at once at
+standstill, else keeps the service brake (`Consist_Brake`, demanded by
+`EVC_Procedures` as SB and Other) until the shortening at standstill,
+and requests an MA (3.8.2.5.1). The trackside: message 133 of 3.18.3.10
+(already sent on the change of availability). The driver: the DMI 4.0.0
+has no system status message for it (B1401). `Scenario_Safe_Consist`
+extended (`Consist_Lost_In_SM`).
+
+SUBSET-076: 1075 / 1095 / 1020 before and after, 0 regressions, 0
+improvements. Left: B1400 (B031, a Tick post package), B1401, B991, the
+target-distance check of B1160, 4.4.21.1.13 with 4.4.8.1.4, 3.18.3.2.4's
+max rear length, packet 12 of 131.
