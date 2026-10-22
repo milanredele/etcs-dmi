@@ -31,6 +31,19 @@
                                              (SUBSET-037-2_v400.pdf) and the
                                              first field of its section files
                                              (2_05_interface_to_safe_services.md)
+  doc/SRS/tools/clause.py --cites 3.6.4.1.5  the clauses whose text names it
+                                             ("see 3.6.4.1.5", "clause ...",
+                                             "3.6.4.1.5 b)", in a list), one
+                                             line each with the section file,
+                                             the page and the words around it
+  doc/SRS/tools/clause.py --cites "Table 17" the same for a table or a figure
+                                             ("Figure 13a")
+  doc/SRS/tools/clause.py --term "active cab"
+                                             the clauses using the words
+                                             (whole words, any case), after
+                                             the glossary's row when
+                                             SUBSET-023 defines the term
+                                             ("CAB, ACTIVE")
   doc/SRS/tools/clause.py --specs            the documents found under doc/SRS,
                                              their PDFs and clause lines
 
@@ -47,7 +60,11 @@ layout mode).
 Limits: the DMI specification has no page markers (no page with a clause;
 --page N works). The glossary SUBSET-023 has no numbered clauses: its terms
 are table rows |TERM|definition|, some inverted ("CAB, ACTIVE"): use
---spec 023 --grep "cab, active".
+--spec 023 --grep "cab, active". --cites and --term search the document
+selected (SUBSET-026 unless --spec): a clause of another document cited
+by name ("Subset-036 clause 4.2.9") is found as 4.2.9, like SUBSET-026's
+own, and a range ("3.17.2.3 to 3.17.2.6") names only its two ends. The
+index is computed on every run from the markdown (a tenth of a second).
 """
 import glob
 import os
@@ -120,11 +137,17 @@ def chapter_of(number):
 
 
 def pages_after(lines, start):
-    """The PDF page of line `start`: the next page marker after it."""
+    """The PDF page of line `start`: the next page marker after it, or
+    after the file's last marker the page that follows it (a section file
+    ends inside the page the next file begins on)."""
     for k in range(start, len(lines)):
         m = PAGE.search(lines[k])
         if m:
             return int(m.group(1))
+    for k in range(min(start, len(lines)) - 1, -1, -1):
+        m = PAGE.search(lines[k])
+        if m:
+            return int(m.group(1)) + 1
     return None
 
 
@@ -238,6 +261,75 @@ def grep(spec, pattern):
     return 0
 
 
+def uses(spec, rx):
+    """[(clause, file, line, page, excerpt)]: one per clause whose text
+    matches rx (its first matching line), the clause of a line being the
+    last clause opened before it, as for --grep; a clause's own number at
+    the start of its line is not a use."""
+    found = {}
+    for f in section_files(spec):
+        lines = open(f).readlines()
+        current = None
+        for k, l in enumerate(lines):
+            m = CLAUSE.match(l)
+            text = l
+            if m:
+                current = m.group(1)
+                text = l[m.end():]
+            u = rx.search(text)
+            if u and (f, current) not in found:
+                a, b = max(0, u.start() - 50), min(len(text), u.end() + 50)
+                excerpt = re.sub(r'\s+', ' ', re.sub(r'<br>', ' ', text[a:b])).strip()
+                found[(f, current)] = (current, f, k + 1, pages_after(lines, k), excerpt)
+    return list(found.values())
+
+
+def print_uses(spec, what, rows):
+    for clause, f, line, page, excerpt in rows:
+        print(f'{clause or "(before the first clause)":14} {os.path.basename(f)}:{line} page {page}  ...{excerpt}...')
+    print(f'-- {len(rows)} clauses of {spec} name {what}')
+    return 0
+
+
+def cites(spec, name):
+    """The clauses whose text names clause, table or figure `name`."""
+    name = name.strip()
+    m = re.fullmatch(r'(table|figure)\s+(\w+)', name, re.I)
+    if m:
+        rx = re.compile(r'\b' + m.group(1) + r'\s+' + re.escape(m.group(2)) + r'\b', re.I)
+    else:
+        rx = re.compile(r'(?<![\w.])' + re.escape(name) + r'(?!\.?\d)')
+    return print_uses(spec, name, uses(spec, rx))
+
+
+def glossary_rows(words):
+    """The rows of the glossary SUBSET-023 whose term is `words`, the
+    inverted form ("CAB, ACTIVE") read both ways."""
+    rows = []
+    for f in glob.glob(os.path.join(SRS, 'SUBSET-023_v*', 'sections', '*terms*.md')):
+        for l in open(f):
+            cells = l.strip().split('|')
+            if len(cells) < 4 or not cells[1].strip() or cells[1].startswith('---'):
+                continue
+            term = re.sub(r'\s+', ' ', cells[1].replace('-<br>', '-').replace('<br>', ' ')).strip()
+            head, _, tail = term.partition(', ')
+            forms = {term.lower(), head.lower(), (tail + ' ' + head).lower()}
+            if words.lower() in forms:
+                rows.append((term, re.sub(r'\s+', ' ', cells[2].replace('<br>', ' ')).strip()))
+    return rows
+
+
+def term(spec, words):
+    """The clauses using `words` (case-insensitive, whole words), after the
+    glossary's definition when SUBSET-023 has the term."""
+    words = ' '.join(words.split())
+    for t, definition in glossary_rows(words):
+        print(f'SUBSET-023 {t}: {definition}')
+    parts = [re.escape(w) for w in words.split(' ')]
+    rx = re.compile(r'\b' + r'(?:\s|<br>)+'.join(parts) + r'\b', re.I)
+    return print_uses(spec, f'"{words}"', uses(spec, rx))
+
+
 def list_specs():
     for d in documents():
         n = sum(1 for f in section_files(d) for l in open(f) if CLAUSE.match(l))
@@ -271,6 +363,10 @@ def main(argv):
         return 2
     if argv[0] == '--grep':
         return grep(spec, ' '.join(argv[1:]))
+    if argv[0] == '--cites':
+        return cites(spec, ' '.join(argv[1:]))
+    if argv[0] == '--term':
+        return term(spec, ' '.join(argv[1:]))
     if argv[0] == '--page':
         part, _, page = argv[1].rpartition(':')
         return print_page(spec, part or None, int(page))

@@ -22,6 +22,20 @@ Limits: the DMI specification has no page markers (a clause has no page;
 `--page N` works), and the glossary SUBSET-023 has no numbered clauses, its
 terms being table rows `|CAB, ACTIVE|definition|`: `--spec 023 --grep`.
 
+It is also the cross-reference index of a document: `--cites 3.6.4.1.5`
+lists every clause whose text names that number (in any form: "see ...",
+"clause ... b)", a list "3.17.2.3, 3.17.2.5 and 3.17.2.6", a row of the
+classification tables of chapter 9), `--cites "Table 17"` or `--cites
+"Figure 13a"` a table or a figure, `--term "active cab"` the clauses using
+those words (whole words, any case), after the glossary's row when
+SUBSET-023 defines the term (its inverted form "CAB, ACTIVE" read both
+ways); one line per clause, with the section file, the PDF page and the
+words around. The clause of a line is the last clause opened before it,
+as for `--grep`. The index is computed on every run from the markdown (a
+tenth of a second; no cache). Limits: a clause of another document cited
+by name ("Subset-036 clause 4.2.9") is found like the document's own
+4.2.9, and a range ("3.17.2.3 to 3.17.2.6") names only its two ends.
+
 ## import_subset026.py
 
 [import_subset026.py](import_subset026.py) imports the SUBSET-026 v4.0.0 PDF bundle as
