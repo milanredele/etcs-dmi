@@ -3,10 +3,8 @@
 
 with ETCS_Message;
 with ETCS_Message_Catalogue;
-with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P138;
 with ETCS_Track_Packets.P139;
-with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Level_Sessions;
@@ -33,8 +31,6 @@ package body EVC_Test_Levels is
    use type EVC_Radio.Session_State_T;
    use type LS.Exit_Phase_T;
 
-   --  Packet 41: an order to the level M at D_M metres from the group,
-   --  or now (D_M < 0)
    function Order (M : ETCS_Variables.M_LEVELTR_T; D_M : Integer)
      return ETCS_Track_Packets.P41.Packet_T
    is
@@ -665,7 +661,6 @@ package body EVC_Test_Levels is
              & "by 4.6.3 [39]");
    end Scenario_L1_Order_With_L1_MA_In_L0;
 
-   --  Message 24 referring to the group NID_BG with the packet 41 P
    function Level_Message (NID_BG : Natural;
                            P      : ETCS_Track_Packets.P41.Packet_T)
      return Byte_Array

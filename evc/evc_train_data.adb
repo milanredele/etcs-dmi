@@ -73,9 +73,17 @@ is
       SM_Categories := Default_Categories;
    end Clear;
 
+   --  decision: the safe consist length is "captured as part of valid
+   --  Train Data" when it is available while the Train Data are valid; a
+   --  max rear length of 0 (nothing behind the engine) keeps the length
+   --  entered, not a train of no length
    function Length return EVC_Distances.Length_T is
-     (if SM_Set then SM_Data.Length else Current.Length)
-     with Refined_Global => (SM_Set, SM_Data, Current);
+     (if SM_Set then SM_Data.Length
+      elsif Is_Valid and then SCL_Available and then SCL.Rear_Max > 0
+      then EVC_Distances.Length_T (100 * SCL.Rear_Max)
+      else Current.Length)
+     with Refined_Global => (SM_Set, SM_Data, Current, Is_Valid,
+                             SCL_Available, SCL);
 
    procedure Set (D : Train_Data_T; C : Categories_T) is
    begin

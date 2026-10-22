@@ -145,7 +145,7 @@ S79fc4827,dmi,the Level window from the Driver ID window of the Start Up: the Ma
 S256875a4,dmi,the speed and distance information in SR / OS / SH after the driver's request (DMI 8.2.2.4, Table 10) or before it
 S4a8f271f,dmi,the Level button disabled (DMI Table 33 #5) in the state of the step
 S9d052087,dmi,the Train data button disabled (DMI Table 33 #3) in the state of the step
-S607331e5,dmi,the Start button disabled (DMI Table 33 #1) in the state of the step
+S607331e5,dmi,"the Start button disabled (DMI Table 33 #1) in the state of the step; 4080455_04 step 120: the Main window with all its buttons disabled (DMI Table 54a S1) while the SM request of step 109 awaits its answer (5.21.2.2 S050 has no exit but 4 or 5), the message 5 of step 111 rejected by 4.8.4 [1]: the sequence composes case 5110200 5 after a refusal the on-board did not take; the MA request of Start after that message 6 is ours (5.11.2.2 S120: any message 6 in PT acknowledges the PT report, EVC_Radio_Authority.Trip_Exit_Acknowledged)"
 S560e94da,dmi,"the EOA button disabled (DMI Table 34) at the speed of the step (see S122decbf) e5/runner-chart: 3131060_08 step 60 (3 SV) at the calibrated chart's 58 km/h, the speed the sequence names, under V_NVALLOWOVTRP 60: refused as V_max is compared (5.8.2.1 a), B410)"
 S362493f1,model,the level selected where the sequence's columns keep N/A
 S26bf650c,s076,power off in IS: the sequence keeps IS after the power off, the on-board is in No Power

@@ -383,6 +383,18 @@ is
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
 
+   --  3.7.3.4 b): the RBC transition order, location based information
+   --  (the table of 3.6.4.2.4), deleted at a Supervised Manoeuvre
+   --  authorisation in the direction opposite to the train orientation
+   --  @req 3.7.3.4 b)
+   procedure Delete_RBC_Order
+     with Global => (In_Out => (State, EVC_Radio.State)),
+          Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
+
+   --  An RBC transition order stored (EVC_Sessions.Handover)
+   function RBC_Order_Stored return Boolean
+     with Global => State;
+
    --  3.5.3.8 d): the min safe rear end has passed a level transition
    --  border out of level 2 (EVC_Level_Sessions): the establishment of
    --  every session being established aborted, its safe radio

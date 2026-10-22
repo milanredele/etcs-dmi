@@ -1726,6 +1726,13 @@ is
       Reports.Request;
    end Request_Position_Report;
 
+   procedure Delete_RBC_Order is
+   begin
+      Handover.Delete;
+   end Delete_RBC_Order;
+
+   function RBC_Order_Stored return Boolean is (Handover.Order_Stored);
+
    procedure Abort_Establishment is
    begin
       Abort_Being_Established (Keep_Roles => False);

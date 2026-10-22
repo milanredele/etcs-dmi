@@ -30,7 +30,8 @@ package body EVC_Radio_Authority
                                    Deleted_Reason, Shortening, Emergency,
                                    SR_Auth, SR_Taken, Passed_Listed,
                                    Mode_Now,
-                                   Exit_Recognised, SH_Req, SM_Auth,
+                                   Exit_Recognised, Exit_Acknowledged,
+                                   SH_Req, SM_Auth,
                                    Status_Now, TAF,
                                    EVC_Radio_Authority.Buffer.State))
 is
@@ -149,9 +150,13 @@ is
 
    --  The mode of the last cycle (EVC_Radio.Context_T.Mode, Evaluate),
    --  and 5.11.2.2 S120: message 6, "Recognition of exit from TRIP mode",
-   --  received in PT
-   Mode_Now        : Mode_T := M_NP;
-   Exit_Recognised : Boolean := False;
+   --  received in PT with a time stamp more recent than the trip (4.8.4
+   --  [1]: the information it lets in), and Exit_Acknowledged: any
+   --  message 6 received in PT, the acknowledgement of the PT report
+   --  (S120, E125 -> D130: the choices of S140)
+   Mode_Now          : Mode_T := M_NP;
+   Exit_Recognised   : Boolean := False;
+   Exit_Acknowledged : Boolean := False;
 
    --  5.6 in level 2: the request for shunting (130) and its answer (27,
    --  28): Pending from the driver's selection to the answer or the
@@ -307,6 +312,8 @@ is
 
    function Trip_Exit_Recognised return Boolean is (Exit_Recognised);
 
+   function Trip_Exit_Acknowledged return Boolean is (Exit_Acknowledged);
+
    function SH_Waiting return Boolean is (SH_Req.Pending);
    function SH_Answer return Natural is (SH_Req.Answer);
    function SH_List_Given return Boolean is (SH_Req.List_Known);
@@ -430,6 +437,7 @@ is
       Passed_Listed := False;
       Mode_Now := M_NP;
       Exit_Recognised := False;
+      Exit_Acknowledged := False;
       SH_Req := (others => <>);
       SM_Auth := (others => <>);
       Status_Now := 0;
@@ -886,8 +894,13 @@ is
          --  5.11.2.2 S120, E125: in PT (4.8.4: rejected in other modes),
          --  4.8.4 [1]: the recognition the session half judged by the
          --  time stamps (one recognition for both halves)
-         if Mode_Now = M_PT and then EVC_Radio.Trip_Exit_Recognised then
-            Exit_Recognised := True;
+         --  decision: any message 6 in PT acknowledges the PT report
+         --  (A115, S120); the time stamp of [1] judges only what the
+         --  recognition lets in (MA, track description, SM authorisation)
+         if Mode_Now = M_PT then
+            Exit_Recognised :=
+              Exit_Recognised or else EVC_Radio.Trip_Exit_Recognised;
+            Exit_Acknowledged := True;
          end if;
       elsif Kind in ETCS_Message_Catalogue.Track_M2
                   | ETCS_Message_Catalogue.Track_M27
@@ -1322,6 +1335,7 @@ is
       Mode_Now := Ctx.Mode;
       if Mode_Now /= M_PT then
          Exit_Recognised := False;
+         Exit_Acknowledged := False;
       end if;
       --  4.8.3 [3]: "not yet acknowledged any train data in the ongoing
       --  communication session" (Train Data sent again in the session do
@@ -1353,11 +1367,12 @@ is
           Train_Data_Valid   => Facts.Train_Data_Valid,
           TRN_Valid          => Facts.TRN_Valid));
       --  5.11.2.2 S120, D130, S130, S140 b), S150: in PT, "Start" requests
-      --  an MA once the exit from TR is recognised and no emergency stop
-      --  is pending
+      --  an MA once the RBC acknowledged the PT report (message 6) and no
+      --  emergency stop is pending
       F.Start := Facts.Start
                  and then (Ctx.Mode /= M_PT
-                           or else (Exit_Recognised and then not Any_Stop));
+                           or else (Exit_Acknowledged
+                                    and then not Any_Stop));
       Evaluate_Request (Ctx.Now_Ms, F, MA_Received);
       --  3.8.2.1.5: the repetition
       if Reasons /= 0 and then Request_Sent and then Cycle_Ms > 0
@@ -1427,6 +1442,7 @@ is
       --  5.11.2.2 S120: the recognition is that of the PT entered
       if To /= M_PT then
          Exit_Recognised := False;
+         Exit_Acknowledged := False;
       end if;
       if not (To = M_SR and then From in M_SB | M_PT) then
          SR_Auth := (others => <>);

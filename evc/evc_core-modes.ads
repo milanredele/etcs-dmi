@@ -290,8 +290,9 @@ is
    --  Decision: the location based information of 3.7.3.4 b) is that of
    --  4.10's rows (the track description, the MA, the track conditions,
    --  the linking, the geographical position) and, by 3.6.1.1 a) and the
-   --  table of 3.6.4.2.4, the level transition order and the RBC
-   --  transition order, not yet deleted here
+   --  table of 3.6.4.2.4, the level transition orders (with the table of
+   --  priorities not yet applicable, A.3.4.1.2 k)'s deletion) and the RBC
+   --  transition order
    --  @req 3.7.3.4, 3.7.3.4 a), 3.7.3.4 b), 5.21.2.2 A075, 5.21.2.2 A095
    procedure Adjust_For_Manoeuvre
      with Global => (Input    => (Current_Mode, EVC_Mission.State,
@@ -302,7 +303,8 @@ is
                                   EVC_Track_Description.State,
                                   EVC_Movement_Authority.State,
                                   EVC_Track_Conditions.State,
-                                  EVC_Position.State, EVC_Sessions.State)),
+                                  EVC_Position.State, EVC_Sessions.State,
+                                  EVC_Levels.State, EVC_Radio.State)),
           Post => (if EVC_Position.Orientation
                         /= EVC_Position.Orientation'Old
                    then EVC_Position.Manoeuvre_Orientation)

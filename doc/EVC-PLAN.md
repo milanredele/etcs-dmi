@@ -10356,3 +10356,44 @@ the same file. AGENTS.md and doc/SRS/README.md name the new switches.
   withdrawn build of a detection completing its passage, in no commit),
   B1423 (its line says what to rebuild).
 - SUBSET-076: 1084 / 1098 / 1008 before and after, 0 regressions.
+### Supervised Manoeuvre, the orders deleted at an opposite authorisation, the Start in PT, the TIU output of remote shunting (e6/sm-tenth) (2026-10-22)
+
+The tenth Supervised Manoeuvre package; two of its three items.
+
+B1442 done, a trace first: the Start of 4080455_04 step 120 is disabled
+by the DMI, not by the recognition: the Main window has all its buttons
+disabled (DMI Table 54a S1) while the SM request of step 109 awaits its
+answer (5.21.2.2 S050 has no exit but message 4 or 5), and the message 5
+of step 111 is rejected by 4.8.4 [1], as the sequence asks. The
+sequence composes case 5110200 5 after a refusal the on-board did not
+take: S607331e5's note completed. The reading of S120 built anyway (the
+sequence's step 122 expects the MA request after that message 6):
+`EVC_Radio_Authority.Trip_Exit_Acknowledged`, any message 6 in PT, the
+acknowledgement of the PT report (A115, E125), lets "Start" request an
+MA (S140 b), S150); `Trip_Exit_Recognised`, the stamp of [1], still
+judges what it lets in (MA, track description, SM authorisation).
+`Scenario_SM_Post_Trip` extended.
+
+B991 done, 3.7.3.4 b): `EVC_Core.Modes.Adjust_For_Manoeuvre` calls
+`EVC_Levels.Delete_Orders` and `EVC_Sessions.Delete_RBC_Order` (new, the
+handover's order; `RBC_Order_Stored` its query) at an authorisation
+opposite to the orientation. Read at the source: entering SM deletes
+both orders already (4.10, `EVC_Levels.Mode_Entered`,
+`EVC_Sessions.Mode_Changed`), so the deletion acts on an authorisation
+received in SM, where 4.8.4 [7] keeps an immediate or conditional level
+order for later. `Scenario_SM_Authorisation` extended in SM (deleted
+when opposite, kept in the same direction). Outside the named units:
+`EVC_Test_Levels.Order` and `Level_Message` made public for the
+scenario; `EVC_Sessions` (the parent) for the wrapper of the private
+`Handover`.
+
+SUBSET-076: 1084 / 1098 / 1008 before and after, 0 regressions, 0
+improvements.
+
+3.18.3.2.4 done (a resumption): `EVC_Train_Data.Length` gives the max
+safe consist length in rear of the engine when the safe consist length
+is available while the Train Data are valid (decision; a rear max of 0
+keeps the length entered); its users read `EVC_Train_Data` unchanged
+(the sm-gamma agent reads it only). `Scenario_Safe_Consist` extended.
+Left: 4.4.21.1.13 with 4.4.8.1.4 (the TIU output of remote shunting),
+packet 12 of 131.

@@ -415,6 +415,10 @@ is
               (Rest => True, Horn => True, BMM => True);
             EVC_Position.Delete_Linking;
             EVC_Position.Delete_Geo;
+            --  3.7.3.4 b): the level transition orders and the RBC
+            --  transition order (3.6.1.1 a), the table of 3.6.4.2.4)
+            EVC_Levels.Delete_Orders;
+            EVC_Sessions.Delete_RBC_Order;
          end if;
          EVC_Sessions.Request_Position_Report;
          EVC_Position.Shift_For_Manoeuvre
