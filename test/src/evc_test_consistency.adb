@@ -375,10 +375,56 @@ package body EVC_Test_Consistency is
              & "linking reaction (3.16.2.4.3.1 b)");
    end Scenario_Unknown_Identity;
 
+   --  3.16.2.3.1.1: group 10 at 100 m announces 20 at 600 m (5 m, the
+   --  service brake), to be passed in its nominal direction or not, and
+   --  absent. The train runs 10 m a cycle (100 ms), the odometer giving
+   --  V_Cms, until the missed group
+   --  is found or it reaches Stand_At, then stands a cycle at a time;
+   --  Missed_At its position when the group is found, Standing the
+   --  cycles stood until then; With_MA: group 10 gives an MA to 2 km
+   procedure Missed_Window (Nominal   : Boolean;
+                            Stand_At  : Integer_64;
+                            Missed_At : out Integer_64;
+                            Standing  : out Natural;
+                            V_Cms     : Unsigned_16 := 1000;
+                            With_MA   : Boolean := False) is
+   begin
+      Start_X;
+      Speed_Cms := V_Cms;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 500), (1 => 20), 5, 1,
+                                      Nominal => Nominal)));
+      if With_MA then
+         Carry (1, 0, MA_Of ((1 => 2_000)));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+      end if;
+      Add_Group (Group (30, 1000));
+      Missed_At := 0;
+      Standing := 0;
+      while Train_Cm < Stand_At and then Train_Cm < 100_000 loop
+         Step_X (1_000);
+         if EVC_Position.Missed_Group_Found then
+            Missed_At := Train_Cm;
+            Speed_Cms := 1000;
+            return;
+         end if;
+      end loop;
+      while Standing < 20 loop
+         Standing := Standing + 1;
+         Step_X (0);
+         exit when EVC_Position.Missed_Group_Found;
+      end loop;
+      Missed_At := Train_Cm;
+      Speed_Cms := 1000;
+   end Missed_Window;
+
    procedure Scenario_Consistency_Reactions is
       SB : Boolean;
       Brake_Error : Natural renames
         SS_Seen (EVC_DMI_Port.SS_Balise_Read_Error_Brake);
+      X, X_Stood, X_Rev : Integer_64;
+      Stood, Stood_Rev  : Natural;
    begin
       --  linking checked, the expected group's message inconsistent (a
       --  balise missed): the reaction of its linking, train trip
@@ -501,6 +547,47 @@ package body EVC_Test_Consistency is
              "cross-talk: the watch ended by the linked group 57 of known "
              & "identity, no reaction (3.16.2.7.2.1 b)");
       Scenario_Unknown_Identity;
+
+      --  3.16.2.3.1.1 a): the window's end plus 1.3 m passed in the cycle
+      --  before the missed group is found moving; standing there, it is
+      --  found one cycle (100 ms) later, not in the cycle of the crossing
+      Missed_Window (True, 1_000_000, X, Stood);
+      Missed_Window (True, X - 1_000, X_Stood, Stood);
+      Check (X > 60_000 and then X_Stood = X - 1_000 and then Stood = 1,
+             "margin: the missed group found 100 ms after the min safe "
+             & "antenna passed the window's end plus 1.3 m (3.16.2.3.1.1 "
+             & "a), got" & Integer_64'Image (X) & Integer_64'Image (X_Stood)
+             & Natural'Image (Stood));
+      --  3.16.2.3.1.1 b): to be passed in reverse, Tn: at 10 m/s balises
+      --  230 ms apart, 100 ms; at 100 m/s 23 ms apart, 100 + 7 x 77 =
+      --  639 ms, seven cycles
+      Missed_Window (False, X - 1_000, X_Rev, Stood_Rev);
+      Check (X_Rev = X - 1_000 and then Stood_Rev = 1,
+             "margin: in reverse at 10 m/s, Tn 100 ms (3.16.2.3.1.1 b), "
+             & "got" & Natural'Image (Stood_Rev));
+      Missed_Window (False, 1_000_000, X_Rev, Stood_Rev, 10_000);
+      Check (X_Rev = X + 6_000,
+             "margin: in reverse, found Tn after the crossing, moving "
+             & "(3.16.2.3.1.1 b), got" & Integer_64'Image (X_Rev));
+      Missed_Window (False, X - 1_000, X_Rev, Stood_Rev, 10_000);
+      Check (X_Rev = X - 1_000 and then Stood_Rev = 7,
+             "margin: in reverse, found Tn after the crossing, standing "
+             & "(3.16.2.3.1.1 b), got" & Natural'Image (Stood_Rev));
+      --  3.16.2.6.2: the service brake of the missed group's linking
+      --  reaction, then standstill: the MA shortened to the train
+      Missed_Window (True, 1_000_000, X, Stood, With_MA => True);
+      Check (X > 60_000 and then EVC_Position.Linking_Reaction_Requested
+             and then EVC_Position.Reaction = 1
+             and then EVC_Movement_Authority.MA.Present
+             and then not EVC_Movement_Authority.MA.Withdrawn,
+             "linking reaction: the missed group's service brake, the MA "
+             & "kept while moving (3.16.2.6.2)");
+      Stand;
+      Stand;
+      Check (EVC_Movement_Authority.MA.Withdrawn,
+             "linking reaction: at standstill the MA shortened to the "
+             & "train (3.16.2.6.2, A.3.4.1.2 i), EVC_Stored_Information"
+             & ".Linking_Shortening)");
    end Scenario_Consistency_Reactions;
 
    procedure Scenario_Consistency_Modes is

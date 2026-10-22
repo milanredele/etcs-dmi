@@ -280,9 +280,10 @@ package body EVC_Test_Position is
          end if;
       end loop;
       --  min safe antenna = (X - 100 m) - 12 m - 2 % of (X - 90 m) above
-      --  605 m + 1.3 m
-      Check (Missed_At = 63_000,
-             "missed: detected at 630 m, got" & Integer_64'Image (Missed_At));
+      --  605 m + 1.3 m at 630 m, then 100 ms beyond it (3.16.2.3.1.1 a):
+      --  the next step's cycle
+      Check (Missed_At = 64_000,
+             "missed: detected at 640 m, got" & Integer_64'Image (Missed_At));
       Check (JRU_Seen (6) = 1 and then JRU_Id (6) = Id (20)
              and then JRU_Seen (4) = 1 and then JRU_Last (4, 2) = 1
              and then JRU_Last (4, 3) = Pos.Cause_Not_Detected
