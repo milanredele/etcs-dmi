@@ -105,6 +105,8 @@ package body S076_Bench is
    Messages   : array (1 .. Max_Messages) of Message_Slot_T;
    Messages_N : Natural := 0;
    Last_Mode, Last_Level_Status, Last_Level : Natural := No_Value;
+   --  the bench time of the last entry into TR (0 none)
+   Trip_At : Unsigned_64 := 0;
    Last_Commands : Natural := 0;
    Last_Mon, Last_Sup : Natural := 0;
 
@@ -391,6 +393,11 @@ package body S076_Bench is
                               0);
       end if;
       if P (P'First) = 1 then
+         if Natural (P (P'First + 1)) = EVC_Modes.Mode_T'Pos (EVC_Modes.M_TR)
+           and then Last_Mode /= Natural (P (P'First + 1))
+         then
+            Trip_At := Time_Ms;
+         end if;
          Last_Mode := Natural (P (P'First + 1));
          Last_Level_Status := Natural (P (P'First + 2));
          Last_Level := Natural (P (P'First + 3));
@@ -1431,6 +1438,7 @@ package body S076_Bench is
    function JRU_Count return Natural is (JRU_N);
    function JRU (I : Positive) return JRU_Record_T is (JRU_List (I));
    function JRU_Mode return Natural is (Last_Mode);
+   function Trip_Ms return Unsigned_64 is (Trip_At);
    function JRU_Level_Status return Natural is (Last_Level_Status);
    function JRU_Level return Natural is (Last_Level);
    function JRU_Monitoring return Natural is (Last_Mon);
