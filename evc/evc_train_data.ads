@@ -132,6 +132,14 @@ is
                 else Consist.Rear_Min + Consist.Front_Max)))
      with Global => State;
 
+   --  3.18.3.8: the max safe consist length opposite to the train
+   --  orientation, in rear of the engine when the orientation is the
+   --  active cab's (Same), in front of it when opposite, cm
+   function Consist_Behind (Same : Boolean) return EVC_Distances.Length_T is
+     (EVC_Distances.Length_T
+        (100 * (if Same then Consist.Rear_Max else Consist.Front_Max)))
+     with Global => State;
+
    --  A safe consist length input (EVC_Ports TIU signal 15): available
    --  with its lengths, or not available (the lengths kept, 3.18.3.2.5).
    --  3.18.3.5 a): with a length in front of the engine, no valid Train
