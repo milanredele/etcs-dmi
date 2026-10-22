@@ -8,6 +8,7 @@ with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P74;
 with ETCS_Train_Packets.P5;
+with ETCS_Train_Packets.P11;
 with ETCS_Bits;
 with ETCS_Variables;
 with DMI_Protocol;
@@ -1546,6 +1547,33 @@ package body EVC_Test_Sessions is
       end loop;
    end Integrity_Of_Report;
 
+   --  N_AXLE of packet 11 in the RTM output N (message 129); -1 when it
+   --  does not decode
+   function Axles_Of (N : Positive) return Integer is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      OK : Boolean;
+   begin
+      Decode_Radio_Message (N, M, St);
+      if St = ETCS_Message.Accepted then
+         for K in 1 .. M.Count loop
+            if Natural (M.Index (K).NID) = 11 then
+               declare
+                  Rd  : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+                  P11 : ETCS_Train_Packets.P11.Packet_T;
+               begin
+                  ETCS_Message.Open_Packet (M, K, Rd);
+                  ETCS_Train_Packets.P11.Decode (Rd, P11, OK);
+                  if OK then
+                     return Integer (P11.N_AXLE);
+                  end if;
+               end;
+            end if;
+         end loop;
+      end if;
+      return -1;
+   end Axles_Of;
+
    --  The TIU frame of an available safe consist length (EVC_Ports signal
    --  15): the lengths in front of the engine (nominal, min, max), then
    --  in rear of it, metres
@@ -1628,6 +1656,11 @@ package body EVC_Test_Sessions is
              & "L_TRAININT, the RBC bit 3 of MSG_ONBOARD (DMI 11.2.3.5 #3)");
       for N in 1 .. Radio_Outputs loop
          if Is_Message (N, 129) then
+            Check (Axles_Of (N) = Natural (EVC_Config.Current.Train.N_Axle)
+                   and then Axles_Of (N) = 4,
+                   "train data: N_AXLE of packet 11 the installation "
+                   & "datum, 4 axles (3.18.3.2 k), 3.18.3.4 i)), got"
+                   & Integer'Image (Axles_Of (N)));
             Ack_Train_Data (N);
          end if;
       end loop;

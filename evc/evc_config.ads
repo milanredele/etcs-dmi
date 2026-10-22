@@ -131,6 +131,13 @@ is
       --  decision: 20 m, a locomotive, until a format version of the
       --  image carries it
       Engine_Length         : Length_T range 100 .. 10_000 := 2_000;
+      --  the number of axles of the train (3.18.3.2 k), N_AXLE of packet
+      --  11 (3.18.3.4 i). Decision: an installation datum, the axles of
+      --  the engine: the consist's are not known to the on-board without
+      --  an input (the DMI's Train Data window has no field for them, the
+      --  train interface no signal); 4, a locomotive, until a format
+      --  version of the image carries it
+      N_Axle                : N_AXLE_T := 4;
       --  3.18.3.9: the default Train Data of a mission in Supervised
       --  Manoeuvre, every item of 3.18.3.2 but the length b) (the
       --  braking model, the special brakes, the traction cut-off time

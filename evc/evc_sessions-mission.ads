@@ -27,8 +27,10 @@
 --      group": the position status is Valid while the report did not say
 --      "valid referred to an LRBG" (the status is kept), else it is
 --      deleted (A24, A39).
---  (6) N_AXLE of packet 11 is 0 and M_AIRTIGHT 0 (not fitted): the
---      installation data (EVC_Config) have neither.
+--  (6) N_AXLE of packet 11 is the installation datum
+--      EVC_Config.Fixed_Train_T N_Axle, carried with the categories of
+--      the Train Data (EVC_Train_Data.Categories_T) as the traction
+--      systems are; M_AIRTIGHT is the driver's entry.
 
 with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
 with EVC_Driver_Requests;

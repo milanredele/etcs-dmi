@@ -539,7 +539,9 @@ is
    --  Packet 11 (7.4.3.5) from the Train Data (3.18.3.4 a to i):
    --  L_TRAIN in m, V_MAXTRAIN in 5 km/h steps (the speed rounded to the
    --  km/h first), the traction systems of the bits of Voltages (bit k:
-   --  M_VOLTAGE k, NID_CTRACTION 0), no National System; decision 6
+   --  M_VOLTAGE k, NID_CTRACTION 0), no National System; N_AXLE the
+   --  installation datum (decision 6)
+   --  @req 3.18.3.2 k), 3.18.3.4 i)
    function Train_Packet return ETCS_Train_Packets.P11.Packet_T
      with Global => EVC_Train_Data.State
    is
@@ -560,7 +562,7 @@ is
       P.M_LOADINGGAUGE := Cat.Loading_Gauge;
       P.M_AXLELOADCAT := Cat.Axle_Load;
       P.M_AIRTIGHT := Cat.Airtight;
-      P.N_AXLE := 0;
+      P.N_AXLE := Cat.N_Axle;
       for V in 1 .. 5 loop
          pragma Loop_Invariant (N < V);
          if (Cat.Voltages / 2**V) mod 2 = 1 then

@@ -42,6 +42,9 @@ is
       Voltages        : Natural range 0 .. 2**16 - 1 := 2;  -- bit 1: AC 25
       --  the train is fitted with an airtight system (3.18.3.2 h)
       Airtight        : M_AIRTIGHT_T := 0;
+      --  the number of axles (3.18.3.2 k), not a category: carried with
+      --  them as the traction systems are, from the installation data
+      N_Axle          : N_AXLE_T := 4;
    end record;
 
    Default_Categories : constant Categories_T := (others => <>);
