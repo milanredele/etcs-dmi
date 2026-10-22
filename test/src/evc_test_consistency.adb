@@ -381,18 +381,24 @@ package body EVC_Test_Consistency is
    --  V_Cms, until the missed group
    --  is found or it reaches Stand_At, then stands a cycle at a time;
    --  Missed_At its position when the group is found, Standing the
-   --  cycles stood until then
+   --  cycles stood until then; With_MA: group 10 gives an MA to 2 km
    procedure Missed_Window (Nominal   : Boolean;
                             Stand_At  : Integer_64;
                             Missed_At : out Integer_64;
                             Standing  : out Natural;
-                            V_Cms     : Unsigned_16 := 1000) is
+                            V_Cms     : Unsigned_16 := 1000;
+                            With_MA   : Boolean := False) is
    begin
       Start_X;
       Speed_Cms := V_Cms;
       Add_Group (With_Links (Group (10, 100),
                              Link_To ((1 => 500), (1 => 20), 5, 1,
                                       Nominal => Nominal)));
+      if With_MA then
+         Carry (1, 0, MA_Of ((1 => 2_000)));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+      end if;
       Add_Group (Group (30, 1000));
       Missed_At := 0;
       Standing := 0;
@@ -567,6 +573,21 @@ package body EVC_Test_Consistency is
       Check (X_Rev = X - 1_000 and then Stood_Rev = 7,
              "margin: in reverse, found Tn after the crossing, standing "
              & "(3.16.2.3.1.1 b), got" & Natural'Image (Stood_Rev));
+      --  3.16.2.6.2: the service brake of the missed group's linking
+      --  reaction, then standstill: the MA shortened to the train
+      Missed_Window (True, 1_000_000, X, Stood, With_MA => True);
+      Check (X > 60_000 and then EVC_Position.Linking_Reaction_Requested
+             and then EVC_Position.Reaction = 1
+             and then EVC_Movement_Authority.MA.Present
+             and then not EVC_Movement_Authority.MA.Withdrawn,
+             "linking reaction: the missed group's service brake, the MA "
+             & "kept while moving (3.16.2.6.2)");
+      Stand;
+      Stand;
+      Check (EVC_Movement_Authority.MA.Withdrawn,
+             "linking reaction: at standstill the MA shortened to the "
+             & "train (3.16.2.6.2, A.3.4.1.2 i), EVC_Stored_Information"
+             & ".Linking_Shortening)");
    end Scenario_Consistency_Reactions;
 
    procedure Scenario_Consistency_Modes is

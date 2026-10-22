@@ -10320,7 +10320,11 @@ remainder; then the Gamma model, NL.
   every missed-window reaction comes one cycle later: one position check
   moved (630 -> 640 m), no golden, no sequence.
   `Scenario_Consistency_Reactions` (`Missed_Window`).
+- 3.16.2.6.2 done in the resumption: no build was missing, the scenario
+  was (`Scenario_Consistency_Reactions`, `Missed_Window` with an MA: the
+  missed group's service brake, the MA shortened at standstill by
+  `EVC_Stored_Information.Linking_Shortening`).
 - Left at the bound: B1420 (narrowed in its line: the difference needs the
   withdrawn build of a detection completing its passage, in no commit),
-  B1423, 3.16.2.6.2's remainder.
+  B1423 (its line says what to rebuild).
 - SUBSET-076: 1084 / 1098 / 1008 before and after, 0 regressions.
