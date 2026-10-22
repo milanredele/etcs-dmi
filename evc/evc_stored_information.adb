@@ -50,6 +50,7 @@ package body EVC_Stored_Information
                                    Radio_MA, Radio_SH, Radio_SH_N,
                                    Radio_SH_Ids, Timer_Deletion,
                                    Contact_Braking, Linking_Braking,
+                                   Consist_Braking, Consist_Was,
                                    Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
@@ -133,6 +134,10 @@ is
    --  3.16.2.7.1.1) commanded in an earlier Evaluate, the train not yet at
    --  standstill
    Linking_Braking : Boolean := False;
+   --  4.4.21.1.12: the service brake of the safe consist length lost,
+   --  until the shortening at standstill; its availability last cycle
+   Consist_Braking : Boolean := False;
+   Consist_Was     : Boolean := False;
    --  3.8.2.4: the information "track ahead free up
    --  to the level 2 transition location" accepted in the last Evaluate
    --  and the group it names (3.8.2.4.2); the country of the group
@@ -183,6 +188,8 @@ is
      with Refined_Global => Plan;
    function PBD_Inputs return EVC_PBD.Inputs_T is (PBD_Last)
      with Refined_Global => PBD_Last;
+   function Consist_Brake return Boolean is (Consist_Braking)
+     with Refined_Global => Consist_Braking;
    function MA_On_Board return Boolean is (MA_Board)
      with Refined_Global => MA_Board;
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
@@ -256,6 +263,8 @@ is
       Former_Length := 0;
       Contact_Braking := False;
       Linking_Braking := False;
+      Consist_Braking := False;
+      Consist_Was := False;
       TAF_L2_New := False;
       TAF_L2_Loc := (others => <>);
       Group_Country := 0;
@@ -2985,14 +2994,58 @@ is
       end if;
    end Linking_Shortening;
 
+   --  4.4.21.1.12: the safe consist length of the external source (TIU
+   --  input 15) becomes unavailable in SM, or in SB with the default
+   --  Train Data of Supervised Manoeuvre: the location based information
+   --  shortened to the current position at once at standstill, else the
+   --  service brake (Consist_Brake, EVC_Procedures) and the shortening at
+   --  standstill, which releases the brake (3.14.1.7.6); an MA requested
+   --  (3.8.2.5.1: A.3.4.1.2 o) is not among its exceptions).
+   --  Decision: the modes are those of 4.4.21 (SM) and SB once the SM's
+   --  default Train Data are set (EVC_Train_Data.Manoeuvre_Set): the
+   --  only states in which the consist is the train's length
+   --  @req 4.4.21.1.12, 3.14.1.7.6
+   procedure Consist_Shortening (T     : Origin_Table_T;
+                                 Train : Train_Frame_T;
+                                 Mode  : EVC_Modes.Mode_T)
+     with Global => (Input  => (EVC_Train_Data.State, EVC_Odometry.State),
+                     In_Out => (Consist_Braking, Consist_Was, Timer_Deletion,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                Events, Event_N))
+   is
+      use type EVC_Modes.Mode_T;
+      Now  : constant Boolean := EVC_Train_Data.Consist_Available;
+      Lost : constant Boolean :=
+        Consist_Was and then not Now
+        and then (Mode = EVC_Modes.M_SM
+                  or else (Mode = EVC_Modes.M_SB
+                           and then EVC_Train_Data.Manoeuvre_Set));
+      O    : EVC_Movement_Authority.Outcome_T;
+   begin
+      Consist_Was := Now;
+      if Lost and then not EVC_Odometry.Standstill then
+         Consist_Braking := True;
+      elsif (Lost or else Consist_Braking) and then EVC_Odometry.Standstill
+      then
+         EVC_Movement_Authority.Shorten_To_Train (Train, O);
+         Apply (T, O);
+         Timer_Deletion := True;
+         Consist_Braking := False;
+      end if;
+   end Consist_Shortening;
+
    --  The shortenings at standstill after a service brake: of the contact
-   --  supervision (3.16.3.4.5 b) and of a linking reaction (3.16.2.6.2)
+   --  supervision (3.16.3.4.5 b), of a linking reaction (3.16.2.6.2) and
+   --  of the safe consist length lost (4.4.21.1.12)
    procedure Brake_Shortenings (T     : Origin_Table_T;
                                 Train : Train_Frame_T;
                                 Mode  : EVC_Modes.Mode_T)
      with Global => (Input  => (EVC_Sessions.State, EVC_Position.State,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, EVC_Train_Data.State),
                      In_Out => (Contact_Braking, Linking_Braking,
+                                Consist_Braking, Consist_Was,
                                 Timer_Deletion,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -3002,6 +3055,7 @@ is
    begin
       Contact_Shortening (T, Train);
       Linking_Shortening (T, Train, Mode);
+      Consist_Shortening (T, Train, Mode);
    end Brake_Shortenings;
 
    --  3.18.3.8: the train length of the valid Train Data increased: the

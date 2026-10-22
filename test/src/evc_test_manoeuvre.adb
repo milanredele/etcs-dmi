@@ -15,9 +15,11 @@ with EVC_Ports;           use EVC_Ports;
 with EVC_Mission;
 with EVC_Movement_Authority;
 with EVC_Position;
+with EVC_Procedures;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_Stored_Information;
 with EVC_Train_Data;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
@@ -47,6 +49,8 @@ package body EVC_Test_Manoeuvre is
       end loop;
       return Frame;
    end SCL_Frame;
+
+   procedure Consist_Lost_In_SM;
 
    procedure Scenario_Safe_Consist is
       Valid_Before : Boolean;
@@ -97,6 +101,7 @@ package body EVC_Test_Manoeuvre is
              and then EVC_Train_Data.Consist.Front_Max = 21
              and then EVC_Train_Data.Entry_Possible,
              "SCL: unavailable, the safe consist length kept (3.18.3.2.5)");
+      Consist_Lost_In_SM;
    end Scenario_Safe_Consist;
 
    --  The on-board's T_TRAIN now
@@ -255,8 +260,66 @@ package body EVC_Test_Manoeuvre is
                        Scaled (Natural (P.L_DOUBTUNDER), Q) + More_Under);
    end Front_Moved;
 
+   --  4.4.21.1.12 in SM: the safe consist length of the TIU lost while
+   --  moving, the service brake (3.14.1.7.6), message 133 to the RBC
+   --  (3.18.3.10), the MA shortened to the train at standstill, which
+   --  releases the brake; lost at standstill, shortened at once
+   procedure Consist_Lost_In_SM is
+      T    : Unsigned_64;
+      Sent : Natural;
+   begin
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Run_X (Train_Cm + 5_000, 500);
+      Sent := EVC_Sessions.SM_Consist_Sent;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      Run_X (Train_Cm + 500, 250);
+      Check (EVC_Core.Mode = M_SM
+             and then EVC_Stored_Information.Consist_Brake
+             and then EVC_Procedures.Brake_Demand.SB
+             and then EVC_Movement_Authority.MA.Present
+             and then not EVC_Movement_Authority.MA.Withdrawn,
+             "SCL: lost in SM while moving, the service brake, the MA "
+             & "kept until standstill (4.4.21.1.12, 3.14.1.7.6); mode "
+             & Mode_T'Image (EVC_Core.Mode));
+      Check (EVC_Sessions.SM_Consist_Sent > Sent,
+             "SCL: lost in SM, the trackside informed by message 133 "
+             & "(4.4.21.1.12, 3.18.3.10)");
+      Stand_X (1_000);
+      Check (not EVC_Stored_Information.Consist_Brake
+             and then not EVC_Procedures.Brake_Demand.SB
+             and then EVC_Movement_Authority.MA.Withdrawn,
+             "SCL: lost in SM, at standstill the MA shortened to the "
+             & "train and the brake released (4.4.21.1.12, A.3.4.1.2 o), "
+             & "3.14.1.7.6)");
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM
+             and then not EVC_Stored_Information.Consist_Brake
+             and then not EVC_Procedures.Brake_Demand.SB
+             and then EVC_Movement_Authority.MA.Withdrawn,
+             "SCL: lost in SM at standstill, the MA shortened at once, "
+             & "no brake (4.4.21.1.12)");
+   end Consist_Lost_In_SM;
+
    procedure Scenario_SM_Authorisation is
-      T : Unsigned_64;
+      T  : Unsigned_64;
+      --  the distance to the EOA of the same MA (500 m from the LRBG 10)
+      --  with the front end at the engine's end, cm
+      D1 : Integer_64;
+      --  the distance to the first Indication location (its EOA at
+      --  standstill, 3.13.10.3.8), cm; -1 without one
+      function Indication_Cm return Integer_64 is
+        (if EVC_Core.Supervision.Indication
+         then Integer_64 (EVC_Core.Supervision.Indication_D) else -1);
    begin
       Start_L2_SM;
       Select_SM;
@@ -280,6 +343,9 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Position.Manoeuvre_Orientation and then EVC_Mission.Mission,
              "SM authorisation: the same direction, the orientation fixed "
              & "by it (3.6.1.5.1, 3.7.3.4 a)");
+      D1 := Indication_Cm;
+      Check (D1 > 0, "SM authorisation: the EOA ahead, an Indication "
+             & "location (3.13.10.3.8)");
       --  50 m in front of the engine (49 .. 52), the authorisation in the
       --  train orientation: the front end at the far end of that consist
       Start_L2_SM;
@@ -307,6 +373,17 @@ package body EVC_Test_Manoeuvre is
          Check (Same_Report,
                 "SM same direction: the report of 131 is the position "
                 & "report from it (5.21.2.2 A045, 3.18.3.2.5.1)");
+         --  the EOA supervised from the moved front end: the same MA,
+         --  the target 50 m nearer (and the 2 m of the wider interval)
+         declare
+            D2 : constant Integer_64 :=
+              Indication_Cm;
+         begin
+            Check (D1 - D2 in 5_000 .. 5_300,
+                   "SM same direction: the distance to the EOA from the "
+                   & "moved front end, 50 m less (3.18.3.2.5.1):"
+                   & Integer_64'Image (D1) & Integer_64'Image (D2));
+         end;
       end;
       --  the MA in the direction opposite to the train orientation: the
       --  front end at the far end of the 400 m in rear of the engine
@@ -640,7 +717,8 @@ package body EVC_Test_Manoeuvre is
    --  4.8.4 [1] in level 2, Post Trip: message 5 (SM refused) is taken
    --  only after the recognition of the exit from TR (message 6) with a
    --  more recent time stamp than the trip; a message 6 stamped before
-   --  the trip does not count
+   --  the trip does not count, for the session half (message 5) and the
+   --  authority half (EVC_Radio_Authority.Trip_Exit_Recognised) alike
    procedure Scenario_SM_Post_Trip is
       T, Before : Unsigned_64;
       Shown     : Natural;
@@ -687,8 +765,18 @@ package body EVC_Test_Manoeuvre is
                       = Shown,
              "SM post trip: message 6 stamped before the trip, SM refused "
              & "rejected (4.8.4 [1])");
+      --  one recognition for both halves: the authority half takes no
+      --  exit from TR the session half did not recognise
+      Check (not EVC_Radio.Trip_Exit_Recognised
+             and then not EVC_Radio_Authority.Trip_Exit_Recognised,
+             "SM post trip: message 6 stamped before the trip, no exit "
+             & "from TR recognised by either half (4.8.4 [1])");
       Give_Radio_Message (1, M6 (Now_Stamp));
       Stand_X (200);
+      Check (EVC_Radio.Trip_Exit_Recognised
+             and then EVC_Radio_Authority.Trip_Exit_Recognised,
+             "SM post trip: message 6 more recent than the trip, the exit "
+             & "from TR recognised by both halves (4.8.4 [1])");
       Give_Radio_Message (1, SM_Refused (T));
       Stand_X (200);
       Check (not EVC_Sessions.SM_Waiting

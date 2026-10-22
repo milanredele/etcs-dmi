@@ -7,7 +7,7 @@ package body EVC_Radio
   with SPARK_Mode => On,
        Refined_State => (State => (Count_Of_Sessions, Table, Supervising_S,
                                    Accepting_S, Contact_Info, Network_Info,
-                                   Engine_Value, TD_Acked),
+                                   Engine_Value, TD_Acked, Exit_Known),
                          Queue => (Data, Used, Refused_Count))
 is
 
@@ -21,6 +21,7 @@ is
    Network_Info      : Network_T;
    Engine_Value      : NID_ENGINE_T := 0;
    TD_Acked          : Boolean := False;
+   Exit_Known        : Boolean := False;
 
    Data          : EVC_Bytes.Byte_Array (1 .. Queue_Capacity) :=
      (others => 0);
@@ -45,6 +46,8 @@ is
      with Refined_Global => Engine_Value;
    function Train_Data_Acknowledged return Boolean is (TD_Acked)
      with Refined_Global => TD_Acked;
+   function Trip_Exit_Recognised return Boolean is (Exit_Known)
+     with Refined_Global => Exit_Known;
    function Queued return Natural is (Used)
      with Refined_Global => Used;
    function Refused return Natural is (Refused_Count)
@@ -57,6 +60,7 @@ is
       Count_Of_Sessions := N;
       Engine_Value := Engine;
       TD_Acked := False;
+      Exit_Known := False;
       Table := (others => No_Info);
       Supervising_S := No_Session;
       Accepting_S := No_Session;
@@ -128,6 +132,11 @@ is
    begin
       TD_Acked := Acked;
    end Set_Train_Data_Acknowledged;
+
+   procedure Set_Trip_Exit_Recognised (Recognised : Boolean) is
+   begin
+      Exit_Known := Recognised;
+   end Set_Trip_Exit_Recognised;
 
    procedure Set_Contact (C : RBC_Contact_T) is
    begin

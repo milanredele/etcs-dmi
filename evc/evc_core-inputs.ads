@@ -105,7 +105,8 @@ is
    --  @req 4.8.5.5, 4.8.5.6 a), 3.18.4.5.3
    procedure Read_Released_Messages
      with Global => (Input  => (Clock_Ms, EVC_Position.State,
-                                EVC_Odometry.State, Current_Mode),
+                                EVC_Odometry.State, Current_Mode,
+                                EVC_Radio.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
                                 EVC_Mission.State,
                                 EVC_Sessions.State,

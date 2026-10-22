@@ -1127,8 +1127,8 @@ package body EVC_Test_Sessions is
    end Scenario_SoM_L2_MA_Without_Profile;
 
    --  Up to 5.11.2.2 S150 in level 2: the start of mission of
-   --  SoM_L2_At_S20 to SR (no MA on-board), a trip acknowledged (PT, the test entry of the
-   --  core), the exit from TR recognised by the RBC (message 6, E125),
+   --  SoM_L2_At_S20 to SR (no MA on-board), TR by the test entry of the
+   --  core, the trip acknowledged (PT), the exit from TR recognised by the RBC (message 6, E125),
    --  then 'Start': the MA request and the wait (S140 b, S150)
    procedure PT_L2_At_S150 is
    begin
@@ -1138,7 +1138,11 @@ package body EVC_Test_Sessions is
       Stand;
       Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
       Stand;
-      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_PT, EVC_Modes.L2);
+      --  TR by the test entry, PT by the driver's acknowledgement: both
+      --  halves see the mode change (4.8.4 [1] in each)
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_TR, EVC_Modes.L2);
+      Stand;
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
       Stand;
       Give_Radio_Message (1, Msg (MCat.Track_M6, Now_T));
       Stand;

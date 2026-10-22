@@ -292,6 +292,11 @@ is
    --  (an MA is accepted only when SSP and gradients cover it, 3.7.2.3)
    --  and the train position confidence interval overlaps a mode
    --  profile, as of the last Evaluate
+   --  4.4.21.1.12: the service brake of the safe consist length lost
+   --  while moving, until the shortening at standstill (3.14.1.7.6)
+   --  @req 4.4.21.1.12, 3.14.1.7.6
+   function Consist_Brake return Boolean
+     with Global => State;
    function MA_On_Board return Boolean
      with Global => State;
    function Mode_Profile_Overlap return Boolean

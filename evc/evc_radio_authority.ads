@@ -67,7 +67,7 @@ is
      with Global => (In_Out => (State, EVC_Origins.State,
                                 EVC_Radio_Info.State),
                      Input  => (EVC_Received.Store, EVC_Position.State,
-                                EVC_Odometry.State));
+                                EVC_Odometry.State, EVC_Radio.State));
 
    --  1. 4.8.3 [2], 4.8.5.1: the last message received (EVC_Received) is
    --  to be kept in the transition buffer instead of taken (Store_Message)
