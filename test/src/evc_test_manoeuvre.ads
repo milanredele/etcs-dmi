@@ -35,4 +35,9 @@ package EVC_Test_Manoeuvre is
    --  4.8.4 [1]: in PT the exit from TR with a more recent time stamp
    procedure Scenario_SM_Post_Trip;
 
+   --  3.6.4.1.5 last sentence: gamma 1 in Stand-By without valid Train
+   --  Data with the safe consist length, in a Supervised Manoeuvre
+   --  request and from the first authorisation to Non Leading
+   procedure Scenario_SM_Gamma;
+
 end EVC_Test_Manoeuvre;

@@ -333,6 +333,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Handover;
    EVC_Test_Manoeuvre.Scenario_SM_Direction;
    EVC_Test_Manoeuvre.Scenario_SM_Post_Trip;
+   EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;

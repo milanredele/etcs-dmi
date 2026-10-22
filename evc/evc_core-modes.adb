@@ -392,6 +392,19 @@ is
       elsif EVC_Position.Train_Length_Known then
          EVC_Position.Unset_Train_Length;
       end if;
+      --  3.6.4.1.5 last sentence: gamma 1 in Stand-By without valid Train
+      --  Data with the safe consist length, and while a Supervised
+      --  Manoeuvre request awaits its answer (decision: with the safe
+      --  consist length last received, the one the request carried);
+      --  from the first authorisation the term is the position's own
+      EVC_Position.Set_Gamma
+        (On => not EVC_Position.Manoeuvre_Orientation
+               and then EVC_Train_Data.Consist_Known
+               and then ((Current_Mode = M_SB
+                          and then not EVC_Train_Data.Valid
+                          and then EVC_Train_Data.Consist_Available)
+                         or else EVC_Sessions.SM_Waiting),
+         C  => EVC_Train_Data.Consist);
    end Sync_Train_Length;
 
    procedure Finish_Procedures is

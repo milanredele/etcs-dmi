@@ -2699,11 +2699,12 @@ is
    --  The common part of the two reports, against the direction
    --  reference G (the LRBG orientation, or for packet 1 the direction
    --  from the previous LRBG); the estimated front end moved by Ahead
-   --  along the orientation and its confidence interval widened by
-   --  More_Over and More_Under (the consist of Consist_Report)
+   --  along the orientation and its confidence interval the odometer's
+   --  part with the gamma terms Term_Over and Term_Under (3.6.4.1.5:
+   --  those in force, or the consist's of Consist_Report)
    procedure Fill (G         : Direction_T;
                    Ahead     : Dist_T;
-                   More_Over, More_Under : Length_T;
+                   Term_Over, Term_Under : Length_T;
                    Q_SCALE   : out Q_SCALE_T;
                    D_LRBG    : out D_LRBG_T;
                    Q_DIRLRBG : out Q_DIRLRBG_T;
@@ -2713,8 +2714,8 @@ is
                    Q_DIRTRAIN : out Q_DIRTRAIN_T)
    is
       Est : constant Dist_T := Sum (Estimated_Front, Ahead);
-      O   : constant Length_T := Add (Interval_Over, More_Over);
-      U   : constant Length_T := Add (Interval_Under, More_Under);
+      O   : constant Length_T := Add (Doubt_Over, Term_Over);
+      U   : constant Length_T := Add (Doubt_Under, Term_Under);
       Q   : constant Natural := Scale_For (Abs_Dist (Est), O, U);
       --  the estimated front end on the nominal side of G
       Side : constant Direction_T :=
@@ -2732,15 +2733,15 @@ is
    end Fill;
 
    --  Packet 0 with the estimated front end moved by Ahead and the
-   --  confidence interval widened by More_Over and More_Under (Fill)
+   --  gamma terms Term_Over and Term_Under (Fill)
    function Report_With (Mode       : Mode_T;
                          Level      : Level_T;
                          Ahead      : Dist_T;
-                         More_Over  : Length_T;
-                         More_Under : Length_T)
+                         Term_Over  : Length_T;
+                         Term_Under : Length_T)
      return ETCS_Train_Packets.P0.Packet_T
      with Global => (LRBG_A, Orient, Orient_Known, Antenna_Offset,
-                     Manoeuvre, Gamma, EVC_Odometry.State)
+                     Manoeuvre, EVC_Odometry.State)
    is
       P : ETCS_Train_Packets.P0.Packet_T;
    begin
@@ -2763,7 +2764,7 @@ is
       else
          P.NID_C := LRBG_A.Id.NID_C;
          P.NID_BG := LRBG_A.Id.NID_BG;
-         Fill (LRBG_A.Orientation, Ahead, More_Over, More_Under,
+         Fill (LRBG_A.Orientation, Ahead, Term_Over, Term_Under,
                P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
                P.L_DOUBTOVER, P.L_DOUBTUNDER, P.Q_DIRTRAIN);
       end if;
@@ -2772,7 +2773,7 @@ is
 
    function Position_Report (Mode : Mode_T; Level : Level_T)
      return ETCS_Train_Packets.P0.Packet_T
-   is (Report_With (Mode, Level, 0, 0, 0));
+   is (Report_With (Mode, Level, 0, Gamma_Over, Gamma_Under));
 
    function Consist_Report (Mode  : Mode_T;
                             Level : Level_T;
@@ -2782,7 +2783,7 @@ is
       E : constant Manoeuvre_T := Consist_End (Orient, C);
    begin
       if Manoeuvre.Moved then
-         return Report_With (Mode, Level, 0, 0, 0);
+         return Report_With (Mode, Level, 0, Gamma_Over, Gamma_Under);
       end if;
       return Report_With (Mode, Level,
                           Diff (E.Reach, Antenna_Offset (Orient)),
@@ -2811,7 +2812,8 @@ is
       P.NID_C_PRVLRBG := (if Prev_A.Valid then Prev_A.Id.NID_C else 0);
       P.NID_BG_PRVLRBG := (if Prev_A.Valid then Prev_A.Id.NID_BG
                            else Unknown_Identity.NID_BG);
-      Fill (Dref, 0, 0, 0, P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
+      Fill (Dref, 0, Gamma_Over, Gamma_Under,
+            P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
             P.L_DOUBTOVER, P.L_DOUBTUNDER, P.Q_DIRTRAIN);
       return P;
    end Position_Report_2;
