@@ -74,6 +74,9 @@ package body EVC_Position
                                    Geo_Kept_Valid,
                                    Geo_Kept_Sense,
                                    Check_Linking,
+                                   Crossed_Link,
+                                   Crossed_Ms,
+                                   Crossed_Wait_Ms,
                                    Defer_Ordered,
                                    Ignore_Groups,
                                    Held,
@@ -166,6 +169,12 @@ is
    --  (4.8), the linking consistency is checked (3.4.4.2.1.1 b)
    Accept_Linking     : Boolean := True;
    Check_Linking      : Boolean := True;
+   --  3.16.2.3.1.1: the expected window (Crossed_Link, 0 none) whose end
+   --  plus the margin the min safe antenna has passed, the cycle's time
+   --  when it first did and the time it must stay beyond it
+   Crossed_Link       : Natural range 0 .. EVC_Linking.Max_Links := 0;
+   Crossed_Ms         : Unsigned_64 := 0;
+   Crossed_Wait_Ms    : Unsigned_64 := 0;
    --  packet 79 of a balise group is
    --  accepted (4.8.4.2, e.g. rejected in SH)
    Accept_Geo         : Boolean := True;
@@ -737,13 +746,37 @@ is
       end if;
    end Next_Window;
 
+   --  3.16.2.3.1.1 a): the time beyond the margin for a group passed in
+   --  its nominal direction, ms
+   Nominal_Wait_Ms : constant := 100;
+
+   --  3.16.2.3.1.1 b): Tn of SUBSET-036 4.2.9 for a group passed in
+   --  reverse, ms: Tn = 100 + dt(n - 1), with dt(k) = 0 when the time
+   --  t(k) between balises k and k + 1 of the cluster is at least
+   --  100 + dt(k - 1), else 100 + dt(k - 1) - t(k). Decision: the group
+   --  was not detected, so neither its balises nor its spacing are known:
+   --  the worst case, the location reference the last of a group of 8
+   --  balises (n = 8) 2.3 m apart (the smallest spacing of SUBSET-036
+   --  5.x), passed at the odometer's max speed V; then t = 2.3 m / V,
+   --  dt(k) = k (100 - t) and Tn = 100 + 7 (100 - t) ms, or 100 ms when
+   --  t is 100 ms or more
+   Min_Spacing_Cm : constant := 230;
+   Cluster_Max    : constant := 8;
+   function Reverse_Wait_Ms (V : Natural) return Unsigned_64
+   is (if V = 0 or else Min_Spacing_Cm * 1000 / V >= 100
+       then Nominal_Wait_Ms
+       else Nominal_Wait_Ms
+            + (Cluster_Max - 1)
+              * Unsigned_64 (100 - Min_Spacing_Cm * 1000 / V))
+     with Post => Reverse_Wait_Ms'Result <= 800;
+
    --  3.16.2.3.1 b), 3.16.2.3.1.1: the expected groups whose windows
    --  were passed without their location reference; 3.16.2.7.1.1: two in
    --  a row without a balise detected between them, the service brake
    --  3.16.2.7.2.1 a): the watch of the repositioning group ends
    --  @req 3.16.2.3.1 b), 3.16.2.3.1.1, 3.16.2.3.1.1 a), 3.16.2.7.1.1
-   --  @req 3.16.2.7.2.1 a)
-   procedure Supervise_Windows
+   --  @req 3.16.2.3.1.1 b), 3.16.2.7.2.1 a)
+   procedure Supervise_Windows (Now_Ms : Unsigned_64)
    is
    begin
       --  3.16.2.7.2.1 a)
@@ -756,7 +789,21 @@ is
             E : constant EVC_Linking.Link_Index_T := Links.Expected;
             L : constant EVC_Linking.Link_T := Links.Links (E);
          begin
-            exit when not Window_Passed (E, Margin => True);
+            if not Window_Passed (E, Margin => True) then
+               Crossed_Link := 0;
+               exit;
+            end if;
+            --  3.16.2.3.1.1 a), b): beyond the margin for the time
+            if Crossed_Link /= E then
+               Crossed_Link := E;
+               Crossed_Ms := Now_Ms;
+               Crossed_Wait_Ms :=
+                 (if L.Nominal then Nominal_Wait_Ms
+                  else Reverse_Wait_Ms (Natural (EVC_Odometry.Speed_Max)));
+            end if;
+            exit when Now_Ms < Crossed_Ms
+              or else Now_Ms - Crossed_Ms < Crossed_Wait_Ms;
+            Crossed_Link := 0;
             Missed_Flag := True;
             Put_Identity_Event
               (Missed_Group, (if L.Known_Id then L.Id else Unknown_Identity));
@@ -1749,6 +1796,9 @@ is
       Accept_Linking := True;
       Accept_Geo := True;
       Check_Linking := True;
+      Crossed_Link := 0;
+      Crossed_Ms := 0;
+      Crossed_Wait_Ms := 0;
       Defer_Ordered := False;
       Ignore_Groups := False;
       Held := False;
@@ -1991,7 +2041,7 @@ is
 
       --  5. the window of the expected group
       if not Passage.Open then
-         Supervise_Windows;
+         Supervise_Windows (Now_Ms);
       end if;
 
       --  6.
