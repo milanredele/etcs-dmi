@@ -10078,5 +10078,5 @@ before, 1084 / 1098 / 1008 after, 0 regressions, 19 improvements.
   on "no backward movement" is not made (input) or not judged (output)
   when the next step at another distance is behind it; 4041800_02
   passes (3 SV).
-- Left: B481 (the records judged by number, not started: the bound came
-  after B750); B1440, B1441, B1442 (on-board traces).
+- Left: B481 narrowed by a re-read (12 with M_ERROR 1, 2, 7, 8 judged;
+  left 11 with 51 to 55, 10 steps, and 48 NID_MN, 6); B1440 to B1442.
