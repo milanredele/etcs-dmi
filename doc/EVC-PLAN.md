@@ -10076,8 +10076,14 @@ rows by family), with the briefs naming the children.
   3.16.2.3.1.1 a) needs the time of the crossing of the 1.3 m margin kept
   and `Supervise_Windows` given the cycle's clock (every missed-window
   reaction a cycle later at 100 ms: goldens and sequences to expect);
-  3.16.2.3.1.1 b) Tn (B822); 3.16.4.3's scenario; 3.16.2.6.2's remainder;
-  3.16.2.4.4.1 a) and 3.16.2.5.1.1 a) and their bullets (`Duplicated`
-  does not look at the duplicating telegram's directional information).
+  3.16.2.3.1.1 b) Tn (B822); 3.16.2.6.2's remainder.
+- Resumed inside the budget: 3.16.4.3 done (`Scenario_Consistency_Error_Report`:
+  linking checked by radio, a group marked linked between the two
+  announced, no error report). 3.16.2.4.4.1 a) and 3.16.2.5.1.1 a), the
+  1st bullet: withholding the duplicate exception for directional
+  information (Q_DIR 0 or 1) while the orientation cannot be evaluated
+  (one balise read, no linking) was built and withdrawn: 3040200_01 step
+  64 takes such a group in SR (B1423, a decision of what keeps the
+  orientation evaluable); the rows stay partial with that note.
 - SUBSET-076: 1075 / 1095 / 1020 before and after, 0 regressions, 6
   improvements.

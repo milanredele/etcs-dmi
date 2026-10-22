@@ -893,7 +893,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.4.4 b),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent (as 3.16.2.4.1 b); Scenario_Consistency_Undecoded
 3.16.2.4.4 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
 3.16.2.4.4.1,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited
-3.16.2.4.4.1 a),3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (decision: the content bullets are not told apart; the exception applies)
+3.16.2.4.4.1 a),3,x,,,,,E6,partial,"EVC_Balise_Groups.Duplicated (the content bullets not told apart: the exception applies to every duplicating telegram read and decoded; withholding it for directional information while the orientation cannot be evaluated, Q_DIR 0 or 1 with a single balise read and no linking, contradicts 3040200_01 step 64, B1423)"
 3.16.2.4.4.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
 3.16.2.4.4.1 a) 2nd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
 3.16.2.4.4.1 a) 3rd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
@@ -914,7 +914,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.5.1 b),3,x,,,,,E6,done,"EVC_Balise_Groups.Consistent, EVC_Position.Evaluate_Detected (a group of one balise detected and not decoded: unlinked, inconsistent, the reaction of EVC_Position.React_Inconsistent with the identity unknown); Scenario_Consistency_Undecoded"
 3.16.2.5.1 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
 3.16.2.5.1.1,3,x,,,,,E6,partial,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited (as 3.16.2.4.4.1)
-3.16.2.5.1.1 a),3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (decision: the content bullets are not told apart; the exception applies)
+3.16.2.5.1.1 a),3,x,,,,,E6,partial,"EVC_Balise_Groups.Duplicated (the content bullets not told apart: the exception applies to every duplicating telegram read and decoded; withholding it for directional information while the orientation cannot be evaluated, Q_DIR 0 or 1 with a single balise read and no linking, contradicts 3040200_01 step 64, B1423)"
 3.16.2.5.1.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
 3.16.2.5.1.1 a) 2nd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
 3.16.2.5.1.1 a) 3rd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
@@ -946,7 +946,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.3.5.1,3,x,,,,,E5,done,"EVC_Sessions.Take_Message, Produce (message 146); golden received_telegram_message [E5 session]"
 3.16.3.5.3,3,x,,,,,E5,done,EVC_Sessions.Produce (146 carries the T_TRAIN of the message) [E5 session]
 3.16.4.1,3,x,,,,,E6,done,"[E5 session] radio message errors: reported once the session is established (EVC_Sessions.Reports.Produce), evc_test Scenario_Session_Error_Report; [E6 consistency-linking] balise group errors: the linking reactions of EVC_Position reported in level 2 to the supervising RBC with M_ERROR 0, or 7 for the double linking error (EVC_Sessions.Reports.Request_Balise_Errors); M_ERROR 1 and 2 of the message consistency, 8 of 3.16.2.7.2, 9 and 10 of the odometer accuracy monitoring (3.6.8.5, 3.6.8.7) on the cycle the threshold is reached; evc_test Scenario_Consistency_Error_Report"
-3.16.4.3,3,x,,,,,E6,partial,"[E6 consistency-linking] EVC_Sessions.Reports.Request_Balise_Errors: a group marked linked and not in the linking information is no linking reaction of EVC_Position (Unexpected_Group only), so not reported; scenario left"
+3.16.4.3,3,x,,,,,E6,done,"EVC_Sessions.Reports.Request_Balise_Errors: a group marked linked and not in the linking information is no linking reaction of EVC_Position (Unexpected_Group only), so not reported; Scenario_Consistency_Error_Report"
 3.17.2.1,3,x,,,,,E6,done,"EVC_System_Version: the envelope X = 1, 2, 3 (6.4.2), Compatible; evc_test version_negotiation [E5 version]"
 3.17.2.1.1,3,x,,,,,E6,done,"EVC_System_Version.Operated_Y / Operated_Version: 1.1, 2.3, 3.0; evc_test version_negotiation [E5 version]"
 3.17.2.2,3,x,,,,,E6,partial,EVC_System_Version.Operated: one X at a time; what depends on it (the layouts of chapter 6) is E7 [E5 version]

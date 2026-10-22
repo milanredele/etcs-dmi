@@ -713,6 +713,26 @@ package body EVC_Test_Consistency is
              "error report: the odometer's safety threshold, M_ERROR 10 "
              & "(3.16.4.1, 3.6.8.7, 7.5.1.64), got"
              & Img (Count) & Img (Error));
+      --  3.16.4.3: linking checked (20 and 30 announced by radio), group
+      --  25 between them marked linked and not in the linking
+      --  information: no error report, nor for 20 and 30 found
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 300));
+      Add_Group (Group (25, 400));
+      Add_Group (Group (30, 500));
+      Run_X (15_000);
+      Establish_Session_Acked (1);
+      Give_Radio_Message
+        (1, Radio_Linked_MA (10, Link_To ((200, 200), (20, 30), 5, 1)));
+      Stand;
+      Run_Errors (60_000, Count, Error);
+      Check (Count = 0 and then EVC_Position.LRBG.Id.NID_BG = 30,
+             "error report: linking checked, a group marked linked and "
+             & "not in the linking information, no error report "
+             & "(3.16.4.3), got" & Img (Count) & Img (Error)
+             & Img (Natural (EVC_Position.LRBG.Id.NID_BG)));
    end Scenario_Consistency_Error_Report;
 
    --  The JRU records of the last Take of a balise group error
