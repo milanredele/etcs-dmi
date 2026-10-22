@@ -431,6 +431,10 @@ package EVC_Test_Support is
    --  The M_VERSION of the telegrams of group G (3.17.2.3)
    Version : array (1 .. Max_Groups) of ETCS_Variables.M_VERSION_T :=
      (others => 48);
+   --  When not 0, the M_VERSION of the telegram of the second balise
+   --  (N_PIG 1) of group G instead (3.17.2.3, 3.17.3.5)
+   Version_Second : array (1 .. Max_Groups) of ETCS_Variables.M_VERSION_T
+     := (others => 0);
 
    --  The bits of W appended to Extras (G, K); a telegram holds 772 bits
    --  of packets (830 less the header and packet 255)

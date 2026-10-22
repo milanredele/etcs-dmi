@@ -680,9 +680,12 @@ is
    --  a compatible version: 159 (with packet 2) and its acknowledgement
    --  awaited; none: 154, the driver informed and the session terminated.
    --  Decision: the session established becomes the one of the
-   --  supervising RBC (the handover of 3.15.1 aside)
+   --  supervising RBC (the handover of 3.15.1 aside). 8.5.2, 8.5.3: up
+   --  to here the on-board sends only version-invariant messages (155,
+   --  156) and reads 32 and 39, which are too; after it 154 or 159.
+   --  The one layout of each is its layout in every version
    --  @req 3.5.3.7 d), 3.5.3.7 d) 1st bullet, 3.5.3.7 d) 2nd bullet, 3.5.4.7
-   --  @req 3.17.3.7
+   --  @req 3.17.3.7, 8.5.2 Table
    procedure Take_Version (S : Session_T; V : M_VERSION_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, Ind, Requesting,
                                 Timer_On, Status_List, Status_N)),

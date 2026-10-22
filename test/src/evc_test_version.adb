@@ -6,6 +6,7 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P2;
 with ETCS_Track_Packets.P3;
+with ETCS_Track_Packets.P41;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;
 with EVC_Config;
@@ -230,6 +231,77 @@ package body EVC_Test_Version is
       end if;
    end Add_Version_Group;
 
+   --  Packet 41: an immediate order to the level L alone
+   function Level_Now (L : ETCS_Variables.M_LEVELTR_T)
+     return ETCS_Track_Packets.P41.Packet_T
+   is
+      P : ETCS_Track_Packets.P41.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_LEVELTR := ETCS_Variables.D_LEVELTR_Now_The_Level_Transition;
+      P.M_LEVELTR := L;
+      P.Has_NID_NTC := False;
+      P.NID_NTC := 0;
+      P.L_ACKLEVELTR := 0;
+      P.N_ITER := 0;
+      return P;
+   end Level_Now;
+
+   --  3.17.2.8.1, 3.17.2.8.2: a switch to and from level 2 ordered by
+   --  a group of 3.0, the session with an RBC of 2.1 established
+   procedure Version_Level_Switch is
+   begin
+      Open_With (16#21#);
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Stand_X (100);
+      Add_Version_Group (1, 50, 16#30#);
+      Carry (Track_N, 0, Level_Now (ETCS_Variables.M_LEVELTR_Level_1));
+      Check (SV.By_RBC and then SV.Operated = 2,
+             "version: in level 2 the RBC's X 2 governs (3.17.2.8 b)");
+      Run_X (10_000);
+      Check (EVC_Core.Level = L1 and then not SV.By_RBC
+             and then SV.Operated = 3,
+             "version: the group of 3.0 that orders level 1 now: its X "
+             & "judged at once, 3 operated (3.17.2.8.2, 3.17.2.3)");
+
+      Open_With (16#21#);
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Add_Version_Group (1, 50, 16#30#);
+      Carry (Track_N, 0, Level_Now (ETCS_Variables.M_LEVELTR_Level_2));
+      Check (not SV.By_RBC and then SV.Operated = 2,
+             "version: in level 1 the session's RBC does not govern, the "
+             & "version last operated kept (3.17.2.8 d)");
+      Run_X (10_000);
+      Check (EVC_Core.Level = L2 and then SV.By_RBC
+             and then SV.Operated = 2,
+             "version: the group of 3.0 that orders level 2 now: the "
+             & "RBC's X 2 operated, not the group's 3 (3.17.2.8 a, "
+             & "3.17.2.8.1)");
+      EVC_Core.Initialise;
+   end Version_Level_Switch;
+
+   --  3.17.2.3, 3.17.3.5 d): a telegram of 4.0, above the envelope, is
+   --  ignored: the X of the group is that of its other telegram
+   procedure Version_Ignored is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Add_Version_Group (1, 50, 16#30#, True, 16#21#);
+      Add_Version_Group (2, 150, 16#30#);
+      Version_Second (Track_N) := 16#40#;
+      Run_X (10_000);
+      Check (SV.Operated = 2, "version: ordered to 2.1 (3.17.2.5)");
+      Run_X (20_000);
+      Check (SV.Operated = 3,
+             "version: a group of a 3.0 and a 4.0 telegram: the 4.0 one "
+             & "ignored (3.17.3.5 d), the group's X is 3 and raises the "
+             & "operated X (3.17.2.3)");
+      EVC_Core.Initialise;
+   end Version_Ignored;
+
    --  3.17.2.3, 3.17.2.5, 3.17.2.7, 3.17.2.8 d): the operated version
    --  in relation to the balise groups, in level 1
    procedure Scenario_Version_Balise_Groups is
@@ -279,6 +351,8 @@ package body EVC_Test_Version is
       Check (SV.Operated = 3,
              "version: out of level 2 the control by the groups applies "
              & "again (3.17.2.8 d)");
+      Version_Ignored;
+      Version_Level_Switch;
    end Scenario_Version_Balise_Groups;
 
    --  3.17.2.6, 3.17.3.4.1: the country check of the operated version

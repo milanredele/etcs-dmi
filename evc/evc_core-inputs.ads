@@ -86,7 +86,7 @@ is
    --  NID_MESSAGE, L_MESSAGE), parsed (EVC_Received, chapter 8)
    --  and given, with their session, to the session and link half; the
    --  messages it passes go on to the authority half
-   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11
+   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11, 3.17.3.11 b), 3.17.3.11 c)
    procedure Read_Radio_Messages
      with Global => (Input  => (Latched_RTM, Clock_Ms, Current_Mode,
                                 EVC_Position.State, EVC_Odometry.State,

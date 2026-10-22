@@ -138,6 +138,21 @@ is
                        then Group_X
                        else Operated'Old);
 
+   --  3.17.2.8.2: the balise group message being taken ordered the
+   --  switch from level 2 (an immediate or conditional level transition
+   --  order): the RBC no longer takes precedence, so the group's own X
+   --  is judged at once by Take_Balise_Group (3.17.2.3, .5, .6), not at
+   --  the next group. 3.17.2.8.1, the converse: Follow, later in the
+   --  same cycle, operates the RBC's X once the order took the on-board
+   --  to level 2. Decision: with the one telegram layout of 4.0.0 the
+   --  checks and the evaluation of the group's content do not depend on
+   --  the version, so the substitution of both clauses is the operated
+   --  version itself; the layouts of chapter 6 are not interpreted
+   --  @req 3.17.2.8.1, 3.17.2.8.2
+   procedure Release
+     with Global => (In_Out => State),
+          Post => not By_RBC and then Operated = Operated'Old;
+
    --  3.17.2.8, once a cycle: Level_2 the level operated, Session a
    --  communication session established with the supervising RBC, whose
    --  version V is known
