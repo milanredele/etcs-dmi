@@ -150,7 +150,7 @@ is
    procedure Release_Transition_Buffer
      with Global => (Input  => (Clock_Ms, Current_Mode,
                                 EVC_Odometry.State, EVC_Train_Data.State,
-                                EVC_Train_Inputs.State),
+                                EVC_Train_Inputs.State, EVC_Radio.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
                                 EVC_Mission.State, EVC_Position.State,
                                 EVC_Procedures.State,
