@@ -10038,3 +10038,45 @@ question of the cycle's order by its header; the next rounds will show
 whether the body reads of `EVC_Core` fall. Next: round 43 as planned
 after the forty-first (SM ninth, B1380, B1181 and B1261, the E6 partial
 rows by family), with the briefs naming the children.
+
+### The runner's Train Data change by case, the old stamp of message 6, the optional step by the movement, the records by number (e5/runner-data) (2026-10-22)
+
+Three runner items, nothing under `evc/`. SUBSET-076 1075 / 1095 / 1020
+before, 1084 / 1098 / 1008 after, 0 regressions, 19 improvements.
+
+- B1181 done. `S076_Sequences` reads the `case` line into `Step_T`
+  (`Case_Feature`, `Case_No`). `S076_Run.TIU_Input` sets the validation
+  bit of TIU input 13 for the validation path of 5.17.2.2 D0, cases 9
+  to 12 of 5170200 (the steps without a comment, a Train Data window
+  after: case 9 in FS moving, S4 then S6; case 10 in UN at standstill;
+  cases 11 and 12 in TR, S1), or a comment naming the validation; the
+  category bit only when the comment names the four data without
+  negating them (cases 1 to 8 name them; case 5170200 1, step 43 of
+  5170200_02, "is different from": A1). The brief's premise that step
+  43 is case 4080425 2 was wrong (case 5170200 1). `S076_Run.DMI_Input`
+  modifies and accepts a value of the first Train Data window
+  (`modify-validate` Length, Maximum-Speed, Brake-Percentage; decision:
+  the value the runner entered at the start of mission, the sequences
+  give none); the page-2 items (axle load, gauge, airtight, category, 10
+  of 30 steps) stay not judged. 5170200_02 and 5040300_14 pass (3 SV);
+  3040400_05 runs to step 94 (B1441, a missed linked group, not traced);
+  4100103_21 / _26 one step on (S28ef1e3e, B1440: after a power-up the
+  Train Data window has no values to validate).
+- B1261 done. `S076_Run-Radio_Input.Exit_Not_More_Recent`: at a message 6
+  step, a look-ahead over the steps of the same case for "with a more
+  recent time stamp is not true" (or the step's own "not more recent" /
+  "older than"); the message is then stamped one below the on-board's
+  T_TRAIN at the entry into TR (`S076_Bench.Trip_Ms`, the bench time of
+  the JRU event 1 into TR, mapped as the RBC estimates), or above the
+  RBC's previous message where that one is older than the trip.
+  4080455_04 SV30 113 -> 120: steps 111 to 114 pass; at 120 the Start is
+  disabled in PT, the sequence taking that message 6 as the
+  acknowledgement of 5.11.2.2 S120 (B1442, to be re-read on the
+  on-board: `EVC_Sessions.Network` Exit_Seen, `EVC_Radio_Authority`
+  Exit_Recognised). 4080455_03 unchanged.
+- B750 done. `S076_Run.Backward_Follows`: an optional step conditioned
+  on "no backward movement" is not made (input) or not judged (output)
+  when the next step at another distance is behind it; 4041800_02
+  passes (3 SV).
+- Left: B481 (the records judged by number, not started: the bound came
+  after B750); B1440, B1441, B1442 (on-board traces).
