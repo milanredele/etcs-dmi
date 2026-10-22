@@ -1391,6 +1391,33 @@ package body S076_Run is
                          & Integer'Image (T.Axle_Load) & ", gauge"
                          & Integer'Image (T.Gauge) & ")");
          end;
+      elsif Same (Verb, "modify-validate")
+        and then (Same (Item, "Length") or else Same (Item, "Maximum-Speed")
+                  or else Same (Item, "Brake-Percentage"))
+      then
+         --  5.17.2.2 S6, 11.3.9: the driver modifies one value of the
+         --  first Train Data window and accepts it; the sequences give no
+         --  new value (decision: the driver types the value the runner
+         --  entered at the start of mission, the field selected, typed
+         --  and accepted)
+         if not Top_Is (W_Train_Data) then
+            return Fail ("DMI modify " & Item & ": the Train Data window is "
+                         & "not open, top is " & Top_Image);
+         end if;
+         declare
+            I : constant Positive :=
+              (if Same (Item, "Length") then 2
+               elsif Same (Item, "Brake-Percentage") then 3 else 4);
+            N : constant Natural :=
+              (case I is when 2 => Train_Length_M,
+                         when 3 => Brake_Percentage, when others => 200);
+            S : constant String := Natural'Image (N);
+         begin
+            Enter_Field (I);
+            Type_Digits (S (S'First + 1 .. S'Last));
+            Enter_Field (I);
+         end;
+         return Pass ("DMI " & Item & " modified and accepted");
       elsif Same (Verb, "validate")
         and then (Same (Item, "Train-Data")
                   or else Same (Item, "Flexible-Train-Data"))
@@ -1401,8 +1428,22 @@ package body S076_Run is
             Press (167, 440);
          end if;
          if not Top_Is (W_Train_Data_Validation) then
-            return Fail ("DMI validate Train Data: the validation window is "
-                         & "not open, top is " & Top_Image);
+            declare
+               Empty : Unbounded_String;
+            begin
+               --  the four fields of the first Train Data window
+               for I in DMI_Data_Entry.Field_Index_T range 1 .. 4 loop
+                  if not DMI_Data_Entry.Has_Value (I) then
+                     Append (Empty, Integer'Image (I));
+                  end if;
+               end loop;
+               return Fail ("DMI validate Train Data: the validation window "
+                            & "is not open, top is " & Top_Image
+                            & (if Length (Empty) > 0
+                               then " (fields without a value:"
+                                    & To_String (Empty) & ")"
+                               else ""));
+            end;
          end if;
          Press (487, 40);
          return Pass ("DMI Train Data validated");
@@ -2289,17 +2330,34 @@ package body S076_Run is
          end if;
          --  5.17: new Train Data from the train interface (EVC_Ports TIU
          --  input 13): to be validated by the driver (D0) when the comment
-         --  says so, of a category, axle load, gauge or traction (D1) when
-         --  it names one
-         Train_Configuration := (Train_Configuration mod 63) + 1;
-         B.TIU_Input
-           (13, Train_Configuration
-                + (if Has (Image (St.Comment), "validat") then 64 else 0)
-                + (if Has (Image (St.Comment), "category")
-                     or else Has (Image (St.Comment), "axle load")
-                     or else Has (Image (St.Comment), "loading gauge")
-                     or else Has (Image (St.Comment), "traction system")
-                   then 128 else 0));
+         --  says so or the case is one of the validation path, of a
+         --  category, axle load, gauge or traction (D1) when the comment
+         --  names one and does not negate it ("is different from Train
+         --  category, ...", 5170200_02 step 43, case 5170200 1, A1).
+         --  The validation path: cases 9 to 12 of 5170200, the steps
+         --  without a comment, followed by the Train Data window (case 9
+         --  in FS moving: the brake of S4, the acknowledgement, S6;
+         --  case 10 in UN at standstill; cases 11 and 12 in TR, S1);
+         --  cases 1 to 8 name the data in their comment
+         declare
+            C : constant String := Up (Image (St.Comment));
+            Validation : constant Boolean :=
+              Has (C, "VALIDAT")
+              or else (St.Case_Feature = 5170200
+                       and then St.Case_No in 9 .. 12);
+            Named : constant Boolean :=
+              (Has (C, "CATEGORY") or else Has (C, "AXLE LOAD")
+               or else Has (C, "LOADING GAUGE")
+               or else Has (C, "TRACTION SYSTEM"))
+              and then not Has (C, "DIFFERENT FROM")
+              and then not Has (C, "OTHER THAN")
+              and then not Has (C, " NOT ");
+         begin
+            Train_Configuration := (Train_Configuration mod 63) + 1;
+            B.TIU_Input
+              (13, Train_Configuration + (if Validation then 64 else 0)
+                   + (if Named then 128 else 0));
+         end;
          return Pass ("TIU train configuration changed");
       end if;
       return NJ ((if Same (Kind, "train-integrity")
