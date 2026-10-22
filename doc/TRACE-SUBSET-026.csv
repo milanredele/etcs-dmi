@@ -2352,7 +2352,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 8.4.4.4.5,8,x,x,,,,E1,done,ETCS_Message_Catalogue Train_M131 optional packet 12; check_catalogue.py
 8.4.4.4.5 a),8,x,x,,,,E1,done,ETCS_Message_Catalogue Train_M131 optional packet 12; check_catalogue.py
 8.4.4.5,8,x,x,,,,E1,done,"ETCS_Message.Finish pads to a byte, Parse takes under 8 bits as padding; evc_test message"
-8.5.2 Table,8,x,x,,,,E1,partial,"structure done; ETCS_Message.Parse checks the receiver (Wrong_Sender, evc_test senders); the messages the on-board sends are built by EVC_Sessions and EVC_Radio_Authority; left: the Invariant column with 3.17 [E6 version], messages 131 and 133 [E6 Supervised Manoeuvre] [E5 session]"
+8.5.2 Table,8,x,x,,,,E1,done,"structure done; ETCS_Message.Parse checks the receiver (Wrong_Sender, evc_test senders); the messages the on-board sends are built by EVC_Sessions (131 and 133 by EVC_Sessions.Manoeuvre) and EVC_Radio_Authority; the Invariant column: no clause of 4.0.0 acts on it, the on-board sends 155 and 156 and reads 32 and 39, all invariant, before the RBC's version is known, then 154 or 159 (EVC_Sessions.Take_Version; evc_test version_negotiation); the column is not in the generated catalogue, needed with the translations of chapter 6 (B1463) [E7 version] [E5 session]"
 8.5.3 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse applies the sender rules (evc_test senders); the RIU session is radio infill, phase E7 [E7 infill] [E5 session]"
 8.6.1,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M129; check_catalogue.py; evc_test message
 8.6.2,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M130; check_catalogue.py
