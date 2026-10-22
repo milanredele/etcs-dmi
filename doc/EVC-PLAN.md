@@ -10534,3 +10534,30 @@ duplicate's orientation); packet 12 of 131 and the "Initiate SM" offered
 before any message 6 (5.11.2.2 S140 after D130, noticed by sm-tenth);
 the Train Data builds (B1460 to B1462); the runner's B1440 and B1540,
 B481's remainder; then the Gamma model, NL.
+
+### The runner's gaps: the Train Data window after a power-up, the direction controller across cases, the record 48's NID_MN, the record 11's FRMCS codes (e5/runner-gaps) (2026-10-22)
+
+Runner items, nothing under `evc/`. SUBSET-076 1084 / 1098 / 1008
+before, 1090 / 1092 / 1008 after, 0 regressions, 10 improvements.
+
+- B1440 traced, done: not the on-board nor the DMI. Train Data is
+  deleted on entering NP (4.10.1.3, row Train Data, column NP: D;
+  `EVC_Core.Modes.Save_Retained` keeps none), so after a power-up
+  neither has a value to propose (DMI 11.7.1.6.1); the sequences presume
+  stored values to revalidate. `S076_Run.DMI_Input`'s modify-validate
+  enters the whole set (`Enter_Train_Data`) when the window has no value
+  (decision). 4100103_21 passes, 4100103_26 137 -> 159 (S13c9beb3, not
+  traced: no event of 3.6.5.1.4 in the window at standstill) (3 SV);
+  S28ef1e3e set to model with the cause.
+- B1540 done. `S076_Run.Run_Loaded` resets `Controller_Given` when a
+  step's case differs from the case of the TIU direction step, and
+  `Controller_For_Movement` is called before the next movement (the
+  runner's or the input's); a controller the new case sets itself is
+  kept (decision). 3040400_05 passes (3 SV); 4120100_02 SV30 181 -> 203
+  (S4fcd6cae resolved; S69e84e09 new, not traced, B1620).
+- B481's record 48 re-read, not built: the six steps naming NID_MN lie
+  after the step where their sequences stop (5040300_08, _11, _13, _17),
+  and the runner enters no GSM-R network ID, so a comparison would judge
+  nothing; B481 narrowed.
+- Left: B481's record 11 FRMCS codes 51 to 55 (10 steps, not taken: the
+  bound); B1620 (a trace of 4120100_02 step 203).
