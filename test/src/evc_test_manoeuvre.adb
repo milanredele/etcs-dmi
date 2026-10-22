@@ -311,7 +311,15 @@ package body EVC_Test_Manoeuvre is
    end Consist_Lost_In_SM;
 
    procedure Scenario_SM_Authorisation is
-      T : Unsigned_64;
+      T  : Unsigned_64;
+      --  the distance to the EOA of the same MA (500 m from the LRBG 10)
+      --  with the front end at the engine's end, cm
+      D1 : Integer_64;
+      --  the distance to the first Indication location (its EOA at
+      --  standstill, 3.13.10.3.8), cm; -1 without one
+      function Indication_Cm return Integer_64 is
+        (if EVC_Core.Supervision.Indication
+         then Integer_64 (EVC_Core.Supervision.Indication_D) else -1);
    begin
       Start_L2_SM;
       Select_SM;
@@ -335,6 +343,9 @@ package body EVC_Test_Manoeuvre is
       Check (EVC_Position.Manoeuvre_Orientation and then EVC_Mission.Mission,
              "SM authorisation: the same direction, the orientation fixed "
              & "by it (3.6.1.5.1, 3.7.3.4 a)");
+      D1 := Indication_Cm;
+      Check (D1 > 0, "SM authorisation: the EOA ahead, an Indication "
+             & "location (3.13.10.3.8)");
       --  50 m in front of the engine (49 .. 52), the authorisation in the
       --  train orientation: the front end at the far end of that consist
       Start_L2_SM;
@@ -362,6 +373,17 @@ package body EVC_Test_Manoeuvre is
          Check (Same_Report,
                 "SM same direction: the report of 131 is the position "
                 & "report from it (5.21.2.2 A045, 3.18.3.2.5.1)");
+         --  the EOA supervised from the moved front end: the same MA,
+         --  the target 50 m nearer (and the 2 m of the wider interval)
+         declare
+            D2 : constant Integer_64 :=
+              Indication_Cm;
+         begin
+            Check (D1 - D2 in 5_000 .. 5_300,
+                   "SM same direction: the distance to the EOA from the "
+                   & "moved front end, 50 m less (3.18.3.2.5.1):"
+                   & Integer_64'Image (D1) & Integer_64'Image (D2));
+         end;
       end;
       --  the MA in the direction opposite to the train orientation: the
       --  front end at the far end of the 400 m in rear of the engine
