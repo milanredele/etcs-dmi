@@ -21,6 +21,7 @@ with EVC_Ports;
 with EVC_Position;
 with EVC_Radio_Authority;
 with EVC_Test_Support;  use EVC_Test_Support;
+with Sim_Telegrams;
 
 package body EVC_Test_Consistency is
 
@@ -83,7 +84,7 @@ package body EVC_Test_Consistency is
    begin
       Pair (5, 5);
       Check (P.Telegrams (1).Count = 0 and then P.Telegrams (2).Count = 1
-             and then Consistent (P),
+             and then Consistent (P, True),
              "duplicated pair 3.16.2.4.8.2: none with default balise"
              & " information, the last received telegram composes it");
       Pair (254, 254);
@@ -108,6 +109,43 @@ package body EVC_Test_Consistency is
       Check (P.Telegrams (1).Count = 1,
              "duplicated pair 3.16.2.4.8.2: the second not decoded, the"
              & " first keeps its packets");
+      --  3.16.2.4.4.1 a), 3.16.2.5.1.1 a): balise 0 missed, balise 1
+      --  its duplicate (M_DUP 2) read alone with packet N of Q_DIR D
+      for C in 1 .. 5 loop
+         declare
+            N : constant Natural := (case C is when 1 | 2 => 3,
+                                     when 3 => 3, when 4 => 44,
+                                     when others => 0);
+            D : constant Q_DIR_T := (if C = 3 then 2 else 1);
+            T : ETCS_Telegram.Telegram_T :=
+              With_Packet (Tel (1, 1, M_DUP => 2), N);
+         begin
+            T.Index (1).Q_DIR := D;
+            if C = 5 then
+               T.Count := 0;
+            end if;
+            P := (others => <>);
+            Read (P, T);
+            Check (C = 2 or else Consistent (P, Oriented => C = 1),
+                   "duplicate's orientation: case" & C'Image
+                   & (case C is
+                         when 1 | 2 => ", directional, the orientation "
+                                   & "evaluable: the exception (1st bullet)",
+                         when 3 => ", valid for both directions: the "
+                                   & "exception (2nd bullet)",
+                         when 4 => ", packet 44 only: the exception "
+                                   & "(4th bullet)",
+                         when others => ", no packet: the exception "
+                                        & "(3rd bullet)"));
+            if C = 2 then
+               Check (not Consistent (P, Oriented => False)
+                        and then Consistent (P, Oriented => True),
+                      "duplicate's orientation: directional information "
+                      & "while the orientation cannot be evaluated, the "
+                      & "message inconsistent (3.16.2.5.1.1 a) 1st bullet)");
+            end if;
+         end;
+      end loop;
    end Scenario_Duplicated_Pair;
 
    --  3.16.1.1, 3.16.2.4.1 a) and d), 3.16.2.4.2, 3.16.2.4.4.1 a),
@@ -118,46 +156,46 @@ package body EVC_Test_Consistency is
    begin
       Read (P, Tel (0, 1));
       Read (P, Tel (1, 1));
-      Check (Consistent (P), "consistency: two balises, same counters");
+      Check (Consistent (P, True), "consistency: two balises, same counters");
 
       P := (others => <>);
       Read (P, Tel (0, 1));
-      Check (not Consistent (P),
+      Check (not Consistent (P, True),
              "consistency 3.16.2.4.1 a): a balise missed in the group");
 
       P := (others => <>);
       Read (P, Tel (0, 1));
       Read (P, Tel (1, 1, Decoded => False));
-      Check (not Consistent (P),
+      Check (not Consistent (P, True),
              "consistency 3.16.1.1: a telegram not compliant");
 
       P := (others => <>);
       Read (P, Tel (0, 1, M_MCOUNT => 3));
       Read (P, Tel (1, 1, M_MCOUNT => 4));
-      Check (not Consistent (P),
+      Check (not Consistent (P, True),
              "consistency 3.16.2.4.7: the counters differ");
 
       P := (others => <>);
       Read (P, Tel (0, 1, M_MCOUNT => 3));
       Read (P, Tel (1, 1, M_MCOUNT => 255));
-      Check (Consistent (P),
+      Check (Consistent (P, True),
              "consistency 3.16.2.4.6: a counter 255 fits every message");
 
       P := (others => <>);
       Read (P, Tel (0, 0, M_MCOUNT => 254));
-      Check (not Consistent (P),
+      Check (not Consistent (P, True),
              "consistency 3.16.2.4.7.1: a single balise's counter 254");
 
       P := (others => <>);
       Read (P, Tel (1, 1, M_DUP => 2));
-      Check (Consistent (P),
+      Check (Consistent (P, True),
              "consistency 3.16.2.4.2: the missed balise duplicated by the"
              & " one read");
 
       P := (others => <>);
       Read (P, Tel (0, 1, M_MCOUNT => 3, M_DUP => 1));
       Read (P, Tel (1, 1, M_MCOUNT => 4, M_DUP => 2));
-      Check (Superseded (P, 1) and then Consistent (P),
+      Check (Superseded (P, 1) and then Consistent (P, True),
              "consistency 3.16.2.4.8.2: the first of a duplicated pair is"
              & " not used, its counter not compared");
 
@@ -948,6 +986,36 @@ package body EVC_Test_Consistency is
              and then EVC_Position.LRBG.Id.NID_BG = 20,
              "undecoded: the balise not decoded duplicated by the one "
              & "read, no reaction, the message taken (3.16.2.4.4.1 a)");
+      --  the duplicate read carries national values for the nominal
+      --  direction (Q_DIR 1): in level 1 without linking the group's
+      --  orientation cannot be evaluated, the reaction of 3.16.2.4.4; in
+      --  level 2 the RBC assigns it (3.4.2.3.3), the message taken
+      for L2 in Boolean loop
+         declare
+            NV : Sim_Telegrams.T3.Packet_T :=
+              Sim_Telegrams.National_Values (123);
+         begin
+            NV.Q_DIR := 1;
+            Inconsistent_Track (Linking => False, Skip => 1);
+            Track (2).Detect_Skip := True;
+            Track (2).Dup_1_2 := True;
+            Carry (2, 1, NV);
+            if L2 then
+               EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+            end if;
+            Run_Watch (80_000, SB);
+            Check ((if L2 then not SB and then Brake_Error = 0
+                               and then EVC_Position.LRBG.Id.NID_BG = 20
+                    else SB and then Brake_Error >= 1),
+                   "undecoded: the duplicate read with directional "
+                   & "information, "
+                   & (if L2 then "level 2, the orientation assigned by "
+                                 & "the RBC: the exception, no reaction"
+                      else "level 1 without linking, the orientation "
+                           & "not evaluable: the service brake")
+                   & " (3.16.2.4.4.1 a) 1st bullet)");
+         end;
+      end loop;
       --  an unlinked group of two, balise 0 not decoded: the service brake
       Run_Unlinked (EVC_Modes.M_FS, Rec_13, Rec_Paired, SB, Read_Error,
                     Detect => True);
