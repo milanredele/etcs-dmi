@@ -10534,3 +10534,50 @@ duplicate's orientation); packet 12 of 131 and the "Initiate SM" offered
 before any message 6 (5.11.2.2 S140 after D130, noticed by sm-tenth);
 the Train Data builds (B1460 to B1462); the runner's B1440 and B1540,
 B481's remainder; then the Gamma model, NL.
+### The Train Data builds: the safe consist length in the integrity report and in Stand By, the consist increased behind, the axle number (e6/train-data-builds) (2026-10-22)
+
+Three items, three done.
+
+- B1461. `EVC_Train_Data.Consist_Train_Length (Same)`: the length of
+  3.6.1.7 (the min in front and the max in rear of the engine when the
+  orientation is the active cab's, the min in rear and the max in front
+  when opposite). `EVC_Core.Modes.Sync_Train_Length` gives it to the
+  position in SB without valid Train Data with the safe consist length.
+  Decision: from the engine's front end, which the consist in front does
+  not move in SB yet (3.6.1.3.4 asks the shift; `EVC_Position` moves it
+  only at the first SM authorisation): the rear end is on the safe side
+  by the nominal length in front meanwhile (B1600, `EVC_Position`).
+  `EVC_Sessions.Integrity`: [1] as the change from valid to invalid
+  (`Was_Valid`), [2] and [3] with the safe consist length, [4] with a
+  consist received in this mission (decision 6: no installation datum
+  says "configured to capture"), [7] a change of any of the six lengths,
+  the source change included; the confirmed length from the 3.6.1.7
+  length. Left: [10] and the acknowledgement of an SM request's consist
+  information in [2] and [3] (decision 2, Supervised Manoeuvre).
+  Scenarios: `Scenario_Train_Integrity` (`Integrity_With_Consist`),
+  `Scenario_SM_Gamma` (the rear end in SB). 3.6.1.7 1st and 2nd bullets
+  deferred -> done; 3.6.5.2.5, Tables 2a and 2b, 4.4.7.1.6 b) partial
+  with the remainders named.
+- B1462. The premise named the frame type in `EVC_Track_Conditions` and
+  its filler in `EVC_Core.Stored`: it is `EVC_Profiles.Train_Frame_T`,
+  filled by `EVC_Stored_Information.Train_Frame`. The frame carries
+  `Behind` (`EVC_Train_Data.Consist_Behind`, the max safe consist length
+  opposite to the orientation) and `Consist_Rear` (the 3.6.1.7 rear end)
+  without valid Train Data with the safe consist length (not with SM's
+  default data, whose length already is the consist's).
+  `Delete_Behind_Former`: decision, a second former length
+  (`Former_Behind`), each compared with the last of its own source.
+  Scenario `Scenario_Longer_Train` (`Longer_Consist`); 3.18.3.8 done.
+- B1460. The premise's Global chain is not needed: `N_Axle` joins
+  `EVC_Config.Fixed_Train_T` (decision: the engine's axles, 4, until a
+  format version of the image carries it; the consist's are not known
+  without an input, the DMI has no field) and
+  `EVC_Train_Data.Categories_T`, filled by `EVC_Mission.Train_Data_Of`
+  and the SM default data as `Voltages` is; `Train_Packet` reads it.
+  Scenario: `Scenario_Train_Integrity` decodes N_AXLE of the 129
+  (`Axles_Of`). 3.18.3.2 k) and 3.18.3.4 i) done. Packet 11 of message
+  131 (`EVC_Sessions.Manoeuvre`) still writes its own N_AXLE.
+- Outside the named units: `EVC_Profiles` (the frame type),
+  `EVC_Mission.Train_Data_Of` (one aggregate component),
+  `EVC_Train_Data` (two accessors, the field). No golden changed;
+  SUBSET-076 1084 / 1098 / 1008 before and after, 0 regressions.
