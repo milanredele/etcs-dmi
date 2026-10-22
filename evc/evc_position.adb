@@ -68,6 +68,7 @@ package body EVC_Position
                                    Previous_Ms,
                                    Antenna_Offset,
                                    Manoeuvre,
+                                   Gamma,
                                    Accept_Linking,
                                    Accept_Geo,
                                    Geo_Kept,
@@ -161,6 +162,17 @@ is
       Under : Length_T := 0;
    end record;
    Manoeuvre          : Manoeuvre_T;
+
+   --  3.6.4.1.5: the gamma terms before the first Supervised Manoeuvre
+   --  authorisation (Stand-By without valid Train Data with the safe
+   --  consist length, a Supervised Manoeuvre request), set by Set_Gamma;
+   --  0 when gamma is 0. From the first authorisation the term is
+   --  Manoeuvre's (Gamma_Over)
+   type Gamma_T is record
+      Over  : Length_T := 0;
+      Under : Length_T := 0;
+   end record;
+   Gamma              : Gamma_T;
 
    --  packet 5 is accepted
    --  (4.8), the linking consistency is checked (3.4.4.2.1.1 b)
@@ -343,17 +355,25 @@ is
      (Estimated (A, Orient, Front_X))
      with Global => (Orient, Antenna_Offset, Manoeuvre, EVC_Odometry.State);
 
+   --  The odometer's part of the confidence interval against an anchor
+   --  (3.6.4.1.2: Q_LOCACC and the over- and under-reading amounts)
    function Over_From (A : Anchor_T) return Length_T is
-     (Add (EVC_Location.Doubt_Over
-             (A, Orient, EVC_Odometry.Low, EVC_Odometry.High),
-           Manoeuvre.Over))
-     with Global => (Orient, Manoeuvre, EVC_Odometry.State);
+     (EVC_Location.Doubt_Over
+        (A, Orient, EVC_Odometry.Low, EVC_Odometry.High))
+     with Global => (Orient, EVC_Odometry.State);
 
    function Under_From (A : Anchor_T) return Length_T is
-     (Add (EVC_Location.Doubt_Under
-             (A, Orient, EVC_Odometry.Low, EVC_Odometry.High),
-           Manoeuvre.Under))
-     with Global => (Orient, Manoeuvre, EVC_Odometry.State);
+     (EVC_Location.Doubt_Under
+        (A, Orient, EVC_Odometry.Low, EVC_Odometry.High))
+     with Global => (Orient, EVC_Odometry.State);
+
+   function Gamma_Over return Length_T is
+     (if Manoeuvre.Moved then Manoeuvre.Over else Gamma.Over)
+     with Refined_Global => (Manoeuvre, Gamma);
+
+   function Gamma_Under return Length_T is
+     (if Manoeuvre.Moved then Manoeuvre.Under else Gamma.Under)
+     with Refined_Global => (Manoeuvre, Gamma);
 
    function Estimated_Front return Dist_T is
      (if LRBG_A.Valid then Front_From (LRBG_A) else 0)
@@ -362,21 +382,31 @@ is
 
    function Doubt_Over return Length_T is
      (if LRBG_A.Valid then Over_From (LRBG_A) else 0)
-     with Refined_Global => (LRBG_A, Orient, Manoeuvre, EVC_Odometry.State);
+     with Refined_Global => (LRBG_A, Orient, EVC_Odometry.State);
 
    function Doubt_Under return Length_T is
      (if LRBG_A.Valid then Under_From (LRBG_A) else 0)
-     with Refined_Global => (LRBG_A, Orient, Manoeuvre, EVC_Odometry.State);
+     with Refined_Global => (LRBG_A, Orient, EVC_Odometry.State);
+
+   function Interval_Over return Length_T is
+     (if LRBG_A.Valid then Add (Doubt_Over, Gamma_Over) else 0)
+     with Refined_Global => (LRBG_A, Orient, Manoeuvre, Gamma,
+                             EVC_Odometry.State);
+
+   function Interval_Under return Length_T is
+     (if LRBG_A.Valid then Add (Doubt_Under, Gamma_Under) else 0)
+     with Refined_Global => (LRBG_A, Orient, Manoeuvre, Gamma,
+                             EVC_Odometry.State);
 
    function Min_Safe_Front return Dist_T is
-     (Min_Safe (Estimated_Front, Doubt_Over))
+     (Min_Safe (Estimated_Front, Interval_Over))
      with Refined_Global => (LRBG_A, Orient, Antenna_Offset, Manoeuvre,
-                             EVC_Odometry.State);
+                             Gamma, EVC_Odometry.State);
 
    function Max_Safe_Front return Dist_T is
-     (Max_Safe (Estimated_Front, Doubt_Under))
+     (Max_Safe (Estimated_Front, Interval_Under))
      with Refined_Global => (LRBG_A, Orient, Antenna_Offset, Manoeuvre,
-                             EVC_Odometry.State);
+                             Gamma, EVC_Odometry.State);
 
    function SOLR_Estimated_Front return Dist_T is
      (if SOLR_A.Valid then Front_From (SOLR_A) else 0)
@@ -385,21 +415,23 @@ is
 
    function SOLR_Min_Safe_Front return Dist_T is
      (Min_Safe (SOLR_Estimated_Front,
-                (if SOLR_A.Valid then Over_From (SOLR_A) else 0)))
+                (if SOLR_A.Valid then Add (Over_From (SOLR_A), Gamma_Over)
+                 else 0)))
      with Refined_Global => (SOLR_A, Orient, Antenna_Offset, Manoeuvre,
-                             EVC_Odometry.State);
+                             Gamma, EVC_Odometry.State);
 
    function SOLR_Max_Safe_Front return Dist_T is
      (Max_Safe (SOLR_Estimated_Front,
-                (if SOLR_A.Valid then Under_From (SOLR_A) else 0)))
+                (if SOLR_A.Valid then Add (Under_From (SOLR_A), Gamma_Under)
+                 else 0)))
      with Refined_Global => (SOLR_A, Orient, Antenna_Offset, Manoeuvre,
-                             EVC_Odometry.State);
+                             Gamma, EVC_Odometry.State);
 
    function Min_Safe_Rear return Dist_T is
      (if Length_Known then Diff (Min_Safe_Front, Train_Length)
       else Min_Safe_Front)
      with Refined_Global => (LRBG_A, Orient, Length_Known, Train_Length,
-                             Antenna_Offset, Manoeuvre,
+                             Antenna_Offset, Manoeuvre, Gamma,
                              EVC_Odometry.State);
 
    --  3.6.4.1.2: against the same anchor the interval only widens when
@@ -1732,6 +1764,7 @@ is
       Antenna_Offset := (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
                          Minus => EVC_Config.Default.Antenna_To_Cab_B);
       Manoeuvre := (others => <>);
+      Gamma := (others => <>);
       Orient := Plus;
       Orient_Known := False;
       Cab_In := No_Cab;
@@ -2181,6 +2214,17 @@ is
       Manoeuvre := (others => <>);
    end End_Manoeuvre;
 
+   procedure Set_Gamma (On : Boolean; C : EVC_Train_Data.Consist_T)
+   is
+      E : constant Manoeuvre_T := Consist_End (Orient, C);
+   begin
+      if On then
+         Gamma := (Over => E.Over, Under => E.Under);
+      else
+         Gamma := (others => <>);
+      end if;
+   end Set_Gamma;
+
    procedure Set_Report_Parameters
      (P   : ETCS_Track_Packets.P58.Packet_T;
       Ref : Identity_T;
@@ -2419,8 +2463,9 @@ is
       if LRBG_A.Valid and then Pos_Status /= Unknown then
          K.Known := True;
          K.LRBG := LRBG_A;
-         K.LRBG.Locacc := Length_T'Max (Over_From (LRBG_A),
-                                        Under_From (LRBG_A));
+         K.LRBG.Locacc := Length_T'Max (Add (Over_From (LRBG_A), Gamma_Over),
+                                        Add (Under_From (LRBG_A),
+                                             Gamma_Under));
          K.Away := Diff (EVC_Odometry.Position, LRBG_A.X);
          K.Orient := Orient;
          K.Orient_Known := Orient_Known;
@@ -2668,8 +2713,8 @@ is
                    Q_DIRTRAIN : out Q_DIRTRAIN_T)
    is
       Est : constant Dist_T := Sum (Estimated_Front, Ahead);
-      O   : constant Length_T := Add (Doubt_Over, More_Over);
-      U   : constant Length_T := Add (Doubt_Under, More_Under);
+      O   : constant Length_T := Add (Interval_Over, More_Over);
+      U   : constant Length_T := Add (Interval_Under, More_Under);
       Q   : constant Natural := Scale_For (Abs_Dist (Est), O, U);
       --  the estimated front end on the nominal side of G
       Side : constant Direction_T :=
@@ -2695,7 +2740,7 @@ is
                          More_Under : Length_T)
      return ETCS_Train_Packets.P0.Packet_T
      with Global => (LRBG_A, Orient, Orient_Known, Antenna_Offset,
-                     Manoeuvre, EVC_Odometry.State)
+                     Manoeuvre, Gamma, EVC_Odometry.State)
    is
       P : ETCS_Train_Packets.P0.Packet_T;
    begin

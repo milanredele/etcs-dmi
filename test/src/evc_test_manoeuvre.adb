@@ -355,21 +355,21 @@ package body EVC_Test_Manoeuvre is
       T := Wait_For (MCat.Train_M131, 1_000);
       declare
          E0 : constant Dist_T := EVC_Position.Estimated_Front;
-         O0 : constant Length_T := EVC_Position.Doubt_Over;
-         U0 : constant Length_T := EVC_Position.Doubt_Under;
+         O0 : constant Length_T := EVC_Position.Interval_Over;
+         U0 : constant Length_T := EVC_Position.Interval_Under;
       begin
          Give_Radio_Message (1, SM_Authorisation (T));
          Stand_X (300);
          Check (EVC_Core.Mode = M_SM
                 and then EVC_Position.Estimated_Front = E0 + 5_000
-                and then EVC_Position.Doubt_Over = O0 + 100
-                and then EVC_Position.Doubt_Under = U0 + 200,
+                and then EVC_Position.Interval_Over = O0 + 100
+                and then EVC_Position.Interval_Under = U0 + 200,
                 "SM same direction: the front end 50 m ahead, 1 m and 2 m "
                 & "wider, from the consist in front (3.18.3.2.5.1):"
                 & Dist_T'Image (E0)
                 & Dist_T'Image (EVC_Position.Estimated_Front)
-                & Length_T'Image (EVC_Position.Doubt_Over - O0)
-                & Length_T'Image (EVC_Position.Doubt_Under - U0));
+                & Length_T'Image (EVC_Position.Interval_Over - O0)
+                & Length_T'Image (EVC_Position.Interval_Under - U0));
          Check (Same_Report,
                 "SM same direction: the report of 131 is the position "
                 & "report from it (5.21.2.2 A045, 3.18.3.2.5.1)");
@@ -393,8 +393,8 @@ package body EVC_Test_Manoeuvre is
       T := Wait_For (MCat.Train_M131, 1_000);
       declare
          E0 : constant Dist_T := EVC_Position.Estimated_Front;
-         O0 : constant Length_T := EVC_Position.Doubt_Over;
-         U0 : constant Length_T := EVC_Position.Doubt_Under;
+         O0 : constant Length_T := EVC_Position.Interval_Over;
+         U0 : constant Length_T := EVC_Position.Interval_Under;
          S0 : constant Sense_T := EVC_Position.Orientation;
       begin
          Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
@@ -408,12 +408,12 @@ package body EVC_Test_Manoeuvre is
                 "SM opposite: the estimated front end 400 m back "
                 & "(4.4.21.1.7 a)):" & Dist_T'Image (E0)
                 & Dist_T'Image (EVC_Position.Estimated_Front));
-         Check (EVC_Position.Doubt_Over = U0 + 200
-                and then EVC_Position.Doubt_Under = O0 + 200,
+         Check (EVC_Position.Interval_Over = U0 + 200
+                and then EVC_Position.Interval_Under = O0 + 200,
                 "SM opposite: the min / max safe front ends from the max / "
                 & "min ones and the min / max consist in rear (4.4.21.1.7 "
-                & "b) c)):" & Length_T'Image (EVC_Position.Doubt_Over)
-                & Length_T'Image (EVC_Position.Doubt_Under));
+                & "b) c)):" & Length_T'Image (EVC_Position.Interval_Over)
+                & Length_T'Image (EVC_Position.Interval_Under));
          Check (not EVC_Position.Linking.Stored,
                 "SM opposite: the location based information deleted "
                 & "(3.7.3.4 b))");

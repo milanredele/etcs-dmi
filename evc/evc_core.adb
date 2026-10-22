@@ -430,7 +430,8 @@ is
       Update_Position;
       Adjust_For_Manoeuvre;
       --  3.6.4.1.2 up to here: against the same LRBG, orientation and
-      --  Supervised Manoeuvre the confidence interval did not shrink
+      --  Supervised Manoeuvre the odometer's part of the confidence
+      --  interval did not shrink
       pragma Assert
         (if EVC_Position.LRBG = L_0
            and then EVC_Position.Orientation = O_0

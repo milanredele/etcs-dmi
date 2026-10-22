@@ -353,7 +353,12 @@ is
                              else EVC_Position.Cab_B)
                         or else EVC_Position.Manoeuvre_Orientation)
                   --  3.6.4.1.2: against the same LRBG and orientation the
-                  --  confidence interval never shrinks
+                  --  confidence interval never shrinks. Decision: the
+                  --  clause holds for the odometer's part (Doubt_Over,
+                  --  Doubt_Under), what grows with the distance travelled;
+                  --  the gamma terms of 3.6.4.1.5 (Gamma_Over,
+                  --  Gamma_Under) follow the Train Data and the Supervised
+                  --  Manoeuvre state and are not part of it
                   and then
                   (if EVC_Position.LRBG = EVC_Position.LRBG'Old
                      and then EVC_Position.Orientation
