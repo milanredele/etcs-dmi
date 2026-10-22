@@ -8,7 +8,10 @@ its text as markdown in `sections/` for searching (tables that span pages
 split, figures lost: check the PDF page named in the
 `<!-- end of page N -->` comments), and a README with the index and what
 this project takes from the document. The imports are made by the scripts
-in [tools/](tools/README.md).
+in [tools/](tools/README.md), where
+[clause.py](tools/clause.py) reads any of them by clause number
+(`clause.py --spec 036 4.2.9`, SUBSET-026 the default) and lists the
+clauses that cite a clause or use a term (`--cites`, `--term`).
 
 | Specification | Version | Folder | Title | Used for |
 |---|---|---|---|---|
