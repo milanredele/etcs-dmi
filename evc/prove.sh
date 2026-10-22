@@ -11,7 +11,8 @@
 #
 # Usage: evc/prove.sh [extra gnatprove switches]
 # e.g. evc/prove.sh --report=all to list every proved check,
-#      evc/prove.sh -u evc_fixed.adb for one unit during development.
+#      evc/prove.sh -u evc_fixed.adb for one unit during development,
+#      also by its name: -u EVC_Core.Modes or -u evc_core-modes.
 # A merge is verified by the full run, not by gnatprove's --replay: the
 # file cache below answers a known condition before why3 sees it, so
 # the sessions under obj/evc/gnatprove keep the goals of the last real
@@ -90,6 +91,34 @@ fi
 # --report=statistics gives the steps and the time of every proved
 # check for the margin; only what is not proved is shown here, the rest
 # is in the log.
+#
+# -u takes a file (evc_fixed.adb, evc_core-modes.adb) or a unit, by its
+# Ada name or its file stem (EVC_Core.Modes, evc_core-modes): lowercased,
+# "." to "-", the body if evc/ has one, else the spec.
+unit_file() {
+   case $1 in
+      *.adb | *.ads) echo "$1"; return ;;
+   esac
+   stem=$(echo "$1" | tr 'A-Z.' 'a-z-')
+   if [ -n "$(find evc -name "$stem.adb" | head -1)" ]; then
+      echo "$stem.adb"
+   elif [ -n "$(find evc -name "$stem.ads" | head -1)" ]; then
+      echo "$stem.ads"
+   else
+      echo "$1"
+   fi
+}
+after_u=
+for arg do
+   shift
+   case $arg in
+      -u) after_u=1 ;;
+      -*) after_u= ;;
+      *) if [ -n "$after_u" ]; then arg=$(unit_file "$arg"); fi ;;
+   esac
+   set -- "$@" "$arg"
+done
+
 mkdir -p obj/evc
 log=obj/evc/prove.log
 status=0
