@@ -894,13 +894,12 @@ is
          --  5.11.2.2 S120, E125: in PT (4.8.4: rejected in other modes),
          --  4.8.4 [1]: the recognition the session half judged by the
          --  time stamps (one recognition for both halves)
-         if Mode_Now = M_PT and then EVC_Radio.Trip_Exit_Recognised then
-            Exit_Recognised := True;
-         end if;
          --  decision: any message 6 in PT acknowledges the PT report
          --  (A115, S120); the time stamp of [1] judges only what the
          --  recognition lets in (MA, track description, SM authorisation)
          if Mode_Now = M_PT then
+            Exit_Recognised :=
+              Exit_Recognised or else EVC_Radio.Trip_Exit_Recognised;
             Exit_Acknowledged := True;
          end if;
       elsif Kind in ETCS_Message_Catalogue.Track_M2
