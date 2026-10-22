@@ -24,9 +24,9 @@ Subset-076-6-3_3040400_03_v400_SV30,failed,67,Seb6766c6
 Subset-076-6-3_3040400_04_v400_SV21,blocked,44,E7-version
 Subset-076-6-3_3040400_04_v400_SV22,failed,61,Seb6766c6
 Subset-076-6-3_3040400_04_v400_SV30,failed,61,Seb6766c6
-Subset-076-6-3_3040400_05_v400_SV21,failed,94,S99eb8ae1
-Subset-076-6-3_3040400_05_v400_SV22,failed,94,S99eb8ae1
-Subset-076-6-3_3040400_05_v400_SV30,failed,94,S99eb8ae1
+Subset-076-6-3_3040400_05_v400_SV21,passed,0,-
+Subset-076-6-3_3040400_05_v400_SV22,passed,0,-
+Subset-076-6-3_3040400_05_v400_SV30,passed,0,-
 Subset-076-6-3_3040400_06_v400_SV21,blocked,56,E7-version
 Subset-076-6-3_3040400_06_v400_SV22,blocked,56,E7-version
 Subset-076-6-3_3040400_06_v400_SV30,blocked,56,E7-version
@@ -2179,7 +2179,7 @@ Subset-076-6-3_4120100_01_v400_SV22,passed,0,-
 Subset-076-6-3_4120100_01_v400_SV30,passed,0,-
 Subset-076-6-3_4120100_02_v400_SV21,blocked,44,E7-version
 Subset-076-6-3_4120100_02_v400_SV22,failed,46,S27eb0678
-Subset-076-6-3_4120100_02_v400_SV30,failed,181,S4fcd6cae
+Subset-076-6-3_4120100_02_v400_SV30,failed,203,S69e84e09
 Subset-076-6-3_4120100_03_v400_SV21,passed,0,-
 Subset-076-6-3_4120100_03_v400_SV22,passed,0,-
 Subset-076-6-3_4120100_03_v400_SV30,passed,0,-

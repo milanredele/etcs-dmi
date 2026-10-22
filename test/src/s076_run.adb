@@ -666,9 +666,14 @@ package body S076_Run is
    SCL_Given : Boolean := False;
 
    --  The active desk (+1 cab A, -1 cab B) and whether the sequence set
-   --  the direction controller itself (a TIU direction step)
+   --  the direction controller itself (a TIU direction step), and the
+   --  test case of that step (Step_T.Case_Feature, Case_No)
    Cab_Sign         : Integer := 1;
    Controller_Given : Boolean := False;
+   Controller_Feature, Controller_Case : Natural := 0;
+   --  a case changed after the sequence set the controller: the driver
+   --  puts it the way the train moves at its next movement
+   Controller_Due : Boolean := False;
 
    --  B1121: the driver puts the direction controller the way the
    --  train moves (TIU input 6: 1 forward, 2 backward, from the active
@@ -2299,6 +2304,9 @@ package body S076_Run is
             B.Set_Direction (-1);
          end if;
          Controller_Given := True;
+         Controller_Feature := St.Case_Feature;
+         Controller_Case := St.Case_No;
+         Controller_Due := False;
          return Pass ("TIU direction " & Arg);
       elsif Same (Kind, "sleeping") then
          B.TIU_Input (3, (if Same (Arg, "requested") then 1 else 0));
@@ -6420,6 +6428,7 @@ package body S076_Run is
       SCL_Given := False;
       Cab_Sign := 1;
       Controller_Given := False;
+      Controller_Due := False;
       VBC_Entries := 0;
       VBC_Last := 0;
       Explicit_Speed := -1;
@@ -6476,6 +6485,20 @@ package body S076_Run is
             J  : Judgement_T;
          begin
             Cur := I;
+            --  B1540: a direction controller the sequence set belongs to
+            --  its test case; decision: from a step of another case on,
+            --  the driver puts it the way the train moves again
+            --  (Controller_For_Movement), as at the start, until that case
+            --  sets it itself (3040400_05: case 3140100 3's neutral
+            --  controller of its roll away test, then case 3050300 22
+            --  moves the train)
+            if Controller_Given
+              and then (St.Case_Feature /= Controller_Feature
+                        or else St.Case_No /= Controller_Case)
+            then
+               Controller_Given := False;
+               Controller_Due := True;
+            end if;
             if Blocked then
                Results (I).Verdict := Not_Run;
             elsif not St.Well_Formed then
@@ -6568,6 +6591,15 @@ package body S076_Run is
                                              EVC_Distances.Minus)
                then
                   B.Set_Direction (-1);
+               end if;
+               --  B1540: the controller of the new case, before the train
+               --  moves to the step (by the runner or by the input)
+               if Controller_Due
+                 and then (B.Speed /= 0
+                           or else abs (St.Dist_Cm - B.Position) > 500)
+               then
+                  Controller_For_Movement;
+                  Controller_Due := False;
                end if;
                --  move to the step's distance, unless the input moves
                --  the train itself
