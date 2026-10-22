@@ -22,9 +22,10 @@ in [tools/](tools/README.md).
 | SUBSET-036 | 4.0.0 | [SUBSET-036_v400](SUBSET-036_v400/README.md) | FFFIS for Eurobalise | Below the BTM port, out of scope: the port delivers decoded telegrams. |
 | SUBSET-037 | 4.0.0 | [SUBSET-037_v400](SUBSET-037_v400/README.md) | EuroRadio FIS, parts 1 to 3 | Below the RTM port, out of scope: the safety layer and the mobile network; the session management of SUBSET-026 3.5 sits on its services. |
 | SUBSET-035 | 4.0.0 | [SUBSET-035_v400](SUBSET-035_v400/README.md) | Specific Transmission Module FFFIS | Out of scope (no STM interface); for the boundary with level NTC and mode SN. |
+| SUBSET-023 | 4.0.0 | [SUBSET-023_v400](SUBSET-023_v400/README.md) | Glossary of Terms and Abbreviations | The meaning of a term SUBSET-026 uses without defining it, cited beside a reading of a clause. |
+| SUBSET-040 | 4.0.0 | [SUBSET-040_v400](SUBSET-040_v400/README.md) | Dimensioning and Engineering Rules | The trackside's rules the on-board and the bench rely on for the constants SUBSET-026 does not give (balise spacing, group lengths, the antenna's place). |
 | SUBSET-076 | 4.0.0 | [SUBSET-076_v400](SUBSET-076_v400/README.md) | Test specifications (part 7 in the folder; test cases 5-2 and sequences 6-3 by link) | Validation of the on-board in phases E3 to E5. |
 
-Referenced but not in the repository: SUBSET-023 (glossary), SUBSET-040
-(dimensioning and engineering rules), SUBSET-094 (reference test facility),
+Referenced but not in the repository: SUBSET-094 (reference test facility),
 SUBSET-143 (on-board communication layers under SUBSET-130), SUBSET-126
 (ATO-OB / ATO-TS).
