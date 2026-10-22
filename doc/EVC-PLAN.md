@@ -10197,3 +10197,96 @@ SUBSET-076: 1075 / 1095 / 1020 before and after, 0 regressions, 0
 improvements. Left: B1400 (B031, a Tick post package), B1401, B991's
 build, 4.4.21.1.13 with 4.4.8.1.4, 3.18.3.2.4's max rear length, packet
 12 of 131.
+
+### E5 integration after the forty-third round, the eleventh of E6 (2026-10-22)
+
+The round of the rows re-read by family and of the BTM port's new record.
+
+Merged: e6/version-rows (eleven version rows done, two defects fixed on
+the way: a group whose order left level 2 kept the RBC's X until the
+next group, `EVC_System_Version.Release` from
+`EVC_Stored_Information.Take_Group`, 3.17.2.8.2; a telegram of an X
+outside the envelope, kept for the consistency check, counted in the
+group's X, 3.17.2.3; `EVC_Test_Version.Version_Level_Switch` and
+`Version_Ignored`; the Train Data rows kept partial with their
+remainders as B1460 to B1462; 8.5.2 Table done, its Invariant column
+a classification nothing in 4.0.0 acts on, B1463 for the generated
+catalogue at E7), e5/runner-data (the Train Data change by case,
+B1181: `S076_Sequences` reads the case line, `S076_Run.TIU_Input` sets
+the validation bit for the cases of 5.17.2.2's validation path and the
+category bit only when the comment does not negate it, `DMI_Input`'s
+modify-validate; the old stamp of message 6, B1261:
+`S076_Run.Radio_Input.Exit_Not_More_Recent` by a look-ahead over the
+case's steps, the stamp below the on-board's T_TRAIN at the entry into
+TR from `S076_Bench.Trip_Ms`; the optional step by the movement that
+follows, B750, `S076_Run.Backward_Follows`; B481 narrowed by a re-read;
+three on-board findings B1440 to B1442), e6/btm-port (a balise detected
+without a decoded telegram as a BTM record, B1380: the stamp then
+n_bits 0, `EVC_Position.Receive_Detection`, a detection inside an open
+passage a balise of that group not decoded, a lone detection a group
+of one unlinked balise of unknown identity closed 15 m beyond it and
+rejected by 3.16.2.5.1 b); `S076_Run.Undecodable` for a group of one;
+`Scenario_Consistency_Undecoded`; 3.16.4.3's scenario; the
+duplicate-exception check built, withdrawn when 3040200_01 regressed,
+B1423 the decision on "the orientation can still be evaluated") and
+e6/sm-ninth (one recognition of the exit from TR for both halves,
+B1320, `EVC_Radio.Trip_Exit_Recognised` set by `EVC_Sessions.Network`;
+the safe consist length lost, 4.4.21.1.12 and 3.14.1.7.6,
+`EVC_Stored_Information.Consist_Shortening` with its brake; the
+target-distance check of B1160 in `Scenario_SM_Authorisation`; B031
+stopped at B1400: gamma 1 needs the Tick post's 3.6.4.1.2 clause
+extended, a package of its own; B991 re-read, the orders are location
+based information, the build named).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, one triage line joined (S99eb8ae1: resolved by btm-port,
+3040400_05's new cause by runner-data); no source conflict. The full
+proof of the merged tree found one flow error no agent's unit proof
+could see: `EVC_Radio_Authority.Take_Message` reads the session half's
+recognition since sm-ninth, which listed `EVC_Radio.State` on
+`Read_Released_Messages` only, not on
+`EVC_Core.Stored.Release_Transition_Buffer` (dd28927).
+
+Verification on the merged master: `test/check.sh` ok, the full proof
+0 unproved (12955 checks, margin 47726 steps, 6 checks of 16 VCs or
+more at the limit of 6), cross build and stack (margin 6184 B), wasm
+and both smokes 0 failures. SUBSET-076: 1075 / 1095 / 1020 before,
+1084 / 1098 / 1008 after (0 regressions, 25 improvements over the
+branches: 5170200_02, 5040300_14, 4041800_02 pass; 4042000_02 and _03
+past their PS steps; 3040400_05, 4100103_21 and _26 from blocked to a
+later failure), steps not judged 4327 -> 4346, 0 untriaged. Matrix:
+136 -> 119 clauses left; E6 done 181 -> 197, partial 41 -> 27, todo 3
+-> 1, deferred 5.
+
+Measurements (doc/ROUNDS.csv): sm-ninth 152 calls (budget 160, one
+resumption inside it: the target-distance check and B991 in 20) /
+230k / 12.1 USD; btm-port 146 (160, one resumption: 3.16.4.3 and the
+duplicate bullets in 24) / 213k / 9.9; runner-data 134 (130, one
+resumption: B481 in 14, the second hand-back refused, which cost two
+calls) / 188k / 8.3; version-rows 115 (130, one resumption: 8.5.2
+Table in 15) / 191k / 7.6; the round 37.9 USD. Items 12 of 14 done, 0
+dropped; premises wrong 3 of 21 (the Tick post "names no doubt"; step
+43's case; `prove.sh -u` of a child by its unit name). Source-tree
+reading: 54, 27, 26, 38 grep and 37, 29, 23, 32 `sed -n` runs against
+26, 20, 15, 18 outline runs (of them `--spec` 8, 4, 2, 5).
+
+Lessons: all four agents were resumed inside their own budgets and all
+four converted (four of four, six of six over the last two rounds): the
+bound and the resumption are now the normal shape of a package. The
+`--spec` option was used 19 times in 79 outline runs; the body reads
+did not fall (the grep and `sed -n` runs on the sources rose to 266
+against 79 outline runs), so the ratio is not a matter of the tool: the
+next brief asks for `--spec` by name where a caller's view is enough.
+A unit proof of the changed units does not cover a Global that a change
+propagates to a caller in another unit: the full proof at the merge is
+what finds it, as the replay note says. The re-read by family gave the
+version family 11 rows and found two defects by scenario; the Train Data
+family needed builds outside the agent's units and stayed partial with
+its backlog lines, as the status rule asked. Open items: doc/BACKLOG.csv
+(72 open after this round; 13 added, 5 closed). Next: B1400 as a Tick
+post package (gamma 1 of 3.6.4.1.5, with `Sync_Train_Length` setting
+the terms); the SM tenth (B991's build, 4.4.21.1.13 with 4.4.8.1.4,
+3.18.3.2.4's rear length, packet 12 of 131, B1442); the consistency
+rest (3.16.2.3.1.1 a) and b), B1423, 3.16.2.6.2, B1420, B1441); the
+Train Data builds (B1460 to B1462); the runner's B1440 and B481's
+remainder; then the Gamma model, NL.
