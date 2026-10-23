@@ -274,6 +274,7 @@ begin
          Hold_Number := 0;
          B.Cancel_RTM_Hold;
          if B.RTM_Hold_Given then
+            RBC_Given_Ms := B.RTM_Hold_Given_Ms;
             return Pass ("RTM message " & Nid & " given earlier, at t="
                          & Unsigned_64'Image (B.RTM_Hold_Given_Ms)
                          & " ms, within the waiting time (A.3.1)");
@@ -399,6 +400,7 @@ begin
             Hold_Number := St.Number;
             return Pass ("RTM message " & Nid & " held");
          end if;
+         RBC_Given_Ms := B.Time_Ms;
          B.RTM_Input (B.Byte_Array'(EVC_Ports.RTM_Tag_Message,
                                     Unsigned_8 (S)) & Data);
          return Pass ("RTM message " & Nid & " given (session"

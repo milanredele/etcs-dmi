@@ -175,6 +175,9 @@ package body S076_Run is
    --  (S076_Run-Radio_Input), since the last connection set up
    RBC_Stamp       : Unsigned_64 := 0;
    RBC_Stamp_Given : Boolean := False;
+   --  the bench time the last message of the RBC was given at, 0 before
+   --  one: the start of the on-board's T_NVCONTACT (3.16.3.4.1)
+   RBC_Given_Ms    : Unsigned_64 := 0;
    --  The two RBC sessions of the sequence (a handover shows the second):
    --  which have a connection, and the one set up last
    type Alive_T is array (1 .. 2) of Boolean;
@@ -1738,10 +1741,13 @@ package body S076_Run is
       return Best;
    end Timer_Seconds;
 
-   --  The timer is taken to have started when the step before ended: the
-   --  time the train took to reach the step's distance counts
-   procedure Run_Timer (Seconds : Natural) is
-      Elapsed : constant Unsigned_64 := B.Time_Ms - Step_Start_Ms;
+   --  The timer is taken to have started when the step before ended (the
+   --  time the train took to reach the step's distance counts), or at
+   --  From_Ms when given (not 0)
+   procedure Run_Timer (Seconds : Natural; From_Ms : Unsigned_64 := 0) is
+      Elapsed : constant Unsigned_64 :=
+        B.Time_Ms - (if From_Ms in 1 .. B.Time_Ms then From_Ms
+                     else Step_Start_Ms);
       Due     : constant Unsigned_64 := Unsigned_64 (Seconds) * 1000 + 200;
    begin
       if Elapsed < Due then
@@ -1909,7 +1915,12 @@ package body S076_Run is
             return NJ (R_Runner, "timer " & K (Chosen)
                        & " without a value");
          end if;
-         Run_Timer (S);
+         --  T_NVCONTACT runs from the last message of the RBC
+         --  (3.16.3.4.1), not from the step before: its reaction comes
+         --  at the timer's expiry (4120100_02 step 188, the service
+         --  brake from 1450 m to the standstill at 1500 m)
+         Run_Timer (S, (if K (Chosen) = "T_NVCONTACT" then RBC_Given_Ms
+                        else 0));
          return Pass (K (Chosen) & Natural'Image (S) & " s elapsed");
       end;
    end Timer_Input;
@@ -6435,6 +6446,7 @@ package body S076_Run is
       Wait_Used := 0;
       RBC_Stamp := 0;
       RBC_Stamp_Given := False;
+      RBC_Given_Ms := 0;
       RBC_Alive := (others => False);
       RBC_Current := 1;
       Hold_Number := 0;
