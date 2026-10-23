@@ -4423,10 +4423,28 @@ package body S076_Run is
          case Id is
             when 10 =>
                return JRU_Sent (St, Positive);
-            when 3 | 4 | 43 =>
+            when 43 =>
+               --  the message itself (EVC_JRU_Messages.View event 143),
+               --  M_TCO_COMMAND_STATE when the step names it
                declare
-                  Bit : constant Natural :=
-                    (case Id is when 3 => 0, when 4 => 1, when others => 2);
+                  Val : Integer := -1;
+               begin
+                  for K in 5 .. Line.Count loop
+                     if Has (W (K), "M_TCO_COMMAND_STATE=") then
+                        Val := (if Has (W (K), "=1") then 1 else 0);
+                     end if;
+                  end loop;
+                  return Check
+                    ((for some I in 1 .. Rec_Count => Rec (I).Event = 143
+                       and then (Val < 0 or else Rec (I).B2 = Val))
+                     = Positive,
+                     "JRU43" & (if Val < 0 then "" else " state" & Img (Val))
+                     & (if Positive then "" else " not"),
+                     "no such message 43");
+               end;
+            when 3 | 4 =>
+               declare
+                  Bit : constant Natural := (if Id = 3 then 0 else 1);
                   Val : Integer := -1;
                begin
                   for K in 5 .. Line.Count loop
@@ -4602,25 +4620,15 @@ package body S076_Run is
                                 "event 13");
                end;
             when 44 =>
-               --  the LSSMA displayed (4.2.4.44): the on-board's JRU port
-               --  has no event for it, the bench's DMI state is the
-               --  evidence, judged as the DMI step of the LSSMA; V_LSSMA
-               --  is symbolic in the sequences
-               declare
-                  Shown_Now : constant Boolean := B.State.LSSMA /= 16#FFFF#;
-               begin
-                  --  no record: no change of the LSSMA displayed, which the
-                  --  bench does not follow (4080100_04 step 113)
-                  if not Positive then
-                     return Check (not B.Seen.LSSMA_Changed,
-                                   "JRU44 not: the LSSMA shown unchanged",
-                                   "changed in the window");
-                  end if;
-                  return Check (Shown_Now = Positive,
-                                "JRU44 LSSMA shown"
-                                & (if Positive then "" else " not"),
-                                (if Shown_Now then "shown" else "not shown"));
-               end;
+               --  the LSSMA displayed (4.2.4.44): the message itself
+               --  (EVC_JRU_Messages.View event 144), written at every
+               --  change of the LSSMA displayed; V_LSSMA is symbolic in
+               --  the sequences
+               return Check
+                 ((for some I in 1 .. Rec_Count => Rec (I).Event = 144)
+                  = Positive,
+                  "JRU44" & (if Positive then "" else " not"),
+                  (if Positive then "no message 44" else "message 44"));
             when 12 =>
                --  the balise group error by M_ERROR (7.5.1.64): 0 the
                --  linking consistency error of 3.16.2.3, the position's

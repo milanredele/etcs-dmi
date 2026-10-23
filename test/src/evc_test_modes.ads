@@ -36,4 +36,9 @@ package EVC_Test_Modes is
       --  (for the level 2 start of mission of EVC_Test_Sessions)
       procedure Start_E4 (Cab : Boolean := True);
 
+      --  The driver's start of mission in the level of its DMI code (4
+      --  level 1) to its mode, the proposal acknowledged (for the
+      --  juridical records of EVC_Test_JRU)
+      procedure Mission (Level_Code : Natural);
+
 end EVC_Test_Modes;

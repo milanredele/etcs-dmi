@@ -485,6 +485,7 @@ package body S076_Tables is
          --  EVC_JRU_Records: 100 above where the number is another event
          when 24 => return (Event => 124, Sub => -1, B4 => -1, Known => True);
          when 32 => return (Event => 132, Sub => -1, B4 => -1, Known => True);
+         when 54 => return (Event => 154, Sub => -1, B4 => -1, Known => True);
          when others => return (others => <>);
       end case;
    end Message_Event;
@@ -508,6 +509,11 @@ package body S076_Tables is
             end if;
          when 50 =>
             if Named ("M_TRAIN_INTEGRITY_INFO") then
+               return (Byte => 2, others => False);
+            end if;
+         when 54 =>
+            --  the lengths are not named by a step: not carried
+            if Named ("Q_OVCONSISTLENGTH") then
                return (Byte => 2, others => False);
             end if;
          when 24 =>

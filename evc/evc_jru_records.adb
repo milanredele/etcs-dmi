@@ -9,7 +9,8 @@ package body EVC_JRU_Records
   with SPARK_Mode => On,
        Refined_State => (State => (Cab_A_Recorded, Cab_B_Recorded,
                                    Cab_Recorded,
-                                   Last_TC, Last_Inputs, Shown))
+                                   Last_TC, Last_Inputs, Shown,
+                                 Last_LSSMA))
 is
 
    use EVC_Driver_Requests;
@@ -25,6 +26,8 @@ is
    Last_Inputs : Input_Values_T := Power_Up_Inputs;
    --  the system status messages displayed (System_Status)
    Shown : Unsigned_32 := 0;
+   --  V_LSSMA last recorded (LSSMA)
+   Last_LSSMA : Natural := V_LSSMA_None;
 
    function Action_Code (A   : Action_T;
                          Arg : Unsigned_16) return Byte is
@@ -107,7 +110,18 @@ is
       Last_TC := (Count => 0, List => (others => (others => 0)));
       Last_Inputs := Power_Up_Inputs;
       Shown := 0;
+      Last_LSSMA := V_LSSMA_None;
    end Reset;
+
+   procedure LSSMA (Kmh     : Natural;
+                    V       : out Natural;
+                    Changed : out Boolean) is
+   begin
+      V := (if Kmh >= V_LSSMA_None then V_LSSMA_None
+            else Natural'Min (Kmh, 600));
+      Changed := V /= Last_LSSMA;
+      Last_LSSMA := V;
+   end LSSMA;
 
    --  SUBSET-027 4.2.4.23 against the catalogue of the DMI's chapter 15
    --  (EVC_DMI_Port): the entries of one message (the brake and the trip

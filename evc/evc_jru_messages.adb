@@ -260,6 +260,18 @@ is
             return (P (P'First), F (0, 1), 0, 0);
          when NID_Non_Leading =>
             return (132, F (0, 1), 0, 0);
+         when NID_TCO_State =>
+            --  event 143 (43 is no event of EVC_Ports): M_TCO_COMMAND_STATE
+            return (143, F (0, 1), 0, 0);
+         when NID_LSSMA =>
+            --  event 144: V_LSSMA / 4 (255 for None, 1023)
+            return (144, Byte (Natural'Min (Get (P, B, 10, 1023) / 4, 255)),
+                    0, 0);
+         when NID_Consist =>
+            --  event 154: Q_OVCONSISTLENGTH, L_CONSISTFRONTCABANOM / 16
+            --  and L_CONSISTREARCABANOM / 16 (0 when not available)
+            return (154, F (0, 1), Byte (Get (P, B + 1, 12, 0) / 16),
+                    Byte (Get (P, B + 37, 12, 0) / 16));
          when NID_Direction =>
             return (39, F (0, 2), 0, 0);
          when NID_Cab_Status =>

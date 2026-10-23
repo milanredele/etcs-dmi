@@ -90,6 +90,18 @@ is
    procedure Reset
      with Global => (Output => State);
 
+   --  SUBSET-027 4.2.4.44: V_LSSMA of the LSSMA displayed, Kmh in km/h
+   --  (V_LSSMA_None, 1023 "None", when none; above 600 km/h 600, the range of
+   --  the variable); Changed when it differs from the one last recorded.
+   --  Decision: a record at the start of the display, at every change
+   --  of its value and at its end (1023)
+   V_LSSMA_None : constant := 1023;
+   procedure LSSMA (Kmh     : Natural;
+                    V       : out Natural;
+                    Changed : out Boolean)
+     with Global => (In_Out => State),
+          Post   => V <= V_LSSMA_None;
+
    --  The cab status of the cycle, Received when the train interface sent
    --  a cab status since the power-up: Changed (to be recorded) at the
    --  first one received and when it differs from the last one recorded

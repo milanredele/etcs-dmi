@@ -11106,3 +11106,33 @@ sequences expecting a 133 with a field are unchanged. B1741:
 step column's variant and the positive lists are unchanged; 3110800_02
 and 4080300_18 pass (S52fbd3cd). SUBSET-076: 1102 / 1079 / 1009 ->
 1104 / 1077 / 1009, 0 regressions, baseline re-recorded.
+### The juridical records by their count: the traction cut-off command state, the overall consist length, the LSSMA (e6/jru-records) (2026-10-23)
+
+- Record 43 (SUBSET-027 4.2.4.43): `EVC_Core.Records.Put_Brake_States`
+  writes M_TCO_COMMAND_STATE from bit 2 of the TIU commands beside the
+  records 3 and 4. Decision: at every change of the command sent, the
+  first at the first command after the power-up (the sequences record 0
+  at the release in FS, never at the start). The traction cut-off comes
+  only in target speed monitoring (`EVC_SDM.Set_Commands`, Tables 8, 9),
+  so `Scenario_JRU_Commands` drives an EOA in FS
+  (`EVC_Test_Modes.Mission` exported for it).
+- Record 54 (4.2.4.54): `EVC_Core.Records.Put_Consist`, called from
+  `EVC_Core.Inputs.Read_Ports` where the TIU's safe consist length is
+  taken: Q_OVCONSISTLENGTH and, when available, the six lengths of 12
+  bits in the content table's order. Decision: at every input, a
+  repeated value too. `Scenario_JRU_Train_Data` extended.
+- Record 44 (4.2.4.44): `EVC_Core.Records.Record_Inputs_Radio_Data` from
+  `EVC_LS_Display.LSSMA_Kmh` (read only, no accessor added) when
+  `EVC_JRU_Records.LSSMA` sees a change. Decision: at the start of the
+  display, at every change of the value and 1023 (None) at its end, at
+  most 600 km/h. `Scenario_JRU_LSSMA` checks the tracking and the view,
+  not an LS mission on `EVC_Core` (B1721).
+- Views: `EVC_JRU_Messages.View` events 143, 154, 144 (100 above the
+  number, 43, 44 and 54 being free but kept apart from the ports'
+  events). The runner judges 43 and 44 from the messages
+  (`S076_Run.JRU_Window_Expect`), 54 through `S076_Tables.Message_Event`
+  and `Record_Field` (Q_OVCONSISTLENGTH; no step names a length).
+- B1360 narrowed: left 21 (judged from the DMI), 22 (no step), 27
+  (B1720), 33 to 37, 40, 41 (no step in the corpus).
+- SUBSET-076: 1098 / 1083 / 1009 before and after, steps not judged
+  4151 -> 4122, 0 regressions; no golden changed.

@@ -16,8 +16,28 @@ is
 
    --  SUBSET-027 4.2.4.3 and 4.2.4.4: M_BRAKE_COMMAND_STATE of the
    --  emergency and of the service brake command (bits 0 and 1 of the
-   --  TIU commands), each when it differs from Before
+   --  TIU commands), 4.2.4.43: M_TCO_COMMAND_STATE of the traction cut-off
+   --  (bit 2, SUBSET-034 2.4.9), each when it differs from Before.
+   --  Decision: at every change of the command sent, the first at the
+   --  first command after the power-up (the sequences record 0 at the
+   --  release in FS, never at the start); a state never commanded has no
+   --  record, as for the brakes
+   --  @req 3.20.1.2
    procedure Put_Brake_States (Commands, Before : EVC_Bytes.Byte)
+     with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue);
+
+   --  SUBSET-027 4.2.4.54: OVERALL CONSIST LENGTH, the safe consist length
+   --  input of the train interface (SUBSET-034 2.6.2) as it came:
+   --  Q_OVCONSISTLENGTH (1 bit, by analogy to Q_SAFECONSISTLENGTH) and,
+   --  when available, the six lengths of 12 bits (by analogy to
+   --  7.5.1.42) in the order of the content table: in front of the engine
+   --  on the side of cab A nominal, minimum, maximum, then in rear.
+   --  Decision: at every input of the external source, a repeated value
+   --  too (4.2.4.54 "transmit the safe consist length input"; the
+   --  sequences record each input received)
+   --  @req 3.20.1.2
+   procedure Put_Consist (Available : Boolean;
+                          C         : EVC_Train_Data.Consist_T)
      with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue);
 
    --  The juridical message of an event of EVC_Ports and its three bytes
@@ -107,9 +127,10 @@ is
    --  4.4.8.1.4, 4.4.21.1.13), when they change; the RBC contact and
    --  the GSM-R network the driver entered; record 13 with M_ERROR 5,
    --  safe radio connection error, when the reaction to the expiry of
-   --  T_NVCONTACT is triggered (SUBSET-026 3.16.3.4)
+   --  T_NVCONTACT is triggered (SUBSET-026 3.16.3.4); the LSSMA displayed
+   --  (SUBSET-027 4.2.4.44, EVC_JRU_Records.LSSMA) when it changes
    procedure Record_Inputs_Radio_Data
-     with Global => (Input  => (Clock_Ms, TIU_RS_Sent,
+     with Global => (Input  => (Clock_Ms, TIU_RS_Sent, EVC_LS_Display.State,
                                 TIU_Now, TIU_Known_Now, TIU_Value_Now,
                                 EVC_Driver_Requests.State,
                                 EVC_Sessions.State, EVC_Radio.State),

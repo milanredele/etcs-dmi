@@ -14,11 +14,14 @@ is
    procedure Put_Brake_States (Commands, Before : EVC_Bytes.Byte) is
       use EVC_JRU_Messages;
    begin
-      for Bit in 0 .. 1 loop
+      for Bit in 0 .. 2 loop
          pragma Loop_Invariant (True);
          if (Shift_Right (Commands xor Before, Bit) and 1) /= 0 then
             EVC_Outbox.Put_JRU
-              ((if Bit = 0 then NID_EB_State else NID_SB_State),
+              ((case Bit is
+                  when 0      => NID_EB_State,
+                  when 1      => NID_SB_State,
+                  when others => NID_TCO_State),
                Unsigned_64 (Clock_Ms),
                (1      => (Value => Unsigned_64
                                       (Shift_Right (Commands, Bit) and 1),
@@ -28,6 +31,34 @@ is
          end if;
       end loop;
    end Put_Brake_States;
+
+   procedure Put_Consist (Available : Boolean;
+                          C         : EVC_Train_Data.Consist_T)
+   is
+      use EVC_JRU_Messages;
+      function L (V : EVC_Train_Data.Consist_Length_T) return Field_T is
+        ((Value => Unsigned_64 (V), Bits => 12));
+   begin
+      if Available then
+         EVC_Outbox.Put_JRU
+           (NID_Consist, Unsigned_64 (Clock_Ms),
+            (1      => (Value => 1, Bits => 1),
+             2      => L (C.Front_Nom),
+             3      => L (C.Front_Min),
+             4      => L (C.Front_Max),
+             5      => L (C.Rear_Nom),
+             6      => L (C.Rear_Min),
+             7      => L (C.Rear_Max),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
+      else
+         EVC_Outbox.Put_JRU
+           (NID_Consist, Unsigned_64 (Clock_Ms),
+            (1      => (Value => 0, Bits => 1),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
+      end if;
+   end Put_Consist;
 
    procedure Put_Event (Event, B2, B3, B4 : EVC_Bytes.Byte) is
       NID    : EVC_Bytes.Byte;
@@ -280,6 +311,8 @@ is
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));
       MN      : MN_Bytes_T;
       F       : EVC_JRU_Messages.Fields_T;
+      V       : Natural;
+      Changed : Boolean;
    begin
       Inputs (Now, Changes);
       for I in Input_T loop
@@ -302,6 +335,17 @@ is
       end if;
       if EVC_Sessions.Contact_Error then
          Put_Radio_Error (5);
+      end if;
+      LSSMA ((if EVC_LS_Display.LSSMA_Kmh = EVC_LS_Display.No_LSSMA
+              then V_LSSMA_None
+              else Natural (EVC_LS_Display.LSSMA_Kmh)),
+             V, Changed);
+      if Changed then
+         EVC_Outbox.Put_JRU
+           (EVC_JRU_Messages.NID_LSSMA, Unsigned_64 (Clock_Ms),
+            (1      => (Value => Unsigned_64 (V), Bits => 10),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
       end if;
    end Record_Inputs_Radio_Data;
 
