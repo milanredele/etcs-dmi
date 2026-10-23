@@ -11093,3 +11093,16 @@ Three items and the family's next failure, four done.
 
 SUBSET-076: 1098 / 1083 / 1009 -> 1102 / 1079 / 1009, 0 regressions,
 baseline re-recorded. No golden changed. Outside the named units: none.
+
+Resumption (two runner items, `S076_Run` only). B1740:
+`S076_Run.Radio_Expect.Packet_Field` decodes packet 10
+(Q_SAFECONSISTLENGTH and the six lengths, when present); 3070300_10
+110 -> 114, where the case 3070300 28, composed a second time at 450 m,
+moves the train past the EOA that its own loss of the safe consist
+length shortened (4.4.21.1.12): SM trips (S5a7387ca, s076); the other
+sequences expecting a 133 with a field are unchanged. B1741:
+`S076_Run.Level_Symbol` judges a negative list of levels short of
+0/1/2/NTC as none of its levels shown; the generic 0/1/2/NTC keeps the
+step column's variant and the positive lists are unchanged; 3110800_02
+and 4080300_18 pass (S52fbd3cd). SUBSET-076: 1102 / 1079 / 1009 ->
+1104 / 1077 / 1009, 0 regressions, baseline re-recorded.
