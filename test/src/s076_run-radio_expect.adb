@@ -34,6 +34,7 @@ with ETCS_Message;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P1;
 with ETCS_Train_Packets.P4;
+with ETCS_Train_Packets.P10;
 with ETCS_Variables;
 
 separate (S076_Run)
@@ -148,7 +149,8 @@ function Radio_Expect (St : Step_T) return Judgement_T is
 
    --  A field of a packet of M by name: the position report (0, 1) and
    --  the error report (4) of the train to track messages, the packets
-   --  the sequences name with a field (M_ERROR, V_TRAIN, M_LEVEL);
+   --  the sequences name with a field (M_ERROR, V_TRAIN, M_LEVEL), and
+   --  the safe consist length of messages 131 and 133 (10);
    --  Found False for another field or packet
    procedure Packet_Field (M     : ETCS_Message.Message_T;
                            Name  : String;
@@ -158,6 +160,7 @@ function Radio_Expect (St : Step_T) return Judgement_T is
       P0 : ETCS_Train_Packets.P0.Packet_T;
       P1 : ETCS_Train_Packets.P1.Packet_T;
       P4 : ETCS_Train_Packets.P4.Packet_T;
+      P10 : ETCS_Train_Packets.P10.Packet_T;
       OK : Boolean;
       procedure Take (V : Unsigned_64) is
       begin
@@ -199,6 +202,27 @@ function Radio_Expect (St : Step_T) return Judgement_T is
                   ETCS_Train_Packets.P4.Decode (Rd, P4, OK);
                   if OK and then Same (Name, "M_ERROR") then
                      Take (Unsigned_64 (P4.M_ERROR));
+                  end if;
+               when 10 =>
+                  ETCS_Train_Packets.P10.Decode (Rd, P10, OK);
+                  if not OK then
+                     null;
+                  elsif Same (Name, "Q_SAFECONSISTLENGTH") then
+                     Take (Unsigned_64 (P10.Q_SAFECONSISTLENGTH));
+                  elsif not P10.Has_L_CONSISTFRONTENGINENOM then
+                     null;
+                  elsif Same (Name, "L_CONSISTFRONTENGINENOM") then
+                     Take (Unsigned_64 (P10.L_CONSISTFRONTENGINENOM));
+                  elsif Same (Name, "L_CONSISTFRONTENGINEMIN") then
+                     Take (Unsigned_64 (P10.L_CONSISTFRONTENGINEMIN));
+                  elsif Same (Name, "L_CONSISTFRONTENGINEMAX") then
+                     Take (Unsigned_64 (P10.L_CONSISTFRONTENGINEMAX));
+                  elsif Same (Name, "L_CONSISTREARENGINENOM") then
+                     Take (Unsigned_64 (P10.L_CONSISTREARENGINENOM));
+                  elsif Same (Name, "L_CONSISTREARENGINEMIN") then
+                     Take (Unsigned_64 (P10.L_CONSISTREARENGINEMIN));
+                  elsif Same (Name, "L_CONSISTREARENGINEMAX") then
+                     Take (Unsigned_64 (P10.L_CONSISTREARENGINEMAX));
                   end if;
                when others =>
                   null;
