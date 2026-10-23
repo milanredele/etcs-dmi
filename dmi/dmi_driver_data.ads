@@ -41,6 +41,14 @@ package DMI_Driver_Data is
    Train_Data_Entered : Boolean := False; -- set after validation
    TRN_Entered        : Boolean := False;
 
+   --  SUBSET-026 3.18.6.1: the Driver ID and the train running number
+   --  stored on-board (MSG_STORED_VALUES); once one is received they
+   --  replace the entries above in the data view (decision: before it
+   --  the DMI shows its own entries)
+   Onboard_Values_Known : Boolean := False;
+   Onboard_Driver_ID    : Text_Value_T;
+   Onboard_TRN          : Text_Value_T;
+
    procedure Reset;
 
 end DMI_Driver_Data;

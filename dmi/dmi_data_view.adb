@@ -230,10 +230,21 @@ package body DMI_Data_View is
       end if;
       case Index is
          when 1 =>
+            -- 3.18.6.1: the on-board's value once it has sent one
+            if Onboard_Values_Known then
+               return (if DMI_Conditions.Driver_ID_Valid
+                         and then Onboard_Driver_ID.Length > 0
+                       then Text_Value (Onboard_Driver_ID) else None);
+            end if;
             return (if DMI_Conditions.Driver_ID_Valid
                       and then Driver_ID_Entered
                     then Text_Value (Driver_ID) else None);
          when 2 =>
+            if Onboard_Values_Known then
+               return (if DMI_Conditions.TRN_Valid
+                         and then Onboard_TRN.Length > 0
+                       then Text_Value (Onboard_TRN) else None);
+            end if;
             return (if DMI_Conditions.TRN_Valid and then TRN_Entered
                     then Text_Value (TRN) else None);
          when 3 =>

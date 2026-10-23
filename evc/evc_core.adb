@@ -79,6 +79,7 @@ package body EVC_Core
                                    Status_Tunnel_Sent,
                                    Status_Radio_Sent,
                                    TC_Sent, Contact_Sent, Version_Sent,
+                                   Stored_Sent, ID_Sent, TRN_Sent,
                                    Config_Last, Config_Seen))
 is
 
@@ -266,6 +267,9 @@ is
       TC_Sent := False;
       Contact_Sent := EVC_Radio.No_Contact;
       Version_Sent := 16#FF#;
+      Stored_Sent := False;
+      ID_Sent := (others => <>);
+      TRN_Sent := (others => <>);
       EVC_JRU_Records.Reset;
       Config_Last := 0;
       Config_Seen := False;

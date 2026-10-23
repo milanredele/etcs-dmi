@@ -16,6 +16,7 @@ with EVC_Config;
 with EVC_DMI_Port;
 with EVC_Core;
 with EVC_Bytes;
+with EVC_Levels;
 with EVC_Mission;
 with EVC_National_Values;
 with EVC_Modes;
@@ -723,6 +724,39 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Registration;
 
+   --  5.4.3.2 D3 -> D7 -> S4: the position and level 2 valid at D2, the
+   --  RBC contact unknown (a level transition by balise, 3050600_06):
+   --  the registration is awaited at the Main window (MSG_ONBOARD waiting
+   --  1, the hour glass) until E6, which leads to no session (A31 has no
+   --  contact to call); the driver enters the RBC data from S10
+   procedure Scenario_SoM_S4_Without_Contact is
+   begin
+      Auto_Register := False;
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Add_Group (Group (10, 20));
+      Run_X (5_000, 100);
+      Stand;
+      Send (Action (11, 5));
+      Send (Text_Entry (0, "1234"));
+      Check (not R.Contact.Known and then EVC_Levels.Valid
+             and then EVC_Modes."=" (EVC_Levels.Level, EVC_Modes.L2)
+             and then EVC_Sessions.SoM_Awaiting_Registration
+             and then Onboard_Byte (12) = 1,
+             "SoM S4: level 2 and the position valid at D2, no contact: "
+             & "D7 -> S4, MSG_ONBOARD waiting 1 (5.4.3.2 S4), got"
+             & Onboard_Byte (12)'Image & R.Contact.Known'Image
+             & EVC_Levels.Valid'Image);
+      Give_Radio_Event (1, Registered);
+      Stand;
+      Check (Onboard_Byte (12) = 0 and then R.Info (1).State = R.Idle,
+             "SoM S4: registered (E6): the wait ends, no session opened "
+             & "without a contact (A31)");
+      Auto_Register := True;
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_SoM_S4_Without_Contact;
+
    procedure Scenario_Session_SoM_Level_2 is
       M  : ETCS_Message.Message_T;
       St : ETCS_Message.Status_T;
@@ -735,7 +769,10 @@ package body EVC_Test_Sessions is
              and then R.Info (1).State = R.Connecting
              and then Is_Request (1, 1)
              and then Onboard_Byte (12) = 2 and then Onboard_Byte (7) = 1
-             and then Onboard_Byte (6) / 16 mod 2 = 1,
+             and then Onboard_Byte (6) / 16 mod 2 = 1
+             --  5.4.3.2 D2: the position unknown, neither position bit
+             and then Onboard_Byte (9) / 32 mod 2 = 0
+             and then Onboard_Byte (6) / 32 mod 2 = 0,
              "SoM L2: the RBC contact entered by the driver (5.4.3.2 S3) "
              & "valid (5.4.3.3), the session opened (A31), the DMI waits "
              & "for the RBC (MSG_ONBOARD waiting 2)");
@@ -1078,6 +1115,27 @@ package body EVC_Test_Sessions is
       Send (Text_Entry (1, "5678"));
       Check (EVC_Position."=" (EVC_Position.Status, EVC_Position.Valid),
              "mode proposal: the position valid in SB");
+      --  5.4.3.2 D2: MSG_ONBOARD train bit5 the position's status alone,
+      --  data bit5 the position referred to an LRBG
+      Check (Onboard_Byte (9) / 32 mod 2 = 1
+             and then (Onboard_Byte (6) / 32 mod 2 = 1)
+                      = EVC_Position.LRBG.Valid,
+             "mode proposal: MSG_ONBOARD train bit5, the position's status "
+             & "valid (5.4.3.2 D2), data bit5 with the LRBG, got"
+             & Onboard_Byte (9)'Image & Onboard_Byte (6)'Image
+             & EVC_Position.LRBG.Valid'Image);
+      --  3.18.6.1: the stored values for the DMI's data view, sent with
+      --  the train running number's change
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6) = 4
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 7) = 49
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 10) = 52
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 4
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 24) = 53
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 27) = 56,
+             "mode proposal: MSG_STORED_VALUES Driver ID 1234, train running "
+             & "number 5678 (3.18.6.1), got"
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6)'Image
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23)'Image);
       Check (N > 0 and then R.Train_Data_Acknowledged
              and then EVC_Core.Mode = EVC_Modes.M_SB,
              "mode proposal: the level 2 start of mission at S20");

@@ -148,7 +148,7 @@ is
    --  on-board knows: the validity of the level, the position and the
    --  data of the start of mission (5.4), the train and national bits;
    --  the fields of the later phases are 0, "nothing known"
-   --  @req 5.4.3.2 S21, 5.17.2.2 S6, 5.11.2.2 D130, 5.11.2.2 S130
+   --  @req 5.4.3.2 S21, 5.4.3.2 D2, 5.17.2.2 S6, 5.11.2.2 D130, 5.11.2.2 S130
    --  @req 5.11.2.2 S140
    procedure Send_Onboard
      with Global => (Input  => (Current_Mode, Standstill, Below_Override,
@@ -187,6 +187,17 @@ is
    procedure Send_RBC_Contact
      with Global => (Input  => EVC_Radio.State,
                      In_Out => (Contact_Sent, EVC_Outbox.Queue));
+
+   --  3.18.6.1: the Driver ID and the train running number stored
+   --  on-board, sent to the DMI when either changes (the first cycle
+   --  included), so that its data view shows them whoever wrote them
+   --  (the driver, the RBC, the store over No Power) and after a restart
+   --  of the DMI; their status goes with MSG_ONBOARD
+   --  @req 3.18.6.1
+   procedure Send_Stored_Values
+     with Global => (Input  => EVC_Mission.State,
+                     In_Out => (Stored_Sent, ID_Sent, TRN_Sent,
+                                EVC_Outbox.Queue));
 
    --  MSG_SYSTEM_VERSION: the operated system version X.Y (3.17.2.1.1)
    --  for the DMI's System version window (DMI 11.5.2), sent at the
@@ -310,6 +321,7 @@ is
                                 Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 Contact_Sent, Version_Sent,
+                                Stored_Sent, ID_Sent, TRN_Sent,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_VBC.State));

@@ -343,6 +343,7 @@ begin
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;
+   Scenario_SoM_S4_Without_Contact;
    Scenario_RBC_Contact_To_DMI;
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;

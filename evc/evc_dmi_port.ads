@@ -154,6 +154,9 @@ is
    --  Bits of Data
    Data_Level_Valid    : constant Bits_T := 4;
    Data_Position_Valid : constant Bits_T := 32;  -- valid, referred to an LRBG
+   --  Train bit5: the status of the train position is valid, referred to
+   --  an LRBG or not (5.4.3.2 D2)
+   Train_Position_Status_Valid : constant Bits_T := 32;
    Data_Consist_Available  : constant Bits_T := 64;  -- safe consist length
    Data_Consist_Front_Zero : constant Bits_T := 128; -- none in front
    Data_Driver_ID_Valid  : constant Bits_T := 1;
@@ -549,6 +552,26 @@ is
                                 Frame  : out RBC_Contact_Frame_T)
      with Pre  => RBC_Id <= 16_777_214,
           Post => Frame (1) = MSG_RBC_CONTACT;
+
+   --  MSG_STORED_VALUES (common/dmi_protocol.ads): the Driver ID and the
+   --  train running number stored on-board, for the DMI's data view
+   --  (3.18.6.1): driver_id_len u8, 16 bytes, trn_len u8, 16 bytes
+   MSG_STORED_VALUES    : constant Byte := 16#11#;
+   Stored_Text_Max      : constant := 16;
+   Stored_Values_Length : constant := 2 + 2 * Stored_Text_Max;
+   type Stored_Text_T is array (1 .. Stored_Text_Max) of Byte;
+   subtype Stored_Values_Frame_T is
+     Byte_Array (1 .. Header_Length + Stored_Values_Length);
+
+   --  @req 3.18.6.1
+   procedure Stored_Values_Frame (ID_Length  : Natural;
+                                  ID         : Stored_Text_T;
+                                  TRN_Length : Natural;
+                                  TRN        : Stored_Text_T;
+                                  Frame      : out Stored_Values_Frame_T)
+     with Pre  => ID_Length <= Stored_Text_Max
+                  and then TRN_Length <= Stored_Text_Max,
+          Post => Frame (1) = MSG_STORED_VALUES;
 
    --  MSG_ONBOARD train bit 4: the "BTM alarm reaction inhibition"
    --  function is active (5.22.4.1)

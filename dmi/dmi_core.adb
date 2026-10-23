@@ -1003,6 +1003,7 @@ package body DMI_Core is
       DMI_Conditions.Non_Leading_Signal := Bit (Train, 2);
       DMI_Conditions.Passive_Shunting   := Bit (Train, 3);
       DMI_Conditions.BMM_Inhibit_Active := Bit (Train, 4);
+      DMI_Conditions.Position_Status_Valid := Bit (Train, 5);
 
       DMI_Conditions.NV_Driver_ID_Running := Bit (National, 0);
       DMI_Conditions.NV_Adhesion          := Bit (National, 1);
@@ -1600,6 +1601,37 @@ package body DMI_Core is
       end case;
    end Apply_Desk_Input;
 
+   --  MSG_STORED_VALUES: the Driver ID and the train running number
+   --  stored on-board (SUBSET-026 3.18.6.1) become the values the Data
+   --  view shows (DMI_Driver_Data.Onboard_*). A length above
+   --  Stored_Text_Max drops the message as a whole.
+   procedure Apply_Stored_Values (Payload : Stream_Element_Array) is
+      ID_At  : constant Stream_Element_Offset := Payload'First;
+      TRN_At : constant Stream_Element_Offset :=
+        Payload'First + 1 + Stored_Text_Max;
+      ID_Len  : constant Natural := Natural (Payload (ID_At));
+      TRN_Len : constant Natural := Natural (Payload (TRN_At));
+
+      function Text_At (At_Byte : Stream_Element_Offset; Len : Natural)
+                        return DMI_Driver_Data.Text_Value_T is
+         Result : DMI_Driver_Data.Text_Value_T;
+      begin
+         Result.Length := Len;
+         for I in 1 .. Len loop
+            Result.Text (I) := Wide_Character'Val
+              (Natural (Payload (At_Byte + Stream_Element_Offset (I))));
+         end loop;
+         return Result;
+      end Text_At;
+   begin
+      if ID_Len > Stored_Text_Max or else TRN_Len > Stored_Text_Max then
+         return;
+      end if;
+      DMI_Driver_Data.Onboard_Driver_ID := Text_At (ID_At, ID_Len);
+      DMI_Driver_Data.Onboard_TRN := Text_At (TRN_At, TRN_Len);
+      DMI_Driver_Data.Onboard_Values_Known := True;
+   end Apply_Stored_Values;
+
    --  MSG_RBC_CONTACT (B007): the RBC contact information stored
    --  on-board becomes the values the RBC data window proposes (DMI
    --  11.7.1.4) and the Data view shows (Table 45 items 13, 14). The
@@ -1666,6 +1698,7 @@ package body DMI_Core is
                    | MSG_PLANNING | MSG_ONBOARD | MSG_ATO
                    | MSG_SYSTEM_STATUS | MSG_RADIO_NETWORKS
                    | MSG_SYSTEM_VERSION | MSG_VBC_LIST | MSG_RBC_CONTACT
+                   | MSG_STORED_VALUES
       then
          Note_EVC_Message;
       end if;
@@ -1730,6 +1763,10 @@ package body DMI_Core is
          when MSG_RBC_CONTACT =>
             if Payload'Length = RBC_Contact_Length then
                Apply_RBC_Contact (Payload);
+            end if;
+         when MSG_STORED_VALUES =>
+            if Payload'Length = Stored_Values_Length then
+               Apply_Stored_Values (Payload);
             end if;
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then

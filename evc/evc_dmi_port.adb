@@ -341,4 +341,27 @@ is
       end if;
    end RBC_Contact_Frame;
 
+   procedure Stored_Values_Frame (ID_Length  : Natural;
+                                  ID         : Stored_Text_T;
+                                  TRN_Length : Natural;
+                                  TRN        : Stored_Text_T;
+                                  Frame      : out Stored_Values_Frame_T)
+   is
+      TRN_At : constant := Header_Length + 2 + Stored_Text_Max;
+   begin
+      Frame := (1      => MSG_STORED_VALUES,
+                2      => Stored_Values_Length,
+                others => 0);
+      Frame (Header_Length + 1) := Byte (ID_Length);
+      for I in 1 .. ID_Length loop
+         pragma Loop_Invariant (Frame (1) = MSG_STORED_VALUES);
+         Frame (Header_Length + 1 + I) := ID (I);
+      end loop;
+      Frame (TRN_At) := Byte (TRN_Length);
+      for I in 1 .. TRN_Length loop
+         pragma Loop_Invariant (Frame (1) = MSG_STORED_VALUES);
+         Frame (TRN_At + I) := TRN (I);
+      end loop;
+   end Stored_Values_Frame;
+
 end EVC_DMI_Port;

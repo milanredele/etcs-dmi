@@ -492,7 +492,11 @@ is
                      or (if EVC_Radio.Contact.Known then Radio_Contact_Known
                          else 0),
          Radio_Wait => (if EVC_Sessions.Registration_Awaited then 2 else 0),
-         Train    => Train_Bits,
+         --  5.4.3.2 D2: the position's status alone, also on an unlinked
+         --  group or the SOLR without an LRBG
+         Train    => Train_Bits
+                     or (if EVC_Position.Status = EVC_Position.Valid
+                         then Train_Position_Status_Valid else 0),
          National => National_Bits,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
          --  desk is open and no session with an RBC exists or is being
@@ -519,6 +523,12 @@ is
                             elsif EVC_Sessions.Registration_Timed_Out
                             then 0
                             else Waiting_Registration)
+                      --  5.4.3.2 D7 -> S4 without a known RBC contact, until
+                      --  registered (S10, no session) or timed out (A42)
+                      elsif EVC_Sessions.SoM_Awaiting_Registration
+                        and then not EVC_Sessions.Network_Ready
+                        and then not EVC_Sessions.Registration_Timed_Out
+                      then Waiting_Registration
                       elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),
          Answer   => EVC_Bytes.Byte
@@ -581,6 +591,32 @@ is
          Contact_Sent := C;
       end if;
    end Send_RBC_Contact;
+
+   procedure Send_Stored_Values is
+      use type EVC_Driver_Requests.Text_T;
+      ID    : constant EVC_Driver_Requests.Text_T := EVC_Mission.Driver_ID;
+      TRN   : constant EVC_Driver_Requests.Text_T := EVC_Mission.TRN;
+      Frame : Stored_Values_Frame_T;
+      ID_B  : Stored_Text_T;
+      TRN_B : Stored_Text_T;
+   begin
+      if not Stored_Sent or else ID /= ID_Sent or else TRN /= TRN_Sent then
+         for I in Stored_Text_T'Range loop
+            ID_B (I) := ID.Chars (I);
+            TRN_B (I) := TRN.Chars (I);
+         end loop;
+         Stored_Values_Frame
+           (ID_Length  => ID.Length,
+            ID         => ID_B,
+            TRN_Length => TRN.Length,
+            TRN        => TRN_B,
+            Frame      => Frame);
+         EVC_Outbox.Put (DMI, Frame);
+         Stored_Sent := True;
+         ID_Sent := ID;
+         TRN_Sent := TRN;
+      end if;
+   end Send_Stored_Values;
 
    procedure Send_System_Version is
       X : constant EVC_System_Version.Major_T :=
@@ -814,6 +850,7 @@ is
       Send_Networks;                -- DMI MSG_RADIO_NETWORKS
       Send_VBC_List;                -- DMI MSG_VBC_LIST
       Send_RBC_Contact;             -- DMI MSG_RBC_CONTACT
+      Send_Stored_Values;           -- DMI MSG_STORED_VALUES
       Send_System_Version;          -- DMI MSG_SYSTEM_VERSION
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);

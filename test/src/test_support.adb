@@ -256,7 +256,10 @@ package body Test_Support is
            or Flag (Onboard.Override_Speed, 2)
            or Flag (Onboard.Non_Leading, 4)
            or Flag (Onboard.Passive_Shunting, 8)
-           or Flag (Onboard.BMM_Active, 16),
+           or Flag (Onboard.BMM_Active, 16)
+           --  this EVC keeps no position beside the level: the position's
+           --  status is valid with the level (Table 49 D2)
+           or Flag (Last_ML.Level in 2 .. 5, 32),
          National =>
            Flag (Onboard.NV_Driver_ID_Running, 1)
            or Flag (Onboard.NV_Adhesion, 2)

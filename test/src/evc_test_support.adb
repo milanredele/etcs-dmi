@@ -204,6 +204,12 @@ package body EVC_Test_Support is
    begin
       return (if I = 0 then 16#FFFF# else Byte_At (I, 7));
    end DMI_Level_Byte;
+   function DMI_Byte (The_Type : Byte; K : Positive) return Natural is
+      I : constant Natural := Find_DMI (The_Type);
+   begin
+      return (if I = 0 then 16#FFFF# else Byte_At (I, K));
+   end DMI_Byte;
+
    function Onboard_Field (N : Positive) return Natural is
       I : constant Natural := Find_DMI (EVC_DMI_Port.MSG_ONBOARD);
    begin

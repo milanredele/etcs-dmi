@@ -56,6 +56,7 @@ package DMI_Test_Support is
    Win_Data_All : constant Win_U8 := 16#0F#; -- id, train data, level, TRN
    Win_Standing : constant Win_U8 := 16#03#; -- standstill, override ok
    Win_Running  : constant Win_U8 := 16#02#;
+   Win_Position : constant Win_U8 := 16#20#; -- the position's status valid
    Win_NV       : constant Win_U8 := 16#02#; -- adhesion may be modified
 
    --  radio byte: the type in bits 0-1, the installed systems in bits

@@ -342,6 +342,25 @@ package body DMI_Test_Windows is
       Press (370, 440);       -- [Close]
       Press (610, 140);       -- F3
       Check_Frame ("data_view_p1");
+
+      -- SUBSET-026 3.18.6.1: the Driver ID and the train running number
+      -- stored on-board (MSG_STORED_VALUES) replace the DMI's own
+      -- entries: their texts emptied (the status stays valid, as this
+      -- test's EVC reports it from the entered flags), the same window
+      -- from the on-board's values
+      DMI_Driver_Data.Driver_ID := (others => <>);
+      DMI_Driver_Data.TRN := (others => <>);
+      Send_Raw (16#11#, (1 => 8, 2 => 49, 3 => 50, 4 => 51, 5 => 52,
+                         6 => 53, 7 => 54, 8 => 55, 9 => 56, 10 .. 17 => 0,
+                         18 => 4, 19 => 53, 20 => 54, 21 => 55, 22 => 56,
+                         23 .. 34 => 0));
+      Step;
+      Check (DMI_Driver_Data.Onboard_Values_Known,
+             "3.18.6.1: MSG_STORED_VALUES taken");
+      Check_Frame ("data_view_p1");
+      Send_Raw (16#11#, (1 => 17, 2 .. 34 => 0));
+      Check (DMI_Driver_Data.Onboard_Driver_ID.Length = 8,
+             "MSG_STORED_VALUES with a length above 16 is dropped");
    end Scenario_Data_View;
 
    ---------------------------------------------------------------------

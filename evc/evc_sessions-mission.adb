@@ -18,7 +18,7 @@ with ETCS_Variables;   use ETCS_Variables;
 package body EVC_Sessions.Mission
   with SPARK_Mode => On,
        Refined_State => (State => (Step, SoM_RBC, SoM_S, Report_Valid,
-                                   Reject_Due, Reject_S,
+                                   Reject_Due, Reject_S, Awaiting_Network,
                                    TD_Due, TD_Awaited, TD_Stamp, TD_Since,
                                    TD_S, Was_Up,
                                    EoM_Due, EoM_Awaited, EoM_Since,
@@ -58,6 +58,12 @@ is
    Report_Valid : Boolean := False;
    --  A40: the session to terminate, then "Train is rejected"
    Reject_Due   : Boolean := False;
+   --  5.4.3.2 D3 -> D7 -> S4 in level 2 without a known RBC contact: the
+   --  registration to the Radio Network awaited at the Main window, no
+   --  session to open at A31 (decision: S4 is reached by D7 whatever the
+   --  contact; with a known one A31 follows at once, decision 1, and the
+   --  registration is awaited in Opening)
+   Awaiting_Network : Boolean := False;
    Reject_S     : R.Session_T := 1;
 
    --  3.18.3.4: the Train Data to send (TD_Due), sent and awaiting their
@@ -94,6 +100,9 @@ is
      with Refined_Global => Delete;
    function Opening return Boolean is (Step = Opening)
      with Refined_Global => Step;
+   function Awaiting_Registration return Boolean is
+     (Step = Decided and then Awaiting_Network)
+     with Refined_Global => (Step, Awaiting_Network);
    function Reporting return Boolean is
      (Step = Step_T'(Opening) or else Step = Report_Due)
      with Refined_Global => Step;
@@ -130,6 +139,7 @@ is
       Report_Valid := False;
       Reject_Due := False;
       Reject_S := 1;
+      Awaiting_Network := False;
       TD_Due := False;
       TD_Awaited := False;
       TD_Stamp := 0;
@@ -280,9 +290,11 @@ is
    procedure Open_SoM (RBC   : R.RBC_Id_T;
                        Radio : NID_RADIO_T;
                        Req   : in out Request_T)
-     with Global => (Output => (Step, SoM_RBC, Report_Valid))
+     with Global => (Output => (Step, SoM_RBC, Report_Valid,
+                                Awaiting_Network))
    is
    begin
+      Awaiting_Network := False;
       Req.Open := True;
       Req.RBC := RBC;
       Req.Radio := Radio;
@@ -332,10 +344,10 @@ is
       end if;
    end Judge_Opening;
 
-   --  @req 3.5.3.4 a), 3.5.3.8 a)
+   --  @req 3.5.3.4 a), 3.5.3.8 a), 5.4.3.2 D7
    procedure Evaluate_SoM (Ctx : R.Context_T; Req : in out Request_T)
      with Global => (In_Out => (Step, SoM_RBC, SoM_S, Report_Valid,
-                                Reject_Due, R.State),
+                                Reject_Due, Awaiting_Network, R.State),
                      Input  => (Reject_S, EVC_Mission.State,
                                 EVC_Levels.State, EVC_Position.State,
                                 EVC_Driver_Requests.State))
@@ -376,6 +388,7 @@ is
         and then EVC_Mission.Driver_ID_Status = EVC_Mission.Valid
       then
          Step := Decided;
+         Awaiting_Network := False;
          if EVC_Position.Status /= EVC_Position.Valid
            or else not EVC_Levels.Valid
          then
@@ -387,6 +400,9 @@ is
          elsif EVC_Levels.Level = L2 and then C.Known then
             --  D3 -> D7 -> A31 (decision 1)
             Open_SoM (C.RBC, C.Radio, Req);
+         elsif EVC_Levels.Level = L2 then
+            --  D3 -> D7 -> S4 without a contact to open a session with
+            Awaiting_Network := True;
          end if;
       end if;
       --  S3, and 5.4.5.3 j) at S10 / S20: the driver's RBC contact

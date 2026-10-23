@@ -115,7 +115,14 @@ package body EVC_Test_Core is
       --  the juridical messages of the cycle come last (SUBSET-027 4.3:
       --  the general message at the mode change, EVC_JRU_Messages)
       --  and at the start-up the messages 15 and 47 (SUBSET-027 4.3.1.1)
-      Check (Rec_Count = 10, "power-up: ten records, got" & Img (Rec_Count));
+      --  3.18.6.1: and the stored values for the DMI's data view, none
+      Check (Rec_Count = 11, "power-up: eleven records, got"
+             & Img (Rec_Count));
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 34
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6) = 0
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 0,
+             "power-up: MSG_STORED_VALUES, no Driver ID and no train "
+             & "running number stored (3.18.6.1)");
       if Rec_Count = 10 then
          Check (Recs (1).Port = DMI and then Recs (2).Port = DMI
                 and then Recs (3).Port = DMI,
@@ -598,7 +605,7 @@ package body EVC_Test_Core is
          Pump_To_EVC;
       end loop;
       DMI_Core.Render;
-      Check (Frames = 16,
+      Check (Frames = 17,
              "end to end: the frames of five cycles reach the DMI");
       Check (not DMI_Core.EVC_Link_Lost, "end to end: the DMI hears the EVC");
       Check (EVC_Core.Rejected (DMI) = 0,

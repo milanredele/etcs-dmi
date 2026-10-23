@@ -20,6 +20,9 @@ package body DMI_Driver_Data is
       Level_Entered := False;
       Train_Data_Entered := False;
       TRN_Entered := False;
+      Onboard_Values_Known := False;
+      Onboard_Driver_ID := (others => <>);
+      Onboard_TRN := (others => <>);
    end Reset;
 
 end DMI_Driver_Data;

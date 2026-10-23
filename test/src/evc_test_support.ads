@@ -201,6 +201,9 @@ package EVC_Test_Support is
 
    --  The DMI record of this message type in the last Take; 0 if none
       function Find_DMI (The_Type : Byte) return Natural;
+   --  Byte K (1 = the type) of the last DMI frame of The_Type of the last
+   --  Take; 16#FFFF# when there is none
+   function DMI_Byte (The_Type : Byte; K : Positive) return Natural;
 
       function Count_Port (Port : Port_T) return Natural;
 

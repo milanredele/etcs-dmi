@@ -1465,10 +1465,11 @@ package body DMI_Windows is
                -- Table 49 E1 -> D2: "if both the stored position and the
                -- stored level are valid". The status of the data stored
                -- on-board is the on-board's (11.7.1.3) and the EVC
-               -- reports it (MSG_ONBOARD, DMI_Conditions). The DMI is
-               -- not told the status of the position, so D2 is decided
-               -- on the level alone (implementation choice).
+               -- reports it (MSG_ONBOARD, DMI_Conditions): the position's
+               -- status alone (MSG_ONBOARD train bit5), valid also on an
+               -- unlinked group without an LRBG.
                if DMI_Conditions.Level_Valid
+                 and then DMI_Conditions.Position_Status_Valid
                  and then SDI.Level in SDI.L0 | SDI.NTC | SDI.L1 | SDI.L2
                then
                   -- D3: level 0, 1 or NTC -> S10. Level 2 -> D7: A31

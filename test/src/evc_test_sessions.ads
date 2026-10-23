@@ -32,6 +32,8 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_TRN;
    --  e5/registration: 3.5.6, 3.18.4.3.6, 5.4.3.2 S4
    procedure Scenario_Session_Registration;
+   --  5.4.3.2 D3 -> D7 -> S4 in level 2 without a known RBC contact
+   procedure Scenario_SoM_S4_Without_Contact;
    --  e5/sr-proposal: 5.4.3.2 S21, E26 -> S24, E32
    procedure Scenario_SoM_L2_SR_Proposal;
 

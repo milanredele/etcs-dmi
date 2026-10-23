@@ -598,10 +598,12 @@ package body DMI_Test_Settings is
 
       procedure Radio (R : Win_U8; Data : Win_U8 := Data_ID or 16#04#;
                        SOM : Win_U8 := 2; Radio_Wait : Win_U8 := 0;
-                       Waiting : Win_U8 := 0) is
+                       Waiting : Win_U8 := 0;
+                       Train : Win_U8 := Win_Standing or Win_Position) is
       begin
          Win_Onboard (Data => Data, SOM => SOM, Radio => R,
-                      Radio_Wait => Radio_Wait, Waiting => Waiting);
+                      Radio_Wait => Radio_Wait, Waiting => Waiting,
+                      Train => Train);
       end Radio;
 
       --  S0 -> S1 -> S2 -> S3-1 with the radio byte R
@@ -770,6 +772,16 @@ package body DMI_Test_Settings is
       Check (Win_Top_Is (DMI_Windows.W_Main)
              and then not DMI_Windows.In_Start_Up,
              "Table 49 S4 -> A31 -> S10: no S5 once registered");
+
+      -- D2 -> S2: the level valid, the position's status not (MSG_ONBOARD
+      -- train bit5), so the Level window
+      Win_Onboard (Data => 0, SOM => 0);
+      Radio (Win_FRMCS_GSMR or Win_Both, Data => 16#04#, SOM => 2,
+             Train => Win_Standing);
+      Press (385, 240); Press (487, 90);
+      Check (Win_Top_Is (DMI_Windows.W_Level)
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 D2 -> S2: the level valid, the position not");
       Drain_Outbox;
    end Scenario_Win_Start_Up_Radio;
 

@@ -141,7 +141,8 @@ package DMI_Protocol is
    --    bit0 Driver ID is valid, bit1 Train data are valid,
    --    bit2 ERTMS/ETCS level is valid, bit3 Train running number is
    --    valid, bit4 RBC contact information is valid,
-   --    bit5 the train position is valid and is referred to an LRBG,
+   --    bit5 the train position is valid and is referred to an LRBG
+   --         (train bit5 is the status of the position alone),
    --    bit6 safe consist length information is available,
    --    bit7 the safe consist length values in front of the engine are
    --         equal to zero
@@ -164,7 +165,11 @@ package DMI_Protocol is
    --    or equal to the speed limit for triggering the "override"
    --    function, bit2 the "non leading" input signal is received,
    --    bit3 the "passive shunting" input signal is received,
-   --    bit4 the "BTM alarm reaction inhibition" function is active
+   --    bit4 the "BTM alarm reaction inhibition" function is active,
+   --    bit5 the status of the train position is valid (SUBSET-026
+   --         4.10, 5.4.3.2 D2), referred to an LRBG or not: a position
+   --         on an unlinked group or on the SOLR is valid too (data
+   --         bit5 is the position referred to an LRBG)
    --  national u8: national values and on-board storage
    --    bit0 modification of Driver ID while running is allowed,
    --    bit1 modification of adhesion factor by driver is allowed,
@@ -281,6 +286,26 @@ package DMI_Protocol is
    --  an id above the range, a phone_len above 16 or a byte of the
    --  phone that is not a digit drops the message as a whole.
    RBC_Contact_Length : constant := 22;
+
+   MSG_STORED_VALUES : constant Msg_Type_T := 16#11#;
+   --  The values of the Driver ID and the train running number stored
+   --  on-board (SUBSET-026 3.18.6.1: the driver can view them outside data
+   --  entry, whoever wrote them: the driver, the RBC for the train running
+   --  number, or the store over No Power), for the DMI's data view (DMI
+   --  10.5). The EVC sends it when either value changes (the
+   --  first cycle included); their status travels in MSG_ONBOARD (data
+   --  bits 0 and 3), not here:
+   --    driver_id_len u8: 0 .. Stored_Text_Max (0: none stored),
+   --    driver_id 16 bytes: Latin-1, left adjusted, padded with 0 bytes,
+   --    trn_len u8: 0 .. Stored_Text_Max (0: none stored),
+   --    trn 16 bytes: the digits of NID_OPERATIONAL as '0' .. '9', left
+   --      adjusted, padded with 0 bytes.
+   --  Fixed length Stored_Values_Length; a message of any other length or
+   --  a length above Stored_Text_Max drops the message as a whole. Once
+   --  received, these values replace the ones entered on the DMI; before
+   --  the first one the DMI shows its own entries.
+   Stored_Text_Max      : constant := 16;
+   Stored_Values_Length : constant := 2 + 2 * Stored_Text_Max;
 
    MSG_ATO : constant Msg_Type_T := 16#0B#;
    --  The information of the ERTMS/ATO on-board (DMI 8.5) as the EVC

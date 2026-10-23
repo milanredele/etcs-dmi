@@ -136,6 +136,11 @@ is
    function Opening return Boolean
      with Global => State;
 
+   --  5.4.3.2 D7 -> S4 in level 2 without a known RBC contact: the
+   --  registration to the Radio Network awaited, no session being opened
+   function Awaiting_Registration return Boolean
+     with Global => State;
+
    --  A31 to A33: the session of the start of mission is being opened or
    --  its SoM position report is due (EVC_Sessions.Reports, 3.6.5.1.4 h)
    function Reporting return Boolean
