@@ -1975,19 +1975,28 @@ is
                              elsif Sv.Trig_Was then WaS
                              elsif Sv.Trig_Ovs then OvS
                              else IndS);
+               --  Decision (3.13.10.4.15, Table 12): at V_est = V_release
+               --  the triggering conditions t0 to t2 of Table 9 and the
+               --  revocation r1 of Table 11 hold together; the transition
+               --  to Indication by r1 is followed in the same cycle by
+               --  those triggered (a triggering condition is taken into
+               --  account as soon as it is satisfied), so a train standing
+               --  beyond the W location of its EOA or SvL stays in the
+               --  Warning status as its traction cut-off stays commanded
+               --  (3.13.10.2.2), instead of changing every cycle
                when OvS =>
                   if Sv.Trig_SB or else Sv.Trig_EB then
                      Status := IntS;
                   elsif Sv.Trig_Was then
                      Status := WaS;
-                  elsif Sv.Rev_All then
+                  elsif Sv.Rev_All and then not Sv.Trig_Ovs then
                      Status := IndS;
                   end if;
                when WaS =>
                   if Sv.Trig_SB or else Sv.Trig_EB then
                      Status := IntS;
-                  elsif Sv.Rev_All then
-                     Status := IndS;
+                  elsif Sv.Rev_All and then not Sv.Trig_Was then
+                     Status := (if Sv.Trig_Ovs then OvS else IndS);
                   end if;
                when IntS =>
                   if (Sv.Rev_All or else C.Standstill) and then not Brake

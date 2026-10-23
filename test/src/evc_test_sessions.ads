@@ -21,6 +21,9 @@ package EVC_Test_Sessions is
    --  release and set-up 60 s later
    procedure Scenario_Session_NVCONTACT;
    procedure Scenario_Session_NVCONTACT_Brake;
+   --  3.16.3.4.5 b): the supervision stable at the standstill after the
+   --  service brake of T_NVCONTACT and the shortening to the train
+   procedure Scenario_Session_NVCONTACT_Standstill;
    procedure Scenario_Session_Indication;
    procedure Scenario_Session_Radio_Hole;
 

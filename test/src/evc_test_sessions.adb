@@ -27,6 +27,8 @@ with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_SDM;
+with EVC_Movement_Authority;
 with EVC_Track_Conditions;
 with EVC_Test_Modes;
 with EVC_Test_Authority;
@@ -44,6 +46,7 @@ package body EVC_Test_Sessions is
    use type ETCS_Message.Status_T;
    use type ETCS_Message_Catalogue.Message_Kind_T;
    use type EVC_Modes.Mode_T;
+   use type EVC_SDM.Status_T;
    use type EVC_Position.Status_T;
    use type R.Session_State_T;
    use type R.Session_Ref_T;
@@ -964,6 +967,88 @@ package body EVC_Test_Sessions is
       end if;
       return Message_Bytes (W);
    end MA_With_Profile;
+
+   --  3.16.3.4.5 b), 3.13.10.4.10 Tables 9 and 11: in level 2 the
+   --  service brake of T_NVCONTACT brings the train to standstill without
+   --  a new message, the location based information is shortened to the
+   --  train (EOA and SvL at its front ends, no release speed). Standing,
+   --  no command and the status stable; a creep beyond them commands the
+   --  emergency brake (t13, V_est above the release speed 0), revoked at
+   --  standstill (r0, the status Indication by t0), and not commanded
+   --  again while the train stands: the flip of a train moved against
+   --  its shortened EOA
+   procedure Scenario_Session_NVCONTACT_Standstill is
+      NV      : Sim_Telegrams.T3.Packet_T :=
+        Sim_Telegrams.National_Values (123);
+      Changes : Natural := 0;
+      Prev    : EVC_SDM.Result_T;
+      Braked  : Boolean := False;
+
+      --  Cycles at standstill, counting the changes of the status or of
+      --  a command between consecutive cycles
+      procedure Standing (N : Positive) is
+      begin
+         Changes := 0;
+         Prev := EVC_Core.Supervision;
+         for K in 1 .. N loop
+            Stand;
+            declare
+               S : constant EVC_SDM.Result_T := EVC_Core.Supervision;
+            begin
+               if S.Status /= Prev.Status or else S.EB /= Prev.EB
+                 or else S.SB /= Prev.SB or else S.TCO /= Prev.TCO
+               then
+                  Changes := Changes + 1;
+               end if;
+               Prev := S;
+            end;
+         end loop;
+      end Standing;
+   begin
+      NV.T_NVCONTACT := 20;   -- s
+      NV.M_NVCONTACT := 1;    -- the service brake
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_OS, EVC_Modes.L2);
+      Add_Group (Group (10, 100));
+      EVC_Test_Authority.Establish_Session;
+      Carry (Track_N, 1, NV);
+      Run_X (11_000);
+      --  an OS mode profile from the group, 500 m at 30 km/h
+      Give_Radio_Message (1, MA_With_Profile (10, 0, 0));
+      Stand_X (200);
+      Run_X (24_000, Step_Cm => 50);
+      Check (EVC_Sessions.Service_Brake,
+             "contact standstill: T_NVCONTACT passed while running, the "
+             & "service brake (3.16.3.4.2 b)");
+      --  the train slowing down to standstill
+      for D of Nat_List'(40, 30, 20, 10, 5, 2, 1) loop
+         Speed_Cms := Unsigned_16 (D * 10);
+         Step_X (Integer_64 (D));
+      end loop;
+      Speed_Cms := 1000;
+      Standing (20);
+      Check (EVC_Movement_Authority.MA.Withdrawn
+             and then Changes = 0 and then not Prev.EB
+             and then not Prev.SB and then Prev.Status /= EVC_SDM.IntS,
+             "contact standstill: the MA shortened to the train "
+             & "(3.16.3.4.5 b), standing: no command, the status stable");
+      --  a creep of 1 cm in one cycle beyond the shortened EOA and SvL
+      Speed_Cms := 10;
+      Step_X (1);
+      Braked := EVC_Core.Supervision.EB
+                and then EVC_Core.Supervision.Status = EVC_SDM.IntS;
+      Speed_Cms := 1000;
+      Standing (3);
+      Standing (20);
+      Check (Braked and then Changes = 0 and then not Prev.EB
+             and then not Prev.SB and then Prev.TCO
+             and then Prev.Status = EVC_SDM.WaS,
+             "contact standstill: a creep beyond the shortened EOA commands "
+             & "the emergency brake (Table 9 t13), revoked at standstill "
+             & "(Table 11 r0); standing beyond its W location the traction "
+             & "cut-off and the Warning status stay (t2), not changing "
+             & "every cycle (3.13.10.4.15)");
+   end Scenario_Session_NVCONTACT_Standstill;
 
    --  e5/mode-proposal: the level 2 start of mission of
    --  Scenario_SoM_L2_SR_Proposal up to S20 (Train Data acknowledged,
