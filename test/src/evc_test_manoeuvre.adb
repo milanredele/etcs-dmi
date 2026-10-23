@@ -58,6 +58,7 @@ package body EVC_Test_Manoeuvre is
    end SCL_Frame;
 
    procedure Consist_Lost_In_SM;
+   function Consist_Ack (Sent : Unsigned_64) return Byte_Array;
 
    procedure Scenario_Safe_Consist is
       Valid_Before : Boolean;
@@ -342,13 +343,25 @@ package body EVC_Test_Manoeuvre is
       Give_Radio_Message (1, SM_Authorisation (T));
       Stand_X (300);
       EVC_Core.Handle_Input (TIU, SCL_Frame (0));
-      Stand_X (300);
+      T := Wait_For (MCat.Train_M133, 300);
       Check (EVC_Core.Mode = M_SM
              and then not EVC_Stored_Information.Consist_Brake
              and then not EVC_Procedures.Brake_Demand.SB
              and then EVC_Movement_Authority.MA.Withdrawn,
              "SCL: lost in SM at standstill, the MA shortened at once, "
              & "no brake (4.4.21.1.12)");
+      --  3.18.3.10: the unavailability sent and acknowledged, the length
+      --  available again is sent too
+      Give_Radio_Message (1, Consist_Ack (T));
+      Stand_X (300);
+      Sent := EVC_Sessions.SM_Consist_Sent;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 410, 408, 412));
+      T := Wait_For (MCat.Train_M133, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Sent = Sent + 1
+             and then EVC_Sessions.SM_Consist_Awaited,
+             "SCL: available again in SM after the acknowledged "
+             & "unavailability, message 133 sent (3.18.3.10):"
+             & Natural'Image (EVC_Sessions.SM_Consist_Sent - Sent));
    end Consist_Lost_In_SM;
 
    procedure Scenario_SM_Authorisation is
