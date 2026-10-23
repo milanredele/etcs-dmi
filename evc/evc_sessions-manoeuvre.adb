@@ -8,6 +8,7 @@ with ETCS_Train_Packets.P12;
 with EVC_Bytes;
 with EVC_DMI_Port;
 with EVC_Ports;
+with EVC_System_Version;
 with Interfaces;     use Interfaces;
 with ETCS_Variables; use ETCS_Variables;
 
@@ -74,6 +75,20 @@ is
    function Sent_Count return Natural is (N_Sent);
    function Consist_Sent return Natural is (N_133);
    function Consist_Awaited return Boolean is (SCL.Awaited);
+
+   --  Whether the RBC of session S takes the radio messages of SM: not one
+   --  of system version 1.x (6.5.1.6.6.2.2, 6.5.1.6.6.3.1, 6.5.1.6.6.8:
+   --  messages 131, 133 and 7 do not apply) nor of 2.0 .. 2.2
+   --  (6.5.2.3.7.1). Decision: the RBC's version is the session's, its
+   --  message 32 (6.5.2.3.7 names the RBC's certified version; the
+   --  operated X of 3.17.2.8 follows it but carries no Y); a session
+   --  without a version yet is not refused here (it is not established)
+   function SM_By_Radio (S : R.Session_T) return Boolean is
+     (not R.Info (S).Version_Known
+      or else EVC_System_Version.Major (R.Info (S).Version) >= 3
+      or else (EVC_System_Version.Major (R.Info (S).Version) = 2
+               and then Natural (R.Info (S).Version) mod 16 >= 3))
+     with Global => R.State;
 
    --  S0: level 2, a valid position referred to an LRBG, the safe consist
    --  length available, standstill, and FS, AD, OS, LS, SR, PT or SB
@@ -163,7 +178,12 @@ is
       then
          Req.Answer := 0;
          Req.Latest := True;
-         if R.In_Communication then
+         --  6.5.1.6.6.2.2, 6.5.2.3.7.1: no message 131 to an RBC of 1.x
+         --  or 2.0 .. 2.2; decision: the request fails as without a
+         --  session
+         if R.In_Communication
+           and then SM_By_Radio (R.Session_T (R.Supervising))
+         then
             Req.Pending := True;
             Req.Due := True;
             Req.Sent := False;
@@ -365,7 +385,9 @@ is
          declare
             M : constant EVC_Bytes.Byte_Array := ETCS_Bits.Data (W);
          begin
-            if EVC_Ports.Valid_RTM (M) and then R.Usable (SCL.Session) then
+            if EVC_Ports.Valid_RTM (M) and then R.Usable (SCL.Session)
+              and then SM_By_Radio (SCL.Session)
+            then
                R.Send (SCL.Session, M);
                SCL.Stamp := R.Info (SCL.Session).Last_Sent;
                SCL.Awaited := True;

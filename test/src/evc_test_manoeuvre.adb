@@ -203,7 +203,7 @@ package body EVC_Test_Manoeuvre is
       Add_Group (Group (10, 100));
       EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
       EVC_Radio.Set_State (1, EVC_Radio.Established);
-      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Version (1, 48);
       EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
       T := Wait_For (MCat.Train_M129, 16_000);
       V (3) := Now_Stamp;
@@ -665,6 +665,28 @@ package body EVC_Test_Manoeuvre is
       Stand_X (300);
       Check (not EVC_Sessions.SM_Consist_Awaited,
              "SM consist: the resent one acknowledged (3.18.3.10.1)");
+      --  6.5.1.6.6.3.1, 6.5.1.6.6.2.2: an RBC of system version 1.0
+      --  takes neither message 133 nor message 131
+      Start_L2_SM;
+      EVC_Radio.Set_Version (1, 16);
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Stand_X (300);
+      N0 := EVC_Sessions.SM_Consist_Sent;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 500, 498, 502));
+      Check (Wait_For (MCat.Train_M133, 1_000) = 0
+             and then EVC_Sessions.SM_Consist_Sent = N0
+             and then not EVC_Sessions.SM_Consist_Awaited,
+             "SM consist: in SB in level 2 with an RBC of version 1.0, no "
+             & "message 133 (6.5.1.6.6.3.1)");
+      EVC_Radio.Set_Version (1, 34);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 400, 398, 402));
+      Check (Wait_For (MCat.Train_M133, 1_000) = 0,
+             "SM consist: nor to an RBC of version 2.2 (6.5.2.3.7.1)");
+      EVC_Radio.Set_Version (1, 16);
+      Select_SM;
+      Check (Wait_For (MCat.Train_M131, 1_000) = 0,
+             "SM consist: no request for SM (message 131) to an RBC of "
+             & "version 1.0 (6.5.1.6.6.2.2)");
    end Scenario_SM_Consist_Info;
 
    --  3.15.1.3.3: in Supervised Manoeuvre the session with the Accepting
@@ -686,7 +708,7 @@ package body EVC_Test_Manoeuvre is
       D0 := EVC_Sessions.Train_Data_Sent;
       EVC_Radio.Set_Peer (2, (NID_C => 123, NID_RBC => 2), 0);
       EVC_Radio.Set_State (2, EVC_Radio.Established);
-      EVC_Radio.Set_Version (2, 33);
+      EVC_Radio.Set_Version (2, 48);
       EVC_Radio.Set_Roles (1, 2);
       T := Wait_On (MCat.Train_M133, 2, 1_000);
       Check (T /= 0 and then EVC_Sessions.SM_Consist_Sent = N0 + 1
