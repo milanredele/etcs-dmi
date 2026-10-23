@@ -10816,3 +10816,31 @@ before, 1093 / 1088 / 1009 after, 0 regressions, 2 improvements.
 
 Left: B1640 (the flip at standstill), B761 (whether S4 precedes A31 for
 the second start of mission), B1641 then B762.
+### The start of mission after Passive Shunting: the Enter RBC data press, the LRBG in SR, the level re-entered from the Main window (e6/ps-traces) (2026-10-23)
+
+- B1421 traced to the DMI: after PS the Driver ID validated in the
+  start-up sequence with level 1 and the position valid goes by Table 49
+  D2, D3 to S10, the Main window; the level 2 entered there took Table 50
+  S4 -> D5 -> S8 (contact valid from packet 42, network registered)
+  while the on-board waits at 5.4.3.2 S3 for the driver's choice of the
+  RBC contact. Decision: during a start of mission (MSG_ONBOARD start of
+  mission initiated) level 2 from the Main window goes to S5-1, the
+  Radio data window, by 5.4.3.2 S2 -> S3; Table 50 D5 outside it
+  (`DMI_Windows.Dedicated_Completed`, W_Level;
+  `DMI_Test_Settings.Scenario_Win_Start_Up_Radio`). B523 is the same
+  question, decided with it. 4042000_02 passes (SV21, 22, 30); the four
+  sequences of S322852a4 go 94 -> 115, message 133 sent to an RBC of
+  system version 1 (6.5.1.6.6.3.1), B1660 in `EVC_Sessions.Manoeuvre`.
+- B1422 traced, no defect: step 158 of 4042000_03 is kept by its comment
+  only when the position is invalid at the start of the test case
+  (5.4.3.2 S24 E32); no power-off precedes it, the position stays valid
+  over SH, PS and SB (4.10), so the known LRBG and SOLR are right;
+  S1815da5c triaged s076, B1661 for the runner to block the step.
+  `EVC_Position` and `EVC_Core.Records` unchanged.
+- B890 built and reverted: D2 on MSG_ONBOARD's position bit passes
+  5040300_03 but that bit is the position referred to an LRBG, and
+  5040300_15 has a valid position on an unlinked group where D2 -> D3 is
+  expected; D2 needs a bit of the position status alone (the line says
+  where).
+- SUBSET-076: 1093 / 1089 / 1008 before, 1096 / 1086 / 1008 after, 0
+  regressions, 7 improvements.

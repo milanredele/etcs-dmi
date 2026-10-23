@@ -1616,9 +1616,9 @@ Subset-076-6-3_4041800_04_v400_SV30,failed,72,S1be077b7
 Subset-076-6-3_4041800_05_v400_SV21,failed,72,S1be077b7
 Subset-076-6-3_4041800_05_v400_SV22,failed,72,S1be077b7
 Subset-076-6-3_4041800_05_v400_SV30,failed,72,S1be077b7
-Subset-076-6-3_4042000_02_v400_SV21,failed,102,S2b10b7bc
-Subset-076-6-3_4042000_02_v400_SV22,failed,102,S2b10b7bc
-Subset-076-6-3_4042000_02_v400_SV30,failed,102,S2b10b7bc
+Subset-076-6-3_4042000_02_v400_SV21,passed,0,-
+Subset-076-6-3_4042000_02_v400_SV22,passed,0,-
+Subset-076-6-3_4042000_02_v400_SV30,passed,0,-
 Subset-076-6-3_4042000_03_v400_SV21,failed,158,S1815da5c
 Subset-076-6-3_4042000_03_v400_SV22,failed,158,S1815da5c
 Subset-076-6-3_4042000_03_v400_SV30,failed,158,S1815da5c
@@ -2811,7 +2811,7 @@ Subset-076-6-3_6060304_04_v400_SV30,blocked,81,E5-radio
 Subset-076-6-3_6060304_05_v400_SV21,blocked,67,E7-version
 Subset-076-6-3_6060304_05_v400_SV22,passed,0,-
 Subset-076-6-3_6060304_05_v400_SV30,passed,0,-
-Subset-076-6-3_6060304_06_v400_SV30,failed,94,S322852a4
+Subset-076-6-3_6060304_06_v400_SV30,failed,115,S4a7a54da
 Subset-076-6-3_6060304_07_v400_SV21,blocked,39,S076-defect
 Subset-076-6-3_6060304_07_v400_SV22,blocked,39,S076-defect
 Subset-076-6-3_6060304_07_v400_SV30,blocked,39,S076-defect
@@ -2855,7 +2855,7 @@ Subset-076-6-3_6060500_09_v400_SV21,failed,56,Se18f3f0a
 Subset-076-6-3_6060500_09_v400_SV22,failed,56,Se18f3f0a
 Subset-076-6-3_6060500_09_v400_SV30,failed,56,Se18f3f0a
 Subset-076-6-3_6060500_10_v400_SV30,failed,99,S185bee31
-Subset-076-6-3_6060500_11_v400_SV30,failed,94,S322852a4
+Subset-076-6-3_6060500_11_v400_SV30,failed,115,S4a7a54da
 Subset-076-6-3_6060500_12_v400_SV30,blocked,81,E5-radio
 Subset-076-6-3_6060500_13_v400_SV21,blocked,39,S076-defect
 Subset-076-6-3_6060500_13_v400_SV22,blocked,39,S076-defect
@@ -2875,7 +2875,7 @@ Subset-076-6-3_6060504_01_v400_SV21,failed,46,Sa03cccdc
 Subset-076-6-3_6060504_01_v400_SV22,failed,46,Sa03cccdc
 Subset-076-6-3_6060504_01_v400_SV30,failed,46,Sa03cccdc
 Subset-076-6-3_6060504_02_v400_SV30,failed,99,S185bee31
-Subset-076-6-3_6060504_03_v400_SV30,failed,94,S322852a4
+Subset-076-6-3_6060504_03_v400_SV30,failed,115,S4a7a54da
 Subset-076-6-3_6060504_04_v400_SV30,blocked,79,E5-radio
 Subset-076-6-3_6060504_05_v400_SV21,blocked,39,S076-defect
 Subset-076-6-3_6060504_05_v400_SV22,blocked,39,S076-defect
@@ -2893,7 +2893,7 @@ Subset-076-6-3_6060504_09_v400_SV22,blocked,81,E5-radio
 Subset-076-6-3_6060504_09_v400_SV30,blocked,81,E5-radio
 Subset-076-6-3_6060505_01_v400_SV30,failed,46,Sa03cccdc
 Subset-076-6-3_6060505_02_v400_SV30,failed,99,S185bee31
-Subset-076-6-3_6060505_03_v400_SV30,failed,94,S322852a4
+Subset-076-6-3_6060505_03_v400_SV30,failed,115,S4a7a54da
 Subset-076-6-3_6060505_04_v400_SV21,blocked,39,S076-defect
 Subset-076-6-3_6060505_04_v400_SV22,blocked,39,S076-defect
 Subset-076-6-3_6060505_04_v400_SV30,blocked,39,S076-defect

@@ -1325,11 +1325,21 @@ package body DMI_Windows is
                      Reach_S10;
                   end if;
                elsif Level_Of_Choice (Chosen) = SDI.Level_T'Pos (SDI.L2)
-                 and then not (DMI_Conditions.RBC_Contact_Valid
-                               and then DMI_Conditions.Radio_Registered)
+                 and then
+                   (DMI_Conditions."=" (DMI_Conditions.Start_Of_Mission,
+                                        DMI_Conditions.Initiated)
+                    or else not (DMI_Conditions.RBC_Contact_Valid
+                                 and then DMI_Conditions.Radio_Registered))
                then
                   -- Table 50 S4 -> D5: level 2 without valid RBC contact
                   -- information or without the registration -> S5-1.
+                  -- Decision: during a start of mission (the on-board
+                  -- reports it initiated, the Main window reached by
+                  -- Table 49 S10) level 2 goes to S5-1 whatever the
+                  -- contact: SUBSET-026 5.4.3.2 S2 goes to S3, where the
+                  -- on-board waits for the driver's choice of the RBC
+                  -- contact and opens no session by itself, so D5's S8
+                  -- (awaiting the RBC) would wait for nothing.
                   -- The exception of D5 for a switch to TR (MO05 first)
                   -- is armed here and taken by Mode_Changed (B023).
                   Open (W_Radio_Data);

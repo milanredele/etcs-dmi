@@ -687,6 +687,18 @@ package body DMI_Test_Settings is
       Check (DMI_Windows.Waiting_Displayed, "Table 49 A31: hour glass");
       Radio (Win_Radio_GSMR);
       Check (Win_Top_Is (DMI_Windows.W_Main), "Table 49 D31 .. -> S10");
+      -- Decision, SUBSET-026 5.4.3.2 S2 -> S3: level 2 re-entered from
+      -- the Main window of S10 while the start of mission is initiated
+      -- goes to S5-1 even with the RBC contact valid and the network
+      -- registered (outside it Table 50 D5 goes to S8,
+      -- Scenario_Win_Radio_Data)
+      Radio (Win_Radio_GSMR, Data => Data_ID or 16#04# or 16#10#);
+      Win_Menu (5);
+      Choose_Level (2);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "5.4.3.2 S2 -> S3: level 2 from the Main window during the "
+             & "start of mission -> S5-1, the contact valid");
+      Win_Default;
 
       -- S3-4 E5 -> A41 -> D10
       To_S3_1 (Win_GSMR or Win_Both or Win_GSMR_Reg);
