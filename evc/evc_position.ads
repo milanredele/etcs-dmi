@@ -609,6 +609,35 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
+   --  Whether the estimated front end is shifted to the far end of the
+   --  consist (Set_Standby_Front, Shift_For_Manoeuvre)
+   function Front_Shifted return Boolean
+     with Global => State;
+
+   --  3.6.1.3.4, 4.4.7.1.6 b): in Stand-By while no valid Train Data is
+   --  available but the safe consist length is (On), the estimated front
+   --  end takes into account the nominal consist length of C in front of
+   --  the engine when the train orientation is the active cab's (or no
+   --  cab is active), in rear of it when opposite (Consist_End, the
+   --  confidence interval of 3.6.4.1.5 with it); not On, the front end of
+   --  the engine again. From the first Supervised Manoeuvre authorisation
+   --  the shift is Shift_For_Manoeuvre's and kept. Once a cycle, after
+   --  the orientation of the cycle is decided
+   --  @req 4.4.7.1.6 b)
+   procedure Set_Standby_Front (On : Boolean; C : EVC_Train_Data.Consist_T)
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => Train_Length_Known = Train_Length_Known'Old
+                  and then Length_Of_Train = Length_Of_Train'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
+                  and then LRBG = LRBG'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old
+                  and then (if not Manoeuvre_Orientation
+                            then Front_Shifted = On);
+
    --  No valid Train Data (3.18.3): the min safe rear end is the min safe
    --  front end again and the rear end triggers do not fire
    procedure Unset_Train_Length

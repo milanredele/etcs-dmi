@@ -668,6 +668,9 @@ package body S076_Run is
    --  runner's default before the first SM selection)
    SCL_Given : Boolean := False;
 
+   --  The safe consist lengths given after the first (each 10 m longer)
+   SCL_Inputs : Natural := 0;
+
    --  The active desk (+1 cab A, -1 cab B) and whether the sequence set
    --  the direction controller itself (a TIU direction step), and the
    --  test case of that step (Step_T.Case_Feature, Case_No)
@@ -2343,11 +2346,24 @@ package body S076_Run is
          return Pass ("TIU train integrity " & Arg);
       elsif Same (Kind, "safe-consist-length") then
          --  3.18.3.2 b): the safe consist length of an external source,
-         --  EVC_Ports TIU signal 15; the sequences give no values
-         --  (decision: nothing in front of the engine, the train length
-         --  in rear, longer by 10 m at each further input, a change)
-         B.TIU_Safe_Consist
-           (True, 0, Train_Length_M + (if SCL_Given then 10 else 0));
+         --  EVC_Ports TIU signal 15. Unavailable when the comment says so
+         --  or the next step expects the record 54 with Q_OVCONSISTLENGTH
+         --  0 (the sequences' only other sign of it); else available with
+         --  no values in the sequences (decision: nothing in front of the
+         --  engine, the train length in rear, longer by 10 m at each
+         --  further input, each one "modified", a change)
+         if Has (Image (St.Comment), "unavailable")
+           or else (Cur < Seq.Step_Count
+                    and then Has (Image (Seq.Steps (Cur + 1).Line),
+                                  "Q_OVCONSISTLENGTH=0"))
+         then
+            B.TIU_Safe_Consist (False);
+            return Pass ("TIU safe consist length unavailable");
+         end if;
+         if SCL_Given then
+            SCL_Inputs := SCL_Inputs + 1;
+         end if;
+         B.TIU_Safe_Consist (True, 0, Train_Length_M + 10 * SCL_Inputs);
          SCL_Given := True;
          return Pass ("TIU safe consist length");
       end if;
@@ -6447,6 +6463,7 @@ package body S076_Run is
       Hold_Speed := False;
       Train_Configuration := 1;
       SCL_Given := False;
+      SCL_Inputs := 0;
       Cab_Sign := 1;
       Controller_Given := False;
       Controller_Due := False;
@@ -6548,6 +6565,17 @@ package body S076_Run is
             elsif Initial_Mode_Excludes (I) then
                Record_Result
                  (I, NJ (R_Optional, "conditional on another initial mode"));
+            --  4042000_03 step 158: its comment keeps it only when the
+            --  train position is invalid at the start of the test case
+            --  (5.4.3.2 S24 E32); no power-off precedes it, the position
+            --  is valid, the step does not apply (the same comment in
+            --  other sequences follows a power-off and is judged)
+            elsif Has (Image (Seq.Name), "4042000_03") and then St.Number = 158
+              and then Has (Image (St.Comment), "should be removed")
+            then
+               Record_Result
+                 (I, NJ (R_Optional, "conditional on an invalid position "
+                         & "at the start of the test case"));
             elsif St.Line.N = 0 then
                J := NJ (R_Unclassified, "step text");
                Record_Result (I, J);

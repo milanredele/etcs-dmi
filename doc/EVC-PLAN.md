@@ -10895,3 +10895,62 @@ the second start of mission), B1641 then B762.
 - Proof: a subprogram with its contract only on its body in
   `EVC_Core.Records` made gnat2why stop with "bad input for 'Value:
   0GG"; its declaration in the child's spec proves.
+### Supervised Manoeuvre, the record 51 of the remote shunting state, the Stand-By front end with the safe consist length (e6/sm-twelfth) (2026-10-23)
+
+Three items and the family's next failure, four done.
+
+- S38d2e6ef traced: `EVC_Core.Records.Record_Inputs_Radio_Data` wrote
+  record 51 from the mode SH alone; SUBSET-027 4.2.4.51 records the
+  output permitting remote shunting (4.4.8.1.4), which
+  `EVC_Core.Outputs.Send_Remote_Shunting` sends in SM too (4.4.21.1.13).
+  The record now takes the ready bit of `TIU_RS_Sent` (the step runs
+  right after the output), 1 in SM after the authorisation, 0 at the
+  trip. `Scenario_SM_Remote_Shunting` decodes it. 3110300_03 and
+  4100103_49 (SV30) pass.
+- B1600: `EVC_Position.Set_Standby_Front`, beside `Shift_For_Manoeuvre`,
+  shifts the estimated front end by `Consist_End` while
+  `EVC_Core.Modes.Sync_Train_Length` finds SB without valid Train Data
+  with the safe consist length (3.6.1.3.4, 4.4.7.1.6 b)); unset
+  otherwise; the first SM authorisation's shift kept (`Fixed`); the min
+  safe rear end of 3.6.1.7 follows the moved front end, the position
+  report too (`Front_Shifted`, the accessor). Decision: in SB the train
+  orientation is the active cab's (3.6.1.5; 3.6.1.5.1 only from the
+  first SM authorisation), so the consist in rear of the engine is the
+  branch reached in SM. `Scenario_SM_Gamma` extended (the front end 50 m
+  ahead, back at the validation and at the loss of the consist length).
+  Row 4.4.7.1.6 b) done; 3.6.1.3.4 has no row of its own.
+- Triage: S8ba44975 (810fe3b, B1080) and Sb5442a1e (26275be, B990)
+  completed as resolved, their sequences' outcomes named (3110800_02
+  at 144 with S52fbd3cd, B709's; 3170200_11 at 120 with S24b29e6c,
+  model).
+- The family's next failure, S143d6aa2 ('133 not sent', B1220's line,
+  done): 3070300_10 and 4080300_21 wait for 133 after a third input of
+  the safe consist length, which the runner gives unchanged and never
+  unavailable (model, B1680); 3110200_03 expects 133 in SR without a
+  request (s076, 3.18.3.10). Every other failure of the family is
+  triaged s076, model, dmi or E7: no on-board failure is left in it.
+
+SUBSET-076: 1093 / 1089 / 1008 -> 1095 / 1087 / 1008, 0 regressions,
+baseline re-recorded. No golden changed. Outside the named units: none
+(`EVC_Position.Front_Shifted` is the setter's accessor).
+
+Resumption (two runner items, `S076_Run` only). B1680:
+`S076_Run.TIU_Input` gives the safe consist length unavailable when the
+step's comment says so or the next step expects the record 54 with
+Q_OVCONSISTLENGTH 0 (case 3070300 28 holds both an unavailable and an
+available input), else available, 10 m longer at every input after the
+first (`SCL_Inputs`); 3070300_10 102 -> 110 (Seb3595e7: no 133 with
+Q_SAFECONSISTLENGTH 1 when the length is available again after its
+unavailability in SM, not traced, B1681), 4080300_21 122 -> 127.
+B1661: 4042000_03 step 158 not judged with the reason "optional step"
+(R_Optional), not S076-defect: the step is conditional by its own
+comment (kept only when the position is invalid at the start of the
+test case, 5.4.3.2 S24 E32), and the condition is false there, not a
+fault of the sequence; the steps after it run, 158 -> 187 in SV21, 22,
+30 (S87b110d6, not traced). The rule is the sequence and step by name:
+the same comment stands in 1093 sequences, where a rule by the comment
+alone not-judged 1074 steps that pass. B1661 and S1815da5c are lines
+of master after the ps-traces merge, absent from this branch: close
+B1661 and complete S1815da5c at the merge. SUBSET-076: 1095 / 1087 /
+1008 before and after, 5 improvements, 0 regressions, baseline
+re-recorded.

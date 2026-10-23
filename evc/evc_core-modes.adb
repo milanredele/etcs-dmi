@@ -408,6 +408,11 @@ is
       elsif EVC_Position.Train_Length_Known then
          EVC_Position.Unset_Train_Length;
       end if;
+      --  3.6.1.3.4: the front end by the consist in front of or in rear
+      --  of the engine, the rear end from it
+      EVC_Position.Set_Standby_Front
+        (On => Consist_SB and then EVC_Train_Data.Consist_Known,
+         C  => EVC_Train_Data.Consist);
       --  3.6.4.1.5 last sentence: gamma 1 in Stand-By without valid Train
       --  Data with the safe consist length, and while a Supervised
       --  Manoeuvre request awaits its answer (decision: with the safe

@@ -942,6 +942,7 @@ package body EVC_Test_Manoeuvre is
 
    procedure Scenario_SM_Gamma is
       T   : Unsigned_64;
+      F   : Dist_T;
       D   : EVC_Supervision_Input.Train_Data_T;
       Cat : EVC_Train_Data.Categories_T;
       --  the interval of 3.6.4.1.5 is the odometer's part widened by
@@ -984,11 +985,23 @@ package body EVC_Test_Manoeuvre is
              & "by the consist's min in front and max in rear (4.4.7.1.6 b), "
              & "3.6.1.7):"
              & EVC_Distances.Length_T'Image (EVC_Position.Length_Of_Train));
+      --  3.6.1.3.4, 4.4.7.1.6 b): the front end by the consist in front
+      F := EVC_Position.Estimated_Front;
+      Check (EVC_Position.Front_Shifted and then Same_Report,
+             "SM gamma: in SB without valid Train Data with the safe consist "
+             & "length the estimated front end takes the consist in front "
+             & "into account, the position report with it (3.6.1.3.4, "
+             & "4.4.7.1.6 b)):" & Dist_T'Image (F));
       EVC_Train_Data.Set (D, Cat);
       Stand_X (300);
       Check (EVC_Train_Data.Valid and then Widened (0, 0),
              "SM gamma: valid Train Data in Stand-By, gamma 0 (3.6.4.1.5):"
              & Terms);
+      Check (not EVC_Position.Front_Shifted
+             and then F - EVC_Position.Estimated_Front = 5_000,
+             "SM gamma: valid Train Data in Stand-By, the front end the "
+             & "engine's again, 50 m behind (3.6.1.3.4):"
+             & Dist_T'Image (F - EVC_Position.Estimated_Front));
       EVC_Core.Set_Mode_For_Test (M_FS, L2);
       Stand_X (300);
       Select_SM;
@@ -1019,20 +1032,34 @@ package body EVC_Test_Manoeuvre is
              & "Stand-By without valid Train Data with the safe consist "
              & "length, the Stand-By term (3.6.4.1.5 last sentence):"
              & Terms);
+      F := EVC_Position.Estimated_Front;
       EVC_Core.Handle_Input (TIU, SCL_Frame (0));
       Stand_X (300);
       Check (Widened (0, 0),
              "SM gamma: the safe consist length no longer available, gamma "
              & "0 (3.6.4.1.5):" & Terms);
+      Check (not EVC_Position.Front_Shifted
+             and then F - EVC_Position.Estimated_Front = 5_000,
+             "SM gamma: the safe consist length no longer available, the "
+             & "front end the engine's again (3.6.1.3.4):"
+             & Dist_T'Image (F - EVC_Position.Estimated_Front));
    end Scenario_SM_Gamma;
+
+   --  M_REMOTE_SHUNTING_STATE of the last JRU record 51 (SUBSET-027
+   --  4.2.4.51) written during the last RS_Within, -1 when none was
+   RS_Record : Integer := -1;
 
    --  The remote shunting information of the TIU output (EVC_Ports,
    --  TIU_RS_Tag) last sent while standing Max_Ms, -1 when none was
    function RS_Within (Max_Ms : Natural) return Integer is
       Last : Integer := -1;
    begin
+      RS_Record := -1;
       for C in 1 .. Max_Ms / 100 loop
          Stand_X (100);
+         if JRU_Count (51) > 0 then
+            RS_Record := JRU_Field (51, 0, 1);
+         end if;
          for I in 1 .. Rec_Count loop
             if Recs (I).Port = TIU
               and then Rec_Length (I) = EVC_Ports.TIU_RS_Length
@@ -1062,10 +1089,18 @@ package body EVC_Test_Manoeuvre is
              "SM remote shunting: in SM ready for remote shunting, the "
              & "engine orientation the same as the MA's direction "
              & "(4.4.21.1.13, SUBSET-034 2.2.6):" & Integer'Image (R));
+      Check (RS_Record = 1,
+             "SM remote shunting: the JRU records the output permitting "
+             & "remote shunting, record 51 with 1 (SUBSET-027 4.2.4.51):"
+             & Integer'Image (RS_Record));
       EVC_Core.Set_Mode_For_Test (M_SB, L2);
       R := RS_Within (300);
       Check (R = 0, "SM remote shunting: out of SM, not permitting "
              & "(SUBSET-034 2.2.6):" & Integer'Image (R));
+      Check (RS_Record = 0,
+             "SM remote shunting: the JRU records the output no longer "
+             & "permitting, record 51 with 0 (SUBSET-027 4.2.4.51):"
+             & Integer'Image (RS_Record));
       Start_L2_SM;
       Select_SM;
       T := Wait_For (MCat.Train_M131, 1_000);

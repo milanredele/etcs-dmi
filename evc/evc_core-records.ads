@@ -102,13 +102,14 @@ is
    --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .48, .50, .51,
    --  EVC_JRU_Records): the sleeping, passive shunting and non leading
    --  inputs and the direction controller of the train interface and the
-   --  state permitting remote shunting (SH, SUBSET-026 4.4.8.1.4) when
-   --  they change; the RBC contact and the GSM-R network the driver
-   --  entered; record 13 with M_ERROR 5, safe radio connection error,
-   --  when the reaction to the expiry of T_NVCONTACT is triggered
-   --  (SUBSET-026 3.16.3.4)
+   --  output permitting remote shunting, the one Send_Remote_Shunting
+   --  sent to the train interface this cycle (SH and SM, SUBSET-026
+   --  4.4.8.1.4, 4.4.21.1.13), when they change; the RBC contact and
+   --  the GSM-R network the driver entered; record 13 with M_ERROR 5,
+   --  safe radio connection error, when the reaction to the expiry of
+   --  T_NVCONTACT is triggered (SUBSET-026 3.16.3.4)
    procedure Record_Inputs_Radio_Data
-     with Global => (Input  => (Clock_Ms, Current_Mode,
+     with Global => (Input  => (Clock_Ms, TIU_RS_Sent,
                                 TIU_Now, TIU_Known_Now, TIU_Value_Now,
                                 EVC_Driver_Requests.State,
                                 EVC_Sessions.State, EVC_Radio.State),
