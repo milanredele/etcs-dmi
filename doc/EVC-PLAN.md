@@ -11059,3 +11059,37 @@ B1681 (the 133 when the length returns) and S87b110d6; B890's bit for
 D2 (protocol, three units together) with B1243; B1640 (the flip at
 standstill, `EVC_Core.Monitoring`); B761's remainder (S4 before A31);
 then the Gamma model (B100), NL.
+
+### Supervised Manoeuvre, message 133 and system version 1, the length returning, the message 3 waiting for FS (e6/sm-thirteenth) (2026-10-23)
+
+Three items and the family's next failure, four done.
+
+- B1660: `EVC_Sessions.Manoeuvre.SM_By_Radio` withholds message 133
+  (`Send_Consist`, so the handover's `Send_Consist_To` too) and message
+  131 (`Evaluate`: the request fails as without a session) from an RBC
+  of system version 1.x (6.5.1.6.6.3.1, 6.5.1.6.6.2.2; 6.5.1.6.6.8
+  drops message 7 with them) or 2.0 .. 2.2 (6.5.2.3.7.1). Decision: the
+  RBC's version is the session's, of its message 32 (6.5.2.3.7 names the
+  RBC's certified version; the operated X follows it in level 2 but has
+  no Y). `Scenario_SM_Consist_Info` extended (1.0 and 2.2: no 133; 1.0:
+  no 131); `Start_L2_SM`'s session moved from 2.1 to 3.0. 6060304_06,
+  6060500_11, 6060504_03, 6060505_03 pass. No matrix row (chapter 6.5
+  has none).
+- B1681 traced to the runner: the on-board sends the 133 with
+  Q_SAFECONSISTLENGTH 1 at the input of step 106 (a probe of the bench's
+  RTM outputs); `S076_Run.Radio_Expect.Packet_Field` reads fields of
+  packets 0, 1 and 4 only and gives 0 for packet 10, so step 102 passes
+  by chance and step 110 fails (B1740, runner; Seb3595e7 model).
+  `Consist_Lost_In_SM` extended with the length available again.
+- S87b110d6 traced to the sequence: the message 3 of 4042000_03 step
+  187 places the Shunting area at 1100 m (BG12d + D_MAMODE 100) with
+  its acknowledgement window before it, but the step stands at 1200 m,
+  inside the area, where 4.6.3 [51] takes FS to SH at once (as step 69
+  does in level 1); triaged s076.
+- The family's next failure, 3110800_02 step 144 (signature S52fbd3cd,
+  shared with 5040300_03): the runner judges "NOT Level 0/1/NTC" as
+  level 2 not shown, the step column's level; ours stays in level 2 as
+  the step wants (B1741, runner).
+
+SUBSET-076: 1098 / 1083 / 1009 -> 1102 / 1079 / 1009, 0 regressions,
+baseline re-recorded. No golden changed. Outside the named units: none.
