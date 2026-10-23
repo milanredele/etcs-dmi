@@ -295,6 +295,12 @@ is
             return (41, 2, Byte (Id), 0);
          when NID_Integrity =>
             return (50, F (0, 2), 0, 0);
+         when NID_System_Status =>
+            --  event 123 (23 is the procedures'): SYSTEM_STATUS_MESSAGE's
+            --  bits 1 to 24
+            Id := Get (P, B, 31, 2**31 - 1);
+            return (123, Byte (Id mod 256), Byte (Id / 256 mod 256),
+                    Byte (Id / 65536 mod 256));
          when NID_Cold_Movement =>
             return (if F (0, 2) = 1 then (9, 1, 0, 0) else (others => <>));
          when NID_Odometer =>

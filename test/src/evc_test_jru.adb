@@ -10,6 +10,8 @@ with EVC_JRU_Messages;  use EVC_JRU_Messages;
 with EVC_Outbox;
 with EVC_Ports;         use EVC_Ports;
 with EVC_Test_Support;  use EVC_Test_Support;
+with EVC_Test_Modes;
+with EVC_DMI_Port;
 with Interfaces;        use Interfaces;
 
 package body EVC_Test_JRU is
@@ -306,6 +308,7 @@ package body EVC_Test_JRU is
    procedure Scenario_JRU_On_Board is
       H     : Header_T;
       Found : Natural := 0;
+      Before : Natural;
    begin
       EVC_Core.Initialise;
       Reset_Capture;
@@ -355,6 +358,69 @@ package body EVC_Test_JRU is
          end loop;
       end loop;
       Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
+      --  4.2.4.23, 4.3.1.1: SYSTEM_STATUS_MESSAGE, bit N for 2 ** (N - 1),
+      --  at each appearance and disappearance of a system status message
+      Check (EVC_JRU_Records.SS_Bit (1) = 1
+             and then EVC_JRU_Records.SS_Bit (2) = 1
+             and then EVC_JRU_Records.SS_Bit (9) = 6
+             and then EVC_JRU_Records.SS_Bit (8) = 30
+             and then EVC_JRU_Records.SS_Bit (36) = 27
+             and then EVC_JRU_Records.SS_Bit (13) = 0,
+             "4.2.4.23: the bits of the DMI's catalogue entries");
+      EVC_Test_Modes.Start_E4;
+      Before := JRU_Seen (123);
+      Run_X (Train_Cm + 5_000, 100);
+      Check (JRU_Seen (123) > Before
+             and then JRU_Last (123, 2) = 2 ** 5,
+             "4.2.4.23: message 23 with bit 6 'Runaway movement' at the "
+             & "movement in SB" & JRU_Seen (123)'Image
+             & JRU_Last (123, 2)'Image);
+      declare
+         Changed : Boolean := False;
+      begin
+         EVC_JRU_Records.Reset;
+         EVC_JRU_Records.System_Status (35, 0, Changed);
+         Check (Changed and then EVC_JRU_Records.Status_Shown = 2 ** 25,
+                "4.2.4.23: bit 26 at the start of NL no longer permitted");
+         Changed := False;
+         EVC_JRU_Records.System_Status (35, 0, Changed);
+         Check (not Changed, "4.2.4.23: no change, no message");
+         EVC_JRU_Records.System_Status_Acknowledged (35, Changed);
+         Check (Changed and then EVC_JRU_Records.Status_Shown = 0,
+                "4.2.4.23: cleared by the driver's acknowledgement");
+      end;
    end Scenario_JRU_On_Board;
+
+   --  SUBSET-027 4.2.4.11 M_DRIVERACTIONS 51 to 55: the driver's radio
+   --  network type (DMI Table 43b, MSG_DRIVER_DATA kind 6: 1 FRMCS, 2
+   --  FRMCS+GSM-R, 3 GSM-R) and the choice of the mission with only one
+   --  radio system (kind 7: 1 perform, 0 do not perform), one record 11
+   --  each; a value outside them is not recorded
+   procedure Scenario_JRU_Driver_Choices is
+      type Entry_T is record
+         Kind, Value, Code : Byte;
+      end record;
+      Entries : constant array (1 .. 5) of Entry_T :=
+        ((6, 1, 51), (6, 2, 52), (6, 3, 53), (7, 1, 54), (7, 0, 55));
+      Before : Natural;
+   begin
+      EVC_Test_Modes.Start_E4;
+      for E of Entries loop
+         Before := JRU_Actions (Natural (E.Code));
+         Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                            (E.Kind, E.Value)));
+         Stand_X (200);
+         Check (JRU_Actions (Natural (E.Code)) = Before + 1,
+                "4.2.4.11: the entry of kind" & E.Kind'Image & " value"
+                & E.Value'Image & " recorded as M_DRIVERACTIONS"
+                & E.Code'Image);
+      end loop;
+      Before := JRU_Seen (11);
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (6, 4)));
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (7, 2)));
+      Stand_X (200);
+      Check (JRU_Seen (11) = Before,
+             "4.2.4.11: a network type 4 or a choice 2 has no code");
+   end Scenario_JRU_Driver_Choices;
 
 end EVC_Test_JRU;

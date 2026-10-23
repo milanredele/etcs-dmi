@@ -81,6 +81,7 @@ is
    NID_Fixed_Stop     : constant := 17;
    NID_Plain_Start    : constant := 18;
    NID_Plain_Stop     : constant := 19;
+   NID_System_Status  : constant := 23;
    NID_SR_Data        : constant := 25;
    NID_VBC_Set        : constant := 28;
    NID_VBC_Removed    : constant := 29;

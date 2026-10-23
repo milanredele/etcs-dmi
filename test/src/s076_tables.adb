@@ -309,7 +309,7 @@ package body S076_Tables is
          --  EVC_JRU_Records: event 11 with the code in byte 2 for the
          --  actions no other event records
          when 7 | 8 | 9 | 11 | 12 | 16 | 17 | 20 | 22 .. 27 | 29 .. 33
-            | 39 | 40 =>
+            | 39 | 40 | 51 .. 55 =>
             return Event (11, Code);
          when 49 => return Event (23, 9, 1);
          when 50 => return Event (23, 9, 0);

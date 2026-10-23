@@ -4,8 +4,10 @@
 --
 --     11 driver's action (4.2.4.11): byte 2 M_DRIVERACTIONS, for the
 --        actions no other event of the on-board records (Action_Code,
---        Ack_Code; the start, the levels, the mode acknowledgements,
---        override, maintain shunting, isolation and BMM have their own);
+--        Ack_Code, Data_Code: the language, the radio network type and
+--        the one-radio choice from their data entries; the start, the
+--        levels, the mode acknowledgements, override, maintain shunting,
+--        isolation and BMM have their own);
 --     13 radio error: byte 2 M_ERROR (SUBSET-026
 --        7.5.1.64), recorded when a radio message is found inconsistent
 --        and reported to the RBC (3.16.3.1.1.2, EVC_Sessions.Error_Noted);
@@ -76,8 +78,12 @@ is
                       Id : Unsigned_16) return Byte
      with Global => null;
 
-   --  The data entries with a code: the language (29)
-   function Data_Code (K : EVC_Driver_Requests.Data_Kind_T) return Byte
+   --  The data entries with a code, B the first byte after the kind: the
+   --  language (29), the radio network type (B 1 FRMCS 51, 2 FRMCS+GSM-R
+   --  52, 3 GSM-R 53), the mission with only one radio system (B 1
+   --  perform 54, 0 do not perform 55)
+   function Data_Code (K : EVC_Driver_Requests.Data_Kind_T;
+                       B : Byte) return Byte
      with Global => null;
 
    --  Power-up: no cab active recorded, no track condition item
@@ -90,6 +96,26 @@ is
    procedure Cab_Status (Cab_A, Cab_B, Received : Boolean;
                          Changed : out Boolean)
      with Global => (In_Out => State);
+
+   --  SUBSET-027 4.2.4.23 SYSTEM_STATUS_MESSAGE: the bit (1 .. 31) of an
+   --  entry of the DMI's catalogue (EVC_DMI_Port SS_*), 0 for none
+   function SS_Bit (Entry_Number : Byte) return Natural
+     with Global => null,
+          Post => SS_Bit'Result <= 31;
+
+   --  The system status messages displayed as the on-board sees them,
+   --  SUBSET-027's bit N as 2 ** (N - 1): the start of an entry sets its
+   --  bit, its end and the driver's acknowledgement (Acknowledged) clear
+   --  it; Changed is set when the set changes
+   procedure System_Status (Entry_Number, Event : Byte;
+                            Changed : in out Boolean)
+     with Global => (In_Out => State);
+   procedure System_Status_Acknowledged (Entry_Number : Byte;
+                                         Changed : in out Boolean)
+     with Global => (In_Out => State);
+   function Status_Shown return Unsigned_32
+     with Global => State,
+          Post => Status_Shown'Result < 2 ** 31;
 
    --  M_TRACKCOND_TI of a kind of the second TIU output (EVC_Ports)
    function Trackcond_TI (Kind : Natural) return Byte
