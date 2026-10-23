@@ -10,6 +10,8 @@ with EVC_JRU_Messages;  use EVC_JRU_Messages;
 with EVC_Outbox;
 with EVC_Ports;         use EVC_Ports;
 with EVC_Test_Support;  use EVC_Test_Support;
+with EVC_Test_Modes;
+with EVC_DMI_Port;
 with Interfaces;        use Interfaces;
 
 package body EVC_Test_JRU is
@@ -356,5 +358,37 @@ package body EVC_Test_JRU is
       end loop;
       Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
    end Scenario_JRU_On_Board;
+
+   --  SUBSET-027 4.2.4.11 M_DRIVERACTIONS 51 to 55: the driver's radio
+   --  network type (DMI Table 43b, MSG_DRIVER_DATA kind 6: 1 FRMCS, 2
+   --  FRMCS+GSM-R, 3 GSM-R) and the choice of the mission with only one
+   --  radio system (kind 7: 1 perform, 0 do not perform), one record 11
+   --  each; a value outside them is not recorded
+   procedure Scenario_JRU_Driver_Choices is
+      type Entry_T is record
+         Kind, Value, Code : Byte;
+      end record;
+      Entries : constant array (1 .. 5) of Entry_T :=
+        ((6, 1, 51), (6, 2, 52), (6, 3, 53), (7, 1, 54), (7, 0, 55));
+      Before : Natural;
+   begin
+      EVC_Test_Modes.Start_E4;
+      for E of Entries loop
+         Before := JRU_Actions (Natural (E.Code));
+         Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                            (E.Kind, E.Value)));
+         Stand_X (200);
+         Check (JRU_Actions (Natural (E.Code)) = Before + 1,
+                "4.2.4.11: the entry of kind" & E.Kind'Image & " value"
+                & E.Value'Image & " recorded as M_DRIVERACTIONS"
+                & E.Code'Image);
+      end loop;
+      Before := JRU_Seen (11);
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (6, 4)));
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (7, 2)));
+      Stand_X (200);
+      Check (JRU_Seen (11) = Before,
+             "4.2.4.11: a network type 4 or a choice 2 has no code");
+   end Scenario_JRU_Driver_Choices;
 
 end EVC_Test_JRU;

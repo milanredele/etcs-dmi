@@ -76,8 +76,26 @@ is
       end case;
    end Ack_Code;
 
-   function Data_Code (K : Data_Kind_T) return Byte is
-     (if K = Language then 29 else No_Code);  -- Selection of Language
+   --  decision: the network type and the one-radio choice are recorded
+   --  from their data entries (kinds 6 and 7 of MSG_DRIVER_DATA, the
+   --  values of DMI Table 43b and 11.3.16), so the DMI protocol carries
+   --  no driver action of its own for them; a value outside them has no
+   --  code
+   function Data_Code (K : Data_Kind_T; B : Byte) return Byte is
+     (case K is
+         when Language => 29,  -- Selection of Language
+         when Radio_Network_Type =>
+           (case B is
+               when 1      => 51,  -- Radio Network type FRMCS selected
+               when 2      => 52,  -- FRMCS+GSM-R selected
+               when 3      => 53,  -- GSM-R selected
+               when others => No_Code),
+         when One_Radio_System =>
+           (case B is
+               when 1      => 54,  -- "Perform mission with only one radio"
+               when 0      => 55,  -- "Do not perform ..."
+               when others => No_Code),
+         when others => No_Code);
 
    procedure Reset is
    begin

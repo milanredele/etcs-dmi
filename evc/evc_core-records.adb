@@ -188,9 +188,9 @@ is
       for K in Data_Kind_T loop
          pragma Loop_Invariant (True);
          if Entered (K)
-           and then Data_Code (K) /= EVC_JRU_Records.No_Code
+           and then Data_Code (K, Data_Byte (K)) /= EVC_JRU_Records.No_Code
          then
-            Put_Event (JRU_Driver_Action, Data_Code (K), 0, 0);
+            Put_Event (JRU_Driver_Action, Data_Code (K, Data_Byte (K)), 0, 0);
          end if;
       end loop;
       Cab_Status (TIU_Now (Cab_A_Active), TIU_Now (Cab_B_Active),

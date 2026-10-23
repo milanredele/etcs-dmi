@@ -14,5 +14,6 @@ package EVC_Test_JRU is
    procedure Scenario_JRU_Track_Conditions;
    procedure Scenario_JRU_General;
    procedure Scenario_JRU_Train_Data;
+   procedure Scenario_JRU_Driver_Choices;
 
 end EVC_Test_JRU;
