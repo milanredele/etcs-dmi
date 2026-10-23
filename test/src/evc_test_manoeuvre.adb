@@ -942,6 +942,7 @@ package body EVC_Test_Manoeuvre is
 
    procedure Scenario_SM_Gamma is
       T   : Unsigned_64;
+      F   : Dist_T;
       D   : EVC_Supervision_Input.Train_Data_T;
       Cat : EVC_Train_Data.Categories_T;
       --  the interval of 3.6.4.1.5 is the odometer's part widened by
@@ -984,11 +985,23 @@ package body EVC_Test_Manoeuvre is
              & "by the consist's min in front and max in rear (4.4.7.1.6 b), "
              & "3.6.1.7):"
              & EVC_Distances.Length_T'Image (EVC_Position.Length_Of_Train));
+      --  3.6.1.3.4, 4.4.7.1.6 b): the front end by the consist in front
+      F := EVC_Position.Estimated_Front;
+      Check (EVC_Position.Front_Shifted and then Same_Report,
+             "SM gamma: in SB without valid Train Data with the safe consist "
+             & "length the estimated front end takes the consist in front "
+             & "into account, the position report with it (3.6.1.3.4, "
+             & "4.4.7.1.6 b)):" & Dist_T'Image (F));
       EVC_Train_Data.Set (D, Cat);
       Stand_X (300);
       Check (EVC_Train_Data.Valid and then Widened (0, 0),
              "SM gamma: valid Train Data in Stand-By, gamma 0 (3.6.4.1.5):"
              & Terms);
+      Check (not EVC_Position.Front_Shifted
+             and then F - EVC_Position.Estimated_Front = 5_000,
+             "SM gamma: valid Train Data in Stand-By, the front end the "
+             & "engine's again, 50 m behind (3.6.1.3.4):"
+             & Dist_T'Image (F - EVC_Position.Estimated_Front));
       EVC_Core.Set_Mode_For_Test (M_FS, L2);
       Stand_X (300);
       Select_SM;
@@ -1019,11 +1032,17 @@ package body EVC_Test_Manoeuvre is
              & "Stand-By without valid Train Data with the safe consist "
              & "length, the Stand-By term (3.6.4.1.5 last sentence):"
              & Terms);
+      F := EVC_Position.Estimated_Front;
       EVC_Core.Handle_Input (TIU, SCL_Frame (0));
       Stand_X (300);
       Check (Widened (0, 0),
              "SM gamma: the safe consist length no longer available, gamma "
              & "0 (3.6.4.1.5):" & Terms);
+      Check (not EVC_Position.Front_Shifted
+             and then F - EVC_Position.Estimated_Front = 5_000,
+             "SM gamma: the safe consist length no longer available, the "
+             & "front end the engine's again (3.6.1.3.4):"
+             & Dist_T'Image (F - EVC_Position.Estimated_Front));
    end Scenario_SM_Gamma;
 
    --  M_REMOTE_SHUNTING_STATE of the last JRU record 51 (SUBSET-027

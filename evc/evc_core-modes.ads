@@ -248,10 +248,10 @@ is
    --  (and 3.18.3.2.5.1: with the default Train Data of Supervised
    --  Manoeuvre, the length of the safe consist, EVC_Train_Data.Length;
    --  and 4.4.7.1.6 b): in SB without valid Train Data with the safe
-   --  consist length, the length of 3.6.1.7 by the orientation, decision:
-   --  from the engine's front end, which 3.6.1.3.4's consist in front
-   --  does not move yet, the rear end on the safe side by the nominal
-   --  length in front); the gamma terms of the confidence interval
+   --  consist length, the length of 3.6.1.7 by the orientation, from the
+   --  front end that 3.6.1.3.4 moves by the nominal consist length in
+   --  front of or in rear of the engine, EVC_Position.Set_Standby_Front);
+   --  the gamma terms of the confidence interval
    --  (3.6.4.1.5), which leave the odometer's part, Doubt_Over and
    --  Doubt_Under, unchanged
    --  @req 4.4.6.1.4, 4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4

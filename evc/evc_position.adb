@@ -2287,6 +2287,23 @@ is
       end if;
    end Set_Gamma;
 
+   function Front_Shifted return Boolean is (Manoeuvre.Moved)
+     with Refined_Global => Manoeuvre;
+
+   procedure Set_Standby_Front (On : Boolean; C : EVC_Train_Data.Consist_T)
+   is
+      E : constant Manoeuvre_T := Consist_End (Orient, C);
+   begin
+      if Manoeuvre.Fixed then
+         return;
+      elsif On then
+         Manoeuvre := (Fixed => False, Moved => True, Reach => E.Reach,
+                       Over  => E.Over, Under => E.Under);
+      else
+         Manoeuvre := (others => <>);
+      end if;
+   end Set_Standby_Front;
+
    procedure Set_Report_Parameters
      (P   : ETCS_Track_Packets.P58.Packet_T;
       Ref : Identity_T;
