@@ -209,6 +209,47 @@ package body EVC_Test_JRU is
              and then (for all K in 0 .. 10 => G (111 + 5 * K, 5) = 20),
              "SUBSET-027 4.2.4.2: a gamma train, N_BRAKE_CONF 0, one "
              & "section, M_KDRY_RST and M_KWET_RST 1.00");
+
+      --  4.2.4.54: OVERALL CONSIST LENGTH at every safe consist length
+      --  input of the train interface (SUBSET-034 2.6.2), a repeated one
+      --  too; the six lengths only when available
+      EVC_Core.Initialise;
+      EVC_Core.Tick (100);
+      declare
+         Frame : Byte_Array (1 .. TIU_SCL_Length) := (others => 0);
+         L     : constant array (0 .. 5) of Natural :=
+           (300, 295, 305, 120, 118, 122);
+      begin
+         Frame (1) := 15;
+         Frame (2) := 1;
+         for K in L'Range loop
+            Frame (3 + 2 * K) := Byte (L (K) mod 256);
+            Frame (4 + 2 * K) := Byte (L (K) / 256);
+         end loop;
+         for Repeat in 1 .. 2 loop
+            EVC_Core.Handle_Input (TIU, Frame);
+            Reset_Capture;
+            EVC_Core.Tick (100);
+            Take;
+            Check (JRU_Field (154, 0, 1) = 1
+                   and then (for all K in L'Range =>
+                               JRU_Field (154, 1 + 12 * K, 12) = L (K)),
+                   "4.2.4.54: Q_OVCONSISTLENGTH 1 and the six lengths of "
+                   & "the input, input" & Repeat'Image);
+         end loop;
+         Frame (2) := 0;
+         EVC_Core.Handle_Input (TIU, Frame);
+         Reset_Capture;
+         EVC_Core.Tick (100);
+         Take;
+         Check (JRU_Field (154, 0, 1) = 0 and then JRU_Field (154, 1, 12) = 0,
+                "4.2.4.54: Q_OVCONSISTLENGTH 0 alone when not available");
+         Reset_Capture;
+         EVC_Core.Tick (100);
+         Take;
+         Check (JRU_Field (154, 0, 1) = Natural'Last,
+                "4.2.4.54: no message 54 without an input");
+      end;
    end Scenario_JRU_Train_Data;
 
    --  SUBSET-027 4.2.4.45: the list of the track conditions for the

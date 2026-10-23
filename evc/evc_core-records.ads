@@ -26,6 +26,20 @@ is
    procedure Put_Brake_States (Commands, Before : EVC_Bytes.Byte)
      with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue);
 
+   --  SUBSET-027 4.2.4.54: OVERALL CONSIST LENGTH, the safe consist length
+   --  input of the train interface (SUBSET-034 2.6.2) as it came:
+   --  Q_OVCONSISTLENGTH (1 bit, by analogy to Q_SAFECONSISTLENGTH) and,
+   --  when available, the six lengths of 12 bits (by analogy to
+   --  7.5.1.42) in the order of the content table: in front of the engine
+   --  on the side of cab A nominal, minimum, maximum, then in rear.
+   --  Decision: at every input of the external source, a repeated value
+   --  too (4.2.4.54 "transmit the safe consist length input"; the
+   --  sequences record each input received)
+   --  @req 3.20.1.2
+   procedure Put_Consist (Available : Boolean;
+                          C         : EVC_Train_Data.Consist_T)
+     with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue);
+
    --  The juridical message of an event of EVC_Ports and its three bytes
    --  (EVC_JRU_Messages.Event_Message), kept with the on-board time of
    --  the event; the message of EVC_JRU_Messages.Paired_Message before

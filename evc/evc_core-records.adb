@@ -32,6 +32,34 @@ is
       end loop;
    end Put_Brake_States;
 
+   procedure Put_Consist (Available : Boolean;
+                          C         : EVC_Train_Data.Consist_T)
+   is
+      use EVC_JRU_Messages;
+      function L (V : EVC_Train_Data.Consist_Length_T) return Field_T is
+        ((Value => Unsigned_64 (V), Bits => 12));
+   begin
+      if Available then
+         EVC_Outbox.Put_JRU
+           (NID_Consist, Unsigned_64 (Clock_Ms),
+            (1      => (Value => 1, Bits => 1),
+             2      => L (C.Front_Nom),
+             3      => L (C.Front_Min),
+             4      => L (C.Front_Max),
+             5      => L (C.Rear_Nom),
+             6      => L (C.Rear_Min),
+             7      => L (C.Rear_Max),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
+      else
+         EVC_Outbox.Put_JRU
+           (NID_Consist, Unsigned_64 (Clock_Ms),
+            (1      => (Value => 0, Bits => 1),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
+      end if;
+   end Put_Consist;
+
    procedure Put_Event (Event, B2, B3, B4 : EVC_Bytes.Byte) is
       NID    : EVC_Bytes.Byte;
       Fields : EVC_JRU_Messages.Fields_T;
