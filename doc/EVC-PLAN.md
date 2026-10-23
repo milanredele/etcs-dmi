@@ -11199,3 +11199,85 @@ data claim in S40db9a42 not re-read.
 - Left: B1700 (not taken), B1760.
 - SUBSET-076: 1098 / 1083 / 1009 before, 1101 / 1079 / 1010 after, 0
   regressions, 4 improvements.
+
+### E5 integration after the forty-seventh round, the fifteenth of E6 (2026-10-23)
+
+Merged: e6/sm-thirteenth (B1660: no message 133 nor 131 to an RBC of
+system version 1.x or 2.0 to 2.2, `EVC_Sessions.Manoeuvre.SM_By_Radio`
+by the version of the session's message 32 (6.5.1.6.6.3.1,
+6.5.1.6.6.2.2, 6.5.2.3.7.1), the four sequences of S4a7a54da pass;
+B1681 traced to the runner: the on-board sends the 133 when the length
+returns, the runner's `Packet_Field` read no field of packet 10, the
+line's claims wrong; S87b110d6 the sequence's: step 187 of 4042000_03
+stands inside the Shunting area of its own message 3, 4.6.3 [51] takes
+FS to SH at once; resumed at 103 calls with its two runner lines, both
+done: `Packet_Field` decodes packet 10 (3070300_10 110 -> 114, a second
+use of case 3070300 28 past the EOA its own loss shortened, s076) and
+`Level_Symbol` judges a negative list of levels as none of them shown
+(3110800_02 and 4080300_18 pass); no on-board failure is left in the SM
+family; fast-forwarded), e6/jru-records (record 43 at every change of
+the traction cut-off sent, `EVC_Core.Records.Put_Brake_States` from the
+TIU commands' bit 2; record 54 at every safe consist length input,
+`Put_Consist` from `EVC_Core.Inputs.Read_Ports`, the six lengths when
+available; record 44 at the start, every change and the end of the
+LSSMA displayed, 1023 at the end, from `EVC_LS_Display.LSSMA_Kmh`; the
+runner judges the three messages' fields, 29 steps more judged; the
+premise that the cut-off comes at the warning limit was wrong, ours
+commands it at the warning of target speed monitoring only; record 27
+left, B1720; the record 44 scenario drives no LS mission, B1721),
+e6/protocol-bits (B890: MSG_ONBOARD's train byte bit 5 carries the
+position's status alone, `EVC_Position.Status = Valid`, a free bit so
+the frame is unchanged, the mock and the test support set it with the
+level; `DMI_Windows.Entry_Completed` decides D2 on it; 5040300_03
+passes in three versions, 5040300_15 stays; B761 traced to the
+on-board, the line's belief right: 5.4.3.2 D7 leads to S4 whatever the
+contact, `EVC_Sessions.Mission` awaits the registration
+(`Awaiting_Network`) and `Send_Onboard` reports the wait until A42;
+3050600_06 55 -> blocked 57; B1243: MSG_STORED_VALUES 16#11# with the
+driver ID and the train running number, sent at the first cycle and at
+every change by `EVC_Core.Outputs.Send_Stored_Values`, the DMI's data
+view drawn from it once received and from its own entries before, so
+no DMI golden changed; the Train Data and the network ID are B1760
+(the DMI keeps the Train Data choices as texts); 23 on-board goldens
+reviewed as intended; B1700 not taken), e6/sdm-left (B1640 reproduced
+in `Scenario_Session_NVCONTACT_Standstill`: at the shortened EOA a 1 cm
+creep commands the EB, revoked at standstill, and then the status
+changed every cycle between Indication and Warning while the traction
+cut-off stayed commanded, t2 triggering and r1 revoking in the same
+cycle; decision at `EVC_SDM.Supervision_Status` (3.13.10.4.15): in the
+cycle of an r1 revocation the status its triggering condition still
+gives is kept; B529 and B528 traced to the sequences: a generic LS
+function marker stored by the joined case 4080300 40 that nothing
+deletes (4.4.19.1.4.8, A.3.4) where the next case assumes none, and a
+traction system unsuitability in BG2d's packet 70 where the step
+expects the loading gauge message; both lines said onboard; B440 and
+B473 left).
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13126 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6168 B; wasm and both smokes 0 failures; the
+runner 1098 / 1083 / 1009 before, 1107 / 1073 / 1010 after, 0
+regressions, no signature untriaged. The merge: three conflicts on the
+protocol-bits branch (backlog, plan, triage: the line S52fbd3cd changed
+on both sides, joined as the base with both suffixes), two on
+jru-records, one on sdm-left; the runner's unit and the test drivers
+auto-merged and verified by the chain after each merge.
+
+Costs (doc/ROUNDS.csv): 38.3 USD, 15 of 19 items done, 4 of 15 brief
+premises wrong, no agent over budget (140.5 calls of 160 on average);
+one agent resumed inside its budget, converted (thirteen of thirteen).
+Lessons: three of the four wrong premises were backlog lines that said
+"onboard" where the sequence was at fault (B529, B528) or where the
+runner was (B1681), the fourth a reading of SUBSET-034 2.4.9's note;
+the traces briefed by their symptom converted again (five of five: one
+to the on-board, one to the runner, three to the sequences). The
+protocol package was the costliest (11.6 USD, 156 calls): three
+protocol changes with their mock, test support and golden reviews fit
+a 160 budget only just. The matrix: clauses left 97 (todo 2, partial
+95), unchanged: the round's rows were records, the runner and the DMI.
+Open items: doc/BACKLOG.csv (57 open after this round; 5 added, 10
+closed). Next: B1700 (the DMI-owned ends of record 23, a report of the
+DMI) with B1760 (the Train Data and network ID for the data view);
+B440 and B473 (Entering FS at a level transition, Acknowledge LS after
+an unsuitability); B1720 (record 27) and B1721; B481's record 48 with
+the network ID entry; then the Gamma model (B100), NL.
