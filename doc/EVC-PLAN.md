@@ -10810,3 +10810,24 @@ Three items and the family's next failure, four done.
 SUBSET-076: 1093 / 1089 / 1008 -> 1095 / 1087 / 1008, 0 regressions,
 baseline re-recorded. No golden changed. Outside the named units: none
 (`EVC_Position.Front_Shifted` is the setter's accessor).
+
+Resumption (two runner items, `S076_Run` only). B1680:
+`S076_Run.TIU_Input` gives the safe consist length unavailable when the
+step's comment says so or the next step expects the record 54 with
+Q_OVCONSISTLENGTH 0 (case 3070300 28 holds both an unavailable and an
+available input), else available, 10 m longer at every input after the
+first (`SCL_Inputs`); 3070300_10 102 -> 110 (Seb3595e7: no 133 with
+Q_SAFECONSISTLENGTH 1 when the length is available again after its
+unavailability in SM, not traced, B1681), 4080300_21 122 -> 127.
+B1661: 4042000_03 step 158 not judged with the reason "optional step"
+(R_Optional), not S076-defect: the step is conditional by its own
+comment (kept only when the position is invalid at the start of the
+test case, 5.4.3.2 S24 E32), and the condition is false there, not a
+fault of the sequence; the steps after it run, 158 -> 187 in SV21, 22,
+30 (S87b110d6, not traced). The rule is the sequence and step by name:
+the same comment stands in 1093 sequences, where a rule by the comment
+alone not-judged 1074 steps that pass. B1661 and S1815da5c are lines
+of master after the ps-traces merge, absent from this branch: close
+B1661 and complete S1815da5c at the merge. SUBSET-076: 1095 / 1087 /
+1008 before and after, 5 improvements, 0 regressions, baseline
+re-recorded.
