@@ -592,6 +592,32 @@ is
       end if;
    end Send_RBC_Contact;
 
+   procedure Send_Stored_Values is
+      use type EVC_Driver_Requests.Text_T;
+      ID    : constant EVC_Driver_Requests.Text_T := EVC_Mission.Driver_ID;
+      TRN   : constant EVC_Driver_Requests.Text_T := EVC_Mission.TRN;
+      Frame : Stored_Values_Frame_T;
+      ID_B  : Stored_Text_T;
+      TRN_B : Stored_Text_T;
+   begin
+      if not Stored_Sent or else ID /= ID_Sent or else TRN /= TRN_Sent then
+         for I in Stored_Text_T'Range loop
+            ID_B (I) := ID.Chars (I);
+            TRN_B (I) := TRN.Chars (I);
+         end loop;
+         Stored_Values_Frame
+           (ID_Length  => ID.Length,
+            ID         => ID_B,
+            TRN_Length => TRN.Length,
+            TRN        => TRN_B,
+            Frame      => Frame);
+         EVC_Outbox.Put (DMI, Frame);
+         Stored_Sent := True;
+         ID_Sent := ID;
+         TRN_Sent := TRN;
+      end if;
+   end Send_Stored_Values;
+
    procedure Send_System_Version is
       X : constant EVC_System_Version.Major_T :=
         EVC_System_Version.Operated;
@@ -824,6 +850,7 @@ is
       Send_Networks;                -- DMI MSG_RADIO_NETWORKS
       Send_VBC_List;                -- DMI MSG_VBC_LIST
       Send_RBC_Contact;             -- DMI MSG_RBC_CONTACT
+      Send_Stored_Values;           -- DMI MSG_STORED_VALUES
       Send_System_Version;          -- DMI MSG_SYSTEM_VERSION
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);

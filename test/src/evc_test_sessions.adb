@@ -1039,6 +1039,18 @@ package body EVC_Test_Sessions is
              & "valid (5.4.3.2 D2), data bit5 with the LRBG, got"
              & Onboard_Byte (9)'Image & Onboard_Byte (6)'Image
              & EVC_Position.LRBG.Valid'Image);
+      --  3.18.6.1: the stored values for the DMI's data view, sent with
+      --  the train running number's change
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6) = 4
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 7) = 49
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 10) = 52
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 4
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 24) = 53
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 27) = 56,
+             "mode proposal: MSG_STORED_VALUES Driver ID 1234, train running "
+             & "number 5678 (3.18.6.1), got"
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6)'Image
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23)'Image);
       Check (N > 0 and then R.Train_Data_Acknowledged
              and then EVC_Core.Mode = EVC_Modes.M_SB,
              "mode proposal: the level 2 start of mission at S20");

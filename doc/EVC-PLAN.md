@@ -11059,3 +11059,40 @@ B1681 (the 133 when the length returns) and S87b110d6; B890's bit for
 D2 (protocol, three units together) with B1243; B1640 (the flip at
 standstill, `EVC_Core.Monitoring`); B761's remainder (S4 before A31);
 then the Gamma model (B100), NL.
+
+### The DMI protocol's missing bits: the position status for D2, the hour glass of S4 after a cab change, the stored values for the data view (e6/protocol-bits) (2026-10-23)
+
+- B890: MSG_ONBOARD train bit5 is the position's status alone
+  (`EVC_Position.Status = Valid`, with or without an LRBG; data bit5
+  stays the position referred to an LRBG), from
+  `EVC_Core.Outputs.Send_Onboard`, read by `DMI_Core.Apply_Onboard` into
+  `DMI_Conditions.Position_Status_Valid`; Table 49 D2 in
+  `DMI_Windows.Entry_Completed` on it and the level. Decision: a bit of
+  the train byte, the frame's length unchanged; `EVC_Mock` and the test
+  wrapper EVC set it with their level. 5040300_03 passes in SV21, 22,
+  30; 5040300_15 stays blocked at 72. Nine on-board goldens: the train
+  byte +32, as intended.
+- B761 traced to the on-board: 5.4.3.2 puts S4 before A31 (D3 level 2
+  -> D7 -> S4); the second start of mission of 3050600_06 is in level 2
+  entered by balise without an RBC contact, and
+  `EVC_Sessions.Mission.Evaluate_SoM` opened a session at D3 only with a
+  known contact. Now D7 -> S4 without a contact is
+  `EVC_Sessions.Mission.Awaiting_Registration`
+  (`EVC_Sessions.SoM_Awaiting_Registration`, the one edit of the
+  parent), MSG_ONBOARD waiting 1 until registered (no session: A31 has
+  no contact) or timed out (A42); 3050600_06 55 -> blocked 57 (the
+  runner's timer step); `Scenario_SoM_S4_Without_Contact`.
+- B1243 for the driver ID and the train running number: MSG_STORED_VALUES
+  16#11#, driver_id_len u8, 16 bytes, trn_len u8, 16 bytes (fixed length
+  34), `EVC_DMI_Port.Stored_Values_Frame`,
+  `EVC_Core.Outputs.Send_Stored_Values` at the first cycle and at every
+  change (state `Stored_Sent`, `ID_Sent`, `TRN_Sent` in `EVC_Core`),
+  `DMI_Core.Apply_Stored_Values` into `DMI_Driver_Data.Onboard_*`,
+  which replace the DMI's own entries in `DMI_Data_View` once received
+  (decision; before it the DMI shows its entries, so the DMI goldens do
+  not change). Left: the Train Data and the GSM-R network ID (B1760);
+  row 3.18.6.1 partial. Fourteen on-board goldens: one frame added at
+  the first cycle and at the changes, as intended.
+- Left: B1700 (not taken), B1760.
+- SUBSET-076: 1098 / 1083 / 1009 before, 1101 / 1079 / 1010 after, 0
+  regressions, 4 improvements.
