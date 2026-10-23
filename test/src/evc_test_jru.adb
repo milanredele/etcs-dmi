@@ -308,6 +308,7 @@ package body EVC_Test_JRU is
    procedure Scenario_JRU_On_Board is
       H     : Header_T;
       Found : Natural := 0;
+      Before : Natural;
    begin
       EVC_Core.Initialise;
       Reset_Capture;
@@ -357,6 +358,37 @@ package body EVC_Test_JRU is
          end loop;
       end loop;
       Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
+      --  4.2.4.23, 4.3.1.1: SYSTEM_STATUS_MESSAGE, bit N for 2 ** (N - 1),
+      --  at each appearance and disappearance of a system status message
+      Check (EVC_JRU_Records.SS_Bit (1) = 1
+             and then EVC_JRU_Records.SS_Bit (2) = 1
+             and then EVC_JRU_Records.SS_Bit (9) = 6
+             and then EVC_JRU_Records.SS_Bit (8) = 30
+             and then EVC_JRU_Records.SS_Bit (36) = 27
+             and then EVC_JRU_Records.SS_Bit (13) = 0,
+             "4.2.4.23: the bits of the DMI's catalogue entries");
+      EVC_Test_Modes.Start_E4;
+      Before := JRU_Seen (123);
+      Run_X (Train_Cm + 5_000, 100);
+      Check (JRU_Seen (123) > Before
+             and then JRU_Last (123, 2) = 2 ** 5,
+             "4.2.4.23: message 23 with bit 6 'Runaway movement' at the "
+             & "movement in SB" & JRU_Seen (123)'Image
+             & JRU_Last (123, 2)'Image);
+      declare
+         Changed : Boolean := False;
+      begin
+         EVC_JRU_Records.Reset;
+         EVC_JRU_Records.System_Status (35, 0, Changed);
+         Check (Changed and then EVC_JRU_Records.Status_Shown = 2 ** 25,
+                "4.2.4.23: bit 26 at the start of NL no longer permitted");
+         Changed := False;
+         EVC_JRU_Records.System_Status (35, 0, Changed);
+         Check (not Changed, "4.2.4.23: no change, no message");
+         EVC_JRU_Records.System_Status_Acknowledged (35, Changed);
+         Check (Changed and then EVC_JRU_Records.Status_Shown = 0,
+                "4.2.4.23: cleared by the driver's acknowledgement");
+      end;
    end Scenario_JRU_On_Board;
 
    --  SUBSET-027 4.2.4.11 M_DRIVERACTIONS 51 to 55: the driver's radio

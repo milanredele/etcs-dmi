@@ -43,6 +43,25 @@ is
           Pre => Payload'Length <= Max_Payload (Port),
           Post => Used >= Used'Old;
 
+   --  The events of the DMI's system status messages (EVC_DMI_Port
+   --  MSG_SYSTEM_STATUS: catalogue entry, event) that Put queued since
+   --  the last Clear_Status, at most Max_Status, for the juridical record
+   --  of the messages displayed (EVC_Core.Records)
+   Max_Status : constant := 16;
+   type Status_Event_T is record
+      Entry_Number : Byte := 0;
+      Event        : Byte := 0;
+   end record;
+   function Status_Count return Natural
+     with Global => Queue,
+          Post => Status_Count'Result <= Max_Status;
+   function Status_Event (I : Positive) return Status_Event_T
+     with Global => Queue,
+          Pre => I <= Status_Count;
+   procedure Clear_Status
+     with Global => (In_Out => Queue),
+          Post => Status_Count = 0;
+
    --  Move the queued records to Buffer, as many whole records as fit,
    --  in their order; those that do not fit stay queued. Last is the
    --  index of the last byte written, Buffer'First - 1 when none: Last -

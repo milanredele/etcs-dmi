@@ -10771,3 +10771,55 @@ B1422 and B1421 (the DMI's start-up sequence after PS); the SM
 signatures S8ba44975 and S38d2e6ef with B1600 (the SB front end in
 `EVC_Position`); B1560 (3.16.2.4.4.4's reading); B1621 (the FRMCS
 action codes); then the Gamma model (B100), NL.
+
+### The juridical records left: the FRMCS action codes, the DMI records 21 to 23, the records by their count in the corpus (e6/jru-left) (2026-10-23)
+
+- B1621 done. `EVC_JRU_Records.Data_Code (K, B)` gives the record 11
+  codes of SUBSET-027 4.2.4.11 for the driver's data entries: the radio
+  network type (MSG_DRIVER_DATA kind 6, DMI Table 43b: 1 FRMCS 51, 2
+  FRMCS+GSM-R 52, 3 GSM-R 53) and the mission with only one radio system
+  (kind 7: 1 perform 54, 0 do not perform 55), written by
+  `EVC_Core.Records.Record_Actions_Cabs_Conditions`. Decision: from the
+  entries, no driver action added, so the DMI protocol is unchanged.
+  `S076_Tables.Driver_Action_Fact` holds 51 .. 55 as event 11; the ten
+  steps lie after where their sequences stop (B481 narrowed to record 48).
+- B804 done, record 23 built. `EVC_Core.Records.Record_System_Status`
+  writes the message 23 (`EVC_JRU_Messages.NID_System_Status`, viewed as
+  event 123: 23 is the procedures' event) when the set of system status
+  messages displayed changes (4.3.1.1). The set is
+  `EVC_JRU_Records.System_Status`: the starts and ends of the cycle's
+  MSG_SYSTEM_STATUS frames, which `EVC_Outbox.Put` notes
+  (`Status_Count`, `Status_Event`, `Clear_Status`), and the driver's
+  acknowledgement of an entry. `SS_Bit` maps the DMI's catalogue to the
+  bits: 1 Balise read error (entries 1 and 2), 2 Trackside malfunction
+  (3), 3 Communication error (4, 5), 4 Entering FS (6), 5 Entering OS
+  (7), 6 Runaway movement (9), 7 SH refused (12), 8 SH request failed
+  (14), 9 Trackside not compatible (15, 16), 10 Train data changed (17,
+  18), 11 Train is rejected (20), 12 to 19 the entries 21 to 27 and 29, 20
+  to 22 the route unsuitable entries 32, 30, 31, 23 GSM-R (34), 24 FRMCS
+  registration failed (33), 25 PT distance exceeded (28), 26 NL no longer
+  permitted (35), 27 Odometer impaired (36), 28 SM refused (10), 29 SM
+  request failed (11), 30 Entering SM (8); bit 31 (safe consist length no
+  longer available) has no entry. Decision: 31 bits, the variable's
+  definition and its 31 entries (the content table of 4.2.4.23 says 29).
+  Decision: the ends the DMI owns alone (its 30 s timers, the mode
+  changes of DMI 15.1.1.2 and 15.1.1.6) are not seen (B1700). The
+  runner judges the bits from the DMI's facts as before; the 197 steps
+  expecting record 23 without bits pass by the message in the window
+  (`S076_Run.JRU_Window_Expect`).
+- Records 21 and 22 not built: 22 has no step in the corpus; 21
+  (DMI_SYMB_STATUS, 7218 steps) is judged by the runner from the DMI's
+  symbols (`Symbol_Fact`). B1360 re-read: 16 to 19 and 50 were written
+  already; left 21, 22, 27, 33 to 37, 40, 41, 43, 44, 54 (sv30 counts: 43
+  58, 54 40, 44 15, 27 2, the others none).
+- Scenarios: `EVC_Test_JRU.Scenario_JRU_Driver_Choices`,
+  `Scenario_JRU_On_Board` extended (the bits, the runaway movement in SB,
+  the acknowledgement). Goldens: evc/position_linking_errors,
+  profiles_ma_planning, profiles_track_conditions, one message 23 added
+  per system status message started (golden_review: as intended; its
+  `jru_view` lacks NID 23, B1701).
+- SUBSET-076: 1093 / 1089 / 1008 before and after, steps not judged
+  4347 -> 4150, 0 regressions.
+- Proof: a subprogram with its contract only on its body in
+  `EVC_Core.Records` made gnat2why stop with "bad input for 'Value:
+  0GG"; its declaration in the child's spec proves.

@@ -97,6 +97,26 @@ is
                          Changed : out Boolean)
      with Global => (In_Out => State);
 
+   --  SUBSET-027 4.2.4.23 SYSTEM_STATUS_MESSAGE: the bit (1 .. 31) of an
+   --  entry of the DMI's catalogue (EVC_DMI_Port SS_*), 0 for none
+   function SS_Bit (Entry_Number : Byte) return Natural
+     with Global => null,
+          Post => SS_Bit'Result <= 31;
+
+   --  The system status messages displayed as the on-board sees them,
+   --  SUBSET-027's bit N as 2 ** (N - 1): the start of an entry sets its
+   --  bit, its end and the driver's acknowledgement (Acknowledged) clear
+   --  it; Changed is set when the set changes
+   procedure System_Status (Entry_Number, Event : Byte;
+                            Changed : in out Boolean)
+     with Global => (In_Out => State);
+   procedure System_Status_Acknowledged (Entry_Number : Byte;
+                                         Changed : in out Boolean)
+     with Global => (In_Out => State);
+   function Status_Shown return Unsigned_32
+     with Global => State,
+          Post => Status_Shown'Result < 2 ** 31;
+
    --  M_TRACKCOND_TI of a kind of the second TIU output (EVC_Ports)
    function Trackcond_TI (Kind : Natural) return Byte
      with Global => null;

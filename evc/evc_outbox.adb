@@ -1,15 +1,22 @@
 --  ETCS on-board (EVC)
 --  The bounded queue of the outputs, implementation.
 
+with EVC_DMI_Port;
+
 package body EVC_Outbox
   with SPARK_Mode => On,
        Refined_State => (Queue => (Data, Count, Dropped_Count,
-                                   Kept, Kept_Count, Lost_Count, Msg))
+                                   Kept, Kept_Count, Lost_Count, Msg,
+                                   Status_N, Status_List))
 is
 
    Data          : Byte_Array (1 .. Capacity) := (others => 0);
    Count         : Natural range 0 .. Capacity := 0;
    Dropped_Count : Natural := 0;
+
+   Status_N    : Natural range 0 .. Max_Status := 0;
+   Status_List : array (1 .. Max_Status) of Status_Event_T :=
+     (others => (others => 0));
 
    --  The juridical messages kept, each: NID_MESSAGE u8, the time of its
    --  event u64 (little endian), the length in bits of its complementary
@@ -27,11 +34,26 @@ is
    function Dropped return Natural is (Dropped_Count)
      with Refined_Global => Dropped_Count;
 
-   procedure Clear
-     with Refined_Global => (Output => (Count, Dropped_Count,
-                                        Kept_Count, Lost_Count))
+   function Status_Count return Natural is (Status_N)
+     with Refined_Global => Status_N;
+
+   function Status_Event (I : Positive) return Status_Event_T is
+     (Status_List (I))
+     with Refined_Global => (Input => Status_List, Proof_In => Status_N);
+
+   procedure Clear_Status
+     with Refined_Global => (Output => Status_N)
    is
    begin
+      Status_N := 0;
+   end Clear_Status;
+
+   procedure Clear
+     with Refined_Global => (Output => (Count, Dropped_Count,
+                                        Kept_Count, Lost_Count, Status_N))
+   is
+   begin
+      Status_N := 0;
       Count := 0;
       Dropped_Count := 0;
       Kept_Count := 0;
@@ -45,10 +67,21 @@ is
      with Refined_Global => Lost_Count;
 
    procedure Put (Port : Port_T; Payload : Byte_Array)
-     with Refined_Global => (In_Out => (Data, Count, Dropped_Count))
+     with Refined_Global => (In_Out => (Data, Count, Dropped_Count,
+                                        Status_N, Status_List))
    is
       Length : constant Natural := Payload'Length;
    begin
+      if Port = DMI
+        and then Length = EVC_DMI_Port.System_Status_Frame_T'Length
+        and then Payload (Payload'First) = EVC_DMI_Port.MSG_SYSTEM_STATUS
+        and then Status_N < Max_Status
+      then
+         Status_N := Status_N + 1;
+         Status_List (Status_N) :=
+           (Entry_Number => Payload (Payload'Last - 1),
+            Event        => Payload (Payload'Last));
+      end if;
       if Length > Capacity - Record_Header
         or else Count > Capacity - Record_Header - Length
       then
@@ -188,7 +221,8 @@ is
                         UTC_Known   : Boolean;
                         UTC_Seconds : Unsigned_32)
      with Refined_Global => (In_Out => (Data, Count, Dropped_Count,
-                                        Kept, Kept_Count, Msg))
+                                        Kept, Kept_Count, Msg,
+                                        Status_N, Status_List))
    is
       Done   : Natural := 0;   -- bytes of Kept written
       Size   : Natural;        -- of the entry at Kept (Done + 1)

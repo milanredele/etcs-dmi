@@ -4515,6 +4515,16 @@ package body S076_Run is
                      end if;
                   end;
                end loop;
+               --  the message 23 without its bits: one written in the
+               --  window (EVC_Core.Records, a system status message
+               --  appeared or disappeared)
+               if Id = 23 and then Positive then
+                  for I in 1 .. Rec_Count loop
+                     if Rec (I).NID = 23 then
+                        return Pass ("JRU 23");
+                     end if;
+                  end loop;
+               end if;
                return NJ (R_JRU_Not_Modelled, Img (Id) & " without bits");
             when 13 =>
                --  radio error (4.2.4.13): event 13, byte 2 M_ERROR

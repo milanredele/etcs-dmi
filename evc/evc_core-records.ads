@@ -79,6 +79,14 @@ is
                      In_Out => (General_Ms, General_Version, General_Level,
                                 General_Mode, Started_Up, EVC_Outbox.Queue));
 
+   --  SUBSET-027 4.2.4.23, 4.3.1.1: the message 23 when a system status
+   --  message appears or disappears, from the events of the cycle's DMI
+   --  frames (EVC_Outbox.Status_Event) and the driver's acknowledgements
+   --  of a system status message (16#8000# + its catalogue entry)
+   procedure Record_System_Status
+     with Global => (Input  => (Clock_Ms, EVC_Driver_Requests.State),
+                     In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
+
    --  8j. JRU (SUBSET-027 4.2.4.11, 4.2.4.38, 4.2.4.45, EVC_JRU_Records):
    --  the driver's actions of the cycle no other event records, the cab
    --  status received from the train interface when it changed, the

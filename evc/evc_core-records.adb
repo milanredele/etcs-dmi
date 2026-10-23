@@ -158,6 +158,37 @@ is
       General_Level := EVC_Levels.Level;
    end Record_General;
 
+   procedure Record_System_Status is
+      package DR renames EVC_Driver_Requests;
+      SS      : constant DR.Ack_Kind_T := DR.System_Status;
+      Changed : Boolean := False;
+      F       : EVC_JRU_Messages.Fields_T := EVC_JRU_Messages.No_Fields;
+   begin
+      for I in 1 .. EVC_Outbox.Status_Count loop
+         pragma Loop_Invariant (True);
+         declare
+            E : constant EVC_Outbox.Status_Event_T :=
+              EVC_Outbox.Status_Event (I);
+         begin
+            EVC_JRU_Records.System_Status (E.Entry_Number, E.Event, Changed);
+         end;
+      end loop;
+      EVC_Outbox.Clear_Status;
+      if DR.Acknowledged (SS)
+        and then DR.Ack_Id (SS) in 16#8000# .. 16#80FF#
+      then
+         EVC_JRU_Records.System_Status_Acknowledged
+           (EVC_Bytes.Byte (DR.Ack_Id (SS) - 16#8000#), Changed);
+      end if;
+      if Changed then
+         F (1) := (Value => Unsigned_64 (EVC_JRU_Records.Status_Shown),
+                   Bits  => 31);
+         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_System_Status,
+                             Unsigned_64 (Clock_Ms), F,
+                             No_Data);
+      end if;
+   end Record_System_Status;
+
    procedure Record_Actions_Cabs_Conditions is
       use EVC_Driver_Requests;
       use EVC_JRU_Records;
@@ -193,6 +224,7 @@ is
             Put_Event (JRU_Driver_Action, Data_Code (K, Data_Byte (K)), 0, 0);
          end if;
       end loop;
+      Record_System_Status;
       Cab_Status (TIU_Now (Cab_A_Active), TIU_Now (Cab_B_Active),
                   TIU_Known_Now (Cab_A_Active)
                   or else TIU_Known_Now (Cab_B_Active),

@@ -9,7 +9,7 @@ package body EVC_JRU_Records
   with SPARK_Mode => On,
        Refined_State => (State => (Cab_A_Recorded, Cab_B_Recorded,
                                    Cab_Recorded,
-                                   Last_TC, Last_Inputs))
+                                   Last_TC, Last_Inputs, Shown))
 is
 
    use EVC_Driver_Requests;
@@ -23,6 +23,8 @@ is
    Power_Up_Inputs : constant Input_Values_T :=
      (Remote_Shunting => 0, others => No_Value);
    Last_Inputs : Input_Values_T := Power_Up_Inputs;
+   --  the system status messages displayed (System_Status)
+   Shown : Unsigned_32 := 0;
 
    function Action_Code (A   : Action_T;
                          Arg : Unsigned_16) return Byte is
@@ -104,7 +106,77 @@ is
       Cab_Recorded := False;
       Last_TC := (Count => 0, List => (others => (others => 0)));
       Last_Inputs := Power_Up_Inputs;
+      Shown := 0;
    end Reset;
+
+   --  SUBSET-027 4.2.4.23 against the catalogue of the DMI's chapter 15
+   --  (EVC_DMI_Port): the entries of one message (the brake and the trip
+   --  rows of a balise read error, ...) share its bit; bit 31 "Safe
+   --  consist length no longer available" has no entry of the on-board
+   function SS_Bit (Entry_Number : Byte) return Natural is
+     (case Entry_Number is
+         when 1 | 2   => 1,   -- Balise read error
+         when 3       => 2,   -- Trackside malfunction
+         when 4 | 5   => 3,   -- Communication error
+         when 6       => 4,   -- Entering FS
+         when 7       => 5,   -- Entering OS
+         when 9       => 6,   -- Runaway movement
+         when 12      => 7,   -- SH refused
+         when 14      => 8,   -- SH request failed
+         when 15 | 16 => 9,   -- Trackside not compatible
+         when 17 | 18 => 10,  -- Train data changed
+         when 20      => 11,  -- Train is rejected
+         when 21      => 12,  -- Unauthorized passing of EOA / LOA
+         when 22      => 13,  -- No MA received at level transition
+         when 23      => 14,  -- SR distance exceeded
+         when 24      => 15,  -- SH stop order
+         when 25      => 16,  -- SR stop order
+         when 26      => 17,  -- Emergency stop
+         when 27      => 18,  -- RV distance exceeded
+         when 29      => 19,  -- No track description
+         when 32      => 20,  -- Route unsuitable - axle load category
+         when 30      => 21,  -- Route unsuitable - loading gauge
+         when 31      => 22,  -- Route unsuitable - traction system
+         when 34      => 23,  -- GSM-R network registration failed
+         when 33      => 24,  -- FRMCS network registration failed
+         when 28      => 25,  -- PT distance exceeded
+         when 35      => 26,  -- NL no longer permitted
+         when 36      => 27,  -- Odometer impaired
+         when 10      => 28,  -- SM refused
+         when 11      => 29,  -- SM request failed
+         when 8       => 30,  -- Entering SM
+         when others  => 0);
+
+   --  decision: the on-board sees the starts and the ends it sends
+   --  (EVC_DMI_Port MSG_SYSTEM_STATUS) and the driver's acknowledgements;
+   --  the ends the DMI owns alone (its 30 s timers, the mode changes of
+   --  its 15.1.1.2 and 15.1.1.6, the Main window's buttons) are not seen
+   procedure System_Status (Entry_Number, Event : Byte;
+                            Changed : in out Boolean)
+     with Refined_Global => (In_Out => Shown)
+   is
+      N   : constant Natural := SS_Bit (Entry_Number);
+      Old : constant Unsigned_32 := Shown;
+   begin
+      if N > 0 and then Event = 0 then
+         Shown := Shown or Shift_Left (1, N - 1);
+      elsif N > 0 and then Event = 1 then
+         Shown := Shown and not Shift_Left (1, N - 1);
+      end if;
+      Shown := Shown and (2 ** 31 - 1);
+      Changed := Changed or else Shown /= Old;
+   end System_Status;
+
+   procedure System_Status_Acknowledged (Entry_Number : Byte;
+                                         Changed : in out Boolean)
+     with Refined_Global => (In_Out => Shown)
+   is
+   begin
+      System_Status (Entry_Number, 1, Changed);
+   end System_Status_Acknowledged;
+
+   function Status_Shown return Unsigned_32 is (Shown and (2 ** 31 - 1))
+     with Refined_Global => Shown;
 
    function Input_Event (I : Input_T) return Byte is
      (case I is
