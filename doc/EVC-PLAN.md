@@ -10954,3 +10954,108 @@ of master after the ps-traces merge, absent from this branch: close
 B1661 and complete S1815da5c at the merge. SUBSET-076: 1095 / 1087 /
 1008 before and after, 5 improvements, 0 regressions, baseline
 re-recorded.
+
+### E5 integration after the forty-sixth round, the fourteenth of E6 (2026-10-23)
+
+Before the round B1560 was decided by the coordinator from the sequence's
+own data: BG1's packet 5 of 3160200_33 (Q_SCALE 1, D_LINK 70 then 60,
+Q_LOCACC 12, Q_LINKREACTION 2) places BG3 at 120 m and BG4 at 180 m,
+the sequence reads them at 247 m and 297 m, so both windows pass missed
+before either group is read; the reading of 3.16.2.4.4.4 built in round
+45 stands (the last announced group whose window ended by its
+detection, 3.4.4.4.6 a)), and at the linked locations step 57's
+expectation holds by 3.16.2.4.1 itself.
+
+Merged: e5/runner-stamps (B1580: every RBC message between the entry
+into TR and a negative message 6 of the same case is stamped below the
+trip's estimated T_TRAIN, so the message 6 fits between it and the trip
+(3.16.3.3.3); 4080455_04 107 -> 120, S607331e5; B1620 traced to the
+runner: `S076_Run.Run_Timer` counted T_NVCONTACT from the step before,
+the on-board from the last RBC message (3.16.3.4.1), the brake came
+early and the train stood inside the timer step; 4120100_02 203 ->
+blocked 211; the on-board's flip between TSM intervention and
+indication at that standstill noticed, B1640; B761's premise wrong: the
+window of 3050600_06 step 55 shows no hour glass even with every
+registration withheld, ours shows S4's only inside
+`EVC_Sessions.Mission.Opening`; B762: the RTM port has no FRMCS
+registration input, B1641 protocol; fast-forwarded), e6/ps-traces
+(B1421 traced to the DMI: after Passive Shunting the Driver ID is
+validated with level 1 and a valid position, Table 49 leads to the Main
+window, and level 2 entered there followed Table 50 D5 back to Main
+with the RBC contact valid and the network registered while the
+on-board waited at 5.4.3.2 S3; decision: 5.4.3.2 S2 -> S3 applies
+during a start of mission, Table 50 D5 outside it,
+`DMI_Windows.Dedicated_Completed`, which settles B523 too: 4042000_02
+passes in three versions, 6060304_06, 6060500_11, 6060504_03 and
+6060505_03 94 -> 115, S4a7a54da onboard, message 133 sent to an RBC of
+system version 1.0 against 6.5.1.6.6.3.1, B1660; B1422 the sequence's
+premise: step 158 is conditional by its own comment on a position
+invalid at the start of the test case, the position stays valid through
+SH, PS and SB (4.10) and the known LRBG is right, s076, B1661 for the
+runner; B890 built with the position's validity and reverted: it
+regressed 5040300_15, whose position is valid on an unlinked group,
+and MSG_ONBOARD bit 5 is the SM condition of S10, not D2's: D2 needs a
+bit of its own, the line says which three units change together),
+e6/sm-twelfth (S38d2e6ef traced: record 51 was written in SH alone,
+now from the ready bit sent to the TIU, `EVC_Core.Records` from
+`TIU_RS_Sent`, 1 in SM after the authorisation and 0 at the trip,
+3110300_03 and 4100103_49 pass; B1600: `EVC_Position.Set_Standby_Front`
+beside `Shift_For_Manoeuvre`, called from
+`EVC_Core.Modes.Sync_Train_Length` while SB holds without valid Train
+Data with the safe consist length, the front end by `Consist_End`, the
+rear end and the position report following; decision: in SB the
+orientation is the active cab's (3.6.1.5), so 3.6.1.3.4's opposite case
+arises in SM only; row 4.4.7.1.6 b) done; S8ba44975 and Sb5442a1e
+completed as resolved; S143d6aa2 traced to the runner's consist input;
+resumed at 108 calls with two runner items: B1680, `S076_Run.TIU_Input`
+gives the length unavailable when the step says so, 3070300_10 102 ->
+110 (Seb3595e7 onboard, B1681: no 133 with Q_SAFECONSISTLENGTH 1 when
+the length returns), 4080300_21 122 -> 127; B1661, 4042000_03 step 158
+not judged as an optional step, 158 -> 187 in three versions,
+S87b110d6), e6/jru-left (B1621: `EVC_JRU_Records.Data_Code` gives the
+codes 51 to 55 from the radio network type and one-radio entries, the
+DMI protocol unchanged, `S076_Tables.Driver_Action_Fact` maps them;
+record 23 at every change of the set of system status messages
+displayed, `EVC_Core.Records.Record_System_Status`, the set kept in
+`EVC_JRU_Records` from the frames `EVC_Outbox` now notes (the one edit
+outside the units), `EVC_JRU_Messages.NID_System_Status` as event 123,
+the runner passing a record 23 step without bits, 197 steps judged,
+three on-board goldens reviewed as intended; decisions: 31 bits by the
+variable against the content table's 29, the DMI-owned ends of a
+message are not seen (B1700); B1360's line was stale: 16 to 19 and 50
+are written, 21 is judged from the DMI's symbols, 22 is absent from the
+corpus; left by count 43, 54, 44, 27; B1701 tooling, `jru_view` without
+NID 23).
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13061 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6168 B; wasm and both smokes 0 failures; the
+runner 1093 / 1089 / 1008 before, 1098 / 1083 / 1009 after, 0
+regressions, one signature changed by the merge alone: 5100200_07 step
+46 counts the record 23 among the records it wants absent (Sd766e67b,
+model, formerly S5ab10d16). The merge: four conflicts on the
+sm-twelfth branch (plan, backlog, triage, baseline), three on ps-traces,
+two on jru-left, resolved line by line from the merge base (a line
+changed on one side takes that side); B1661 and S1815da5c, lines of
+master the resumed agent could not reach, closed by the coordinator.
+
+Costs (doc/ROUNDS.csv): 32.3 USD, 14 of 17 items done, 4 of 15 brief
+premises wrong, no agent over budget (130.5 calls of 152.5 on
+average); one agent resumed inside its budget, converted (twelve of
+twelve). Lessons: the symptom-only trace briefs converted again (four
+of four traced to their cause: two to the DMI, one to the runner, one
+to the sequence); the wrong premises were a runner's clock named as
+the cause (B761), a backlog line two rounds stale (B1360), a scenario
+the clause rules out (3.6.1.5) and a DMI bit read for a condition it
+does not carry (B890): a backlog line's claim is checked at the source
+before the item is briefed on it. The matrix: clauses left 98 -> 97
+(todo 2, partial 95); E6 done 215, partial 10, as before: the round's
+rows were runner, DMI and JRU work. Open items: doc/BACKLOG.csv (62
+open after this round; 8 added, 10 closed counting B1560). Next: B1360's
+records 43, 54 and 44 (the traction cut-off state, the overall consist
+length, the lowest supervised speed) with B1700; B1660 (message 133
+against an RBC of system version 1.0, `EVC_Sessions.Manoeuvre`) with
+B1681 (the 133 when the length returns) and S87b110d6; B890's bit for
+D2 (protocol, three units together) with B1243; B1640 (the flip at
+standstill, `EVC_Core.Monitoring`); B761's remainder (S4 before A31);
+then the Gamma model (B100), NL.
