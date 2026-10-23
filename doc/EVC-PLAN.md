@@ -10771,3 +10771,42 @@ B1422 and B1421 (the DMI's start-up sequence after PS); the SM
 signatures S8ba44975 and S38d2e6ef with B1600 (the SB front end in
 `EVC_Position`); B1560 (3.16.2.4.4.4's reading); B1621 (the FRMCS
 action codes); then the Gamma model (B100), NL.
+
+### Supervised Manoeuvre, the record 51 of the remote shunting state, the Stand-By front end with the safe consist length (e6/sm-twelfth) (2026-10-23)
+
+Three items and the family's next failure, four done.
+
+- S38d2e6ef traced: `EVC_Core.Records.Record_Inputs_Radio_Data` wrote
+  record 51 from the mode SH alone; SUBSET-027 4.2.4.51 records the
+  output permitting remote shunting (4.4.8.1.4), which
+  `EVC_Core.Outputs.Send_Remote_Shunting` sends in SM too (4.4.21.1.13).
+  The record now takes the ready bit of `TIU_RS_Sent` (the step runs
+  right after the output), 1 in SM after the authorisation, 0 at the
+  trip. `Scenario_SM_Remote_Shunting` decodes it. 3110300_03 and
+  4100103_49 (SV30) pass.
+- B1600: `EVC_Position.Set_Standby_Front`, beside `Shift_For_Manoeuvre`,
+  shifts the estimated front end by `Consist_End` while
+  `EVC_Core.Modes.Sync_Train_Length` finds SB without valid Train Data
+  with the safe consist length (3.6.1.3.4, 4.4.7.1.6 b)); unset
+  otherwise; the first SM authorisation's shift kept (`Fixed`); the min
+  safe rear end of 3.6.1.7 follows the moved front end, the position
+  report too (`Front_Shifted`, the accessor). Decision: in SB the train
+  orientation is the active cab's (3.6.1.5; 3.6.1.5.1 only from the
+  first SM authorisation), so the consist in rear of the engine is the
+  branch reached in SM. `Scenario_SM_Gamma` extended (the front end 50 m
+  ahead, back at the validation and at the loss of the consist length).
+  Row 4.4.7.1.6 b) done; 3.6.1.3.4 has no row of its own.
+- Triage: S8ba44975 (810fe3b, B1080) and Sb5442a1e (26275be, B990)
+  completed as resolved, their sequences' outcomes named (3110800_02
+  at 144 with S52fbd3cd, B709's; 3170200_11 at 120 with S24b29e6c,
+  model).
+- The family's next failure, S143d6aa2 ('133 not sent', B1220's line,
+  done): 3070300_10 and 4080300_21 wait for 133 after a third input of
+  the safe consist length, which the runner gives unchanged and never
+  unavailable (model, B1680); 3110200_03 expects 133 in SR without a
+  request (s076, 3.18.3.10). Every other failure of the family is
+  triaged s076, model, dmi or E7: no on-board failure is left in it.
+
+SUBSET-076: 1093 / 1089 / 1008 -> 1095 / 1087 / 1008, 0 regressions,
+baseline re-recorded. No golden changed. Outside the named units: none
+(`EVC_Position.Front_Shifted` is the setter's accessor).
