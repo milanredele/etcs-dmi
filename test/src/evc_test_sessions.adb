@@ -16,6 +16,7 @@ with EVC_Config;
 with EVC_DMI_Port;
 with EVC_Core;
 with EVC_Bytes;
+with EVC_Levels;
 with EVC_Mission;
 with EVC_National_Values;
 with EVC_Modes;
@@ -719,6 +720,39 @@ package body EVC_Test_Sessions is
       --  the radio configuration of the scenarios after this one
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Registration;
+
+   --  5.4.3.2 D3 -> D7 -> S4: the position and level 2 valid at D2, the
+   --  RBC contact unknown (a level transition by balise, 3050600_06):
+   --  the registration is awaited at the Main window (MSG_ONBOARD waiting
+   --  1, the hour glass) until E6, which leads to no session (A31 has no
+   --  contact to call); the driver enters the RBC data from S10
+   procedure Scenario_SoM_S4_Without_Contact is
+   begin
+      Auto_Register := False;
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Add_Group (Group (10, 20));
+      Run_X (5_000, 100);
+      Stand;
+      Send (Action (11, 5));
+      Send (Text_Entry (0, "1234"));
+      Check (not R.Contact.Known and then EVC_Levels.Valid
+             and then EVC_Modes."=" (EVC_Levels.Level, EVC_Modes.L2)
+             and then EVC_Sessions.SoM_Awaiting_Registration
+             and then Onboard_Byte (12) = 1,
+             "SoM S4: level 2 and the position valid at D2, no contact: "
+             & "D7 -> S4, MSG_ONBOARD waiting 1 (5.4.3.2 S4), got"
+             & Onboard_Byte (12)'Image & R.Contact.Known'Image
+             & EVC_Levels.Valid'Image);
+      Give_Radio_Event (1, Registered);
+      Stand;
+      Check (Onboard_Byte (12) = 0 and then R.Info (1).State = R.Idle,
+             "SoM S4: registered (E6): the wait ends, no session opened "
+             & "without a contact (A31)");
+      Auto_Register := True;
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_SoM_S4_Without_Contact;
 
    procedure Scenario_Session_SoM_Level_2 is
       M  : ETCS_Message.Message_T;

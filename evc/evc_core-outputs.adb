@@ -523,6 +523,12 @@ is
                             elsif EVC_Sessions.Registration_Timed_Out
                             then 0
                             else Waiting_Registration)
+                      --  5.4.3.2 D7 -> S4 without a known RBC contact, until
+                      --  registered (S10, no session) or timed out (A42)
+                      elsif EVC_Sessions.SoM_Awaiting_Registration
+                        and then not EVC_Sessions.Network_Ready
+                        and then not EVC_Sessions.Registration_Timed_Out
+                      then Waiting_Registration
                       elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),
          Answer   => EVC_Bytes.Byte

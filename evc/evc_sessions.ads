@@ -235,6 +235,10 @@ is
      with Global => State;
    function SoM_Opening return Boolean
      with Global => State;
+   --  5.4.3.2 D7 -> S4 without a known RBC contact (MSG_ONBOARD waiting 1
+   --  until the registration ends or times out)
+   function SoM_Awaiting_Registration return Boolean
+     with Global => State;
 
    --  (3.5.6, EVC_Sessions.Network), for EVC_Core: the
    --  registration conditions of 3.5.6.7 hold (5.4.3.2 S4 otherwise:
