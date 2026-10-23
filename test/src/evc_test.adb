@@ -296,6 +296,7 @@ begin
    Scenario_Session_Lost_Version;
    Scenario_Session_NVCONTACT;
    Scenario_Session_NVCONTACT_Brake;
+   Scenario_Session_NVCONTACT_Standstill;
    Scenario_Session_Indication;
    Scenario_Session_Radio_Hole;
    Scenario_Session_SoM_Level_2;

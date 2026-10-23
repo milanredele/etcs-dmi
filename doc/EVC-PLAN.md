@@ -11136,3 +11136,30 @@ and 4080300_18 pass (S52fbd3cd). SUBSET-076: 1102 / 1079 / 1009 ->
   (B1720), 33 to 37, 40, 41 (no step in the corpus).
 - SUBSET-076: 1098 / 1083 / 1009 before and after, steps not judged
   4151 -> 4122, 0 regressions; no golden changed.
+### The speed and distance monitoring left: the flip at standstill after T_NVCONTACT, the LSSMA in LS level 1, the loading gauge unsuitability shown (e6/sdm-left) (2026-10-23)
+
+- B1640 reproduced and fixed: `EVC_Test_Sessions.Scenario_Session_NVCONTACT_Standstill`
+  (OS level 2, the T_NVCONTACT service brake to standstill, the MA
+  shortened to the train by 3.16.3.4.5 b)). Standing at the shortened EOA
+  nothing changes (CSM, no command); a creep of 1 cm beyond it commands
+  the EB (Table 9 t13), revoked at standstill (Table 11 r0), after which
+  the status changed every cycle between Indication and Warning with the
+  traction cut-off held: at V_est = V_release (0) t2 triggers and r1
+  revokes together. Decision (3.13.10.4.15): `EVC_SDM.Supervision_Status`
+  keeps the Overspeed or Warning status its triggering condition gives
+  in the cycle of the revocation. The old trace (c0a18cf, 4120100_02 at
+  1488 m) alternated IntS with EB and IndS: the runner's train moved on
+  towards the sequence's standstill at 1500 m against each EB (it trips
+  there), the train model, not the on-board.
+- B529 dropped, S6b9f37cf s076: 4080100_03 step 130 opens the joined case
+  4070201 40, which assumes no generic LS function marker (4.4.19.1.4.7);
+  case 4080300 40 stored one at 850 m and nothing deletes it (4.4.19.1.4.8,
+  Table A.3.4), so only an accepted toggle on order displays the LSSMA.
+- B528 dropped, S40db9a42 s076: BG2d of 3120200_07 carries a traction
+  system unsuitability (packet 70 Q_SUITABILITY 2, M_VOLTAGE 4), ours
+  brakes for it; step 46 expects the loading gauge message.
+- Runner 1098 / 1083 / 1009 before and after, 0 regressions.
+
+Left: B440 (Entering FS at a level transition, 3131050_13), B473
+(Acknowledge LS after the unsuitability, 4100103_43); 4080436_01 step 80's
+data claim in S40db9a42 not re-read.
