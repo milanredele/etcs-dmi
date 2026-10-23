@@ -2964,7 +2964,33 @@ package body S076_Run is
          end;
       end if;
       K := Level_Of (Name);
-      if K = K_None then
+      if K = K_None and then St_W in Not_Displayed | Removed | Disabled
+        and then Has (Name, "/") and then not Has (Name, "0/1/2/NTC")
+      then
+         --  a negative list short of every level ("NOT Level 0/1/NTC"):
+         --  none of the levels it names shown at the end of the window
+         declare
+            U    : constant String := Up (Name);
+            Now  : Boolean := False;
+            Tags : constant array (1 .. 4) of Level_Kind_T :=
+              (K_L0, K_L1, K_L2, K_NTC);
+            function Named (L : Level_Kind_T) return Boolean is
+              (case L is
+                  when K_L0  => Has (U, "-0") or else Has (U, "/0"),
+                  when K_L1  => Has (U, "-1") or else Has (U, "/1"),
+                  when K_L2  => Has (U, "-2") or else Has (U, "/2"),
+                  when K_NTC => Has (U, "NTC"),
+                  when others => False);
+         begin
+            for L of Tags loop
+               if Named (L) and then S.Level = Level_Code (L) then
+                  Now := True;
+               end if;
+            end loop;
+            return Shown (St_W, False, Now, "level " & Name
+                          & " (code" & Img (S.Level) & ")");
+         end;
+      elsif K = K_None then
          --  "Level-0/1/2/NTC": the variant of the step's column
          K := Level_Of (Trim (St.Lvl_After));
       end if;
