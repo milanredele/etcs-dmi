@@ -464,6 +464,37 @@ package body EVC_Test_JRU is
              "4.2.4.11: a network type 4 or a choice 2 has no code");
    end Scenario_JRU_Driver_Choices;
 
+   --  SUBSET-027 4.2.4.44: V_LSSMA at the start of the LSSMA's display, at
+   --  every change of its value and at its end (1023 "None"); not again
+   --  while it holds; at most 600 km/h, the variable's range
+   procedure Scenario_JRU_LSSMA is
+      V       : Natural;
+      Changed : Boolean;
+   begin
+      EVC_JRU_Records.Reset;
+      EVC_JRU_Records.LSSMA (EVC_JRU_Records.V_LSSMA_None, V, Changed);
+      Check (not Changed, "4.2.4.44: no message 44 while none is shown");
+      EVC_JRU_Records.LSSMA (39, V, Changed);
+      Check (Changed and then V = 39,
+             "4.2.4.44: message 44 at the start of the display, 39 km/h");
+      EVC_JRU_Records.LSSMA (39, V, Changed);
+      Check (not Changed, "4.2.4.44: no message while the value holds");
+      EVC_JRU_Records.LSSMA (700, V, Changed);
+      Check (Changed and then V = 600,
+             "4.2.4.44: a change recorded, at most 600 km/h");
+      EVC_JRU_Records.LSSMA (EVC_JRU_Records.V_LSSMA_None, V, Changed);
+      Check (Changed and then V = 1023,
+             "4.2.4.44: V_LSSMA 1023 (None) at the end of the display");
+      --  the message's view (EVC_JRU_Messages.View event 144)
+      Build (NID_LSSMA, (others => <>),
+             (1 => (Value => 39, Bits => 10), others => (Value => 0,
+                                                         Bits  => 0)),
+             V);
+      Check (View (Buf (1 .. V)).Event = 144
+             and then View (Buf (1 .. V)).B2 = 39 / 4,
+             "4.2.4.44: message 44 viewed as event 144, V_LSSMA / 4");
+   end Scenario_JRU_LSSMA;
+
    --  SUBSET-027 4.2.4.43: TRACTION CUT OFF COMMAND STATE at every change
    --  of the traction cut-off sent to the TIU (SUBSET-034 2.4.9; commanded
    --  at the warning of target speed monitoring, SUBSET-026 Tables 8, 9,

@@ -127,9 +127,10 @@ is
    --  4.4.8.1.4, 4.4.21.1.13), when they change; the RBC contact and
    --  the GSM-R network the driver entered; record 13 with M_ERROR 5,
    --  safe radio connection error, when the reaction to the expiry of
-   --  T_NVCONTACT is triggered (SUBSET-026 3.16.3.4)
+   --  T_NVCONTACT is triggered (SUBSET-026 3.16.3.4); the LSSMA displayed
+   --  (SUBSET-027 4.2.4.44, EVC_JRU_Records.LSSMA) when it changes
    procedure Record_Inputs_Radio_Data
-     with Global => (Input  => (Clock_Ms, TIU_RS_Sent,
+     with Global => (Input  => (Clock_Ms, TIU_RS_Sent, EVC_LS_Display.State,
                                 TIU_Now, TIU_Known_Now, TIU_Value_Now,
                                 EVC_Driver_Requests.State,
                                 EVC_Sessions.State, EVC_Radio.State),

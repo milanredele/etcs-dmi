@@ -311,6 +311,8 @@ is
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));
       MN      : MN_Bytes_T;
       F       : EVC_JRU_Messages.Fields_T;
+      V       : Natural;
+      Changed : Boolean;
    begin
       Inputs (Now, Changes);
       for I in Input_T loop
@@ -333,6 +335,17 @@ is
       end if;
       if EVC_Sessions.Contact_Error then
          Put_Radio_Error (5);
+      end if;
+      LSSMA ((if EVC_LS_Display.LSSMA_Kmh = EVC_LS_Display.No_LSSMA
+              then V_LSSMA_None
+              else Natural (EVC_LS_Display.LSSMA_Kmh)),
+             V, Changed);
+      if Changed then
+         EVC_Outbox.Put_JRU
+           (EVC_JRU_Messages.NID_LSSMA, Unsigned_64 (Clock_Ms),
+            (1      => (Value => Unsigned_64 (V), Bits => 10),
+             others => (Value => 0, Bits => 0)),
+            No_Data);
       end if;
    end Record_Inputs_Radio_Data;
 
