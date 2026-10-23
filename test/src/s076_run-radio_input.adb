@@ -153,35 +153,80 @@ function Radio_Input (St : Step_T) return Judgement_T is
          when 8       => 129,
          when 27 | 28 => 130,
          when others  => 0);
-   --  4.8.4 [1]: the message 6 of this step is the negative case, not
+   --  4.8.4 [1]: the message 6 of step J is the negative case, not
    --  more recent than the trip: its own comment says so, or a later
    --  step of the same test case says that the recognition "with a more
    --  recent time stamp is not true" (4080455_04 step 111, case 4080455
    --  7; the message 6 of step 105 is the one of the positive case
    --  4080455_03, T_TRAIN 0 like every message 6 of the corpus)
-   function Exit_Not_More_Recent return Boolean is
-      Found : Boolean := False;
+   function Negative_Exit (J : Positive) return Boolean is
+      Sj : Step_T renames Seq.Steps (J);
    begin
-      if Has (Image (St.Comment), "not more recent")
-        or else Has (Image (St.Comment), "older than")
+      if Has (Image (Sj.Comment), "not more recent")
+        or else Has (Image (Sj.Comment), "older than")
       then
          return True;
       end if;
-      for I in 1 .. Seq.Step_Count loop
-         if Found then
-            exit when Seq.Steps (I).Case_Feature /= St.Case_Feature
-              or else Seq.Steps (I).Case_No /= St.Case_No;
-            if Has (Image (Seq.Steps (I).Comment),
-                    "with a more recent time stamp is not true")
-            then
-               return True;
-            end if;
-         elsif Seq.Steps (I).Line_No = St.Line_No then
-            Found := True;
+      for I in J + 1 .. Seq.Step_Count loop
+         exit when Seq.Steps (I).Case_Feature /= Sj.Case_Feature
+           or else Seq.Steps (I).Case_No /= Sj.Case_No;
+         if Has (Image (Seq.Steps (I).Comment),
+                 "with a more recent time stamp is not true")
+         then
+            return True;
          end if;
       end loop;
       return False;
-   end Exit_Not_More_Recent;
+   end Negative_Exit;
+
+   --  the index of this step in the sequence
+   function This_Step return Natural is
+   begin
+      for I in 1 .. Seq.Step_Count loop
+         if Seq.Steps (I).Line_No = St.Line_No then
+            return I;
+         end if;
+      end loop;
+      return 0;
+   end This_Step;
+
+   function Exit_Not_More_Recent return Boolean is
+     (This_Step > 0 and then Negative_Exit (This_Step));
+
+   --  the RBC messages of the steps after this one that come before a
+   --  negative message 6 (Negative_Exit), -1 when no negative message 6
+   --  follows before the next message 6 or the end: 0 for the message 6
+   --  itself
+   function Messages_Before_Negative_Exit return Integer is
+      N : Natural := 0;
+   begin
+      if This_Step = 0 then
+         return -1;
+      end if;
+      for I in This_Step .. Seq.Step_Count loop
+         declare
+            L : constant String := Image (Seq.Steps (I).Line);
+         begin
+            if L = "input RTM message 6" then
+               return (if Negative_Exit (I) then N else -1);
+            elsif I > This_Step and then Has (L, "input RTM message ")
+              and then not Has (L, "input RTM message 37")
+            then
+               N := N + 1;
+            end if;
+         end;
+      end loop;
+      return -1;
+   end Messages_Before_Negative_Exit;
+
+   --  the on-board's T_TRAIN at the entry into TR as the RBC estimates
+   --  it, from the bench time of the JRU's event 1 and the last on-board
+   --  stamp Last of the session; -1 before a trip
+   function Trip_Stamp (Last : Integer_64) return Integer_64 is
+     (if B.Trip_Ms > 0 and then Last >= 0
+      then Last + (Integer_64 (B.Trip_Ms)
+                   - Integer_64 (B.Last_Sent_Ms (S))) / 10
+      else -1);
 begin
    if Same (Kind, "connect") then
       --  a new connection: a new session, whose time stamps start again
@@ -268,6 +313,33 @@ begin
             if RBC_Stamp_Given and then Stamp <= RBC_Stamp then
                Stamp := RBC_Stamp + 1;
             end if;
+            if M.NID /= 6
+              and then (Trim (St.Mode_Before) = "TR"
+                        or else Trim (St.Mode_Before) = "PT")
+            then
+               --  4.8.4 [1], the negative case: a message the RBC sends
+               --  after the trip and before a recognition of the exit
+               --  from TR that is not more recent than the trip
+               --  (4080455_04 step 82, then step 105) is stamped below
+               --  the trip too, so that the message 6 fits between it
+               --  and the trip (3.16.3.3.3); decision: the RBC stamps by
+               --  the last on-board message it knows, the one before the
+               --  trip, as low as its own sequence allows; every such
+               --  message, N of them after this one, a stamp each
+               declare
+                  N   : constant Integer := Messages_Before_Negative_Exit;
+                  Cap : constant Integer_64 :=
+                    Trip_Stamp (Last) - 2 - Integer_64 (Integer'Max (N, 0));
+               begin
+                  if N >= 0 and then Cap > 0 and then Stamp > Unsigned_64 (Cap)
+                    and then (not RBC_Stamp_Given
+                              or else Integer_64 (RBC_Stamp) + 1 <= Cap)
+                  then
+                     Stamp := (if RBC_Stamp_Given then RBC_Stamp + 1
+                               else Unsigned_64 (Cap));
+                  end if;
+               end;
+            end if;
             if M.NID = 6 and then Exit_Not_More_Recent then
                --  4.8.4 [1], the negative case: the recognition of the
                --  exit from TR stamped before the trip (the on-board's
@@ -279,13 +351,8 @@ begin
                --  stamp is one below the trip and older than it, the
                --  message to be rejected either way
                declare
-                  Trip : constant Unsigned_64 := B.Trip_Ms;
-                  T    : Integer_64 := -1;
+                  T : constant Integer_64 := Trip_Stamp (Last);
                begin
-                  if Trip > 0 and then Last >= 0 then
-                     T := Last + (Integer_64 (Trip)
-                                  - Integer_64 (B.Last_Sent_Ms (S))) / 10;
-                  end if;
                   if RBC_Stamp_Given
                     and then (T < 0 or else Integer_64 (RBC_Stamp) + 1 < T)
                   then
