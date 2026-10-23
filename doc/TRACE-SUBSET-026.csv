@@ -1439,7 +1439,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2 A41,5,x,,,,,E4,deferred,"the FRMCS on-board never counts as registered: the RTM port reports no FRMCS registration (EVC_Sessions.Network decision 2, B844) [E5 session]"
 5.4.3.2 A42,5,x,,,,,E4,done,EVC_Sessions.Network.Supervise_Wait: entry 34 and the wait of S4 ended (MSG_ONBOARD waiting 0); evc_test Network_S4_Timeout [E5 session]
 5.4.3.2 A43,5,x,,,,,E4,partial,"EVC_Sessions.Network: the driver's new network orders and watches the registration again; evc_test Network_S4_Timeout; left: the combined FRMCS / GSM-R report (decision 2, B844) [E5 session]"
-5.4.3.2 D2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Modes.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 D2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Modes.Run_Mode_Machine; the position's status alone to the DMI's D2 (MSG_ONBOARD train bit5, EVC_Core.Outputs.Send_Onboard, for the DMI's Table 49 D2); evc_test E4_SoM_Level_1, E4_SoM_Other_Levels, Session_SoM_Level_2, SoM_L2_Mode_Proposal"
 5.4.3.2 D3,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Modes.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 D7,5,x,,,,,E4,partial,"EVC_Sessions.Mission: stored level 2 with a known contact opens the session (decision 1) once the GSM-R mobile is registered (EVC_Sessions.Network decision 5, Ready); evc_test Scenario_Session_SoM_Level_2, Network_S4_Timeout; left: the FRMCS branches (B844) [E5 session]"
 5.4.3.2 D8,5,x,,,,,E4,partial,"GSM-R only: A29 then S10 (EVC_Sessions.Network.Driver_Entries, the list of networks empty); left: FRMCS+GSM-R with both systems back to S3 (B844) [E5 session]"

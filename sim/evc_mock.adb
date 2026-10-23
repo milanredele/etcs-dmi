@@ -325,6 +325,11 @@ package body EVC_Mock is
       if EVC_Train.Speed_KMH = 0 then
          Train := Train or 1;  -- standstill
       end if;
+      --  the simulator keeps no position of its own beside the level:
+      --  the position is valid with it (5.4.3.2 D2)
+      if Level_Pos /= Level_Unknown then
+         Train := Train or 32;
+      end if;
       --  the simulator has no national value V_NVALLOWOVTRP: 30 km/h
       --  stands in for the speed limit that triggers the "override"
       if EVC_Train.Speed_KMH <= 30 then

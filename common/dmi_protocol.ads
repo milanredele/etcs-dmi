@@ -141,7 +141,8 @@ package DMI_Protocol is
    --    bit0 Driver ID is valid, bit1 Train data are valid,
    --    bit2 ERTMS/ETCS level is valid, bit3 Train running number is
    --    valid, bit4 RBC contact information is valid,
-   --    bit5 the train position is valid and is referred to an LRBG,
+   --    bit5 the train position is valid and is referred to an LRBG
+   --         (train bit5 is the status of the position alone),
    --    bit6 safe consist length information is available,
    --    bit7 the safe consist length values in front of the engine are
    --         equal to zero
@@ -164,7 +165,11 @@ package DMI_Protocol is
    --    or equal to the speed limit for triggering the "override"
    --    function, bit2 the "non leading" input signal is received,
    --    bit3 the "passive shunting" input signal is received,
-   --    bit4 the "BTM alarm reaction inhibition" function is active
+   --    bit4 the "BTM alarm reaction inhibition" function is active,
+   --    bit5 the status of the train position is valid (SUBSET-026
+   --         4.10, 5.4.3.2 D2), referred to an LRBG or not: a position
+   --         on an unlinked group or on the SOLR is valid too (data
+   --         bit5 is the position referred to an LRBG)
    --  national u8: national values and on-board storage
    --    bit0 modification of Driver ID while running is allowed,
    --    bit1 modification of adhesion factor by driver is allowed,

@@ -492,7 +492,11 @@ is
                      or (if EVC_Radio.Contact.Known then Radio_Contact_Known
                          else 0),
          Radio_Wait => (if EVC_Sessions.Registration_Awaited then 2 else 0),
-         Train    => Train_Bits,
+         --  5.4.3.2 D2: the position's status alone, also on an unlinked
+         --  group or the SOLR without an LRBG
+         Train    => Train_Bits
+                     or (if EVC_Position.Status = EVC_Position.Valid
+                         then Train_Position_Status_Valid else 0),
          National => National_Bits,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
          --  desk is open and no session with an RBC exists or is being

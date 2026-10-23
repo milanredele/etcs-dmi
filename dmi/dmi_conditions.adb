@@ -433,6 +433,7 @@ package body DMI_Conditions is
       TRN_Valid            := False;
       RBC_Contact_Valid    := False;
       Position_Valid       := False;
+      Position_Status_Valid := False;
       Consist_Length       := False;
       Consist_Front_Zero   := False;
       Session              := No_Session;

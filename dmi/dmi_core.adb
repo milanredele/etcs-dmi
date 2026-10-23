@@ -1003,6 +1003,7 @@ package body DMI_Core is
       DMI_Conditions.Non_Leading_Signal := Bit (Train, 2);
       DMI_Conditions.Passive_Shunting   := Bit (Train, 3);
       DMI_Conditions.BMM_Inhibit_Active := Bit (Train, 4);
+      DMI_Conditions.Position_Status_Valid := Bit (Train, 5);
 
       DMI_Conditions.NV_Driver_ID_Running := Bit (National, 0);
       DMI_Conditions.NV_Adhesion          := Bit (National, 1);

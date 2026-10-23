@@ -732,7 +732,10 @@ package body EVC_Test_Sessions is
              and then R.Info (1).State = R.Connecting
              and then Is_Request (1, 1)
              and then Onboard_Byte (12) = 2 and then Onboard_Byte (7) = 1
-             and then Onboard_Byte (6) / 16 mod 2 = 1,
+             and then Onboard_Byte (6) / 16 mod 2 = 1
+             --  5.4.3.2 D2: the position unknown, neither position bit
+             and then Onboard_Byte (9) / 32 mod 2 = 0
+             and then Onboard_Byte (6) / 32 mod 2 = 0,
              "SoM L2: the RBC contact entered by the driver (5.4.3.2 S3) "
              & "valid (5.4.3.3), the session opened (A31), the DMI waits "
              & "for the RBC (MSG_ONBOARD waiting 2)");
@@ -993,6 +996,15 @@ package body EVC_Test_Sessions is
       Send (Text_Entry (1, "5678"));
       Check (EVC_Position."=" (EVC_Position.Status, EVC_Position.Valid),
              "mode proposal: the position valid in SB");
+      --  5.4.3.2 D2: MSG_ONBOARD train bit5 the position's status alone,
+      --  data bit5 the position referred to an LRBG
+      Check (Onboard_Byte (9) / 32 mod 2 = 1
+             and then (Onboard_Byte (6) / 32 mod 2 = 1)
+                      = EVC_Position.LRBG.Valid,
+             "mode proposal: MSG_ONBOARD train bit5, the position's status "
+             & "valid (5.4.3.2 D2), data bit5 with the LRBG, got"
+             & Onboard_Byte (9)'Image & Onboard_Byte (6)'Image
+             & EVC_Position.LRBG.Valid'Image);
       Check (N > 0 and then R.Train_Data_Acknowledged
              and then EVC_Core.Mode = EVC_Modes.M_SB,
              "mode proposal: the level 2 start of mission at S20");

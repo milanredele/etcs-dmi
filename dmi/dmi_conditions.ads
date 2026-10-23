@@ -38,6 +38,9 @@ package DMI_Conditions is
    TRN_Valid          : Boolean := False;
    RBC_Contact_Valid  : Boolean := False;
    Position_Valid     : Boolean := False;  -- valid and referred to an LRBG
+   --  the status of the train position is valid, referred to an LRBG or
+   --  not (Table 49 D2)
+   Position_Status_Valid : Boolean := False;
    Consist_Length     : Boolean := False;  -- safe consist length available
    Consist_Front_Zero : Boolean := False;  -- ... zero in front of the engine
 

@@ -154,6 +154,9 @@ is
    --  Bits of Data
    Data_Level_Valid    : constant Bits_T := 4;
    Data_Position_Valid : constant Bits_T := 32;  -- valid, referred to an LRBG
+   --  Train bit5: the status of the train position is valid, referred to
+   --  an LRBG or not (5.4.3.2 D2)
+   Train_Position_Status_Valid : constant Bits_T := 32;
    Data_Consist_Available  : constant Bits_T := 64;  -- safe consist length
    Data_Consist_Front_Zero : constant Bits_T := 128; -- none in front
    Data_Driver_ID_Valid  : constant Bits_T := 1;
