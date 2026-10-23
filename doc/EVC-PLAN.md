@@ -10771,3 +10771,48 @@ B1422 and B1421 (the DMI's start-up sequence after PS); the SM
 signatures S8ba44975 and S38d2e6ef with B1600 (the SB front end in
 `EVC_Position`); B1560 (3.16.2.4.4.4's reading); B1621 (the FRMCS
 action codes); then the Gamma model (B100), NL.
+
+### The runner's stamps and clocks: message 6 against an RBC message after the trip, the brake release at standstill, the registration time before a timer step (e5/runner-stamps) (2026-10-23)
+
+Four runner items, nothing under `evc/`. SUBSET-076 1093 / 1089 / 1008
+before, 1093 / 1088 / 1009 after, 0 regressions, 2 improvements.
+
+- B1580 done. `S076_Run-Radio_Input`: an RBC message given in TR or PT
+  before a negative message 6 (`Negative_Exit`, the rule of the old
+  stamp as built by e5/runner-data) is stamped as low as the RBC's own
+  sequence allows (its previous message plus one), at most the trip's
+  estimated T_TRAIN (`Trip_Stamp`) less 2 less the N RBC messages that
+  follow it before the message 6 (`Messages_Before_Negative_Exit`), so
+  the message 6 fits between it and the trip (3.16.3.3.3). Decision:
+  every such message, not the last one only (each needs a stamp of its
+  own below the trip); the RBC stamps by the last on-board message it
+  knows, the one before the trip. The positive case (4080455_03,
+  T_TRAIN 0) has no negative message 6 and is untouched; the corpus has
+  one negative case. 4080455_04 SV30 107 -> 120: the message 6 of step
+  105 accepted, Initiate SM offered, steps 107 to 114 pass; 120 is
+  S607331e5 (the SM request of step 109 awaiting its answer, the
+  message 5 rejected by 4.8.4 [1]).
+- B1620 traced to the runner, done. `S076_Run.Run_Timer` ran
+  T_NVCONTACT (4120100_02 step 188) for 45 s from the end of the step
+  before, while the on-board's timer runs from the last RBC message
+  (step 183, 3.16.3.4.1): the service brake came near 1453 m as the
+  sequence has it, then the train stopped at 1488 m inside the timer
+  step, and the release at that standstill fell into the window of 203.
+  T_NVCONTACT now runs from the bench time of the last RBC message
+  (`RBC_Given_Ms`, set in `Radio_Input`); 203 -> blocked 211 (timer
+  T_STEP). At that early standstill the old trace showed the supervision
+  flip every cycle between TSM IntS (EB, SB, traction cut-off) and IndS
+  after the shortening of 3.16.3.4.5 b): B1640 (on-board, not traced).
+- B761 narrowed, the premise wrong: 3050600_06 step 55's window (37.1
+  to 41.1 s) shows no hour glass at any time, also with the bench
+  withholding every registration, while the time of A.3.1 ends at
+  40.4 s. Ours shows S4's hour glass only inside
+  `EVC_Sessions.Mission.Opening` (A31, `EVC_Core.Outputs.Send_Onboard`),
+  which the start of mission after the cab change does not reach; no
+  runner clock change built.
+- B762 narrowed: the RTM port has no FRMCS registration input
+  (`EVC_Ports.RTM_Event_T` per session, `EVC_Sessions.Network.
+  FRMCS_Registered` the constant False): B1641 (protocol).
+
+Left: B1640 (the flip at standstill), B761 (whether S4 precedes A31 for
+the second start of mission), B1641 then B762.
