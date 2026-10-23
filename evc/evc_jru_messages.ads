@@ -99,6 +99,7 @@ is
    NID_Network        : constant := 48;
    NID_Integrity      : constant := 50;
    NID_Remote_SH      : constant := 51;
+   NID_TCO_State      : constant := 43;
    NID_Proprietary    : constant := 255;
 
    subtype Width_T is Positive range 1 .. 64;

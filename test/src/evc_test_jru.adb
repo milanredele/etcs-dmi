@@ -423,4 +423,44 @@ package body EVC_Test_JRU is
              "4.2.4.11: a network type 4 or a choice 2 has no code");
    end Scenario_JRU_Driver_Choices;
 
+   --  SUBSET-027 4.2.4.43: TRACTION CUT OFF COMMAND STATE at every change
+   --  of the traction cut-off sent to the TIU (SUBSET-034 2.4.9; commanded
+   --  at the warning of target speed monitoring, SUBSET-026 Tables 8, 9,
+   --  revoked by Table 10), 1 when commanded, 0 when released, none before
+   procedure Scenario_JRU_Commands is
+      Cut_At, Released_At : Integer_64 := -1;
+      Base : Natural;
+   begin
+      Base := JRU_Seen (143);
+      EVC_Test_Modes.Mission (4);
+      Check (JRU_Seen (143) = Base,
+             "4.2.4.43: no message 43 before a traction cut-off command");
+      --  FS from a group at 50 m with an MA of 400 m: its EOA a target
+      Add_Group (Group (1, 50));
+      Carry (Track_N, 0, SSP ((1 => (0, 100, True))));
+      Carry (Track_N, 0, Grad ((1 => (0, 0))));
+      Carry (Track_N, 1, MA_Of ((1 => 400)));
+      Speed_Cms := 1_000;
+      while Train_Cm < 46_000 and then Cut_At < 0 loop
+         Step_X (1_000);
+         if JRU_Seen (143) = Base + 1 then
+            Cut_At := Train_Cm;
+         end if;
+      end loop;
+      Check (Cut_At > 0 and then JRU_Last (143, 2) = 1,
+             "4.2.4.43: M_TCO_COMMAND_STATE 1 (commanded) at the warning "
+             & "before the EOA, at" & Cut_At'Image & " cm");
+      Speed_Cms := 0;
+      for Second in 1 .. 20 loop
+         Stand_X (1_000);
+         if Released_At < 0 and then JRU_Seen (143) = Base + 2 then
+            Released_At := Integer_64 (Second);
+         end if;
+      end loop;
+      Check (Released_At > 0 and then JRU_Last (143, 2) = 0
+             and then JRU_Seen (143) = Base + 2,
+             "4.2.4.43: M_TCO_COMMAND_STATE 0 (not commanded) once at the "
+             & "revocation at standstill, after" & Released_At'Image & " s");
+   end Scenario_JRU_Commands;
+
 end EVC_Test_JRU;

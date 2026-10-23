@@ -4397,10 +4397,28 @@ package body S076_Run is
          case Id is
             when 10 =>
                return JRU_Sent (St, Positive);
-            when 3 | 4 | 43 =>
+            when 43 =>
+               --  the message itself (EVC_JRU_Messages.View event 143),
+               --  M_TCO_COMMAND_STATE when the step names it
                declare
-                  Bit : constant Natural :=
-                    (case Id is when 3 => 0, when 4 => 1, when others => 2);
+                  Val : Integer := -1;
+               begin
+                  for K in 5 .. Line.Count loop
+                     if Has (W (K), "M_TCO_COMMAND_STATE=") then
+                        Val := (if Has (W (K), "=1") then 1 else 0);
+                     end if;
+                  end loop;
+                  return Check
+                    ((for some I in 1 .. Rec_Count => Rec (I).Event = 143
+                       and then (Val < 0 or else Rec (I).B2 = Val))
+                     = Positive,
+                     "JRU43" & (if Val < 0 then "" else " state" & Img (Val))
+                     & (if Positive then "" else " not"),
+                     "no such message 43");
+               end;
+            when 3 | 4 =>
+               declare
+                  Bit : constant Natural := (if Id = 3 then 0 else 1);
                   Val : Integer := -1;
                begin
                   for K in 5 .. Line.Count loop

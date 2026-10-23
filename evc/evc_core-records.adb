@@ -14,11 +14,14 @@ is
    procedure Put_Brake_States (Commands, Before : EVC_Bytes.Byte) is
       use EVC_JRU_Messages;
    begin
-      for Bit in 0 .. 1 loop
+      for Bit in 0 .. 2 loop
          pragma Loop_Invariant (True);
          if (Shift_Right (Commands xor Before, Bit) and 1) /= 0 then
             EVC_Outbox.Put_JRU
-              ((if Bit = 0 then NID_EB_State else NID_SB_State),
+              ((case Bit is
+                  when 0      => NID_EB_State,
+                  when 1      => NID_SB_State,
+                  when others => NID_TCO_State),
                Unsigned_64 (Clock_Ms),
                (1      => (Value => Unsigned_64
                                       (Shift_Right (Commands, Bit) and 1),

@@ -16,7 +16,13 @@ is
 
    --  SUBSET-027 4.2.4.3 and 4.2.4.4: M_BRAKE_COMMAND_STATE of the
    --  emergency and of the service brake command (bits 0 and 1 of the
-   --  TIU commands), each when it differs from Before
+   --  TIU commands), 4.2.4.43: M_TCO_COMMAND_STATE of the traction cut-off
+   --  (bit 2, SUBSET-034 2.4.9), each when it differs from Before.
+   --  Decision: at every change of the command sent, the first at the
+   --  first command after the power-up (the sequences record 0 at the
+   --  release in FS, never at the start); a state never commanded has no
+   --  record, as for the brakes
+   --  @req 3.20.1.2
    procedure Put_Brake_States (Commands, Before : EVC_Bytes.Byte)
      with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue);
 

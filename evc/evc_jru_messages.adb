@@ -260,6 +260,9 @@ is
             return (P (P'First), F (0, 1), 0, 0);
          when NID_Non_Leading =>
             return (132, F (0, 1), 0, 0);
+         when NID_TCO_State =>
+            --  event 143 (43 is no event of EVC_Ports): M_TCO_COMMAND_STATE
+            return (143, F (0, 1), 0, 0);
          when NID_Direction =>
             return (39, F (0, 2), 0, 0);
          when NID_Cab_Status =>
