@@ -363,7 +363,7 @@ Subset-076-6-3_3110300_01_v400_SV21,failed,154,S61f30c39
 Subset-076-6-3_3110300_01_v400_SV22,failed,154,S61f30c39
 Subset-076-6-3_3110300_01_v400_SV30,failed,154,S61f30c39
 Subset-076-6-3_3110300_02_v400_SV30,passed,0,-
-Subset-076-6-3_3110300_03_v400_SV30,failed,85,S38d2e6ef
+Subset-076-6-3_3110300_03_v400_SV30,passed,0,-
 Subset-076-6-3_3110400_01_v400_SV21,passed,0,-
 Subset-076-6-3_3110400_01_v400_SV22,passed,0,-
 Subset-076-6-3_3110400_01_v400_SV30,passed,0,-
@@ -2173,7 +2173,7 @@ Subset-076-6-3_4100103_47_v400_SV21,passed,0,-
 Subset-076-6-3_4100103_47_v400_SV22,passed,0,-
 Subset-076-6-3_4100103_47_v400_SV30,passed,0,-
 Subset-076-6-3_4100103_48_v400_SV30,failed,68,S1f552964
-Subset-076-6-3_4100103_49_v400_SV30,failed,90,S38d2e6ef
+Subset-076-6-3_4100103_49_v400_SV30,passed,0,-
 Subset-076-6-3_4120100_01_v400_SV21,blocked,145,E7-version
 Subset-076-6-3_4120100_01_v400_SV22,passed,0,-
 Subset-076-6-3_4120100_01_v400_SV30,passed,0,-

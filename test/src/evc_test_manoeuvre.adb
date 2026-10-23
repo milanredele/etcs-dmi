@@ -1026,13 +1026,21 @@ package body EVC_Test_Manoeuvre is
              & "0 (3.6.4.1.5):" & Terms);
    end Scenario_SM_Gamma;
 
+   --  M_REMOTE_SHUNTING_STATE of the last JRU record 51 (SUBSET-027
+   --  4.2.4.51) written during the last RS_Within, -1 when none was
+   RS_Record : Integer := -1;
+
    --  The remote shunting information of the TIU output (EVC_Ports,
    --  TIU_RS_Tag) last sent while standing Max_Ms, -1 when none was
    function RS_Within (Max_Ms : Natural) return Integer is
       Last : Integer := -1;
    begin
+      RS_Record := -1;
       for C in 1 .. Max_Ms / 100 loop
          Stand_X (100);
+         if JRU_Count (51) > 0 then
+            RS_Record := JRU_Field (51, 0, 1);
+         end if;
          for I in 1 .. Rec_Count loop
             if Recs (I).Port = TIU
               and then Rec_Length (I) = EVC_Ports.TIU_RS_Length
@@ -1062,10 +1070,18 @@ package body EVC_Test_Manoeuvre is
              "SM remote shunting: in SM ready for remote shunting, the "
              & "engine orientation the same as the MA's direction "
              & "(4.4.21.1.13, SUBSET-034 2.2.6):" & Integer'Image (R));
+      Check (RS_Record = 1,
+             "SM remote shunting: the JRU records the output permitting "
+             & "remote shunting, record 51 with 1 (SUBSET-027 4.2.4.51):"
+             & Integer'Image (RS_Record));
       EVC_Core.Set_Mode_For_Test (M_SB, L2);
       R := RS_Within (300);
       Check (R = 0, "SM remote shunting: out of SM, not permitting "
              & "(SUBSET-034 2.2.6):" & Integer'Image (R));
+      Check (RS_Record = 0,
+             "SM remote shunting: the JRU records the output no longer "
+             & "permitting, record 51 with 0 (SUBSET-027 4.2.4.51):"
+             & Integer'Image (RS_Record));
       Start_L2_SM;
       Select_SM;
       T := Wait_For (MCat.Train_M131, 1_000);

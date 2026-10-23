@@ -240,7 +240,9 @@ is
            (if TIU_Known_Now (Train_Integrity)
             then Integrity_Code (Natural (TIU_Value_Now (Train_Integrity)))
             else No_Value),
-         Remote_Shunting  => (if Current_Mode = M_SH then 1 else 0));
+         Remote_Shunting  =>
+           (if (TIU_RS_Sent and EVC_Ports.TIU_RS_Ready) /= 0
+            then 1 else 0));
       Changes : Input_Changes_T;
       RBC     : constant Bytes_23_T := EVC_Driver_Requests.RBC_Data;
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));
