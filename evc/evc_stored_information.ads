@@ -308,6 +308,13 @@ is
    function Train_Covered return Boolean
      with Global => State;
 
+   --  3.18.4.6.2.3: the adhesion factor is "slippery rail", by the
+   --  driver's selection or by a trackside slippery rail area reaching
+   --  the train (as of the last Evaluate)
+   --  @req 3.18.4.6.2.3
+   function Slippery_Rail return Boolean
+     with Global => State;
+
    --  An MA received by radio (EVC_Radio_Info) was accepted
    --  in the last Evaluate
    --  3.10.2.2: the outcome of the conditional emergency stop

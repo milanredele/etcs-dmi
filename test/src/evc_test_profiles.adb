@@ -1064,6 +1064,10 @@ package body EVC_Test_Profiles is
              and then SI.Current.Adhesion.Areas (1).Start = 20_000
              and then SI.Current.Adhesion.Areas (1).Finish = 50_000,
              "adhesion: a slippery rail area (3.13.2.3.5)");
+      Check (not SI.Slippery_Rail,
+             "adhesion: the driver not informed of slippery rail before "
+             & "the max safe front end reaches the area (3.18.4.6.2.3, "
+             & "3.6.4.2.4)");
       Check (SI.Current.Gradients.Count = 1
              and then not SI.Current.Gradients.Covered (1)
              and then SI.Current.Gradients.Segments (1).Gradient = 0
@@ -1095,6 +1099,9 @@ package body EVC_Test_Profiles is
       Carry (2, 1, MA_Of ((1 => 500)));
       Carry (2, 1, MP);
       Run_X (25_000);
+      Check (SI.Slippery_Rail,
+             "adhesion: the driver informed of the trackside's slippery "
+             & "rail once the train is in the area (3.18.4.6.2.3)");
       Check (TD.Suitability (1).Used and then TD.Suitability (1).Value = 1
              and then TD.Suitability (2).Used
              and then TD.Suitability (2).Kind = 1,

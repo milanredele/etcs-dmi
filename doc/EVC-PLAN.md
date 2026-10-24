@@ -11335,3 +11335,72 @@ the network ID entry; then the Gamma model (B100), NL.
   (`Drop_V_Main`, new), `EVC_Stored_Information` (the K15 branch of
   the packets taken).
 - Runner: 1107 passed before, 1110 after (3131100_04 x3), 0 regressions.
+
+### The driver's indications, three traces: Entering FS at a level transition, Acknowledge LS after an unsuitability, a level announcement shown (e6/display-traces) (2026-10-24)
+
+All three traced to their cause; none was the on-board's, no code changed.
+
+- B440 dropped, S010e5048 s076: case 4060300 19 removes Entering FS at
+  its step 12 after its step 10, the min safe rear end reaching the
+  level border (3150800_05 54-56 passes the three steps). 3131050_13
+  drops steps 10 and 11 and joins case 3131050 8, the EB at the EOA:
+  BG1d gives an 80 m MA with SSP and gradient from the group and the
+  train is 200 m long, so the rear never passes the group and 4.4.9.1.4
+  keeps the message (`EVC_Stored_Information.Train_Covered`, min safe
+  rear end to estimated front end, right).
+- B473 dropped, S82794294 model, B1820 (runner): step 57 of 4100103_43,
+  "ODO speed decrease V_TRAIN<=V_PERMITTED", sets V_Perm - 2 = 148 km/h
+  on a train at 50 km/h; it overspeeds the curve to the unsuitability's
+  temporary EOA at 900 m (3.12.2.4), the EB trips it and it reaches the
+  LS acknowledgement area at 140 km/h. Measured, not committed: a
+  decrease that never raises the speed (`S076_Run.ODO_Input`, the min
+  of V_Perm - 2 and the current speed) gives 9 improvements, 0
+  regressions (4100103_39 passes in SV22 and SV30, 4100103_43 65 -> 114
+  in the curves family S4ed4d50c, 4100103_17 blocked 72 -> failed 79,
+  3060400_02 SV30 53 -> 59).
+- B581 done, Sb12d0fcd s076: case 5100100 5 (an announcement of the
+  level operated, which 5.10.1.3 does not show) has no group at step 48
+  of 3131050_23, the runner reuses BG1d, whose packet 41 announces level
+  2 (M_LEVELTR 3) to a train in level 1: a change of level, shown at
+  once by 5.10.1.3. 5100200_08 passes the case with its own group. Of
+  B581's three sequences 5040300_03 passes and 5170200_03 is s076.
+- The nine sequences' next failures: 3131050_13 none after step 53;
+  3131050_23 blocked at 56 (Gamma model); 4100103_43 at 114 (curves,
+  once B1820 is taken).
+- Runner 1107 / 1073 / 1010 before and after (triage only).
+
+Left: B1820 (the runner's speed decrease) for the bench package.
+
+Resumed: B1820 done. `S076_Run.ODO_Input` takes "the train speed
+decreases (V_TRAIN <= V_PERMITTED)" as the lower of V_Perm - 2 and the
+speed the train runs at. Runner 1107 / 1073 / 1010 -> 1109 / 1074 /
+1007, 0 regressions, 9 improvements, baseline re-recorded. Outcome
+kinds changed: 4100103_39 SV22 and SV30 failed 65 -> passed (its step 65,
+the Acknowledge LS symbol, as in 4100103_43);
+4100103_17 blocked 72 (Gamma) -> failed 79, not a regression by the
+runner's rule (a failure later than the block, the steps 72 to 78 now
+run and pass): at step 58 the decrease had raised the train from 32 to
+98 km/h and step 72 (service brake not commanded in OS) met a brake of
+the curve model, blocked as Gamma; at 32 km/h no brake comes. The new
+first failures were triaged already: 4100103_43 114 S4ed4d50c (curves),
+4100103_17 79 S843421cc (s076, slippery rail), 3060400_02 SV30 59
+S1ebd7f2d (s076).
+
+Resumed, 4100103_17 step 79 traced to the on-board: ST02 showed only
+the driver's slippery rail, not a trackside slippery rail area of
+packet 71 (3.18.4.6.2.3: the driver is informed whether the adhesion
+factor is "slippery rail"). `EVC_Stored_Information.Slippery_Rail`
+(the driver's choice or `EVC_Track_Description.Slippery`, set in
+`Build_Mode_Conditions`) is what `EVC_Core.Outputs.Send_Status` sends;
+an area reaches the train from its start passed by the max safe front
+end (3.6.4.2.4) until the estimated front end passes its end plus the
+train length (3.13.5.3). Decision: the estimated front end at the end
+(no clause names the train's end for the indication; 9990600_06
+removes ST02 at end + L by the estimated front end and shows it again
+when the train reverses). Scenario: `EVC_Test_Profiles.Scenario_Other_Profiles`.
+Runner 1109 / 1074 / 1007 -> 1109 / 1070 / 1011, 0 regressions, 15
+improvements (4100103_17 79 -> blocked 83 Gamma, 9990600_06 76 -> 88,
+4080402_01 49 -> 126, 3130237_03 and _12 50 -> 55). New first failures:
+S20b67466 (4080402_01 126: packet 71 by radio in level 1 stored where
+the sequence says rejected, B1821), S97e6b50c and Sb0f6064b not
+analysed (B1822).
