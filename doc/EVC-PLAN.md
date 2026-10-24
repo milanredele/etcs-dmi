@@ -11598,3 +11598,14 @@ A_brake_emergency and A_brake_service by combination, their times, the
 Kdry_rst / Kwet_rst rows, Kn, M_rotating_nom, the normal service sets
 when given), offers it at the power-up, and `S076_Run` judges the
 Gamma curve steps instead of blocking them.
+
+Resumed inside the budget, item 3: `EVC_Test_Supervision.Scenario_SDM_Gamma`
+configures a gamma image (one step of A_brake_emergency, 1.0 m/s²,
+Kdry_rst 0.90 at M_NVEBCL 9, Kwet_rst 0.80), takes the models and
+`Extra.Train` into `Case_Snapshot (Lambda_100, Flat)` through
+`EVC_Config.Gamma_Models` and `Gamma_Extra`, sets M_NVAVADH 0.5, and
+checks `EVC_Curves.Location_Of` of the EBD to a target of speed 0
+against SvL - V² / (2 A_safe), A_safe = A Kdry (Kwet + M_NVAVADH (1 -
+Kwet)) = 0.81 m/s² (3.13.6.2.1.4, 3.13.8.3), at 100 and 50 km/h within
+1 m (the curves' speed grid and the rounding of A_safe to the model's
+unit); both pass. The EBI by hand (3.13.9.3.2) is not checked.
