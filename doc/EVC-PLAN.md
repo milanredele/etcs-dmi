@@ -11438,3 +11438,87 @@ analysed (B1822).
   buffer of the test full).
 - Left: the row 3.18.6.1 re-read against the clause (not taken, the
   bound reached), partial.
+
+### E5 integration after the forty-eighth round, the sixteenth of E6 (2026-10-24)
+
+Merged: e6/jru-rest (record 27 at a failure entered in SL, NL or PS,
+`EVC_Core.Records.Record_Fault` queued and flushed before the silence
+of `Enter_Failure`, `Take_Outputs` always emptying the outbox; decision:
+the on-board still falls silent there, the memorised fault and the
+M_ERROR 6 report are B1840; B481 done: the runner enters the GSM-R
+network ID (`S076_Run.Select_Network`) and compares record 48's NID_MN,
+5040300_17 passes in three versions, 15 improvements; B1721 and record
+41 left at the bound; the bench's one default network, B1841;
+fast-forwarded), e6/level-traces (B511: 3131100_04 was ours, the V_MAIN
+of a level 1 MA survived the level 2 MAs and placed the perturbation
+location by 3.13.11.5 instead of 3.13.11.6, so the MA request came 160
+m late; `EVC_Movement_Authority.Drop_V_Main` at an accepted packet 15
+MA, row 3.11.6.3.1 done, B847 closed with it; _02, _06 and _07 the
+sequences' data (two message 3 shorter than their L_MESSAGE, an MA
+from an LRBG never reported), S256f4faf rewritten per family, B1860 for
+the runner to block a truncated message; B510 narrowed: the order and
+the MA in two balises of one group pass natively
+(`Scenario_L1_Order_With_L1_MA_In_Second_Balise`), the history before
+the group is the suspect; B017 not taken), e6/display-traces (three
+traces, none ours: B440 the sequence's, 3131050_13 drops the step of
+case 4060300 19 where the min safe rear end reaches the level border
+and expects "Entering FS" removed with a 200 m train inside an 80 m MA
+(4.4.9.1.4), s076; B473 the runner's, a speed decrease at step 57 of
+4100103_43 raised the train from 50 to 148 km/h so the EB tripped it
+before the LS acknowledgement area, B1820; B581's 3131050_23 the
+sequence's, case 5100100 5 has no group of its own and the reused group
+announces level 2 to a train in level 1, which 5.10.1.3 shows, s076,
+B581 done; resumed at 82 calls: B1820 built in `S076_Run.ODO_Input`
+(a decrease never raises the speed, 9 improvements) and its fallout
+4100103_17 step 79 traced to the on-board, a trackside slippery rail
+area of packet 71 never told to the driver (3.18.4.6.2.3),
+`EVC_Stored_Information.Slippery_Rail` from
+`EVC_Track_Description.Slippery` sent in MSG_STATUS, from the max safe
+front end at the area's start to the estimated front end at its end
+plus the train length (decision: the estimated front end ends it), 15
+improvements, B1821 (packet 71 by radio in level 1 to be rejected,
+`EVC_Acceptance`) and B1822 new), e6/protocol-rest (B1700:
+MSG_STATUS_ENDED 16#42#, one frame per system status message the DMI
+ends by itself (its 30 s timers, a mode change of DMI 15.1.1.2, a Main
+window button), read into `EVC_Driver_Requests`, the bit of
+`EVC_JRU_Records.System_Status` cleared, record 23 following; decision:
+one message per end, a whole set could cancel a start of the same
+cycle; B1760: MSG_STORED_VALUES grows from 34 to 64 bytes, the Train
+Data in the on-board's codes with a validity byte and the network ID's
+digits, the DMI reading both forms and mapping the codes to Tables 41
+and 42, the data view from the on-board's values once a long form came;
+15 on-board goldens reviewed as intended, no DMI golden changed; the
+row 3.18.6.1's re-read left).
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13176 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6168 B; wasm and both smokes 0 failures (the
+bench page routes the new DMI message); the runner 1107 / 1073 / 1010
+before, 1115 / 1076 / 999 after, 0 regressions, no signature
+untriaged: the sequences that left "blocked" did so because their
+Gamma block fell and later steps ran, by the runner's rule not a
+regression. The merge: three conflicts on display-traces (backlog,
+plan, triage), two on level-traces and two on protocol-rest (backlog,
+plan), the runner's unit, the test drivers and the fuzzer auto-merged
+and verified by the chain after each merge (four runs, all green).
+
+Costs (doc/ROUNDS.csv): 36.0 USD, 10 of 15 items done, 4 of 13 brief
+premises wrong, one agent over its budget by three calls (jru-rest, 133
+of 130: the bound was passed inside item 2 and the "Done" list still
+done); one agent resumed inside its budget, converted (fourteen of
+fourteen), and its resumption found and fixed an on-board defect the
+first trace had hidden. Lessons: the four wrong premises were again
+backlog lines (three "onboard" lines of the display traces, all the
+sequences' or the runner's; B510's two-balise cause, which passes
+natively): an "onboard" line older than two rounds is a trace brief,
+not a build brief. The runner's speed decrease raised the train's speed
+for every "ODO speed decrease" step whose V_Perm exceeded the current
+speed: 24 sequences moved once it was fixed and a defect of ours came
+to light behind it. The matrix: clauses left 97 (todo 2, partial 95),
+3.11.6.3.1 done and 3.20.1.2 still partial. Open items:
+doc/BACKLOG.csv (53 open after this round; 6 added, 9 closed). Next:
+B510's history scenario (the level 0 order after a level 1 MA, then
+the two-balise group) with 4080500_01 and 5100200_05; B017's remainder
+(4080100_06 SV21, 4100103_15 SV21 / SV22, the triage split); B1821
+(packet 71 by radio in level 1) with B1822; the row 3.18.6.1 re-read;
+B1721 and record 41; B1840; then the Gamma model (B100), NL.
