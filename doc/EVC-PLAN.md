@@ -11522,3 +11522,79 @@ the two-balise group) with 4080500_01 and 5100200_05; B017's remainder
 (4080100_06 SV21, 4100103_15 SV21 / SV22, the triage split); B1821
 (packet 71 by radio in level 1) with B1822; the row 3.18.6.1 re-read;
 B1721 and record 41; B1840; then the Gamma model (B100), NL.
+
+### The Gamma braking model as installation data: the format version 2 of the configuration image, the Train Data of a Gamma train, the supervision on a hand-computed curve (e6/gamma-config) (2026-10-24)
+
+Premises checked: the Gamma arithmetic exists and is fed by the EFS
+frames (`EVC_Braking.Rst_Factor`, `Build_Braking_Models`,
+`Build_Braking_Times`, `Build_Normal_Service`; `evc_efs_test` fills
+`Extra.Train`); the data path was missing: `Fixed_Train_T.Model` was
+Lambda only, `EVC_Mission.Train_Data_Of` gave empty curves, the
+snapshot's `Extra.Train` was the defaults (`Build_Train`).
+
+**The image, format version 2** (`EVC_Config`, layout in
+`evc_config.ads`): bytes 0 to 31 as version 1 (version 2, the length
+L); 32 the braking model (0 lambda, 1 gamma); 33 the special brakes the
+vehicle has (bits regenerative, eddy current, magnetic shoe, Ep); a
+lambda train ends there (CRC at 34, L = 38). A gamma train continues
+field after field: the reaction and equivalent build up times of the
+emergency and the service brake (u16 ms, 0 to 60 s), A_brake_emergency
+(1 to 8 steps), A_brake_service (1 to 8), A_brake_normal_service (0 to
+8), Kdry_rst for M_NVEBCL 0 to 9 and Kwet_rst (8 u16 thousandths each,
+one per step of A_brake_emergency, 0 to 2.000), Kn+ and Kn- (0 to 8),
+M_rotating_nom (0 to 100 %), a byte for the normal service sets (then
+A_SB01, A_SB12 and the three models in G, then in P), a byte for the
+models by combination (then 8 emergency and 8 service curves for the
+combinations of regenerative, eddy current and magnetic shoe brake, 16
+pairs of times for the emergency and 16 for the service brake by the
+four brakes, Table 4), the CRC-32 at L - 4. A step function is a count
+byte and (u16 speed cm/s, u16 deceleration mm/s²) pairs, the speeds
+strictly rising. L runs from 38 to 1248 (`Max_Image_Length`, every
+curve at 8 steps with the sets and the combinations). Decisions: the
+version decides the length (version 1 stays 36 bytes and accepted); a
+value or count out of range is `Bad_Field`, fields that end before or
+run past the CRC `Bad_Length`; the gamma train is package state of
+`EVC_Config` (`Gamma_T`), not a part of `Config_T`, because `Current`
+returns `Config_T` by value at many places (2.5 KB more each); it is
+read in place by `Gamma_Models (D)` and `Gamma_Extra (X)`.
+`Encode_V2` writes the image (the bench's tool next round); the
+decoder is `Get`, `Get_Curve`, `Get_Factors`, `Get_Normal_Service`,
+`Get_Combinations`, `Get_Gamma` under `Decoded` (`Get_Train`), the
+gamma state is filled at `Load` (`Load_Gamma`).
+
+**The Train Data of a Gamma train**: `EVC_Mission.Train_Data_Of` takes
+the installation's models when `Fixed_Train_T.Model` is Gamma; the
+snapshot's `Extra.Train` is the installation's
+(`EVC_Stored_Information.Build_Train`, `EVC_Config.State` added to its
+Global, its caller `Build` had it). Decision: the brake percentage a
+gamma train's driver enters (the DMI's Train Data window has the field
+whatever the model, DMI 11.3.9.9.1) is checked and kept for the data
+view and the JRU; no model is derived from it (3.13.2.2.5.1;
+`EVC_Braking.Conversion_Applicable` is Lambda only).
+
+Scenarios: `EVC_Test_Config.Scenario_Config_Image_V2` (called from
+`Scenario_Config_Image`: a lambda train of 38 bytes, a gamma train of
+258 bytes round-tripped through `EVC_Core.Configure`, the longest image
+of 1248 bytes with the sets and the combinations, the ranges, the
+length, truncation, the CRC, version 3 refused) and
+`Config_Gamma_Train` (called from `Scenario_Config_Core`: the gamma
+image in No Power, the driver's Train Data in SB, the Train Data with
+the installation's models, 135 % kept, the snapshot's `Extra.Train`).
+Rows: 3.18.3.2 c), its 4th and 5th bullets done; the notes of
+3.13.2.2.3.1.1, .2, .4, .7, .9, .10, 3.13.2.2.3.2.2, .5, .8,
+3.13.2.2.9.1.1, .3, .5, 3.13.2.2.9.2.1 and 3.13.2.2.10.1 name the
+decoder. The runner is unchanged (the bench loads no version 2 image).
+
+Left: item 3, the scenario `Scenario_SDM_Gamma` in
+`EVC_Test_Supervision` (a gamma train of one or two steps from the
+image, Kdry and Kwet below 1, M_NVEBCL and M_NVAVADH set, flat, the
+EBD's foot and the EBI at one speed by hand, 3.13.6.2.1.4, 3.13.8.3,
+3.13.9.3.2), not started at the bound; B1880 (the SM default Train
+Data of a gamma installation without models, `EVC_Train_Data`); B1881
+(`test/tools/evc_config.py` knows version 1 only). The runner's half
+of B100: `S076_Bench` builds the image with `EVC_Config.Encode_V2` from
+the workbook's "Brake parameters (gamma)" sheet (the curves of
+A_brake_emergency and A_brake_service by combination, their times, the
+Kdry_rst / Kwet_rst rows, Kn, M_rotating_nom, the normal service sets
+when given), offers it at the power-up, and `S076_Run` judges the
+Gamma curve steps instead of blocking them.

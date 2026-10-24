@@ -225,6 +225,7 @@ is
                             D  : out Train_Data_T;
                             Cs : out EVC_Train_Data.Categories_T;
                             OK : out Boolean)
+     with Global => (Input => EVC_Config.State)
    is
       Def : constant EVC_Train_Data.Categories_T :=
         EVC_Train_Data.Default_Categories;
@@ -267,6 +268,16 @@ is
          Has_Magnetic_Shoe     => F.Has_Magnetic_Shoe,
          Has_Electro_Pneumatic => F.Has_Electro_Pneumatic,
          T_Traction_Cut_Off    => F.T_Traction_Cut_Off);
+      --  a gamma train: the braking models of the installation (3.18.3.2
+      --  c), 3.18.3.2.1). Decision: the brake percentage the driver
+      --  enters (the DMI's Train Data window has the field whatever the
+      --  model, DMI 11.3.9.9.1) is checked in its range and kept for the
+      --  data view and the juridical records, but no model is derived
+      --  from it: 3.13.2.2.5.1 derives one only with the conversion model,
+      --  which EVC_Braking.Conversion_Applicable takes for Lambda only
+      if F.Model = Gamma then
+         EVC_Config.Gamma_Models (D);
+      end if;
       Cs :=
         (Cant_Deficiency =>
            (if E.Cant_Deficiency = 16#FF# then Def.Cant_Deficiency

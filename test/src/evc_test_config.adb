@@ -8,6 +8,7 @@ with EVC_Bytes;
 with EVC_Config;
 with EVC_Core;
 with EVC_Curves;
+with EVC_DMI_Port;
 with EVC_Distances;
 with EVC_Fixed;
 with EVC_Modes;
@@ -18,6 +19,8 @@ with EVC_Profile;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
+with EVC_Test_Modes;
+with EVC_Train_Data;
 with Interfaces;
 
 package body EVC_Test_Config is
@@ -487,6 +490,50 @@ package body EVC_Test_Config is
       return R;
    end JRU_Last_Of;
 
+   --  A gamma image loaded in No Power, then the driver's Train Data in
+   --  Stand By (DMI Table 40: 200 m, 135 %, 160 km/h): the Train Data of
+   --  a gamma train with the installation's models, the brake percentage
+   --  kept but no model from it, the snapshot's Extra.Train the
+   --  installation's (3.18.3.2 c) and its 4th and 5th bullets)
+   procedure Config_Gamma_Train is
+      C : CFG.Config_T := CFG.Default;
+      G : constant CFG.Gamma_T := Gamma_Sample (True, False);
+      Img : CFG.Max_Image_T;
+      L : Natural;
+   begin
+      C.Train.Model := SIn.Gamma;
+      CFG.Encode_V2 (C, G, Img, L);
+      EVC_Core.Initialise;
+      EVC_Core.Configure (Img (1 .. L));
+      EVC_Test_Modes.Start_E4;
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                         (0, 4, 49, 50, 51, 52)));
+      Stand_X (100);
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                         Byte_Array'(1 => 2) & U16 (200) & U16 (135)
+                         & U16 (160) & Byte_Array'(1 => 2) & U16 (4)
+                         & Byte_Array'(0, 0, 1)));
+      Stand_X (200);
+      declare
+         D : constant SIn.Train_Data_T := EVC_Train_Data.Data;
+      begin
+         Check (EVC_Train_Data.Valid and then D.Model = SIn.Gamma
+                and then D.Brake_Percentage = 135
+                and then D.A_Brake_Emergency = G.A_Brake_Emergency
+                and then D.A_Brake_Service = G.A_Brake_Service
+                and then D.T_Brake_Emergency = G.T_Brake_Emergency
+                and then not EVC_Braking.Conversion_Applicable (D),
+                "configure: a gamma train's Train Data, the models of the "
+                & "installation, 135 % kept but no conversion model "
+                & "(3.18.3.2 c), 3.13.2.2.5.1)");
+      end;
+      Check (SI.Current.Train_Data.Model = SIn.Gamma
+             and then SI.Current.Extra.Train = G.Extra,
+             "configure: the snapshot's Extra.Train is the installation's: "
+             & "Kdry, Kwet, Kn, the normal service sets, M_rotating_nom "
+             & "(3.18.3.2 c) 4th and 5th bullets)");
+   end Config_Gamma_Train;
+
    --  EVC_Core.Configure: accepted in No Power, kept over a power-up,
    --  refused in service or when invalid (the previous one stays), the
    --  JRU records
@@ -561,6 +608,8 @@ package body EVC_Test_Config is
                         = 2 * 65_536 + 1 * 256 + Natural'Min (Rej + 3, 255),
              "configure: JRU event 33, the last outcome (truncated) and "
              & "the refusals");
+
+      Config_Gamma_Train;
 
       --  back to the default, for what follows
       EVC_Core.Initialise;
