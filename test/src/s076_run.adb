@@ -17,6 +17,7 @@ with DMI_Conditions;
 with DMI_Core;
 with DMI_Data_Entry;
 with DMI_Protocol;
+with DMI_Radio_Data;
 with DMI_System_Status;
 with DMI_Observe;
 with DMI_Windows;             use DMI_Windows;
@@ -723,6 +724,62 @@ package body S076_Run is
       end;
       return Pass ("DMI " & Name);
    end Press_Menu;
+
+   --  The GSM-R network the driver selected last: the digits of NID_MN
+   --  (SUBSET-026 7.5.1.91.1) as the record 48 carries them, BCD left
+   --  adjusted and filled with F (SUBSET-027 4.2.4.48); -1 before
+   Selected_MN : Integer := -1;
+
+   --  DMI 11.3.4, Table 49 S3-2-3: the driver selects a network of the
+   --  list the on-board sent, a key of the window's dedicated keyboard
+   --  then its [Enter]: the one the step's comment names ("NID_MN=654321h"),
+   --  else the first; the window comes when the list has come
+   function Select_Network (St : Step_T) return Judgement_T is
+      C     : constant String := Image (St.Comment);
+      At_MN : constant Natural := Ada.Strings.Fixed.Index (C, "NID_MN=");
+      Named : String (1 .. 6) := (others => ' ');
+      N     : Natural := 0;
+      MN    : Natural := 0;
+   begin
+      for I in 1 .. 10 loop
+         exit when Top_Is (W_GSMR_Network);
+         B.Cycle;
+      end loop;
+      if not Top_Is (W_GSMR_Network) then
+         return Fail ("DMI select GSM-R network: the window is not open, "
+                      & "top is " & Top_Image);
+      end if;
+      if At_MN > 0 then
+         for K in At_MN + 7 .. C'Last loop
+            exit when C (K) not in '0' .. '9' or else N = Named'Last;
+            N := N + 1;
+            Named (N) := C (K);
+         end loop;
+      end if;
+      for I in 1 .. DMI_Radio_Data.Network_Count loop
+         declare
+            L : constant DMI_Radio_Data.Name_T := DMI_Radio_Data.Networks (I);
+            S : String (1 .. L.Length);
+         begin
+            for K in S'Range loop
+               S (K) := Character'Val (Wide_Character'Pos (L.Text (K)) mod 256);
+            end loop;
+            if N = 0 or else S = Named (1 .. N) then
+               for K in 1 .. 6 loop
+                  MN := MN * 16 + (if K <= S'Last and then S (K) in '0' .. '9'
+                                   then Character'Pos (S (K)) - 48 else 15);
+               end loop;
+               Key (I);
+               Enter_Single;
+               Selected_MN := MN;
+               return Pass ("DMI GSM-R network " & S & " selected");
+            end if;
+         end;
+      end loop;
+      return NJ (R_Radio, "DMI select GSM-R network " & Named (1 .. N)
+                 & ": not in the on-board's list of"
+                 & DMI_Radio_Data.Network_Count'Image);
+   end Select_Network;
 
    --  The driver's Virtual Balise Covers (DMI 11.3.12, 11.3.13): the
    --  set codes entered in the sequence so far and the last one
@@ -1679,6 +1736,20 @@ package body S076_Run is
             return Pass ("DMI Radio data window open");
          end if;
          return Press_Menu (W_Main, 10, "Radio data");
+      elsif Same (Item, "GSM-R-network-ID") and then Same (Verb, "press")
+      then
+         --  DMI 11.2.5.5, Table 49 S3-2-1: 'GSM-R network ID' of the Radio
+         --  data window; the on-board answers with its list of networks
+         return Press_Menu (W_Radio_Data, 6, "GSM-R network ID");
+      elsif Same (Item, "GSM-R-network-ID")
+        and then (Same (Verb, "select") or else Same (Verb, "modify"))
+      then
+         --  "modifies the GSM-R network ID" in its window: a selection
+         return Select_Network (St);
+      elsif Same (Item, "Radio-network-type") and then Same (Verb, "press")
+      then
+         --  DMI 11.3.15: 'Radio network type' of the Radio data window
+         return Press_Menu (W_Radio_Data, 5, "Radio network type");
       elsif Has (Item, "RBC") or else Has (Item, "Radio")
         or else Has (Item, "GSM-R")
       then
@@ -4792,6 +4863,15 @@ package body S076_Run is
                            if V >= 0 and then V /= Got then
                               return False;
                            end if;
+                           --  NID_MN without a value: the network the
+                           --  driver selected (Select_Network)
+                           if Id = 48 and then Same (Wd, "NID_MN")
+                             and then Selected_MN >= 0
+                             and then R.B2 * 65_536 + R.B3 * 256 + R.B4
+                                      /= Selected_MN
+                           then
+                              return False;
+                           end if;
                         end;
                      end loop;
                      return True;
@@ -4858,6 +4938,8 @@ package body S076_Run is
                           and then not Same (Name, "M_LEVEL")
                           and then not Same (Name, "DRIVER_ID")
                           and then Record_Field (Id, Name).Byte = 0
+                          and then not (Id = 48 and then Same (Name, "NID_MN")
+                                        and then Selected_MN >= 0)
                           and then not (Eq > 0 and then Eq < Wd'Last
                                         and then Wd (Eq + 1) not in '0' .. '9')
                         then
@@ -6503,6 +6585,7 @@ package body S076_Run is
       Controller_Due := False;
       VBC_Entries := 0;
       VBC_Last := 0;
+      Selected_MN := -1;
       Explicit_Speed := -1;
       Wait_Used := 0;
       RBC_Stamp := 0;
