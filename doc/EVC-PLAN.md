@@ -11281,3 +11281,38 @@ DMI) with B1760 (the Train Data and network ID for the data view);
 B440 and B473 (Entering FS at a level transition, Acknowledge LS after
 an unsuitability); B1720 (record 27) and B1721; B481's record 48 with
 the network ID entry; then the Gamma model (B100), NL.
+
+### The driver's indications, three traces: Entering FS at a level transition, Acknowledge LS after an unsuitability, a level announcement shown (e6/display-traces) (2026-10-24)
+
+All three traced to their cause; none was the on-board's, no code changed.
+
+- B440 dropped, S010e5048 s076: case 4060300 19 removes Entering FS at
+  its step 12 after its step 10, the min safe rear end reaching the
+  level border (3150800_05 54-56 passes the three steps). 3131050_13
+  drops steps 10 and 11 and joins case 3131050 8, the EB at the EOA:
+  BG1d gives an 80 m MA with SSP and gradient from the group and the
+  train is 200 m long, so the rear never passes the group and 4.4.9.1.4
+  keeps the message (`EVC_Stored_Information.Train_Covered`, min safe
+  rear end to estimated front end, right).
+- B473 dropped, S82794294 model, B1820 (runner): step 57 of 4100103_43,
+  "ODO speed decrease V_TRAIN<=V_PERMITTED", sets V_Perm - 2 = 148 km/h
+  on a train at 50 km/h; it overspeeds the curve to the unsuitability's
+  temporary EOA at 900 m (3.12.2.4), the EB trips it and it reaches the
+  LS acknowledgement area at 140 km/h. Measured, not committed: a
+  decrease that never raises the speed (`S076_Run.ODO_Input`, the min
+  of V_Perm - 2 and the current speed) gives 9 improvements, 0
+  regressions (4100103_39 passes in SV22 and SV30, 4100103_43 65 -> 114
+  in the curves family S4ed4d50c, 4100103_17 blocked 72 -> failed 79,
+  3060400_02 SV30 53 -> 59).
+- B581 done, Sb12d0fcd s076: case 5100100 5 (an announcement of the
+  level operated, which 5.10.1.3 does not show) has no group at step 48
+  of 3131050_23, the runner reuses BG1d, whose packet 41 announces level
+  2 (M_LEVELTR 3) to a train in level 1: a change of level, shown at
+  once by 5.10.1.3. 5100200_08 passes the case with its own group. Of
+  B581's three sequences 5040300_03 passes and 5170200_03 is s076.
+- The nine sequences' next failures: 3131050_13 none after step 53;
+  3131050_23 blocked at 56 (Gamma model); 4100103_43 at 114 (curves,
+  once B1820 is taken).
+- Runner 1107 / 1073 / 1010 before and after (triage only).
+
+Left: B1820 (the runner's speed decrease) for the bench package.
