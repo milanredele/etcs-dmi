@@ -1977,6 +1977,23 @@ is
       end loop;
    end Take_Radio_SH_List;
 
+   --  4.8.3, From RBC: a packet of a radio message on a row R [2]
+   --  rejected outside level 2 (EVC_Radio_Acceptance.Packet_Filter);
+   --  Order: a level transition order in the same message
+   function Radio_Rejected (P     : ETCS_Catalogue.Packet_Kind_T;
+                            A     : EVC_Acceptance.Context_T;
+                            Order : Boolean) return Boolean
+   is (EVC_Radio_Acceptance."="
+         (EVC_Radio_Acceptance.Packet_Filter
+            (P, A.Level_Valid, A.Level,
+             L2_Announced     =>
+               EVC_Levels.Announced
+               and then EVC_Modes."=" (EVC_Levels.Announced_Level,
+                                       EVC_Modes.L2),
+             Order_In_Message => Order),
+          EVC_Radio_Acceptance.Rejected))
+     with Global => EVC_Levels.State;
+
    --  @req 3.8.5.1, 3.10.2.4, 4.8.2.1 c)
    procedure Take_Radio (I      : EVC_Radio_Info.Index_T;
                          T      : Origin_Table_T;
@@ -2059,17 +2076,7 @@ is
                              and then EVC_Modes."="
                                         (EVC_Levels.Announced_Level,
                                          EVC_Modes.L2));
-                  elsif EVC_Radio_Acceptance."="
-                          (EVC_Radio_Acceptance.Packet_Filter
-                             (E.Kind, A.Level_Valid, A.Level,
-                              L2_Announced     =>
-                                EVC_Levels.Announced
-                                and then EVC_Modes."="
-                                           (EVC_Levels.Announced_Level,
-                                            EVC_Modes.L2),
-                              Order_In_Message => Order),
-                           EVC_Radio_Acceptance.Rejected)
-                  then
+                  elsif Radio_Rejected (E.Kind, A, Order) then
                      --  4.8.3, From RBC: R [2] outside level 2 (a message
                      --  24 taken for its other packets; one with packet
                      --  51 or 52 kept whole for level 2 by
