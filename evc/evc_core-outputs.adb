@@ -593,28 +593,68 @@ is
    end Send_RBC_Contact;
 
    procedure Send_Stored_Values is
-      use type EVC_Driver_Requests.Text_T;
       ID    : constant EVC_Driver_Requests.Text_T := EVC_Mission.Driver_ID;
       TRN   : constant EVC_Driver_Requests.Text_T := EVC_Mission.TRN;
+      Net   : constant EVC_Radio.Network_T := EVC_Radio.Network;
       Frame : Stored_Values_Frame_T;
       ID_B  : Stored_Text_T;
       TRN_B : Stored_Text_T;
+      Net_B : Stored_Text_T := (others => 0);
+      Net_N : Natural range 0 .. Network_Name_Max := 0;
+      Train : Stored_Train_T;
+      Digit : Unsigned_32;
    begin
-      if not Stored_Sent or else ID /= ID_Sent or else TRN /= TRN_Sent then
-         for I in Stored_Text_T'Range loop
-            ID_B (I) := ID.Chars (I);
-            TRN_B (I) := TRN.Chars (I);
+      for I in Stored_Text_T'Range loop
+         ID_B (I) := ID.Chars (I);
+         TRN_B (I) := TRN.Chars (I);
+      end loop;
+      if EVC_Train_Data.Valid then
+         declare
+            C : constant EVC_Train_Data.Categories_T :=
+              EVC_Train_Data.Categories;
+         begin
+            Train :=
+              (Valid         => True,
+               Length_M      => Unsigned_16
+                 (EVC_Distances.Length_T'Min
+                    (EVC_Train_Data.Data.Length / 100, 16#FFFF#)),
+               Brake_Pct     =>
+                 Unsigned_16 (EVC_Train_Data.Data.Brake_Percentage),
+               Max_Speed_Kmh => Unsigned_16
+                 ((Natural (EVC_Train_Data.Data.Max_Speed) * 36 + 500)
+                  / 1000),
+               Cant          => Byte (C.Cant_Deficiency),
+               Other         => Unsigned_16 (C.Other),
+               Axle_Load     => Byte (C.Axle_Load),
+               Airtight      => Byte (C.Airtight),
+               Gauge         => Byte (C.Loading_Gauge));
+         end;
+      end if;
+      --  the name of the network as the list of 3.18.4.3.6.2 gives it
+      --  (EVC_DMI_Port.Networks_Frame): its digits up to the first
+      --  nibble that is not one
+      if Net.Known then
+         for D in reverse 0 .. Network_Name_Max - 1 loop
+            pragma Loop_Invariant (Net_N <= Network_Name_Max - 1 - D);
+            Digit := Shift_Right (Unsigned_32 (Net.NID_MN), 4 * D) and 16#F#;
+            exit when Digit > 9;
+            Net_N := Net_N + 1;
+            Net_B (Net_N) := Byte (Digit) + Character'Pos ('0');
          end loop;
-         Stored_Values_Frame
-           (ID_Length  => ID.Length,
-            ID         => ID_B,
-            TRN_Length => TRN.Length,
-            TRN        => TRN_B,
-            Frame      => Frame);
+      end if;
+      Stored_Values_Frame
+        (ID_Length  => ID.Length,
+         ID         => ID_B,
+         TRN_Length => TRN.Length,
+         TRN        => TRN_B,
+         Train      => Train,
+         Net_Length => Net_N,
+         Net        => Net_B,
+         Frame      => Frame);
+      if not Stored_Sent or else Frame /= Values_Sent then
          EVC_Outbox.Put (DMI, Frame);
          Stored_Sent := True;
-         ID_Sent := ID;
-         TRN_Sent := TRN;
+         Values_Sent := Frame;
       end if;
    end Send_Stored_Values;
 

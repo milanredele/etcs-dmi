@@ -106,6 +106,10 @@ package body DMI_Test_System_Status is
       Check (not SS_Active (SS.SS_Trackside_Malfunction),
              "Trackside malfunction ends after 30 s");
       Check_Frame ("ss_timer_ended");
+      -- the end is the DMI's own: reported to the EVC (SUBSET-027
+      -- 4.2.4.23 follows it)
+      Expect_Status_Ended (Natural (SS.SS_Trackside_Malfunction), 1,
+                           "the DMI reports the end of its 30 s");
 
       -- 15.1.1.7: a second start while displayed gives one instance that
       -- lasts until the later end; no second Sinfo
@@ -121,6 +125,8 @@ package body DMI_Test_System_Status is
       Step;
       Check (not SS_Active (SS.SS_Trackside_Malfunction),
              "the message ends with the second instance");
+      Expect_Status_Ended (Natural (SS.SS_Trackside_Malfunction), 1,
+                           "one report for the two instances");
 
       -- "30 s once 3.14.1.6 is fulfilled" (Balise read error, brake)
       Send_System_Status (SS.SS_Balise_Read_Error_Brake, 0);
@@ -135,6 +141,8 @@ package body DMI_Test_System_Status is
       Step;
       Check (not SS_Active (SS.SS_Balise_Read_Error_Brake),
              "Balise read error ends 30 s after 3.14.1.6, not restarted");
+      Expect_Status_Ended (Natural (SS.SS_Balise_Read_Error_Brake), 1,
+                           "the DMI reports the end 30 s after the event");
       -- 15.1.1.6: the brake command reason revoked ends it at once
       Send_System_Status (SS.SS_Balise_Read_Error_Brake, 0);
       Step;
@@ -161,6 +169,10 @@ package body DMI_Test_System_Status is
       Send_System_Status (SS.SS_Communication_Error_Brake, 1);
       Check (not SS_Active (SS.SS_Communication_Error_Brake),
              "3.14.1.7 after 30 s ends Communication error");
+      -- the ends of the EVC's event 1, at once or 30 s after the start,
+      -- are not reported back
+      Expect_Status_Ended (Natural (SS.SS_Communication_Error_Brake), 0,
+                           "no report of the ends the EVC sent");
 
       -- "30 s from the time a train movement is detected"
       Send_System_Status (SS.SS_Train_Data_Changed, 0);

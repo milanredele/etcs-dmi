@@ -288,24 +288,42 @@ package DMI_Protocol is
    RBC_Contact_Length : constant := 22;
 
    MSG_STORED_VALUES : constant Msg_Type_T := 16#11#;
-   --  The values of the Driver ID and the train running number stored
-   --  on-board (SUBSET-026 3.18.6.1: the driver can view them outside data
-   --  entry, whoever wrote them: the driver, the RBC for the train running
-   --  number, or the store over No Power), for the DMI's data view (DMI
-   --  10.5). The EVC sends it when either value changes (the
-   --  first cycle included); their status travels in MSG_ONBOARD (data
-   --  bits 0 and 3), not here:
+   --  The values of the Driver ID, the train running number, the Train
+   --  Data and the GSM-R network ID stored on-board (SUBSET-026 3.18.6.1:
+   --  the driver can view them outside data entry, whoever wrote them:
+   --  the driver, the RBC for the train running number, the train
+   --  interface for the Train Data, or the store over No Power), for the
+   --  DMI's data view (DMI 10.5). The EVC sends it when any value changes
+   --  (the first cycle included); their status travels in MSG_ONBOARD
+   --  (data bits 0 to 3, radio bit 5), not here:
    --    driver_id_len u8: 0 .. Stored_Text_Max (0: none stored),
    --    driver_id 16 bytes: Latin-1, left adjusted, padded with 0 bytes,
    --    trn_len u8: 0 .. Stored_Text_Max (0: none stored),
    --    trn 16 bytes: the digits of NID_OPERATIONAL as '0' .. '9', left
-   --      adjusted, padded with 0 bytes.
-   --  Fixed length Stored_Values_Length; a message of any other length or
-   --  a length above Stored_Text_Max drops the message as a whole. Once
-   --  received, these values replace the ones entered on the DMI; before
-   --  the first one the DMI shows its own entries.
+   --      adjusted, padded with 0 bytes,
+   --    train_valid u8: 1 the Train Data below are stored, 0 none (the
+   --      12 bytes are then 0),
+   --    train data 12 bytes: as MSG_DRIVER_DATA kind 2 after its kind
+   --      byte (length u16 m, brake percentage u16, max speed u16 km/h,
+   --      NC_CDTRAIN u8, NC_TRAIN u16, M_AXLELOADCAT u8, M_AIRTIGHT u8,
+   --      M_LOADINGGAUGE u8),
+   --    network_len u8: 0 .. Stored_Text_Max (0: no network stored),
+   --    network 16 bytes: the GSM-R network ID as the list of
+   --      MSG_RADIO_NETWORKS names it (the digits of NID_MN), padded
+   --      with 0 bytes.
+   --  Fixed length Stored_Values_Length; the short form of
+   --  Stored_Values_Short_Length bytes (the Driver ID and the train
+   --  running number alone) is read too. A message of any other length
+   --  or a length above Stored_Text_Max drops the message as a whole.
+   --  Once received, these values replace the ones entered on the DMI;
+   --  before the first one the DMI shows its own entries (the Train Data
+   --  and the network: before the first long form).
    Stored_Text_Max      : constant := 16;
-   Stored_Values_Length : constant := 2 + 2 * Stored_Text_Max;
+   Stored_Train_Length  : constant := 12;
+   Stored_Values_Short_Length : constant := 2 + 2 * Stored_Text_Max;
+   Stored_Values_Length : constant :=
+     Stored_Values_Short_Length + 1 + Stored_Train_Length
+     + 1 + Stored_Text_Max;
 
    MSG_ATO : constant Msg_Type_T := 16#0B#;
    --  The information of the ERTMS/ATO on-board (DMI 8.5) as the EVC
@@ -707,6 +725,19 @@ package DMI_Protocol is
    Driver_Data_VBC_Length   : constant := 5;
    Driver_Data_Language_Length : constant := 3;
    RBC_Phone_Max            : constant := 16;
+
+   MSG_STATUS_ENDED : constant Msg_Type_T := 16#42#;
+   --  The DMI ended a system status message of MSG_SYSTEM_STATUS by
+   --  itself (DMI 15.1.1.2, 15.1.1.5 Table 68): its 30 s timers counted
+   --  from the start or from the event 2, a change to a mode where the
+   --  message is not displayed, a button of the Main window. One frame
+   --  per entry ended, so that the on-board's view of the messages
+   --  displayed (SUBSET-027 4.2.4.23) follows. Not sent for the ends
+   --  the on-board knows already: its own event 1 (with the 30 s after
+   --  it) and the driver's acknowledgement (MSG_DRIVER_ACTION 2).
+   --    entry u8: the catalogue entry number (SS_*)
+   --  Status_Ended_Length bytes; a receiver ignores any other length
+   Status_Ended_Length : constant := 1;
 
    -- DMI -> UI
    MSG_FRAME : constant Msg_Type_T := 16#60#;

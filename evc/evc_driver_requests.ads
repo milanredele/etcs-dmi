@@ -249,6 +249,18 @@ is
    function Text_Acknowledged (Id : Unsigned_16) return Boolean
      with Global => State;
 
+   --  The system status messages the DMI ended by itself in the cycle
+   --  (MSG_STATUS_ENDED: its 30 s timers, a mode change, a button of the
+   --  Main window), their catalogue entries in their order; more than
+   --  Max_Status_Ends in one cycle are dropped
+   Max_Status_Ends : constant := 16;
+   function Status_End_Count return Natural
+     with Global => State,
+          Post => Status_End_Count'Result <= Max_Status_Ends;
+   function Status_End (I : Positive) return Byte
+     with Global => State,
+          Pre => I <= Status_End_Count;
+
    --  Operations
 
    --  Power-up: nothing latched, nothing taken
@@ -261,7 +273,8 @@ is
                   and then Text_Ack_Count = 0;
 
    --  One frame of the DMI port (any frame: what is not a well formed
-   --  MSG_DRIVER_ACTION or MSG_DRIVER_DATA changes nothing), latched for
+   --  MSG_DRIVER_ACTION, MSG_DRIVER_DATA or MSG_STATUS_ENDED changes
+   --  nothing), latched for
    --  the next Take
    procedure Receive (Frame : Byte_Array)
      with Global => (In_Out => State),

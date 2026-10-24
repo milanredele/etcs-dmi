@@ -48,6 +48,20 @@ package DMI_Driver_Data is
    Onboard_Values_Known : Boolean := False;
    Onboard_Driver_ID    : Text_Value_T;
    Onboard_TRN          : Text_Value_T;
+   --  ... and the Train Data and the GSM-R network ID, when the message
+   --  carries them (its long form): the three numbers as the values,
+   --  the four choices as positions in the lists of DMI_Train_Data (0: no
+   --  such choice), the network as its name in the list of the on-board
+   Onboard_Long_Known   : Boolean := False;
+   Onboard_Train_Valid  : Boolean := False;
+   Onboard_Length       : Natural := 0;
+   Onboard_Brake_Pct    : Natural := 0;
+   Onboard_Max_Speed    : Natural := 0;
+   Onboard_Category     : Natural := 0;
+   Onboard_Axle_Load    : Natural := 0;
+   Onboard_Airtight     : Natural := 0;
+   Onboard_Gauge        : Natural := 0;
+   Onboard_Network      : Text_Value_T;
 
    procedure Reset;
 

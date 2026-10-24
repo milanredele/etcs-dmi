@@ -64,6 +64,12 @@ package DMI_System_Status is
    -- this catalogue that are displayed take its texts (15.1.1.4.2)
    procedure Language_Changed;
 
+   -- An entry the DMI ended by itself (its 30 s timers, a mode change,
+   -- a button of the Main window) and not yet reported, taken: Number is
+   -- its catalogue entry, 0 when none is left (DMI_Core sends one
+   -- MSG_STATUS_ENDED per entry)
+   procedure Take_Ended (Number : out Natural);
+
    -- Test and diagnosis: the entry is displayed (started, not ended)
    function Active (Number : Entry_T) return Boolean;
 

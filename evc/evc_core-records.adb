@@ -205,6 +205,11 @@ is
          end;
       end loop;
       EVC_Outbox.Clear_Status;
+      --  the ends the DMI owns alone, reported by it (MSG_STATUS_ENDED)
+      for I in 1 .. DR.Status_End_Count loop
+         pragma Loop_Invariant (True);
+         EVC_JRU_Records.System_Status (DR.Status_End (I), 1, Changed);
+      end loop;
       if DR.Acknowledged (SS)
         and then DR.Ack_Id (SS) in 16#8000# .. 16#80FF#
       then

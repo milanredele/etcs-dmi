@@ -162,9 +162,10 @@ is
          when others  => 0);
 
    --  decision: the on-board sees the starts and the ends it sends
-   --  (EVC_DMI_Port MSG_SYSTEM_STATUS) and the driver's acknowledgements;
+   --  (EVC_DMI_Port MSG_SYSTEM_STATUS), the driver's acknowledgements and
    --  the ends the DMI owns alone (its 30 s timers, the mode changes of
-   --  its 15.1.1.2 and 15.1.1.6, the Main window's buttons) are not seen
+   --  its 15.1.1.2, the Main window's buttons), which it reports by
+   --  MSG_STATUS_ENDED (EVC_Driver_Requests.Status_End)
    procedure System_Status (Entry_Number, Event : Byte;
                             Changed : in out Boolean)
      with Refined_Global => (In_Out => Shown)

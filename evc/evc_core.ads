@@ -739,13 +739,11 @@ private
    --  (MSG_SYSTEM_VERSION; 16#FF# none since the start)
    Version_Sent : EVC_Bytes.Byte := 16#FF#
      with Part_Of => State;
-   --  the Driver ID and the train running number sent last to the DMI
-   --  (MSG_STORED_VALUES; none sent since the start while not Stored_Sent)
+   --  the stored values frame sent last to the DMI (MSG_STORED_VALUES;
+   --  none sent since the start while not Stored_Sent)
    Stored_Sent : Boolean := False
      with Part_Of => State;
-   ID_Sent     : EVC_Driver_Requests.Text_T := (others => <>)
-     with Part_Of => State;
-   TRN_Sent    : EVC_Driver_Requests.Text_T := (others => <>)
+   Values_Sent : EVC_DMI_Port.Stored_Values_Frame_T := (others => 0)
      with Part_Of => State;
    --  5.17: the train configuration of the train interface seen last
    --  (EVC_Ports, TIU input 13), whether one was seen since power-up

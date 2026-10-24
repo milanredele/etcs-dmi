@@ -253,6 +253,54 @@ package body DMI_Train_Data is
       end case;
    end Stored_Text;
 
+   procedure Take_Onboard (CD, Other, Axle, Airtight, Gauge : Natural) is
+      use DMI_Driver_Data;
+   begin
+      Onboard_Category := 0;
+      for I in 1 .. Max_Cat loop
+         if Categories (I).CD = CD and then Categories (I).Other = Other then
+            Onboard_Category := I;
+            exit;
+         end if;
+      end loop;
+      Onboard_Axle_Load := 0;
+      for I in 1 .. Max_Axle loop
+         if Axle_Loads (I).Value = Axle then
+            Onboard_Axle_Load := I;
+            exit;
+         end if;
+      end loop;
+      Onboard_Gauge := 0;
+      for I in 1 .. Max_Gauge loop
+         if Gauges (I).Value = Gauge then
+            Onboard_Gauge := I;
+            exit;
+         end if;
+      end loop;
+      Onboard_Airtight := (case Airtight is
+                              when 0      => No_Choice,
+                              when 1      => Yes_Choice,
+                              when others => 0);
+   end Take_Onboard;
+
+   function Onboard_Text (Item : Item_T)
+                          return DMI_Driver_Data.Text_Value_T is
+      use DMI_Driver_Data;
+   begin
+      if not Onboard_Train_Valid then
+         return (others => <>);
+      end if;
+      case Item is
+         when I_Category  => return Category_Text (Onboard_Category);
+         when I_Length    => return Number_Text (Onboard_Length);
+         when I_Brake     => return Number_Text (Onboard_Brake_Pct);
+         when I_Max_Speed => return Number_Text (Onboard_Max_Speed);
+         when I_Axle_Load => return Axle_Text (Onboard_Axle_Load);
+         when I_Airtight  => return Airtight_Text (Onboard_Airtight);
+         when I_Gauge     => return Gauge_Text (Onboard_Gauge);
+      end case;
+   end Onboard_Text;
+
    function Category_CD return Natural is
      (if DMI_Driver_Data.Train_Category in 1 .. Max_Cat
       then Categories (DMI_Driver_Data.Train_Category).CD

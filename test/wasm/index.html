@@ -581,6 +581,7 @@
       const MSG_VBC_LIST = 0x0F;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
+      const MSG_STATUS_ENDED = 0x42;
       const MSG_POINTER = 0x50;
       const MSG_DESK_INPUT = 0x52;
       const MSG_SOUND = 0x61;
@@ -1502,6 +1503,9 @@
             const type = f[0];
             if (type === MSG_SOUND) playSound(f[HEADER_LENGTH]);
             else if (type === MSG_SETTINGS) applySettings(f.subarray(HEADER_LENGTH));
+            // a system status message the DMI ended by itself: the
+            // on-board's juridical view of the messages displayed follows
+            else if (type === MSG_STATUS_ENDED) toEvc.send(f, now);
             else if (type === MSG_DRIVER_ACTION || type === MSG_DRIVER_DATA) {
               if (type === MSG_DRIVER_ACTION) {
                 // an acknowledgement (action 2) also carries the text

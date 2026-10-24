@@ -101,7 +101,8 @@ is
 
    --  SUBSET-027 4.2.4.23, 4.3.1.1: the message 23 when a system status
    --  message appears or disappears, from the events of the cycle's DMI
-   --  frames (EVC_Outbox.Status_Event) and the driver's acknowledgements
+   --  frames (EVC_Outbox.Status_Event), the ends the DMI reports
+   --  (EVC_Driver_Requests.Status_End) and the driver's acknowledgements
    --  of a system status message (16#8000# + its catalogue entry)
    procedure Record_System_Status
      with Global => (Input  => (Clock_Ms, EVC_Driver_Requests.State),
