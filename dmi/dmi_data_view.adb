@@ -176,10 +176,10 @@ package body DMI_Data_View is
    -- 10.5.1.4: the data part displays the value only when its status is
    -- valid. The status of the data stored on-board is the on-board's
    -- (SUBSET-026 3.18, DMI 11.7.1.3) and the EVC reports it
-   -- (DMI_Conditions). The value itself is what the driver entered on
-   -- this DMI, so both are needed: the EVC's "valid" and a value the DMI
-   -- has (*_Entered). After a restart the DMI knows no value and shows
-   -- none, whatever the on-board says.
+   -- (DMI_Conditions). The value itself is the one the on-board stored
+   -- (MSG_STORED_VALUES, SUBSET-026 3.18.6.1) once it sent one, else
+   -- what the driver entered on this DMI, so both are needed: the EVC's
+   -- "valid" and a value the DMI has.
    --
    -- Items: 3 is the train category, 4, 5 and 6 are the length, the
    -- brake percentage and the maximum speed, 7, 8 and 9 the axle load
@@ -222,11 +222,31 @@ package body DMI_Data_View is
          and then DMI_Radio_Data.RBC_Entered
          and then DMI_Radio_Data."=" (DMI_Radio_Data.Last_Choice,
                                       DMI_Radio_Data.Entered));
+
+      -- 3.18.6.1: the Train Data the on-board stored (items 3 to 9)
+      function Onboard_Train (Index : Positive) return Value_T is
+        (if not DMI_Conditions.Train_Data_Valid
+           or else not Onboard_Train_Valid
+         then None
+         else (case Index is
+                  when 4 => Num_Value (Onboard_Length),
+                  when 5 => Num_Value (Onboard_Brake_Pct),
+                  when 6 => Num_Value (Onboard_Max_Speed),
+                  when 3 => Choice_Value (Onboard_Text (I_Category)),
+                  when 7 => Choice_Value (Onboard_Text (I_Axle_Load)),
+                  when 8 => Choice_Value (Onboard_Text (I_Airtight)),
+                  when 9 => Choice_Value (Onboard_Text (I_Gauge)),
+                  when others => None));
    begin
       if Index > Items'Length then
          return (if Index - Items'Length <= VBC_Count
                  then Num_Value (DMI_VBC.Codes (Index - Items'Length))
                  else None);
+      end if;
+      -- the on-board's Train Data once it has sent them (the long form
+      -- of MSG_STORED_VALUES), else the DMI's entries
+      if Index in 3 .. 9 and then Onboard_Long_Known then
+         return Onboard_Train (Index);
       end if;
       case Index is
          when 1 =>
@@ -287,6 +307,15 @@ package body DMI_Data_View is
                   return None;
             end case;
          when 11 =>
+            -- 3.18.6.1: the network the on-board stored, once sent
+            if Onboard_Long_Known then
+               if DMI_Conditions.GSMR_Registered
+                 and then Onboard_Network.Length > 0
+               then
+                  return Choice_Value (Onboard_Network);
+               end if;
+               return None;
+            end if;
             if DMI_Conditions.GSMR_Registered
               and then DMI_Radio_Data.GSMR_Network.Length > 0
             then

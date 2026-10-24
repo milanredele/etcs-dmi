@@ -361,6 +361,38 @@ package body DMI_Test_Windows is
       Send_Raw (16#11#, (1 => 17, 2 .. 34 => 0));
       Check (DMI_Driver_Data.Onboard_Driver_ID.Length = 8,
              "MSG_STORED_VALUES with a length above 16 is dropped");
+      -- the long form: the Train Data in the codes of the entry and the
+      -- GSM-R network ID; a train_valid above 1 drops the message
+      Send_Raw (16#11#, (1 => 8, 2 .. 34 => 0, 35 => 2, 36 .. 64 => 0));
+      Check (not DMI_Driver_Data.Onboard_Long_Known,
+             "MSG_STORED_VALUES with train_valid 2 is dropped");
+      Send_Raw (16#11#, (1 => 8, 2 => 49, 3 => 50, 4 => 51, 5 => 52,
+                         6 => 53, 7 => 54, 8 => 55, 9 => 56, 10 .. 17 => 0,
+                         18 => 4, 19 => 53, 20 => 54, 21 => 55, 22 => 56,
+                         23 .. 34 => 0,
+                         35 => 1, 36 => 200, 37 => 0, 38 => 135, 39 => 0,
+                         40 => 160, 41 => 0, 42 => 2, 43 => 4, 44 => 0,
+                         45 => 0, 46 => 1, 47 => 1,
+                         48 => 6, 49 => 49, 50 => 50, 51 => 51, 52 => 52,
+                         53 => 53, 54 => 54, 55 .. 64 => 0));
+      Check (DMI_Driver_Data.Onboard_Long_Known
+             and then DMI_Driver_Data.Onboard_Train_Valid
+             and then DMI_Driver_Data.Onboard_Length = 200
+             and then DMI_Driver_Data.Onboard_Brake_Pct = 135
+             and then DMI_Driver_Data.Onboard_Max_Speed = 160
+             and then DMI_Driver_Data.Onboard_Category > 0
+             and then DMI_Driver_Data.Onboard_Axle_Load > 0
+             and then DMI_Driver_Data.Onboard_Airtight > 0
+             and then DMI_Driver_Data.Onboard_Gauge > 0
+             and then DMI_Driver_Data.Onboard_Network.Length = 6,
+             "3.18.6.1: MSG_STORED_VALUES long form, the Train Data and "
+             & "the network taken");
+      Check (DMI_Train_Data.Onboard_Text (DMI_Train_Data.I_Category).Length
+               > 0
+             and then DMI_Train_Data.Onboard_Text
+                        (DMI_Train_Data.I_Airtight).Length > 0,
+             "3.18.6.1: the on-board's codes shown as the labels of the "
+             & "entry");
    end Scenario_Data_View;
 
    ---------------------------------------------------------------------

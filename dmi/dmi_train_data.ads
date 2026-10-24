@@ -69,6 +69,16 @@ package DMI_Train_Data is
    --  (Table 45 items 4 to 10); Length 0 when nothing is stored
    function Stored_Text (Item : Item_T) return DMI_Driver_Data.Text_Value_T;
 
+   --  SUBSET-026 3.18.6.1: the on-board's Train Data in the codes of
+   --  chapter 7 (MSG_STORED_VALUES) become the positions of the four
+   --  choices in the lists of Tables 41 and 42 and of the airtight keys
+   --  (DMI_Driver_Data.Onboard_*; 0 when no choice has these codes)
+   procedure Take_Onboard (CD, Other, Axle, Airtight, Gauge : Natural);
+
+   --  The on-board's stored value of an item as text (Length 0: none)
+   function Onboard_Text (Item : Item_T)
+                          return DMI_Driver_Data.Text_Value_T;
+
    --  The stored choices as the ERTMS/ETCS variables of SUBSET-026
    --  chapter 7, for MSG_DRIVER_DATA; Unknown_Value when nothing is
    --  stored

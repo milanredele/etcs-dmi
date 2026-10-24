@@ -11281,3 +11281,37 @@ DMI) with B1760 (the Train Data and network ID for the data view);
 B440 and B473 (Entering FS at a level transition, Acknowledge LS after
 an unsuitability); B1720 (record 27) and B1721; B481's record 48 with
 the network ID entry; then the Gamma model (B100), NL.
+
+### The DMI protocol's rest: the DMI's report of the message ends it owns, the Train Data and network ID for the data view (e6/protocol-rest) (2026-10-24)
+
+- B1700: MSG_STATUS_ENDED 16#42# (DMI to EVC, entry u8), one frame per
+  system status message the DMI ends by itself (its 30 s timers from the
+  start or from event 2, a mode change of DMI 15.1.1.2, a button of the
+  Main window); not for the ends the on-board knows (its event 1, with
+  the 30 s after it, and the acknowledgement). Decision: one message per
+  end carrying the catalogue entry, since `EVC_JRU_Records.System_Status`
+  clears one bit per entry; the DMI's whole set would race with the
+  starts the on-board sent in the same cycle. `DMI_System_Status.Take_Ended`,
+  `DMI_Core.Report_Status_Ends`; `EVC_DMI_Port.Valid_Input_Frame` accepts
+  it, `EVC_Driver_Requests` latches up to 16 per cycle (`Status_End`),
+  `EVC_Core.Records.Record_System_Status` applies them (three lines, an
+  edit outside the package's units) and the existing change detection
+  writes the message 23. The bench page routes the frame; the fuzzer
+  sends it. Runner unchanged (no step judges a DMI-owned end).
+- B1760: MSG_STORED_VALUES grows to 64 bytes: after the 34 of the short
+  form, train_valid u8, the 12 bytes of MSG_DRIVER_DATA kind 2 in the
+  on-board's codes (L_TRAIN m, %, V_MAXTRAIN km/h, NC_CDTRAIN, NC_TRAIN,
+  M_AXLELOADCAT, M_AIRTIGHT, M_LOADINGGAUGE), network_len u8 and 16 bytes
+  (the digits of NID_MN as MSG_RADIO_NETWORKS names it, only when the
+  network is known). The DMI reads both lengths; `DMI_Train_Data.Take_Onboard`
+  maps the codes back to the positions of Tables 41 and 42;
+  `DMI_Data_View.Value_Of` shows the on-board's Train Data and network
+  once a long form came, the DMI's entries before (no DMI golden
+  changed). `EVC_Core.Outputs.Send_Stored_Values` sends the frame when
+  it differs from the last one sent (`EVC_Core.Values_Sent` replaces
+  `ID_Sent` and `TRN_Sent`). Fifteen on-board goldens: the frame 30
+  bytes longer, a frame added at each change of the Train Data; in
+  valid_inputs a JRU record taken one Take later (the 2048-byte take
+  buffer of the test full).
+- Left: the row 3.18.6.1 re-read against the clause (not taken, the
+  bound reached), partial.

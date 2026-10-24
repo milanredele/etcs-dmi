@@ -118,11 +118,14 @@ package body EVC_Test_Core is
       --  3.18.6.1: and the stored values for the DMI's data view, none
       Check (Rec_Count = 11, "power-up: eleven records, got"
              & Img (Rec_Count));
-      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 34
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 64
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6) = 0
-             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 0,
-             "power-up: MSG_STORED_VALUES, no Driver ID and no train "
-             & "running number stored (3.18.6.1)");
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 0
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 40) = 0
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 53) = 0,
+             "power-up: MSG_STORED_VALUES, no Driver ID, no train "
+             & "running number, no Train Data, no GSM-R network ID "
+             & "stored (3.18.6.1)");
       if Rec_Count = 10 then
          Check (Recs (1).Port = DMI and then Recs (2).Port = DMI
                 and then Recs (3).Port = DMI,
@@ -174,6 +177,31 @@ package body EVC_Test_Core is
       Check (EVC_Core.Mode = M_SB and then EVC_Core.Cycle = 5,
              "power-up: SB after 5 cycles");
       Check_Golden ("power_up_cycles_2_5");
+
+      --  3.18.6.1: the Train Data validated on the DMI are stored and
+      --  sent back in MSG_STORED_VALUES, in the codes of the entry
+      EVC_Core.Handle_Input (TIU, (1, 1));
+      EVC_Core.Tick (100);
+      EVC_Core.Handle_Input
+        (DMI, (16#41#, 13, 0, 0, 0, 2, 200, 0, 135, 0, 160, 0, 2, 4, 0,
+               0, 0, 1));
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      EVC_Core.Tick (100);
+      Take;
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 40) = 1
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 41) = 200
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 43) = 135
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 45) = 160
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 47) = 2
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 48) = 4
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 50) = 0
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 51) = 0
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 52) = 1,
+             "3.18.6.1: MSG_STORED_VALUES with the Train Data stored"
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 40)'Image
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 41)'Image
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 47)'Image);
    end Scenario_Power_Up;
 
    --  Malformed payloads on every port are counted and ignored: the

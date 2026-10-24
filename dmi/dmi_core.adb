@@ -1616,16 +1616,29 @@ package body DMI_Core is
       end case;
    end Apply_Desk_Input;
 
-   --  MSG_STORED_VALUES: the Driver ID and the train running number
-   --  stored on-board (SUBSET-026 3.18.6.1) become the values the Data
-   --  view shows (DMI_Driver_Data.Onboard_*). A length above
-   --  Stored_Text_Max drops the message as a whole.
+   --  MSG_STORED_VALUES: the Driver ID, the train running number and,
+   --  in the long form, the Train Data and the GSM-R network ID stored
+   --  on-board (SUBSET-026 3.18.6.1) become the values the Data view
+   --  shows (DMI_Driver_Data.Onboard_*). A length above Stored_Text_Max
+   --  drops the message as a whole.
    procedure Apply_Stored_Values (Payload : Stream_Element_Array) is
       ID_At  : constant Stream_Element_Offset := Payload'First;
       TRN_At : constant Stream_Element_Offset :=
         Payload'First + 1 + Stored_Text_Max;
       ID_Len  : constant Natural := Natural (Payload (ID_At));
       TRN_Len : constant Natural := Natural (Payload (TRN_At));
+      Long    : constant Boolean := Payload'Length = Stored_Values_Length;
+      Train_At : constant Stream_Element_Offset :=
+        TRN_At + 1 + Stored_Text_Max;
+      Net_At  : constant Stream_Element_Offset :=
+        Train_At + 1 + Stored_Train_Length;
+      Net_Len : constant Natural :=
+        (if Long then Natural (Payload (Net_At)) else 0);
+
+      function U8 (I : Stream_Element_Offset) return Natural is
+        (Natural (Payload (Train_At + I)));
+      function U16 (I : Stream_Element_Offset) return Natural is
+        (U8 (I) + 256 * U8 (I + 1));
 
       function Text_At (At_Byte : Stream_Element_Offset; Len : Natural)
                         return DMI_Driver_Data.Text_Value_T is
@@ -1639,12 +1652,26 @@ package body DMI_Core is
          return Result;
       end Text_At;
    begin
-      if ID_Len > Stored_Text_Max or else TRN_Len > Stored_Text_Max then
+      if ID_Len > Stored_Text_Max or else TRN_Len > Stored_Text_Max
+        or else Net_Len > Stored_Text_Max
+        or else (Long and then U8 (0) > 1)
+      then
          return;
       end if;
       DMI_Driver_Data.Onboard_Driver_ID := Text_At (ID_At, ID_Len);
       DMI_Driver_Data.Onboard_TRN := Text_At (TRN_At, TRN_Len);
       DMI_Driver_Data.Onboard_Values_Known := True;
+      if Long then
+         DMI_Driver_Data.Onboard_Long_Known := True;
+         DMI_Driver_Data.Onboard_Train_Valid := U8 (0) = 1;
+         DMI_Driver_Data.Onboard_Length := U16 (1);
+         DMI_Driver_Data.Onboard_Brake_Pct := U16 (3);
+         DMI_Driver_Data.Onboard_Max_Speed := U16 (5);
+         DMI_Train_Data.Take_Onboard
+           (CD => U8 (7), Other => U16 (8), Axle => U8 (10),
+            Airtight => U8 (11), Gauge => U8 (12));
+         DMI_Driver_Data.Onboard_Network := Text_At (Net_At, Net_Len);
+      end if;
    end Apply_Stored_Values;
 
    --  MSG_RBC_CONTACT (B007): the RBC contact information stored
@@ -1780,7 +1807,9 @@ package body DMI_Core is
                Apply_RBC_Contact (Payload);
             end if;
          when MSG_STORED_VALUES =>
-            if Payload'Length = Stored_Values_Length then
+            if Payload'Length = Stored_Values_Length
+              or else Payload'Length = Stored_Values_Short_Length
+            then
                Apply_Stored_Values (Payload);
             end if;
          when MSG_POINTER =>

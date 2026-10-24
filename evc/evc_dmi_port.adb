@@ -345,9 +345,24 @@ is
                                   ID         : Stored_Text_T;
                                   TRN_Length : Natural;
                                   TRN        : Stored_Text_T;
+                                  Train      : Stored_Train_T;
+                                  Net_Length : Natural;
+                                  Net        : Stored_Text_T;
                                   Frame      : out Stored_Values_Frame_T)
    is
-      TRN_At : constant := Header_Length + 2 + Stored_Text_Max;
+      TRN_At   : constant := Header_Length + 2 + Stored_Text_Max;
+      Train_At : constant := TRN_At + 1 + Stored_Text_Max;
+      Net_At   : constant := Train_At + 1 + Stored_Train_Length;
+
+      procedure Put (I : Positive; V : Unsigned_16)
+        with Global => (In_Out => Frame),
+             Pre    => I in Train_At + 1 .. Net_At - 2,
+             Post   => Frame (1) = Frame'Old (1)
+      is
+      begin
+         Frame (I) := Byte (V and 16#FF#);
+         Frame (I + 1) := Byte (Shift_Right (V, 8));
+      end Put;
    begin
       Frame := (1      => MSG_STORED_VALUES,
                 2      => Stored_Values_Length,
@@ -361,6 +376,22 @@ is
       for I in 1 .. TRN_Length loop
          pragma Loop_Invariant (Frame (1) = MSG_STORED_VALUES);
          Frame (TRN_At + I) := TRN (I);
+      end loop;
+      if Train.Valid then
+         Frame (Train_At) := 1;
+         Put (Train_At + 1, Train.Length_M);
+         Put (Train_At + 3, Train.Brake_Pct);
+         Put (Train_At + 5, Train.Max_Speed_Kmh);
+         Frame (Train_At + 7) := Train.Cant;
+         Put (Train_At + 8, Train.Other);
+         Frame (Train_At + 10) := Train.Axle_Load;
+         Frame (Train_At + 11) := Train.Airtight;
+         Frame (Train_At + 12) := Train.Gauge;
+      end if;
+      Frame (Net_At) := Byte (Net_Length);
+      for I in 1 .. Net_Length loop
+         pragma Loop_Invariant (Frame (1) = MSG_STORED_VALUES);
+         Frame (Net_At + I) := Net (I);
       end loop;
    end Stored_Values_Frame;
 

@@ -558,24 +558,47 @@ is
      with Pre  => RBC_Id <= 16_777_214,
           Post => Frame (1) = MSG_RBC_CONTACT;
 
-   --  MSG_STORED_VALUES (common/dmi_protocol.ads): the Driver ID and the
-   --  train running number stored on-board, for the DMI's data view
-   --  (3.18.6.1): driver_id_len u8, 16 bytes, trn_len u8, 16 bytes
+   --  MSG_STORED_VALUES (common/dmi_protocol.ads): the Driver ID, the
+   --  train running number, the Train Data and the GSM-R network ID
+   --  stored on-board, for the DMI's data view (3.18.6.1):
+   --  driver_id_len u8, 16 bytes, trn_len u8, 16 bytes, train_valid u8,
+   --  the 12 bytes of the Train Data as MSG_DRIVER_DATA kind 2 carries
+   --  them, network_len u8, 16 bytes
    MSG_STORED_VALUES    : constant Byte := 16#11#;
    Stored_Text_Max      : constant := 16;
-   Stored_Values_Length : constant := 2 + 2 * Stored_Text_Max;
+   Stored_Train_Length  : constant := 12;
+   Stored_Values_Length : constant :=
+     2 + 2 * Stored_Text_Max + 1 + Stored_Train_Length + 1 + Stored_Text_Max;
    type Stored_Text_T is array (1 .. Stored_Text_Max) of Byte;
    subtype Stored_Values_Frame_T is
      Byte_Array (1 .. Header_Length + Stored_Values_Length);
+   --  The Train Data stored, in the codes of the DMI's entry (L_TRAIN m,
+   --  %, V_MAXTRAIN km/h, NC_CDTRAIN, NC_TRAIN, M_AXLELOADCAT,
+   --  M_AIRTIGHT, M_LOADINGGAUGE); not Valid: none stored
+   type Stored_Train_T is record
+      Valid         : Boolean := False;
+      Length_M      : Unsigned_16 := 0;
+      Brake_Pct     : Unsigned_16 := 0;
+      Max_Speed_Kmh : Unsigned_16 := 0;
+      Cant          : Byte := 16#FF#;
+      Other         : Unsigned_16 := 0;
+      Axle_Load     : Byte := 16#FF#;
+      Airtight      : Byte := 16#FF#;
+      Gauge         : Byte := 16#FF#;
+   end record;
 
    --  @req 3.18.6.1
    procedure Stored_Values_Frame (ID_Length  : Natural;
                                   ID         : Stored_Text_T;
                                   TRN_Length : Natural;
                                   TRN        : Stored_Text_T;
+                                  Train      : Stored_Train_T;
+                                  Net_Length : Natural;
+                                  Net        : Stored_Text_T;
                                   Frame      : out Stored_Values_Frame_T)
      with Pre  => ID_Length <= Stored_Text_Max
-                  and then TRN_Length <= Stored_Text_Max,
+                  and then TRN_Length <= Stored_Text_Max
+                  and then Net_Length <= Stored_Text_Max,
           Post => Frame (1) = MSG_STORED_VALUES;
 
    --  MSG_ONBOARD train bit 4: the "BTM alarm reaction inhibition"
