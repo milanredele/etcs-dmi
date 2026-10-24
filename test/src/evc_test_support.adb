@@ -9,6 +9,7 @@ with ETCS_Track_Packets.P16;
 with ETCS_Track_Packets.P42;
 with ETCS_Train_Packets.P4;
 with EVC_Distances;
+with EVC_Procedures;
 with EVC_Stored_Information;
 with EVC_Track;
 with EVC_Train_Data;
@@ -1761,6 +1762,44 @@ package body EVC_Test_Support is
       D.T_Traction_Cut_Off := 1_000;
       EVC_Train_Data.Set (D, EVC_Train_Data.Default_Categories);
    end Mission_Track;
+
+   procedure LS_Mission_Group (NID         : Natural;
+                               At_M        : Integer_64;
+                               MA_M        : Natural;
+                               V_LOA_Kmh   : Natural;
+                               Speeds      : Profile_List;
+                               LS_From_M   : Natural;
+                               LS_Length_M : Natural;
+                               V_LS_Kmh    : Natural)
+   is
+      MA : T12.Packet_T := MA_Of ((1 => MA_M));
+      LS : T80.Packet_T;
+   begin
+      MA.V_EMA := ETCS_Variables.V_EMA_T (V_LOA_Kmh / 5);
+      MA.T_EMA := 1023;
+      LS.Q_DIR := 1;
+      LS.Q_SCALE := 1;
+      LS.D_MAMODE := ETCS_Variables.D_MAMODE_T (LS_From_M);
+      LS.M_MAMODE := ETCS_Variables.M_MAMODE_Limited_Supervision;
+      LS.V_MAMODE := ETCS_Variables.V_MAMODE_T (V_LS_Kmh / 5);
+      LS.L_MAMODE := ETCS_Variables.L_MAMODE_T (LS_Length_M);
+      LS.L_ACKMAMODE := 100;
+      LS.Q_MAMODE := 0;
+      LS.N_ITER := 0;
+      Add_Group (Group (NID, At_M));
+      Carry (Track_N, 0, MA);
+      Carry (Track_N, 0, LS);
+      Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (MA_M + 500, End_Mark))));
+      Carry (Track_N, 1, SSP (Speeds));
+   end LS_Mission_Group;
+
+   procedure Step_Acknowledged (Step_Cm : Integer_64) is
+   begin
+      if EVC_Procedures.Ack_Requested then
+         Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      end if;
+      Step_X (Step_Cm);
+   end Step_Acknowledged;
 
    ---------------------------------------------------------------------
    --  Phase E5: the RTM port

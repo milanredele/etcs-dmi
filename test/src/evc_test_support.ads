@@ -834,6 +834,25 @@ package EVC_Test_Support is
 
       procedure Mission_Track (Q_NVEMRRLS : Natural := 1);
 
+   --  An LS mission's track (5.19, 4.4.19.1.4): the group NID at At_M
+   --  gives a level 1 MA of MA_M m whose end is an LOA at V_LOA_Kmh
+   --  (V_EMA, no time-out), the SSP Speeds, a flat gradient and a
+   --  Limited Supervision mode profile (packet 80) from LS_From_M m for
+   --  LS_Length_M m at V_LS_Kmh, its acknowledgement area 100 m; no
+   --  generic LS function marker (4.4.19.1.4.7)
+   procedure LS_Mission_Group (NID         : Natural;
+                               At_M        : Integer_64;
+                               MA_M        : Natural;
+                               V_LOA_Kmh   : Natural;
+                               Speeds      : Profile_List;
+                               LS_From_M   : Natural;
+                               LS_Length_M : Natural;
+                               V_LS_Kmh    : Natural);
+
+   --  Step_X with the driver acknowledging a pending request of a mode
+   --  change (MSG_DRIVER_ACTION 2, kind 1) before the step
+   procedure Step_Acknowledged (Step_Cm : Integer_64);
+
    ---------------------------------------------------------------------
    --  Phase E5 (e5/joint): the RTM port in both directions (EVC_Ports),
    --  for the scenarios of the two halves of the radio and the bench

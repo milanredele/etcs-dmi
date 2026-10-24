@@ -487,8 +487,15 @@ package body EVC_Test_JRU is
    --  every change of its value and at its end (1023 "None"); not again
    --  while it holds; at most 600 km/h, the variable's range
    procedure Scenario_JRU_LSSMA is
+      type Seen_T is record
+         V     : Natural := 0;
+         Mode  : Mode_T := M_SB;
+         At_Cm : Integer_64 := 0;
+      end record;
       V       : Natural;
       Changed : Boolean;
+      Count   : Natural := 0;
+      Seen    : array (1 .. 3) of Seen_T;
    begin
       EVC_JRU_Records.Reset;
       EVC_JRU_Records.LSSMA (EVC_JRU_Records.V_LSSMA_None, V, Changed);
@@ -512,6 +519,47 @@ package body EVC_Test_JRU is
       Check (View (Buf (1 .. V)).Event = 144
              and then View (Buf (1 .. V)).B2 = 39 / 4,
              "4.2.4.44: message 44 viewed as event 144, V_LSSMA / 4");
+
+      --  On EVC_Core (5.19, 4.4.19.1.4.7): the start of mission in level
+      --  1, the group 1 at 50 m with an MA of 1500 m ending in an LOA at
+      --  60 km/h, the SSP 100 km/h with 45 km/h from 300 m to 500 m and
+      --  a Limited Supervision area at 80 km/h from 100 m to 900 m: the
+      --  message 44 at the start of the display in LS (45 km/h), when
+      --  the 45 km/h element is passed (the LOA's 60 km/h) and at its
+      --  end, FS beyond the area (1023)
+      EVC_Test_Modes.Mission (4);
+      LS_Mission_Group (1, 50, MA_M => 1500, V_LOA_Kmh => 60,
+                        Speeds => ((0, 100, False), (250, 45, False),
+                                   (200, 100, False),
+                                   (1500, End_Mark, False)),
+                        LS_From_M => 50, LS_Length_M => 800,
+                        V_LS_Kmh => 80);
+      Speed_Cms := 1_000;
+      while Train_Cm < 100_000 loop
+         Step_Acknowledged (1_000);
+         V := JRU_Field (144, 0, 10);
+         if V /= Natural'Last then
+            Count := Count + 1;
+            if Count <= Seen'Last then
+               Seen (Count) := (V, EVC_Core.Mode, Train_Cm);
+            end if;
+         end if;
+      end loop;
+      Check (Count = 3, "4.2.4.44: three messages 44 in the LS mission,"
+             & Count'Image);
+      Check (Seen (1).V = 45 and then Seen (1).Mode = M_LS,
+             "4.2.4.44: at the start of the display in LS, 45 km/h:"
+             & Seen (1).V'Image & " " & Seen (1).Mode'Image & " at"
+             & Seen (1).At_Cm'Image & " cm");
+      --  60 km/h is 1666 cm/s on-board, shown truncated as 59 (B1941)
+      Check (Seen (2).V in 59 .. 60 and then Seen (2).Mode = M_LS,
+             "4.2.4.44: at the change, the LOA's 60 km/h:"
+             & Seen (2).V'Image & " " & Seen (2).Mode'Image & " at"
+             & Seen (2).At_Cm'Image & " cm");
+      Check (Seen (3).V = 1023 and then Seen (3).Mode = M_FS,
+             "4.2.4.44: 1023 at the end of the display, FS:"
+             & Seen (3).V'Image & " " & Seen (3).Mode'Image & " at"
+             & Seen (3).At_Cm'Image & " cm");
    end Scenario_JRU_LSSMA;
 
    --  SUBSET-027 4.2.4.43: TRACTION CUT OFF COMMAND STATE at every change
