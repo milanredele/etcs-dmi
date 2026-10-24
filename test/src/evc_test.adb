@@ -397,6 +397,7 @@ begin
    Scenario_L2_Order_With_L1_MA;
    Scenario_L1_Order_With_L1_MA_In_L0;
    Scenario_L1_Order_With_L1_MA_In_Second_Balise;
+   Scenario_L1_Order_After_L0_Order;
    Scenario_L1_Balise_Buffer;
    Scenario_L1_Balise_Buffer_Deleted;
    Scenario_L1_Balise_Buffer_From_L0;
