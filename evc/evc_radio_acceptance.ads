@@ -30,6 +30,7 @@
 --  A level that is not valid is no level of the tables: what level 2
 --  alone accepts is rejected.
 
+with ETCS_Catalogue;
 with ETCS_Message_Catalogue;
 with EVC_Modes; use EVC_Modes;
 
@@ -118,6 +119,43 @@ is
        elsif I in Movement_Authority | Conditional_Stop | Unconditional_Stop
          and then C.L2_Announced
        then Stored                                                -- [2]
+       else Rejected);
+
+   --  4.8.3, From RBC: Yes, the rows R [2] in levels 0, NTC and 1 and
+   --  A in level 2 whose packets a general message brings to the stored
+   --  information (EVC_Stored_Information.Take_Radio): National Values
+   --  (3), the gradient (21), the SSP (27), the track conditions (39,
+   --  40, 68, 69), the big metal masses (67), the axle load speed
+   --  profile (51), the permitted braking distance (52), the TSR and its
+   --  revocation (65, 66), Route Suitability Data (70), the Adhesion
+   --  Factor (71), Level Crossing information (88). Not here: the rows
+   --  A in every level (41, 46, 42, 45, 57, 58), the packets taken by
+   --  their own units (5, 72, 76, 79) and the LSSMA toggle (180, held
+   --  for level 2 by the stored information)
+   function Level_2_Row (P : ETCS_Catalogue.Packet_Kind_T) return Boolean
+   is (P in ETCS_Catalogue.Track_P3 | ETCS_Catalogue.Track_P21
+          | ETCS_Catalogue.Track_P27 | ETCS_Catalogue.Track_P39
+          | ETCS_Catalogue.Track_P40 | ETCS_Catalogue.Track_P51
+          | ETCS_Catalogue.Track_P52 | ETCS_Catalogue.Track_P65
+          | ETCS_Catalogue.Track_P66 | ETCS_Catalogue.Track_P67
+          | ETCS_Catalogue.Track_P68 | ETCS_Catalogue.Track_P69
+          | ETCS_Catalogue.Track_P70 | ETCS_Catalogue.Track_P71
+          | ETCS_Catalogue.Track_P88);
+
+   --  4.8.3, the first filter of a packet of a radio message by its row
+   --  (Level_2_Row): accepted in level 2; outside it Stored [2] when
+   --  level 2 is announced or a level transition order is in the same
+   --  message (4.8.1.3.1, step 1: as if announced), else Rejected.
+   --  The other packets: Accepted (their rows, or their own filters)
+   --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [2]
+   function Packet_Filter (P                : ETCS_Catalogue.Packet_Kind_T;
+                           Level_Valid      : Boolean;
+                           Level            : Level_T;
+                           L2_Announced     : Boolean;
+                           Order_In_Message : Boolean) return Verdict_T
+   is (if not Level_2_Row (P) then Accepted
+       elsif Level_Valid and then Level = L2 then Accepted
+       elsif L2_Announced or else Order_In_Message then Stored
        else Rejected);
 
    --  4.8.3, the rows "Axle Load speed profile" and "Permitted Braking

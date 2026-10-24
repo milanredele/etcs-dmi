@@ -10,6 +10,7 @@ with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
 with ETCS_Track_Packets.P68;
+with ETCS_Track_Packets.P71;
 with ETCS_Track_Packets.P90;
 with ETCS_Train_Packets.P9;
 with ETCS_Bits;
@@ -43,6 +44,7 @@ package body EVC_Test_Authority is
    package T63 renames ETCS_Track_Packets.P63;
    package T49 renames ETCS_Track_Packets.P49;
    package T68 renames ETCS_Track_Packets.P68;
+   package T71 renames ETCS_Track_Packets.P71;
    package RA renames EVC_Radio_Authority;
    use type MCat.Message_Kind_T;
    use type EVC_SDM.Status_T;
@@ -879,6 +881,29 @@ package body EVC_Test_Authority is
      (for some I in 1 .. EVC_Track_Description.Max_LX =>
         EVC_Track_Description.LX_Item (I).Used);
 
+   --  Message 24 referring to the group NID_BG with an adhesion factor
+   --  area (packet 71: slippery rail) D m from it, 300 m long
+   function Adhesion_Message (NID_BG : Natural; D : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      AD : T71.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      AD.Q_DIR := 1;
+      AD.Q_SCALE := 1;
+      AD.D_ADHESION := ETCS_Variables.D_ADHESION_T (D);
+      AD.L_ADHESION := 300;
+      AD.M_ADHESION := 0;
+      T71.Encode (AD, W, OK);
+      Check (OK, "authority: packet 71 encoded");
+      return Message_Bytes (W);
+   end Adhesion_Message;
+
    --  3.12.5.8 by radio: the level crossing information of message 24 is
    --  rejected while the RBC has not acknowledged the Train Data (4.8.3
    --  [3]), taken after; its start (400 m) is the temporary EOA, closer
@@ -982,6 +1007,15 @@ package body EVC_Test_Authority is
       EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
       Run_X (11_000);
       Stand_X (1_000);
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L1);
+      Stand_X (200);
+      Give_Radio_Message (1, Adhesion_Message (10, 300));
+      Stand_X (200);
+      Check (SI.Current.Adhesion.Count = 0,
+             "adhesion by radio: packet 71 of message 24 rejected in level 1 "
+             & "(4.8.3, Adhesion Factor From RBC: R [2])");
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Stand_X (200);
       Give_Radio_Message (1, LX_Message (10, 300));
       Stand_X (200);
       Check (EVC_Sessions.Train_Data_Awaited and then not LX_Stored,
@@ -996,6 +1030,11 @@ package body EVC_Test_Authority is
       Stand_X (200);
       Check (LX_Stored and then EVC_Core.Mode = M_FS,
              "LX by radio: packet 88 of message 24 taken (3.12.5)");
+      Give_Radio_Message (1, Adhesion_Message (10, 300));
+      Stand_X (200);
+      Check (SI.Current.Adhesion.Count = 1,
+             "adhesion by radio: packet 71 of message 24 taken in level 2 "
+             & "(4.8.3, Adhesion Factor From RBC: A)");
       Input (DMI, (16#40#, 3, 0, 0, 0, 6, 0, 0));
       Stand_X (200);
       Check (EVC_Core.Mode = M_SR,

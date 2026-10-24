@@ -11624,3 +11624,32 @@ None of the three traces was ours; no on-board code changed.
 - Item 3 (the next failure of a sequence moved) not taken: no sequence
   moved, and the bound was reached. B018 not taken.
 - Runner unchanged (triage only).
+### The acceptance of radio information and two traces: packet 71 by radio in level 1, the LRBG of the header, the record 19 (e6/radio-acceptance) (2026-10-24)
+
+- B1821 done: the rows of 4.8.3 "From RBC: Yes" that read R [2] in
+  levels 0, NTC and 1 and A in level 2 are applied to the packets a
+  general message brings to the stored information:
+  `EVC_Radio_Acceptance.Level_2_Row` (3, 21, 27, 39, 40, 51, 52, 65 to
+  71, 88) and `Packet_Filter`, called in
+  `EVC_Stored_Information.Take_Radio` (edit outside the units, named);
+  the branch of 51 / 52 became the row's rule. Decision: Stored (level
+  2 announced, or a level transition order in the same message,
+  4.8.1.3.1) is taken at once as before; the transition buffer keeps
+  only a message 24 with 51 or 52 (B1920). The packets handed to their
+  own units (5, 72, 76, 79) are not filtered by the row (B1921).
+  Scenario `EVC_Test_Authority.Scenario_LX_By_Radio` (packet 71 in level
+  1 rejected, in level 2 taken). Golden evc/received_telegram_message:
+  a TSR by radio outside level 2 now filtered, as intended. 4080402_01
+  126 -> 129 in three versions (S99eb8ae1 for 4080402: the step's
+  location before the linked group of its telegrams, s076), 4080444_03
+  SV30 66 -> 76.
+- S97e6b50c the sequences' (s076): 1048577 is NID_C 64 / NID_BG 1, the
+  LRBG kept; 3130237_03 and _12 read BG2d 50 m and 300 m beyond the
+  location of the linking announcing it, so the group is rejected
+  (3.4.4.4.3.2) and does not become the LRBG.
+- Sb0f6064b the sequence's (s076): the plain text of BG0d ends 1000 m
+  after its start (L_TEXTDISPLAY, its only end sub-condition), the
+  sequence powers down 50 m after it; the case's rows 5 and 6 are absent
+  from the sequence's PDF. B1822 dropped.
+- Runner 1115 / 1076 / 999 before and after, 0 regressions, 4
+  improvements, baseline re-recorded.
