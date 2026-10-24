@@ -4,6 +4,7 @@ with ETCS_Track_Packets.P140;
 
 with ETCS_Message;
 with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
@@ -566,10 +567,24 @@ package body EVC_Test_Authority is
       P57.T_CYCRQST := 3;
       Start_L2;
       Run_X (X);
+      --  3.11.6.3.1: a V_MAIN of level 1 (100 km/h) kept over the
+      --  transition to level 2 ends with the level 2 MA; else it caps
+      --  the MRSP and moves the perturbation location of 3.13.11.6
+      declare
+         P12 : ETCS_Track_Packets.P12.Packet_T;
+      begin
+         P12.V_MAIN := 20;
+         EVC_Movement_Authority.Take_V_Main (P12);
+      end;
+      Check (EVC_Movement_Authority.V_Main_Known,
+             "MA request (perturbation): a V_MAIN of level 1 kept");
       Give_Radio_Message
         (1, MA_Message (10, MA_Of ((1 => 2500)), Stamp,
                         With_57 => True, P57 => P57));
       Stand_X (200);
+      Check (not EVC_Movement_Authority.V_Main_Known,
+             "MA request (perturbation): the level 2 MA accepted ends the "
+             & "V_MAIN of level 1 (3.11.6.3.1)");
       Check (RA.MA_Request_Reasons = 0,
              "MA request (perturbation): none far from the EOA");
       while X < 240_000 and then not Got loop

@@ -1212,9 +1212,9 @@ Subset-076-6-3_3131100_02_v400_SV30,failed,77,S256f4faf
 Subset-076-6-3_3131100_03_v400_SV21,blocked,39,S076-defect
 Subset-076-6-3_3131100_03_v400_SV22,blocked,39,S076-defect
 Subset-076-6-3_3131100_03_v400_SV30,blocked,39,S076-defect
-Subset-076-6-3_3131100_04_v400_SV21,failed,86,S256f4faf
-Subset-076-6-3_3131100_04_v400_SV22,failed,86,S256f4faf
-Subset-076-6-3_3131100_04_v400_SV30,failed,86,S256f4faf
+Subset-076-6-3_3131100_04_v400_SV21,passed,0,-
+Subset-076-6-3_3131100_04_v400_SV22,passed,0,-
+Subset-076-6-3_3131100_04_v400_SV30,passed,0,-
 Subset-076-6-3_3131100_05_v400_SV21,blocked,39,S076-defect
 Subset-076-6-3_3131100_05_v400_SV22,blocked,39,S076-defect
 Subset-076-6-3_3131100_05_v400_SV30,blocked,39,S076-defect

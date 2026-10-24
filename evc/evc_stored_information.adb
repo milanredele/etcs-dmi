@@ -1026,13 +1026,20 @@ is
             --  related speed restriction); the timers start at the time
             --  stamp of the message (M.Start_Ms, 3.8.4.2.1 a, 3.8.4.3.1 a)
             declare
-               X : ETCS_Track_Packets.P15.Packet_T;
+               X        : ETCS_Track_Packets.P15.Packet_T;
+               Accepted : Boolean := False;
             begin
                ETCS_Track_Packets.P15.Decode (R, X, OK);
                if OK then
                   Store_MA (EVC_Movement_Authority.From_Packet (To_P12 (X),
                                                                 M),
-                            M, T, Train, MA_Accepted);
+                            M, T, Train, Accepted);
+                  --  3.11.6.3.1: a level 2 MA accepted ends the V_MAIN
+                  --  of level 1
+                  if Accepted then
+                     EVC_Movement_Authority.Drop_V_Main;
+                     MA_Accepted := True;
+                  end if;
                end if;
             end;
          when K80 =>

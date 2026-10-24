@@ -195,6 +195,13 @@ is
       end if;
    end Take_V_Main;
 
+   procedure Drop_V_Main is
+   begin
+      Main_Known := False;
+      Main_Finish := (others => <>);
+      Main_Open := True;
+   end Drop_V_Main;
+
    procedure Clear_Trip_Order is
    begin
       Trip := False;
