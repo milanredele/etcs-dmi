@@ -551,8 +551,8 @@ package body EVC_Test_JRU is
              "4.2.4.44: at the start of the display in LS, 45 km/h:"
              & Seen (1).V'Image & " " & Seen (1).Mode'Image & " at"
              & Seen (1).At_Cm'Image & " cm");
-      --  60 km/h is 1666 cm/s on-board, shown truncated as 59 (B1941)
-      Check (Seen (2).V in 59 .. 60 and then Seen (2).Mode = M_LS,
+      --  60 km/h is 1666 cm/s on-board, recorded to the nearest km/h
+      Check (Seen (2).V = 60 and then Seen (2).Mode = M_LS,
              "4.2.4.44: at the change, the LOA's 60 km/h:"
              & Seen (2).V'Image & " " & Seen (2).Mode'Image & " at"
              & Seen (2).At_Cm'Image & " cm");

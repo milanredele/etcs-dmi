@@ -53,7 +53,7 @@ package body EVC_Test_LS is
       Step (S, M_FS, 1_000);
       Check (LSSMA_Kmh = No_LSSMA, "4.4.19.1.4: not shown outside LS");
       Step (S, M_LS, 1_000);
-      Check (LSSMA_Kmh = 39, "4.4.19.1.4.7: shown without marker, 39 km/h");
+      Check (LSSMA_Kmh = 40, "4.4.19.1.4.7: shown without marker, 40 km/h");
 
       --  7.4.2.37.4: the marker; 4.4.19.1.4.2 b): the timer started at
       --  the balise (10 s), the time-out 5 s
@@ -69,7 +69,7 @@ package body EVC_Test_LS is
       Step (S, M_LS, 16_000);
       Check (LSSMA_Kmh = No_LSSMA, "4.4.19.1.4.4: the first order deleted");
       Step (S, M_LS, 25_000);
-      Check (Toggled_On and then LSSMA_Kmh = 39,
+      Check (Toggled_On and then LSSMA_Kmh = 40,
              "4.4.19.1.4.3: shown when the timer reaches the time-out");
 
       --  4.4.19.1.4.5 a): a new toggle on order not fulfilled at once
@@ -83,7 +83,7 @@ package body EVC_Test_LS is
       Take_Order (On => True, Delay_S => 2, Start_Ms => 31_000,
                   Now_Ms => 34_000);
       Step (S, M_LS, 34_000);
-      Check (LSSMA_Kmh = 39, "4.4.19.1.4.2 a: from the time stamp");
+      Check (LSSMA_Kmh = 40, "4.4.19.1.4.2 a: from the time stamp");
       --  4.4.19.1.4.5 b)
       Take_Order (On => False, Delay_S => 0, Start_Ms => 35_000,
                   Now_Ms => 35_000);

@@ -11582,3 +11582,12 @@ B1721 and record 41; B1840; then the Gamma model (B100), NL.
   of kind (a) to report; without one the entry point is test-only, and
   the clauses' "if possible" is met by the fail-silent decision of
   B1720.
+- B1941 done (resumed): `EVC_LS_Display.Step` rounds the LSSMA to the
+  nearest km/h instead of down. Decision: 4.4.19.1.4 and DMI 8.2.1.7
+  name no rounding; the track's speeds are whole km/h stored rounded
+  down in cm/s, so the nearest km/h gives back the trackside value (an
+  LOA of 60 km/h shown 60, an MRSP element of 40 km/h shown 40).
+  `S076_Run` judges whether the LSSMA is shown and whether record 44 is
+  present, never V_LSSMA's value: the runner did not move (1115 / 1076 /
+  999, 0 regressions, 0 improvements). `EVC_Test_LS.Scenario_LS_Display`
+  expects 40 km/h, `EVC_Test_JRU.Scenario_JRU_LSSMA` 60.

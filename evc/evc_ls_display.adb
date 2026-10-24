@@ -191,8 +191,11 @@ is
                  and then V < S.Train_Data.Max_Speed;
       end if;
       if Show then
-         --  cm/s to km/h, rounded down
-         Shown_Kmh := Unsigned_16 (V * 36 / 1_000);
+         --  cm/s to km/h, to the nearest. Decision (4.4.19.1.4 and DMI
+         --  8.2.1.7 name no rounding): the speeds of the track are whole
+         --  km/h stored rounded down in cm/s, so the nearest km/h is the
+         --  trackside value (an LOA of 60 km/h, 1666 cm/s, shown 60)
+         Shown_Kmh := Unsigned_16 ((V * 36 + 500) / 1_000);
       end if;
    end Step;
 
