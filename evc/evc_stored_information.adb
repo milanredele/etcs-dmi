@@ -2147,7 +2147,8 @@ is
      with Global => (In_Out => Snap,
                      Input  => (Driver_Slippery, EVC_Odometry.State,
                                 EVC_Track_Description.State,
-                                EVC_National_Values.State)),
+                                EVC_National_Values.State,
+                                EVC_Config.State)),
           Post => Snap.Train.Ahead = Ahead
    is
       Movement : constant EVC_Ports.Movement_T := EVC_Odometry.Movement;
@@ -2188,6 +2189,12 @@ is
       --  or calls a function is built in a temporary, 2 KB, and copied)
       Snap.Extra := (others => <>);
       Snap.Extra.Config := Configuration.Supervision;
+      --  a gamma train: the reaction times, the correction factors, the
+      --  normal service sets, the rotating mass and the models by
+      --  combination of the installation (3.18.3.2 c), read in place
+      if Data.Model = Gamma then
+         EVC_Config.Gamma_Extra (Snap.Extra.Train);
+      end if;
       Snap.Extra.National.Redadh_Use :=
         EVC_National_Values.Current.Redadh_Use;
       --  4.4.11.1.3 b)

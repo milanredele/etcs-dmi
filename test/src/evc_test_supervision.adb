@@ -4,6 +4,8 @@ with Ada.Text_IO;
 with EVC_Brake_Commands;
 with EVC_Braking;
 with EVC_Bytes;
+with EVC_Config;
+with EVC_Core;
 with EVC_Curves;
 with EVC_DMI_Port;
 with EVC_Distances;
@@ -33,6 +35,66 @@ package body EVC_Test_Supervision is
    use Ada.Text_IO;
    use EVC_Ports;
    use Interfaces;
+
+   --  A gamma train of the installation (an image of format version 2:
+   --  one step of A_brake_emergency, 1.0 m/s2, Kdry_rst 0.90 at M_NVEBCL
+   --  9, Kwet_rst 0.80) with M_NVAVADH 0.5 on a flat track: the EBD to
+   --  a target of speed 0 reaches V at SvL - V**2 / (2 A_safe), A_safe =
+   --  A Kdry (Kwet + M_NVAVADH (1 - Kwet)) = 0.81 m/s2 (3.13.6.2.1.4,
+   --  3.13.8.3), by hand at 100 and 50 km/h
+   procedure Scenario_SDM_Gamma is
+      use EVC_Fixed;
+      package CFG renames EVC_Config;
+      Far : constant EVC_Distances.Dist_T := -EVC_Distances.Max_Cm + 1;
+      SvL : constant EVC_Distances.Dist_T := 500_000;
+      C   : CFG.Config_T := CFG.Default;
+      G   : CFG.Gamma_T := CFG.No_Gamma;
+      Img : CFG.Max_Image_T;
+      L   : Natural;
+      S   : SIn.Snapshot_T := Case_Snapshot (Lambda_100, Flat);
+      M   : EVC_Braking.Model_T;
+      P   : EVC_Profile.Profile_T;
+      Speeds : constant array (1 .. 2) of LF := (100.0, 50.0);
+   begin
+      C.Train.Model := SIn.Gamma;
+      G.A_Brake_Emergency := (Count => 1, Steps => (1 => (0, 1_000),
+                                                     others => (0, 0)));
+      G.A_Brake_Service := (Count => 1, Steps => (1 => (0, 800),
+                                                   others => (0, 0)));
+      G.T_Brake_Emergency := 2_000;
+      G.T_Brake_Service := 3_000;
+      G.Extra.Kdry_Rst (9) := (others => 900);
+      G.Extra.Kwet_Rst := (others => 800);
+      CFG.Encode_V2 (C, G, Img, L);
+      EVC_Core.Initialise;
+      EVC_Core.Configure (Img (1 .. L));
+      S.Train_Data.Model := SIn.Gamma;
+      CFG.Gamma_Models (S.Train_Data);
+      CFG.Gamma_Extra (S.Extra.Train);
+      S.National.M_NVEBCL := 9;
+      S.National.M_NVAVADH := 500;
+      EVC_Braking.Build (S, (others => False), False, M);
+      EVC_Profile.Build (S, M, Far, P);
+      for Kmh of Speeds loop
+         declare
+            V    : constant Speed_T := Speed_T (Cms (Kmh));
+            X    : constant Num :=
+              EVC_Curves.Location_Of (M, P, (EVC_Curves.EBD, SvL, 0, 0,
+                                             False), V, Far);
+            --  cm: V cm/s, A_safe 81 cm/s2
+            Hand : constant LF := LF (SvL) - LF (V) * LF (V) / (2.0 * 81.0);
+         begin
+            --  the tolerance: one metre, the curves' speed grid and the
+            --  rounding of A_safe to the model's deceleration unit
+            Check (M.Valid and then abs (LF (X) - Hand) <= 100.0,
+                   "SDM gamma: the EBD of the installation's gamma train "
+                   & "reaches" & Img_LF (Kmh) & " km/h at" & Img_LF (LF (X))
+                   & " cm, by hand" & Img_LF (Hand) & " cm (within 1 m)");
+         end;
+      end loop;
+      EVC_Core.Initialise;
+      EVC_Core.Configure (CFG.Encode (CFG.Default));
+   end Scenario_SDM_Gamma;
 
    procedure Scenario_SDM_Precision is
       use EVC_Fixed;

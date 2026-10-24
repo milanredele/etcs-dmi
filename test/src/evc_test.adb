@@ -190,6 +190,7 @@ begin
    Scenario_Snapshot_Seams;
    Check (Encodes_OK, "E3: every telegram of the track encoded");
    Scenario_SDM_Precision;
+   Scenario_SDM_Gamma;
    Scenario_SDM_Ceiling;
    Scenario_SDM_Approach;
    Scenario_SDM_JRU_Every_Change;
