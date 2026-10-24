@@ -485,12 +485,9 @@ is
                            Last   : out Natural)
    is
    begin
-      if Failed_Flag then
-         Buffer := (others => 0);
-         Last := Buffer'First - 1;
-      else
-         EVC_Outbox.Take (Buffer, Last);
-      end if;
+      --  after Enter_Failure the outbox holds at most the record of the
+      --  fault: the cycle and the inputs put nothing more
+      EVC_Outbox.Take (Buffer, Last);
    end Take_Outputs;
 
    procedure Enter_Failure is
@@ -500,6 +497,9 @@ is
          Current_Mode := M_SF;
       end if;
       EVC_Outbox.Clear;
+      if Current_Mode in M_SL | M_NL | M_PS then
+         Record_Fault;
+      end if;
    end Enter_Failure;
 
 end EVC_Core;

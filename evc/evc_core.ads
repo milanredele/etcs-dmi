@@ -382,11 +382,10 @@ is
    --  with a lower bound below 1.)
    procedure Take_Outputs (Buffer : out EVC_Bytes.Byte_Array;
                            Last   : out Natural)
-     with Global => (Input => State, In_Out => EVC_Outbox.Queue),
+     with Global => (In_Out => EVC_Outbox.Queue),
           Pre => Buffer'First >= 1,
           Post => Last >= Buffer'First - 1
-                  and then Last - (Buffer'First - 1) <= Buffer'Length
-                  and then (if Failed then Last = Buffer'First - 1);
+                  and then Last - (Buffer'First - 1) <= Buffer'Length;
 
    --  Containment of internal failures, as DMI_Core has it. The host
    --  calls Enter_Failure when any operation above failed (exception
@@ -396,12 +395,22 @@ is
    --  shows SF when its link supervision expires, and the train
    --  interface, which is fail-safe, applies the emergency brake. The
    --  mode becomes System Failure where 4.6.2 has that transition
-   --  (condition [13], 4.4.5.1.1).
+   --  (condition [13], 4.4.5.1.1). In SL, NL and PS, where 4.6.2 has no
+   --  transition to SF, the fault is recorded (SUBSET-027 4.2.4.27) as
+   --  the last output: the JRU message 27 stays in the outbox for
+   --  Take_Outputs. Decision (4.4.6.1.6, 4.4.15.1.5, 4.4.20.1.10): the
+   --  host calls this after an operation failed, so going on with the
+   --  fault memorised is not possible; the on-board falls silent in
+   --  those modes too and no error is reported to the RBC.
    --  @req 4.4.5.1.1, 4.6.3 Table
    procedure Enter_Failure
-     with Global => (In_Out => (State, EVC_Outbox.Queue)),
+     with Global => (Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State, EVC_Mission.State,
+                                EVC_Radio.State, EVC_System_Version.State),
+                     In_Out => (State, EVC_Outbox.Queue)),
           Post => Failed
-                  and then EVC_Outbox.Used = 0
+                  and then (if Mode not in M_SL | M_NL | M_PS
+                            then EVC_Outbox.Used = 0)
                   and then (if Transition_Exists (Mode'Old, M_SF)
                             then Mode = M_SF else Mode = Mode'Old);
 

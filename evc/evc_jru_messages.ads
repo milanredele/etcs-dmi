@@ -102,6 +102,7 @@ is
    NID_TCO_State      : constant := 43;
    NID_Consist        : constant := 54;
    NID_LSSMA          : constant := 44;
+   NID_Fault          : constant := 27;
    NID_Proprietary    : constant := 255;
 
    subtype Width_T is Positive range 1 .. 64;

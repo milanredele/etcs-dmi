@@ -313,6 +313,9 @@ is
             Id := Get (P, B, 31, 2**31 - 1);
             return (123, Byte (Id mod 256), Byte (Id / 256 mod 256),
                     Byte (Id / 65536 mod 256));
+         when NID_Fault =>
+            --  event 127 (27 is no event of EVC_Ports): no field
+            return (127, 0, 0, 0);
          when NID_Cold_Movement =>
             return (if F (0, 2) = 1 then (9, 1, 0, 0) else (others => <>));
          when NID_Odometer =>

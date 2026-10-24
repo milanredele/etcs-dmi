@@ -3,6 +3,7 @@
 with EVC_Bytes;
 with EVC_Core;
 with EVC_JRU_Records;
+with EVC_Modes;         use EVC_Modes;
 with EVC_Supervision_Input;
 with EVC_Track_Conditions;
 with EVC_Train_Data;
@@ -534,5 +535,35 @@ package body EVC_Test_JRU is
              "4.2.4.43: M_TCO_COMMAND_STATE 0 (not commanded) once at the "
              & "revocation at standstill, after" & Released_At'Image & " s");
    end Scenario_JRU_Commands;
+
+   --  SUBSET-027 4.2.4.27: a safety critical fault (EVC_Core.Enter_Failure)
+   --  in SL, NL or PS, where SUBSET-026 4.6.2 has no transition to SF, is
+   --  recorded as the message 27 (viewed as event 127), the last output
+   --  of the on-board, which then falls silent; in FS the mode becomes
+   --  SF (4.6.3 [13]) and no message 27 comes
+   procedure Scenario_JRU_Failure is
+      Modes : constant array (1 .. 4) of Mode_T := (M_SL, M_NL, M_PS, M_FS);
+      Base  : Natural;
+   begin
+      for M of Modes loop
+         EVC_Test_Modes.Start_E4;
+         EVC_Core.Set_Mode_For_Test (M, L1);
+         Base := JRU_Seen (127);
+         EVC_Core.Enter_Failure;
+         Check (EVC_Core.Failed
+                and then EVC_Core.Mode = (if M = M_FS then M_SF else M),
+                "4.4.5.1.1: the failure in " & M'Image & ", the mode "
+                & EVC_Core.Mode'Image);
+         Stand_X (100);
+         Check (JRU_Seen (127) = Base + (if M = M_FS then 0 else 1),
+                "4.2.4.27: " & (if M = M_FS then "no message 27 in FS"
+                                else "message 27 recorded in " & M'Image));
+         Base := JRU_Seen (127);
+         Stand_X (500);
+         Check (JRU_Seen (127) = Base,
+                "4.2.4.27: silent after the fault in " & M'Image);
+      end loop;
+      EVC_Core.Initialise;
+   end Scenario_JRU_Failure;
 
 end EVC_Test_JRU;

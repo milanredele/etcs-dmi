@@ -136,6 +136,19 @@ is
                                 EVC_Sessions.State, EVC_Radio.State),
                      In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
 
+   --  SUBSET-027 4.2.4.27: the message of a safety critical fault in SL,
+   --  NL or PS (no field), flushed with the header at once: called by
+   --  Enter_Failure after the outbox was cleared, the last output of the
+   --  on-board before it falls silent
+   --  @req 3.20.1.2
+   procedure Record_Fault
+     with Global => (Input  => (Clock_Ms, Current_Mode, UTC_Known,
+                                UTC_Seconds, EVC_Position.State,
+                                EVC_Odometry.State, EVC_Levels.State,
+                                EVC_Mission.State, EVC_Radio.State,
+                                EVC_System_Version.State),
+                     In_Out => EVC_Outbox.Queue);
+
    --  A location reference of the header of SUBSET-027 4.2.3.5 from the
    --  fields of the position report (EVC_Position.Position_Report)
    function Reference_Of (P : ETCS_Train_Packets.P0.Packet_T)

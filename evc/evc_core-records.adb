@@ -421,4 +421,11 @@ is
       EVC_Outbox.Flush_JRU (H, UTC_Known, UTC_Seconds);
    end Flush_Juridical;
 
+   procedure Record_Fault is
+   begin
+      EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_Fault, Unsigned_64 (Clock_Ms),
+                          EVC_JRU_Messages.No_Fields, No_Data);
+      Flush_Juridical;
+   end Record_Fault;
+
 end EVC_Core.Records;
