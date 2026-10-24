@@ -11522,3 +11522,63 @@ the two-balise group) with 4080500_01 and 5100200_05; B017's remainder
 (4080100_06 SV21, 4100103_15 SV21 / SV22, the triage split); B1821
 (packet 71 by radio in level 1) with B1822; the row 3.18.6.1 re-read;
 B1721 and record 41; B1840; then the Gamma model (B100), NL.
+
+### The data view row re-read, the LS mission of the record 44 scenario, record 41 (e6/jru-view) (2026-10-24)
+
+- The row 3.18.6.1 re-read against the clause and DMI 11.5.1 (Tables 44,
+  45): every value it names reaches the data view from the on-board (the
+  driver ID, the train running number, the validated Train Data whoever
+  wrote them, the network ID by MSG_STORED_VALUES; the Radio Network
+  type by MSG_ONBOARD; the VBCs by MSG_VBC_LIST; the RBC ID and phone by
+  MSG_RBC_CONTACT). Items 4 to 10 only: the on-board offers the flexible
+  entry (no train type). Left partial on one gap, B1940 (protocol): after
+  the driver's "Contact last RBC" the DMI hides the RBC contact until the
+  on-board's stored contact changes, `EVC_Core.Outputs.Send_RBC_Contact`
+  sending at a change only.
+- B1721 done: `EVC_Test_Support.LS_Mission_Group` (a level 1 MA ending in
+  an LOA, an SSP, a packet 80 Limited Supervision area, no marker,
+  4.4.19.1.4.7) and `EVC_Test_Support.Step_Acknowledged` (the driver
+  acknowledging a pending mode change); `EVC_Test_JRU.Scenario_JRU_LSSMA`
+  drives the start of mission, LS and FS beyond the area on `EVC_Core`
+  and sees the message 44 three times: 45 km/h at the start, the LOA at
+  the change, 1023 at the end. Found: `EVC_LS_Display` truncates the
+  LSSMA to km/h, an LOA of 60 km/h is shown and recorded as 59 (B1941).
+- Record 41 not built, the brief's premise reversed: SUBSET-027 4.2.4.41
+  records the train interface's type of train data entry (SUBSET-034
+  2.6.1: fixed, flexible, switchable), not the origin of the Train Data;
+  `EVC_Ports.TIU_Signal_T` has no such input (B1942, with the trigger to
+  decide). B1360 narrowed, the row 3.20.1.2's gap names it.
+- B1840, the containment decision (paper, no build). 4.4.6.1.6,
+  4.4.15.1.5, 4.4.20.1.10 ask, "if possible", that a safety critical
+  fault in SL, NL or PS does not stop the train: memorised, handled when
+  the mode is left, and (SL, NL) an error to the RBC, packet 4 M_ERROR 6
+  in the next message 136 (7.5.1.64; to an RBC of system version 1 the
+  value 7, 6.6.3.4.5). The sequences: 3160400_02 steps 53 to 56 (NL,
+  level 2: the fault, the JRU 27, the 136 with packet 4 M_ERROR 6, the
+  JRU 10, then power off), 6060303_01 steps 220 to 223 (the same with
+  the RBC in version 1); today 3160400_02 is blocked at step 17 and
+  6060303_01 fails at step 81, both before. `EVC_Core.Enter_Failure` is
+  the host's call after a failed operation: the on-board's state is not
+  to be trusted then, so it stays the fail-silent entry. What a fault
+  the on-board can live with needs: (a) a second entry point,
+  `EVC_Core.Report_Fault (Kind)`, called by the host for a fault it
+  detected outside the on-board's computation (a self-test, a redundant
+  channel's disagreement, a monitored peripheral), never from an
+  exception handler; in SL, NL and PS it sets a memorised fault in
+  `EVC_Core` state, writes the JRU 27 at once (`EVC_Core.Records.Record_Fault`)
+  and asks `EVC_Sessions.Reports.Request_Error` for M_ERROR 6 on the
+  supervising session when one is established (SL, NL; not PS, whose
+  clause has no report); in any other mode it is `Enter_Failure`;
+  (b) at the next mode change out of SL, NL or PS, `EVC_Core.Modes`
+  applies the memorised fault as condition [13] (SF) before the new mode
+  is taken, so the train is stopped only once it is a leading engine
+  again; (c) the proof shape: a postcondition that a reported fault in
+  SL, NL, PS leaves the mode unchanged and Failed False with the fault
+  memorised, and an invariant of the mode machine that no mode other
+  than SL, NL, PS, SF and NP is reached with a fault memorised;
+  (d) the bench and the runner: `S076_Run`'s "SIM fault safety-critical"
+  calls the new entry, not `Enter_Failure`. Open decision for the
+  coordinator: whether the hosts (hosted, wasm, TMS570) have any fault
+  of kind (a) to report; without one the entry point is test-only, and
+  the clauses' "if possible" is met by the fail-silent decision of
+  B1720.
