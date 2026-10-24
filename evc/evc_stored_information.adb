@@ -34,6 +34,7 @@ with ETCS_Track_Packets.P90;
 with ETCS_Track_Packets.P141;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_Acceptance;
+with EVC_Radio_Acceptance;
 with EVC_Location;           use EVC_Location;
 with EVC_Stored_Information.Balise_Buffer;
 
@@ -2006,6 +2007,11 @@ is
       R           : Reader_T;
       A           : constant EVC_Acceptance.Context_T :=
         Acceptance (Ctx, True, False);
+      --  4.8.1.3.1: a level transition order in the same message
+      Order       : constant Boolean :=
+        (for some P in 1 .. EVC_Radio_Info.Packet_Count (I) =>
+           EVC_Radio_Info.Packet_Entry (I, P).Kind
+             in ETCS_Catalogue.Track_P41 | ETCS_Catalogue.Track_P46);
    begin
       if Msg_Count < Natural'Last - 1 then
          Msg_Count := Msg_Count + 1;
@@ -2040,15 +2046,6 @@ is
                      --  4.8.2.1 c) exception 2 (the RBC
                      --  transition order)
                      Record_Event (Info_Group, Change_Filtered, NID_Of (K));
-                  elsif K in K51 | K52
-                    and then not (A.Level_Valid
-                                  and then EVC_Modes."=" (A.Level,
-                                                          EVC_Modes.L2))
-                  then
-                     --  4.8.3, From RBC: R [2] outside level 2 (a message
-                     --  24 taken for its other packets; kept whole for
-                     --  level 2 by EVC_Radio_Authority.To_Buffer)
-                     Record_Event (Info_Group, Change_Filtered, NID_Of (K));
                   elsif K = K180
                     and then not (A.Level_Valid
                                   and then EVC_Modes."=" (A.Level,
@@ -2062,6 +2059,24 @@ is
                              and then EVC_Modes."="
                                         (EVC_Levels.Announced_Level,
                                          EVC_Modes.L2));
+                  elsif EVC_Radio_Acceptance."="
+                          (EVC_Radio_Acceptance.Packet_Filter
+                             (E.Kind, A.Level_Valid, A.Level,
+                              L2_Announced     =>
+                                EVC_Levels.Announced
+                                and then EVC_Modes."="
+                                           (EVC_Levels.Announced_Level,
+                                            EVC_Modes.L2),
+                              Order_In_Message => Order),
+                           EVC_Radio_Acceptance.Rejected)
+                  then
+                     --  4.8.3, From RBC: R [2] outside level 2 (a message
+                     --  24 taken for its other packets; one with packet
+                     --  51 or 52 kept whole for level 2 by
+                     --  EVC_Radio_Authority.To_Buffer). Decision: Stored
+                     --  is taken at once, as before the row was applied
+                     --  (the buffer keeps a message 24 with 51 or 52)
+                     Record_Event (Info_Group, Change_Filtered, NID_Of (K));
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
