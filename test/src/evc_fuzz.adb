@@ -2002,7 +2002,11 @@ begin
                Violation ("Take_Outputs: Last out of the buffer", Step);
             elsif not Whole_Records (Output (First .. O_Last)) then
                Violation ("Take_Outputs: not whole records", Step);
-            elsif EVC_Core.Failed and then O_Last /= First - 1 then
+            elsif EVC_Core.Failed and then O_Last /= First - 1
+              --  the JRU message 27 of a failure in SL, NL or PS
+              --  (SUBSET-027 4.2.4.27) is the only output after it
+              and then Output (First) /= EVC_Ports.Port_T'Pos (EVC_Ports.JRU)
+            then
                Violation ("Take_Outputs: output after a failure", Step);
             end if;
          exception

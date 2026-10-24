@@ -11281,3 +11281,29 @@ DMI) with B1760 (the Train Data and network ID for the data view);
 B440 and B473 (Entering FS at a level transition, Acknowledge LS after
 an unsuitability); B1720 (record 27) and B1721; B481's record 48 with
 the network ID entry; then the Gamma model (B100), NL.
+### The juridical records' rest: record 27, record 48's network ID, the LS mission of the record 44 scenario (e6/jru-rest) (2026-10-24)
+
+- B1720 done, record 27 (SUBSET-027 4.2.4.27). `EVC_Core.Enter_Failure`
+  is the on-board's only safety critical fault (the host's call after a
+  failed operation; 4.6.3 [13] in the cycle is the BTM alarm's, which
+  leads to SF). In SL, NL and PS, where 4.6.2 has no transition to SF, it
+  writes the message 27 by `EVC_Core.Records.Record_Fault` after
+  clearing the outbox, flushed with the header at once, and
+  `EVC_Core.Take_Outputs` lets it out before the silence (no other output
+  can be queued once failed); viewed as event 127. Decision (4.4.6.1.6,
+  4.4.15.1.5, 4.4.20.1.10 "if possible"): the on-board falls silent in
+  those modes too; the memorised fault and the M_ERROR 6 report are
+  B1840. `EVC_Test_JRU.Scenario_JRU_Failure`. The two sequences
+  (3160400_02, 6060303_01) stop before their step.
+- B481 done for the record 48: `S076_Run.DMI_Input` presses GSM-R
+  network ID and Radio network type in the Radio data window and selects
+  or modifies a network (`S076_Run.Select_Network`, the network the
+  step's comment names, else the first offered); `JRU_Window_Expect`
+  compares the record 48's NID_MN with it. The bench offers only its
+  default network 000000, so the steps naming 654321h stay not judged
+  (B1841). S96bd5570 triaged model (FRMCS never registered by the bench
+  for feature 3050600, DMI Table 37 #3).
+- B1721 and record 41 not taken (budget): B1360 left 21 (judged from the
+  DMI), 22 (no step), 33 to 37, 40, 41 (no step in the corpus).
+- SUBSET-076: 1107 / 1073 / 1010 before, 1110 / 1082 / 998 after, 15
+  improvements, 0 regressions (5040300_17 passes in three versions).
