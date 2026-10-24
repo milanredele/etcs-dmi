@@ -11739,3 +11739,103 @@ against SvL - V² / (2 A_safe), A_safe = A Kdry (Kwet + M_NVAVADH (1 -
 Kwet)) = 0.81 m/s² (3.13.6.2.1.4, 3.13.8.3), at 100 and 50 km/h within
 1 m (the curves' speed grid and the rounding of A_safe to the model's
 unit); both pass. The EBI by hand (3.13.9.3.2) is not checked.
+
+### E5 integration after the forty-ninth round, the seventeenth of E6 (2026-10-24)
+
+Merged: e6/jru-view (the row 3.18.6.1 re-read: every value of the
+clause reaches the data view from the on-board except the RBC contact
+after the driver's "Contact last RBC", which the DMI hides, B1940, the
+row left partial on it; B1721: `EVC_Test_Support.LS_Mission_Group` and
+`Step_Acknowledged`, `Scenario_JRU_LSSMA` driving an LS mission on
+`EVC_Core` and seeing the message 44 at the start, a change and the end;
+record 41 traced, not built: SUBSET-027 4.2.4.41 is the train
+interface's type of Train Data entry (SUBSET-034 2.6.1, fixed, flexible,
+switchable), an input the on-board does not have, B1942; B1840's
+decision paper in its subsection: a second entry point for a fault the
+on-board can live with, memorised in SL, NL and PS with M_ERROR 6 to the
+RBC and SF at the next mode change, the open question whether any host
+has such a fault; resumed at 100 calls: B1941, the LSSMA rounded to the
+nearest km/h in `EVC_LS_Display.Step`, an LOA of 60 km/h shown 60;
+fast-forwarded), e6/level-traces-2 (B510 traced to the sequences: the
+packet 12 in balise 2 of 3050300_01's BG2d carries V_MAIN 0, a trip
+order (7.5.1.158) taken in level 1 with the order (4.8.1.3.1), so [67]
+trips, not [39]; 4080500_01's message 24 of step 205 is shorter than
+its L_MESSAGE (B1860) and the emergency stop stays in the transition
+buffer; 5100200_05 orders NTC first, which the on-board has not, then
+level 0 (5.10.2.4), NTC; the history before the group was not the
+cause, `Scenario_L1_Order_After_L0_Order` shows it; B017 closed:
+Sa03cccdc split into six lines by family, three the sequences' data,
+one the runner's judgement of a step against the state column (B1901),
+two E7 (a message 24 with packet 72 of version 2, a packet 45 of
+version 2 decoded in the version 3 layout: the 6.6.3.2.3 [23]
+conversion); B1900 the runner and an NTC-first order),
+e6/radio-acceptance (B1821: the rows R [2] of Table 4.8.3 "From RBC"
+for a general message outside level 2, packets 3, 21, 27, 39, 40, 51,
+52, 65 to 71 and 88, `EVC_Radio_Acceptance.Level_2_Row` and
+`Packet_Filter` applied in `EVC_Stored_Information.Take_Radio`,
+rejected unless level 2 is announced or ordered in the message; packet
+71 by radio in level 1 rejected, 4080402_01 126 -> 129 in three
+versions, 4080444_03 66 -> 76; decision: a stored [2] packet is still
+taken at once, the buffer keeps only a message 24 with 51 or 52,
+B1920; B1921 the packets 5, 72, 76 and 79 by radio taken by their own
+units; S97e6b50c the sequences': 3130237_03 and _12 read BG2d 50 m and
+300 m beyond the window of BG1d's linking, the group is rejected
+(3.4.4.4.3.2) and BG1d stays the LRBG, the header's 1048577 being
+NID_C 64 / NID_BG 1, not "unknown"; Sb0f6064b the sequence's: BG0d's
+plain text ends by L_TEXTDISPLAY at 2380 m, the step expects the end
+at 1380 m and two rows of case 3160200 17 are missing from the
+sequence's PDF; B1822 dropped; one golden reviewed), e6/gamma-config
+(the format version 2 of the installation configuration image: bytes 0
+to 31 as version 1, then the braking model and the special brakes, and
+for a gamma train the reaction and build-up times, the step functions
+of A_brake_emergency, A_brake_service and A_brake_normal_service,
+Kdry_rst for M_NVEBCL 0 to 9 and Kwet_rst per step, Kn+ and Kn-,
+M_rotating_nom, the two normal service sets with A_SB01 and A_SB12, the
+models by combination of the special brakes, the CRC last, 38 to 1248
+bytes; decision: the gamma train is package state of `EVC_Config` read
+in place through `Gamma_Models` and `Gamma_Extra`, not a field of the
+configuration returned by value; `Encode_V2` for the bench;
+`EVC_Mission.Train_Data_Of` takes the models when the fixed train is
+Gamma and the driver's brake percentage stays an entry without a model
+(3.13.2.2.5.1), `EVC_Stored_Information.Build_Train` fills the
+snapshot's `Extra.Train`; rows 3.18.3.2 c) and its 4th and 5th bullets
+done, 14 rows of 3.13.2.2 noted; resumed at 130 calls:
+`Scenario_SDM_Gamma`, the EBD of a one-step gamma train with Kdry 0.90,
+Kwet 0.80 and M_NVAVADH 0.5 within 1 m of the hand-computed curve at
+100 and 50 km/h; B1880 the Supervised Manoeuvre default train on a
+gamma installation, B1881 the configuration tool; B100 narrowed to the
+runner's half: the bench builds the image from the workbook's
+"Brake parameters (gamma)" sheet with `Encode_V2` and the runner judges
+the Gamma curve steps instead of blocking them).
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13419 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6168 B; wasm and both smokes 0 failures; the
+runner 1115 / 1076 / 999 before and after (4 improvements inside the
+counts), 0 regressions, no signature untriaged. The merge: two
+conflicts each on level-traces-2, radio-acceptance and gamma-config
+(backlog, plan), none in code; `EVC_Stored_Information` edited by two
+agents at different places, auto-merged and verified by the chain
+(four runs, all green).
+
+Costs (doc/ROUNDS.csv): 35.5 USD, 13 of 14 items done, 4 of 13 brief
+premises wrong, no agent over budget (130.8 calls of 152.5 on
+average); two agents resumed inside their budgets, both converted
+(sixteen of sixteen). Lessons: the wrong premises were two claims of
+backlog and triage lines (the two-balise history, "no transition
+buffer"), one reading of a JRU value (1048577 is an identity, not
+"unknown") and one of a SUBSET-027 record's meaning (4.2.4.41 is the
+interface's type of entry): the data decoded at the source settles
+what a line says; the four traces briefed by their symptom reached
+their cause, all four the sequences' data, with one real rule built on
+the way (the R [2] rows of Table 4.8.3). The on-board's Gamma arithmetic
+existed since the EFS frames; what the round built is its data path
+from the installation, and the runner's half next round can unblock the
+93 sequences blocked as "Gamma train braking model". The matrix:
+clauses left 97 -> 94 (todo 2, partial 92); E6 done 215 -> 218,
+partial 10 -> 7. Open items: doc/BACKLOG.csv (56 open after this round;
+9 added, 5 closed). Next: B100's runner half (the bench's gamma image
+from the workbook, the Gamma curve steps judged) with B1881 and B1880;
+B1920 (the stored R [2] packets and the transition buffer) with B1921;
+B1940 (the RBC contact in the data view, protocol) with B1942; B1900,
+B1901, B1860 (runner); B018's families; then NL.
