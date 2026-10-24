@@ -36,6 +36,8 @@ package body EVC_Test_Config is
    use type SIn.Brake_Inhibition_T;
    use type SIn.Onboard_Config_T;
    use type SIn.Brake_Model_T;
+   use type SIn.Decel_Curve_T;
+   use type SIn.Train_Data_Extra_T;
    use type SDM.Monitoring_T;
    use type CFG.Config_T;
    use type CFG.Status_T;
@@ -86,6 +88,205 @@ package body EVC_Test_Config is
          return R (1 .. Natural (Last));
       end;
    end File_Bytes;
+
+   --  An image of version 2 of length L with its CRC made right again
+   function Resealed_V2 (Image : Byte_Array; L : Natural) return Byte_Array
+   is
+      R : Byte_Array := Image;
+      C : constant Unsigned_32 := CFG.CRC_32 (R (R'First .. R'First + L - 5));
+   begin
+      for N in 0 .. 3 loop
+         R (R'First + L - 4 + N) := EVC_Bytes.Byte_Of (Unsigned_64 (C), N);
+      end loop;
+      return R;
+   end Resealed_V2;
+
+   --  A curve of N steps from Speed by 20 km/h (cm/s), the deceleration
+   --  falling from Decel by 50 mm/s² a step
+   function Curve (N : Natural; Speed, Decel : Natural)
+     return SIn.Decel_Curve_T
+   is
+      R : SIn.Decel_Curve_T := (Count => N, Steps => (others => (0, 0)));
+   begin
+      for K in 1 .. N loop
+         R.Steps (K) := (Speed => Speed + (K - 1) * 556,
+                         Decel => Decel - (K - 1) * 50);
+      end loop;
+      return R;
+   end Curve;
+
+   --  A gamma train: two steps of emergency and service, Kdry 0.9, Kwet
+   --  0.8, Kn, a rotating mass of 5 %; with the normal service sets and
+   --  the models by combination if asked, at Steps steps each
+   function Gamma_Sample (Sets, By_Combination : Boolean;
+                          Steps : Positive := 2) return CFG.Gamma_T
+   is
+      G : CFG.Gamma_T := CFG.No_Gamma;
+   begin
+      G.A_Brake_Emergency := Curve (Steps, 2_778, 900);
+      G.A_Brake_Service := Curve (Steps, 2_778, 700);
+      G.A_Brake_Normal := Curve ((if Steps > 2 then Steps else 1), 0, 500);
+      G.T_Brake_Emergency := 2_000;
+      G.T_Brake_Service := 3_000;
+      G.Extra.T_Brake_Emergency_React := 500;
+      G.Extra.T_Brake_Service_React := 700;
+      G.Extra.Kdry_Rst := (others => (others => 900));
+      G.Extra.Kwet_Rst := (others => 800);
+      G.Extra.Kn_Plus := Curve ((if Steps > 2 then Steps else 1), 0, 400);
+      G.Extra.Kn_Minus := Curve ((if Steps > 2 then Steps else 1), 0, 410);
+      G.Extra.M_Rotating_Nom := 5;
+      if Sets then
+         G.Extra.A_SB01 := 600;
+         G.Extra.A_SB12 := 800;
+         for N in 0 .. 2 loop
+            G.Extra.Normal_Service_G (N) := Curve (Steps, 1_000, 700 + N);
+            G.Extra.Normal_Service_P (N) := Curve (Steps, 1_000, 800 + N);
+         end loop;
+      end if;
+      if By_Combination then
+         G.Extra.By_Combination := True;
+         for C in SIn.Brake_Combination_T loop
+            G.Extra.A_Emergency_Combination (C) :=
+              Curve (Steps, 2_778, 900 + C * 10);
+            G.Extra.A_Service_Combination (C) :=
+              Curve (Steps, 2_778, 700 + C * 10);
+         end loop;
+         for C in SIn.Combination_T loop
+            G.Extra.T_Emergency_Combination (C) := (400 + C, 2_000 + C);
+            G.Extra.T_Service_Combination (C) := (600 + C, 3_000 + C);
+         end loop;
+      end if;
+      return G;
+   end Gamma_Sample;
+
+   --  The image of format version 2: the lambda train, the gamma train
+   --  (the round trip of Encode_V2 through a load), the length, the
+   --  ranges of the new fields; a version 1 image stays accepted
+   --  (Scenario_Config_Image)
+   procedure Scenario_Config_Image_V2 is
+      C    : CFG.Config_T := CFG.Default;
+      G    : constant CFG.Gamma_T := Gamma_Sample (False, False);
+      Img  : CFG.Max_Image_T;
+      L    : Natural;
+      D    : CFG.Decoded_T;
+      X    : SIn.Train_Data_Extra_T;
+      T    : SIn.Train_Data_T;
+      All_OK : Boolean := True;
+
+      --  the gamma image with Value at Offset (resealed) has status Want
+      procedure Field (Offset : Natural; Value : Byte_Array;
+                       Want   : CFG.Status_T; What : String)
+      is
+         I : Byte_Array := Img;
+      begin
+         I (Offset + 1 .. Offset + Value'Length) := Value;
+         Check (Status_Of (Resealed_V2 (I, L)) = Want,
+                "config image v2: " & What & " "
+                & CFG.Status_T'Image (Status_Of (Resealed_V2 (I, L))));
+      end Field;
+   begin
+      --  a lambda train with a regenerative and an Ep brake
+      C.Train.Has_Regenerative := True;
+      C.Train.Has_Electro_Pneumatic := True;
+      CFG.Encode_V2 (C, CFG.No_Gamma, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      Check (L = 38 and then Img (1 .. 8) = (16#45#, 16#56#, 16#43#, 16#46#,
+                                             2, 0, 38, 0)
+             and then Img (33 .. 34) = (0, 9)
+             and then D.Status = CFG.Accepted and then D.Config = C,
+             "config image v2: a lambda train, 38 bytes, the model and the "
+             & "special brakes back");
+
+      --  a gamma train
+      C.Train.Model := SIn.Gamma;
+      CFG.Encode_V2 (C, G, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      Check (L = 34 + 8 + 9 + 9 + 5 + 160 + 16 + 5 + 5 + 3 + 4
+             and then D.Status = CFG.Accepted and then D.Config = C,
+             "config image v2: a gamma train of two steps, 258 bytes, "
+             & "accepted" & Natural'Image (L) & " "
+             & CFG.Status_T'Image (D.Status));
+      EVC_Core.Initialise;
+      EVC_Core.Configure (Img (1 .. L));
+      CFG.Gamma_Extra (X);
+      CFG.Gamma_Models (T);
+      Check (EVC_Core.Configuration = C and then X = G.Extra
+             and then T.A_Brake_Emergency = G.A_Brake_Emergency
+             and then T.A_Brake_Service = G.A_Brake_Service
+             and then T.A_Brake_Normal = G.A_Brake_Normal
+             and then T.T_Brake_Emergency = G.T_Brake_Emergency
+             and then T.T_Brake_Service = G.T_Brake_Service,
+             "config image v2: the gamma train loaded is the one encoded "
+             & "(3.18.3.2 c), 3.18.3.2.1)");
+
+      --  the ranges of the new fields
+      Field (32, (1 => 2), CFG.Bad_Field, "braking model 2");
+      Field (33, (1 => 16), CFG.Bad_Field, "special brakes 16");
+      Field (34, (16#61#, 16#EA#), CFG.Bad_Field, "T_brake_react 60.001 s");
+      Field (34, (16#60#, 16#EA#), CFG.Accepted, "T_brake_react 60 s");
+      Field (42, (1 => 0), CFG.Bad_Field, "no step of A_brake_emergency");
+      Field (42, (1 => 9), CFG.Bad_Field, "9 steps of A_brake_emergency");
+      Field (47, (16#AD#, 16#0A#), CFG.Bad_Field,
+             "speeds of A_brake_emergency not rising");
+      Field (45, (16#31#, 16#75#), CFG.Bad_Field, "a deceleration 30.001");
+      Field (69, (16#D1#, 16#07#), CFG.Bad_Field, "Kdry_rst 2.001");
+      Field (L - 7, (1 => 101), CFG.Bad_Field, "M_rotating_nom 101 %");
+      Field (L - 6, (1 => 2), CFG.Bad_Field, "normal service sets 2");
+      Field (L - 5, (1 => 2), CFG.Bad_Field, "by combination 2");
+      Field (L - 5, (1 => 1), CFG.Bad_Length,
+             "by combination without the models");
+
+      --  the length
+      for Bad in Natural range L - 1 .. L + 1 loop
+         if Bad /= L then
+            declare
+               I : Byte_Array := Img;
+            begin
+               I (7) := Byte (Bad mod 256);
+               I (8) := Byte (Bad / 256);
+               I := Resealed_V2 (I, Bad);
+               if Status_Of (I) /= CFG.Bad_Length then
+                  All_OK := False;
+               end if;
+            end;
+         end if;
+      end loop;
+      Check (All_OK, "config image v2: a length one short or one long of "
+             & "the fields refused, bad length");
+      Field (6, (37, 0), CFG.Bad_Length, "length 37");
+      Field (6, (16#E1#, 16#04#), CFG.Bad_Length, "length 1249");
+      Field (4, (3, 0), CFG.Bad_Version, "format version 3");
+      All_OK := True;
+      for K in 0 .. L - 1 loop
+         if Status_Of (Img (1 .. K)) /= CFG.Truncated then
+            All_OK := False;
+         end if;
+      end loop;
+      Check (All_OK, "config image v2: every truncated image refused");
+      Img (100) := Img (100) xor 1;
+      Check (Status_Of (Img (1 .. L)) = CFG.Bad_CRC,
+             "config image v2: a bit of Kdry flipped, bad CRC");
+
+      --  the longest: every curve at 8 steps, the sets, the combinations
+      CFG.Encode_V2 (C, Gamma_Sample (True, True, 8), Img, L);
+      D := CFG.Decoded (Img);
+      Check (L = CFG.Max_Image_Length and then D.Status = CFG.Accepted
+             and then D.Config = C,
+             "config image v2: the longest image, 1248 bytes, accepted");
+      EVC_Core.Configure (Img);
+      CFG.Gamma_Extra (X);
+      Check (X = Gamma_Sample (True, True, 8).Extra,
+             "config image v2: the sets and the models by combination "
+             & "loaded (3.13.2.2.3.1.7, 3.13.2.2.3.1.9, 3.13.2.2.3.2.8)");
+
+      --  back to the default
+      EVC_Core.Initialise;
+      EVC_Core.Configure (CFG.Encode (CFG.Default));
+      CFG.Gamma_Extra (X);
+      Check (EVC_Core.Configuration = CFG.Default
+             and then X = SIn.Train_Data_Extra_T'(others => <>),
+             "config image v2: a version 1 image loaded, no gamma train");
+   end Scenario_Config_Image_V2;
 
    --  The image: its layout, the CRC, the header, truncation, the ranges
    --  of the fields and Table 3 of 3.13.2.2.6.1
@@ -159,7 +360,7 @@ package body EVC_Test_Config is
              "config image: a bit of the CRC flipped, bad CRC");
 
       --  the header
-      Field (4, (2, 0), CFG.Bad_Version, "format version 2 refused");
+      Field (4, (2, 0), CFG.Bad_Length, "format version 2 of 36 bytes refused");
       Field (4, (1, 1), CFG.Bad_Version, "format version 257 refused");
       Field (0, (1 => 16#46#), CFG.Bad_Magic, "magic FVCF refused");
       Field (6, (35, 0), CFG.Bad_Length, "length 35 refused");
@@ -269,6 +470,7 @@ package body EVC_Test_Config is
       end loop;
       Check (All_OK, "config image: 500 random valid configurations "
              & "encoded and decoded");
+      Scenario_Config_Image_V2;
    end Scenario_Config_Image;
 
    --  The B2, B3, B4 of the last JRU record of Event in the last Take,

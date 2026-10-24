@@ -73,7 +73,60 @@
 --               16#CBF4_3926#)
 --  The bytes after the length are ignored: a block of flash larger than
 --  the image can be handed over whole. A later format gets a new
---  version; this one accepts version 1 only.
+--  version; versions 1 and 2 are accepted, the version decides the
+--  length.
+--
+--  The byte image, format version 2 (Encode_V2): the bytes 0 to 31 of
+--  version 1 (the version 2, the length L, 38 to Max_Image_Length 1248),
+--  then the train, then the CRC-32 at L - 4 of the bytes 0 .. L - 5:
+--    32     1   braking model                 0 lambda (the conversion
+--               (Fixed_Train_T.Model)           model of the brake
+--                                               percentage), 1 gamma
+--    33     1   the special brakes the        bit 0 regenerative,
+--               vehicle has (Fixed_Train_T)   bit 1 eddy current,
+--               3.13.2.2.6                    bit 2 magnetic shoe,
+--                                             bit 3 Ep; 0 .. 15
+--    34     4   (lambda) the CRC: L = 38
+--  A gamma train (Gamma_T), from 34 on, field after field:
+--           2   T_brake_react emergency, ms   0 .. 60_000 (3.13.2.2.3.2)
+--           2   T_brake_build_up emergency    0 .. 60_000
+--           2   T_brake_react service, ms     0 .. 60_000
+--           2   T_brake_build_up service      0 .. 60_000
+--           c   A_brake_emergency (V)         a curve of 1 to 8 steps
+--           c   A_brake_service (V)           a curve of 1 to 8 steps
+--           c   A_brake_normal_service (V)    a curve of 0 to 8 steps
+--                                             (used when no set below)
+--         160   Kdry_rst (V, EBCL), 3.13.2.2.9.1: for M_NVEBCL 0 to 9,
+--               8 u16 each, one per step of A_brake_emergency (the
+--               steps beyond its count unused), thousandths 0 .. 2_000
+--          16   Kwet_rst (V): 8 u16, thousandths 0 .. 2_000
+--           c   Kn+ (V), 3.13.2.2.9.2         a curve of 0 to 8 steps,
+--           c   Kn- (V)                       mm/s² per unit of gradient
+--           1   M_rotating_nom, % 3.13.2.2.10 0 .. 100 (0: not given,
+--                                             A.3.1 applies)
+--           1   normal service sets           0 none, 1 given:
+--           4     A_SB01, A_SB12 u16, mm/s²   0 .. 30_000 (3.13.2.2.3.1.10)
+--          6c     A_brake_normal_service_0 .. _2 in G, then in P
+--                 (3.13.2.2.3.1.9 a) and b), each 0 to 8 steps
+--           1   by combination of special     0 no (the models above
+--               brakes in use                   for every combination),
+--                                             1 yes:
+--          8c     A_brake_emergency (V) for the combinations 0 .. 7 of
+--                 regenerative (bit 0), eddy current (bit 1) and
+--                 magnetic shoe (bit 2) brake (3.13.2.2.3.1.7), each 1 to
+--                 8 steps
+--          8c     A_brake_service (V) for the same combinations
+--          64     T_brake_react, T_brake_build_up emergency, u16 ms 0 ..
+--                 60_000, for the combinations 0 .. 15 of the four (bit
+--                 3 Ep, 3.13.2.2.3.2.8 Table 4)
+--          64     the same for the service brake
+--           4   CRC-32
+--  A curve c: a count byte n, then n steps of (u16 speed, cm/s 0 ..
+--  30_000, u16 deceleration, mm/s² 0 .. 30_000), the speeds strictly
+--  rising: the deceleration of a step applies up to its speed, the last
+--  step open ended (3.13.2.2.3.1.3, .4); 1 + 4 n bytes. A field out of
+--  its range or a count out of its range is Bad_Field; fields that end
+--  before or run past the CRC are Bad_Length.
 --
 --  The state: the configuration in use (Current, the Default until an
 --  image is loaded), whether an image was loaded, the images refused,
@@ -106,14 +159,14 @@ is
    --  Table 40 has length, brake percentage, maximum speed, categories,
    --  axle load, airtight and loading gauge), installation data
    --  (3.13.2.2.9.1.1). EVC_Mission builds the Train Data from the
-   --  driver's entry and these. Not in the byte image of format version
-   --  1: Decoded gives the defaults below (the default train); the
-   --  format version that brings them is not defined yet (the gamma
-   --  models, the correction factors and the rotating mass of
-   --  EVC_Supervision_Input.Train_Data_Extra_T belong there too).
+   --  driver's entry and these. The image of format version 2 carries
+   --  the braking model and the special brakes; the other fields are
+   --  the defaults below in both versions (the default train). The
+   --  models and factors of a gamma train are Gamma_T, beside.
    type Fixed_Train_T is record
-      --  the braking model (3.13.2.2.2): the lambda model only, the
-      --  curves of the gamma model are not installation data here yet
+      --  the braking model (3.13.2.2.2): the conversion model of the
+      --  brake percentage the driver enters (Lambda), or the braking
+      --  models of the installation (Gamma, Gamma_T)
       Model                 : Brake_Model_T := Lambda;
       --  the special brakes the vehicle has (3.13.2.2.6)
       Has_Regenerative      : Boolean := False;
@@ -263,11 +316,35 @@ is
 
    --  The byte image
 
-   Format_Version : constant := 1;
+   --  the highest format version accepted (1 and 2 are)
+   Format_Version : constant := 2;
+   --  version 1: its length and the bytes its CRC covers
    Image_Length   : constant := 36;
-   --  the bytes the CRC covers
    CRC_Offset     : constant := 32;
    subtype Image_T is Byte_Array (1 .. Image_Length);
+   --  version 2: the shortest image (a lambda train) and the longest (a
+   --  gamma train with every step function at 8 steps, the normal
+   --  service sets and the models by combination)
+   Min_Image_V2_Length : constant := 38;
+   Max_Image_Length    : constant := 1_248;
+   subtype Max_Image_T is Byte_Array (1 .. Max_Image_Length);
+
+   --  the braking models of a gamma train (3.13.2.2.3, 3.13.2.2.9,
+   --  3.13.2.2.10), installation data (3.18.3.2.1): the models of the
+   --  Train Data and the rest of EVC_Supervision_Input.Train_Data_Extra_T
+   --  @req 3.18.3.2 c) 4th bullet, 3.18.3.2 c) 5th bullet
+   type Gamma_T is record
+      A_Brake_Emergency : Decel_Curve_T := No_Decel_Curve;
+      A_Brake_Service   : Decel_Curve_T := No_Decel_Curve;
+      A_Brake_Normal    : Decel_Curve_T := No_Decel_Curve;
+      --  the equivalent brake build up times, ms (the reaction times
+      --  are in Extra)
+      T_Brake_Emergency : Time_Ms_T := 0;
+      T_Brake_Service   : Time_Ms_T := 0;
+      Extra             : Train_Data_Extra_T := (others => <>);
+   end record;
+
+   No_Gamma : constant Gamma_T := (others => <>);
 
    --  The outcome of a decoding (and of a load: Refused_In_Service is
    --  EVC_Core's, an image offered while the on-board runs)
@@ -275,8 +352,10 @@ is
      (Accepted,
       Truncated,           -- shorter than its header or its length
       Bad_Magic,
-      Bad_Version,         -- a format version other than 1
-      Bad_Length,          -- the length field is not that of version 1
+      Bad_Version,         -- a format version other than 1 and 2
+      --  the length field is not that of the version, or the fields of
+      --  version 2 do not end at the CRC
+      Bad_Length,
       Bad_CRC,
       Bad_Field,           -- a field out of its range
       Table_3_Violated,    -- 3.13.2.2.6.1
@@ -309,6 +388,16 @@ is
    --  when C is valid)
    function Encode (C : Config_T) return Image_T;
 
+   --  The image of format version 2 of C and, when C.Train.Model is
+   --  Gamma, of the gamma train G, in Image (1 .. Length), the rest 0
+   --  (for the bench and the tests; Decoded gives C back, and a load
+   --  G, when C is valid and G within the ranges of the layout above)
+   procedure Encode_V2 (C      : Config_T;
+                        G      : Gamma_T;
+                        Image  : out Max_Image_T;
+                        Length : out Natural)
+     with Post => Length in Min_Image_V2_Length .. Max_Image_Length;
+
    --  The configuration in use
 
    function Current return Config_T
@@ -328,6 +417,25 @@ is
    --  The images refused since the start (saturating)
    function Rejections return Natural
      with Global => State;
+
+   --  The braking models of the gamma train of the configuration in use
+   --  into the Train Data D (its other fields kept): the models and the
+   --  equivalent build up times, none when the image gave no gamma train
+   --  @req 3.18.3.2 c)
+   procedure Gamma_Models (D : in out Train_Data_T)
+     with Global => (Input => State),
+          Post => D.Model = D.Model'Old
+                  and then D.Length = D.Length'Old
+                  and then D.Max_Speed = D.Max_Speed'Old
+                  and then D.Brake_Percentage = D.Brake_Percentage'Old;
+
+   --  The rest of the gamma train of the configuration in use (the
+   --  reaction times, the correction factors, the normal service sets,
+   --  the rotating mass, the models by combination), the defaults when
+   --  the image gave no gamma train; read in place, not returned
+   --  @req 3.18.3.2 c) 4th bullet, 3.18.3.2 c) 5th bullet
+   procedure Gamma_Extra (X : out Train_Data_Extra_T)
+     with Global => (Input => State);
 
    --  A load or a refusal waits to be recorded (EVC_Core), with its
    --  outcome
