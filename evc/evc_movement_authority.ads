@@ -239,6 +239,13 @@ is
    procedure Take_V_Main (P : ETCS_Track_Packets.P12.Packet_T)
      with Global => (In_Out => State);
 
+   --  3.11.6.3.1: a level 2 MA accepted ends the signalling related
+   --  speed restriction of level 1 (a packet 12 kept over the transition)
+   --  @req 3.11.6.3.1
+   procedure Drop_V_Main
+     with Global => (In_Out => State),
+          Post   => not V_Main_Known;
+
    procedure Clear_Trip_Order
      with Global => (In_Out => State),
           Post => not Trip_Ordered;

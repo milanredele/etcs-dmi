@@ -27,6 +27,7 @@ package EVC_Test_Levels is
    --  level 2
    procedure Scenario_L2_Order_With_L1_MA;
    procedure Scenario_L1_Order_With_L1_MA_In_L0;
+   procedure Scenario_L1_Order_With_L1_MA_In_Second_Balise;
    --  e5/balise-buffer: 4.8.3 [1], 4.8.5 for balise groups
    procedure Scenario_L1_Balise_Buffer;
    procedure Scenario_L1_Balise_Buffer_Deleted;

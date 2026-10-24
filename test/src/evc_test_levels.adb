@@ -661,6 +661,27 @@ package body EVC_Test_Levels is
              & "by 4.6.3 [39]");
    end Scenario_L1_Order_With_L1_MA_In_L0;
 
+   --  4.8.5, 4.8.1.3.1 2): the same with the order in the first balise
+   --  of the group and the MA in the second (one message, 3.4.2.2):
+   --  SUBSET-076 3050300_01 (BG2d at 450 m)
+   procedure Scenario_L1_Order_With_L1_MA_In_Second_Balise is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Stand_X (100);
+      Add_Group (Group (1, 50));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      Carry (Track_N, 1, MA_Of ((1 => 500), 80));
+      Carry (Track_N, 1, Grad (((0, 0), (600, End_Mark))));
+      Carry (Track_N, 1, SSP (((0, 80, False), (600, End_Mark, False))));
+      Run_X (10_000);
+      Check (EVC_Levels.Level = L1 and then SI.Current.MA.Present
+             and then EVC_Core.Mode = M_FS,
+             "levels: the order in balise 1 and the level 1 MA in balise 2 "
+             & "of one group, from level 0 UN: one message, the MA taken "
+             & "in level 1 (4.8.5, 4.8.1.3.1 2)): FS, no trip by [39]");
+   end Scenario_L1_Order_With_L1_MA_In_Second_Balise;
+
    function Level_Message (NID_BG : Natural;
                            P      : ETCS_Track_Packets.P41.Packet_T)
      return Byte_Array
