@@ -11281,3 +11281,31 @@ DMI) with B1760 (the Train Data and network ID for the data view);
 B440 and B473 (Entering FS at a level transition, Acknowledge LS after
 an unsuitability); B1720 (record 27) and B1721; B481's record 48 with
 the network ID entry; then the Gamma model (B100), NL.
+
+### The level and authority traces: the MA requests of 3131100, the level order with an MA in two balises, the level symbol after an order (e6/level-traces) (2026-10-24)
+
+- B511 done. The family 3131100 (S256f4faf) was traced at its four
+  sequences. _04 was ours: the V_MAIN of the level 1 MA of BG0d (100
+  km/h) survived the transition to level 2 and the level 2 MAs, capped
+  the MRSP between the end of the 90 km/h element and the old SvL, and
+  the perturbation location of 3.13.11.6 (the end of the 90 km/h
+  element) became the Indication limit of that 100 km/h element: the
+  request came 160 m late. 3.11.6.3.1: `EVC_Movement_Authority.Drop_V_Main`
+  when a packet 15 is accepted (`EVC_Stored_Information`, the K15
+  branch); `Scenario_MA_Request_Perturbation` extended; matrix
+  3.11.6.3.1 done, B847 done. _04 passes in SV21, SV22, SV30. _02 and
+  _06 are the sequences' data (a message 3 truncated by the
+  extraction: 253 bits for 57 bytes, 75 bits for 21 bytes), _07 too
+  (NID_LRBG with NID_C 64 while the groups are NID_C 352: rejected by
+  3.6.2.2.2 b); triage S256f4faf s076, runner line B1860 (block a
+  message shorter than its L_MESSAGE as S076-defect).
+- B510 narrowed, not finished (budget): the two-balise group is not the
+  cause (`EVC_Test_Levels.Scenario_L1_Order_With_L1_MA_In_Second_Balise`
+  passes natively); the history before BG2d is (level 1 FS, the order
+  to level 0 of BG1d, the track description and linking kept). Next
+  step in B510 and S2f278aca.
+- B017's remainder not taken (budget).
+- Edits outside the package's units, named: `EVC_Movement_Authority`
+  (`Drop_V_Main`, new), `EVC_Stored_Information` (the K15 branch of
+  the packets taken).
+- Runner: 1107 passed before, 1110 after (3131100_04 x3), 0 regressions.
