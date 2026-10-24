@@ -1223,6 +1223,40 @@ package body Test_Support is
       end if;
    end Expect_Driver_Data;
 
+   procedure Expect_Status_Ended (Number : Natural;
+                                  Count  : Natural;
+                                  What   : String) is
+      Found : Natural := 0;
+      Other : Natural := 0;
+
+      procedure Visit (The_Type : Msg_Type_T;
+                       Payload  : Stream_Element_Array) is
+      begin
+         if The_Type = MSG_STATUS_ENDED then
+            if Payload'Length = Status_Ended_Length
+              and then Natural (Payload (Payload'First)) = Number
+            then
+               Found := Found + 1;
+            else
+               Other := Other + 1;
+            end if;
+         end if;
+      end Visit;
+
+      procedure Walk is new Walk_Outbox (Visit);
+   begin
+      Checks := Checks + 1;
+      Walk;
+      if Found = Count and then Other = 0 then
+         Pass (What);
+      else
+         Fail (What & ": expected" & Natural'Image (Count)
+               & " MSG_STATUS_ENDED of entry" & Natural'Image (Number)
+               & ", got" & Natural'Image (Found) & " and"
+               & Natural'Image (Other) & " others");
+      end if;
+   end Expect_Status_Ended;
+
    procedure Send_Desk_Input (Input : Natural; Pressed : Natural) is
       Payload : Stream_Element_Array (1 .. Desk_Input_Length);
       Offset  : Stream_Element_Offset := Payload'First;

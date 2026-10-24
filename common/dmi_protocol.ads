@@ -708,6 +708,19 @@ package DMI_Protocol is
    Driver_Data_Language_Length : constant := 3;
    RBC_Phone_Max            : constant := 16;
 
+   MSG_STATUS_ENDED : constant Msg_Type_T := 16#42#;
+   --  The DMI ended a system status message of MSG_SYSTEM_STATUS by
+   --  itself (DMI 15.1.1.2, 15.1.1.5 Table 68): its 30 s timers counted
+   --  from the start or from the event 2, a change to a mode where the
+   --  message is not displayed, a button of the Main window. One frame
+   --  per entry ended, so that the on-board's view of the messages
+   --  displayed (SUBSET-027 4.2.4.23) follows. Not sent for the ends
+   --  the on-board knows already: its own event 1 (with the 30 s after
+   --  it) and the driver's acknowledgement (MSG_DRIVER_ACTION 2).
+   --    entry u8: the catalogue entry number (SS_*)
+   --  Status_Ended_Length bytes; a receiver ignores any other length
+   Status_Ended_Length : constant := 1;
+
    -- DMI -> UI
    MSG_FRAME : constant Msg_Type_T := 16#60#;
    --  x u16, y u16, w u16, h u16, pixels w*h bytes (colour indices)

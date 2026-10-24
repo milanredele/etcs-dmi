@@ -8,6 +8,7 @@ is
 
    MSG_DRIVER_ACTION : constant Byte := 16#40#;
    MSG_DRIVER_DATA   : constant Byte := 16#41#;
+   MSG_STATUS_ENDED  : constant Byte := 16#42#;
    Header_Length     : constant := 5;
    --  The largest frame the DMI port accepts (EVC_DMI_Port)
    Max_Frame         : constant := 512;
@@ -20,6 +21,7 @@ is
    type Data_Bytes_Array is array (Data_Kind_T) of Byte;
    type Code_Array is array (Data_Kind_T) of Unsigned_32;
    type Text_Ack_Array is array (1 .. Max_Text_Acks) of Unsigned_16;
+   type Status_End_Array is array (1 .. Max_Status_Ends) of Byte;
 
    type Requests_T is record
       Selected : Selected_Array := (others => False);
@@ -37,6 +39,8 @@ is
       Codes    : Code_Array := (others => 0);
       Text_N   : Natural range 0 .. Max_Text_Acks := 0;
       Texts    : Text_Ack_Array := (others => 0);
+      End_N    : Natural range 0 .. Max_Status_Ends := 0;
+      Ends     : Status_End_Array := (others => 0);
    end record;
 
    None : constant Requests_T := (others => <>);
@@ -75,6 +79,10 @@ is
      with Refined_Global => Now;
    function Text_Ack_Count return Natural is (Now.Text_N)
      with Refined_Global => Now;
+   function Status_End_Count return Natural is (Now.End_N);
+
+   function Status_End (I : Positive) return Byte is (Now.Ends (I));
+
    function Text_Ack (I : Positive) return Unsigned_16 is (Now.Texts (I))
      with Refined_Global => Now;
 
@@ -301,6 +309,11 @@ is
             Take_Action (Frame, P, N);
          elsif Frame (Frame'First) = MSG_DRIVER_DATA then
             Take_Data (Frame, P, N);
+         elsif Frame (Frame'First) = MSG_STATUS_ENDED and then N = 1
+           and then Latched.End_N < Max_Status_Ends
+         then
+            Latched.End_N := Latched.End_N + 1;
+            Latched.Ends (Latched.End_N) := Frame (P);
          end if;
       end;
    end Receive;

@@ -81,6 +81,20 @@ package body DMI_Core is
       Queue_Message (MSG_DRIVER_ACTION, Payload);
    end Queue_Driver_Action;
 
+   -- Chapter 15: one MSG_STATUS_ENDED per system status message the DMI
+   -- ended by itself, so that the EVC's view of the messages displayed
+   -- (SUBSET-027 4.2.4.23) follows
+   procedure Report_Status_Ends is
+      Number : Natural;
+   begin
+      for I in DMI_System_Status.Entry_T loop
+         DMI_System_Status.Take_Ended (Number);
+         exit when Number = 0;
+         Queue_Message (MSG_STATUS_ENDED,
+                        (1 => Stream_Element (Number mod 256)));
+      end loop;
+   end Report_Status_Ends;
+
    -- The acknowledgement names the request it answers: the kind and,
    -- for a text message, the message id (0 otherwise)
    procedure Queue_Driver_Ack (Kind    : DMI_Ack.Ack_Kind_T;
@@ -808,6 +822,7 @@ package body DMI_Core is
          -- 15.1.1.2: the system status messages that the new mode does
          -- not display end
          DMI_System_Status.Mode_Changed (SDI.Mode);
+         Report_Status_Ends;
          -- Table 50 D5, exception: TR after a level entry (B023)
          DMI_Windows.Mode_Changed (Trip => SDI.Mode = SDI.M_TR);
       end if;
@@ -1814,6 +1829,7 @@ package body DMI_Core is
       -- chapter 15: the 30 s of the system status messages, before the
       -- text message store enters its waiting requests
       DMI_System_Status.Tick (Dt_Ms);
+      Report_Status_Ends;
       DMI_Text_Messages.Tick;
       -- DMI 11.2.1.6: movement of the hour glass ST05
       DMI_Conditions.Tick
@@ -1864,6 +1880,7 @@ package body DMI_Core is
                DMI_System_Status.Main_Window_Button (Ended);
                if Ended then
                   Queue_Driver_Action (ACTION_MAIN_WINDOW_BUTTON);
+                  Report_Status_Ends;
                end if;
             end;
          end if;

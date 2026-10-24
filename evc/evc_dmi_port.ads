@@ -46,6 +46,9 @@ is
    MSG_DRIVER_DATA      : constant Byte := 16#41#;
    Driver_Action_Length : constant := 3;
    Driver_Ack_Length    : constant := 5;
+   --  The DMI ended a system status message by itself: entry u8
+   MSG_STATUS_ENDED     : constant Byte := 16#42#;
+   Status_Ended_Length  : constant := 1;
 
    --  Driver actions (MSG_DRIVER_ACTION) the on-board uses
    Action_Ack     : constant Byte := 2;
@@ -66,6 +69,8 @@ is
                and then Frame (Frame'First + Header_Length) = Action_Ack),
             when MSG_DRIVER_DATA =>
                Frame'Length > Header_Length,
+            when MSG_STATUS_ENDED =>
+               Frame'Length = Header_Length + Status_Ended_Length,
             when others => False));
 
    function Is_Driver_Action (Frame : Byte_Array) return Boolean is

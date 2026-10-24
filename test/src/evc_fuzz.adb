@@ -566,11 +566,14 @@ procedure EVC_Fuzz is
                The_Type : constant Natural :=
                  (case Pick (1, 10) is
                      when 1 .. 5 => 16#40#,
-                     when 6 .. 8 => 16#41#,
+                     when 6 .. 7 => 16#41#,
+                     --  MSG_STATUS_ENDED, an entry ended by the DMI
+                     when 8 => 16#42#,
                      when others => Pick (0, 255));
                Length   : constant Natural :=
                  (if The_Type = 16#40# and then Chance (80)
                   then (if Chance (80) then 3 else 5)
+                  elsif The_Type = 16#42# and then Chance (80) then 1
                   else Pick (0, 40));
             begin
                Add (The_Type);

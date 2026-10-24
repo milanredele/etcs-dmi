@@ -416,6 +416,24 @@ package body EVC_Test_JRU is
              "4.2.4.23: message 23 with bit 6 'Runaway movement' at the "
              & "movement in SB" & JRU_Seen (123)'Image
              & JRU_Last (123, 2)'Image);
+      --  an end the DMI owns, reported by MSG_STATUS_ENDED: a frame of
+      --  another length is ignored, the frame of entry 9 clears bit 6
+      Before := JRU_Seen (123);
+      EVC_Core.Handle_Input (DMI, (16#42#, 2, 0, 0, 0, 9, 0));
+      EVC_Core.Tick (100);
+      Take;
+      Collect;
+      Check (JRU_Seen (123) = Before,
+             "4.2.4.23: a malformed report of the DMI changes nothing");
+      EVC_Core.Handle_Input (DMI, (16#42#, 1, 0, 0, 0, 9));
+      EVC_Core.Tick (100);
+      Take;
+      Collect;
+      Check (JRU_Seen (123) = Before + 1
+             and then JRU_Last (123, 2) = 0,
+             "4.2.4.23: message 23 without bit 6 at the DMI's end of "
+             & "Runaway movement" & JRU_Seen (123)'Image
+             & JRU_Last (123, 2)'Image);
       declare
          Changed : Boolean := False;
       begin

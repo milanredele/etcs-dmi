@@ -276,6 +276,10 @@ package body DMI_System_Status is
 
    State : array (Entry_T) of State_T;
 
+   -- The entries the DMI ended by itself and not yet reported to the EVC
+   -- (Take_Ended, MSG_STATUS_ENDED)
+   Unreported : array (Entry_T) of Boolean := (others => False);
+
    function Text_Active (T : Text_T) return Boolean is
    begin
       for E in Entry_T loop
@@ -287,10 +291,12 @@ package body DMI_System_Status is
    end Text_Active;
 
    -- 15.1.1.7: an entry that ends takes the message with it only when no
-   -- other entry of the same text is still displayed
-   procedure Finish (E : Entry_T) is
+   -- other entry of the same text is still displayed. By_DMI: the end is
+   -- the DMI's own, the EVC does not know it (MSG_STATUS_ENDED)
+   procedure Finish (E : Entry_T; By_DMI : Boolean := False) is
    begin
       State (E) := (others => <>);
+      Unreported (E) := By_DMI;
       if not Text_Active (Catalogue (E).Text) then
          DMI_Text_Messages.Remove (ID_Of (Catalogue (E).Text));
       end if;
@@ -306,6 +312,8 @@ package body DMI_System_Status is
       -- over; the message keeps its place and time stamp and plays no
       -- Sinfo again. The same holds between two entries of one text.
       State (E) := (Active => True, others => <>);
+      -- a start after an end not yet reported: the EVC's start stands
+      Unreported (E) := False;
       if not DMI_Text_Messages.Holds (ID_Of (Def.Text)) then
          -- 8.2.3.4.7 a, c: first group, bold; 8.2.3.4.6 b: the local
          -- time of appearance. Sinfo (8.2.3.4.7 h) or the request for
@@ -332,9 +340,12 @@ package body DMI_System_Status is
       if (Def.Timer = From_Start and then S.Since_Start >= Display_Time_Ms)
         or else (Def.Timer = From_Event and then S.Counting
                  and then S.Since_Event >= Display_Time_Ms)
-        or else (Def.End_Event = After_30s and then S.End_Pending
-                 and then S.Since_Start >= Display_Time_Ms)
       then
+         Finish (E, By_DMI => True);
+      elsif Def.End_Event = After_30s and then S.End_Pending
+        and then S.Since_Start >= Display_Time_Ms
+      then
+         -- the EVC sent the end (event 1): it knows
          Finish (E);
       end if;
    end Check_Timers;
@@ -409,7 +420,7 @@ package body DMI_System_Status is
       -- only a later change of mode ends it.
       for E in Entry_T loop
          if State (E).Active and then not Catalogue (E).Modes (Mode) then
-            Finish (E);
+            Finish (E, By_DMI => True);
          end if;
       end loop;
    end Mode_Changed;
@@ -419,7 +430,7 @@ package body DMI_System_Status is
       Ended := False;
       for E in Entry_T loop
          if State (E).Active and then Catalogue (E).Button_Ends then
-            Finish (E);
+            Finish (E, By_DMI => True);
             Ended := True;
          end if;
       end loop;
@@ -464,9 +475,22 @@ package body DMI_System_Status is
       end loop;
    end Language_Changed;
 
+   procedure Take_Ended (Number : out Natural) is
+   begin
+      Number := 0;
+      for E in Entry_T loop
+         if Unreported (E) then
+            Unreported (E) := False;
+            Number := Natural (E);
+            return;
+         end if;
+      end loop;
+   end Take_Ended;
+
    procedure Reset is
    begin
       State := (others => (others => <>));
+      Unreported := (others => False);
    end Reset;
 
 end DMI_System_Status;

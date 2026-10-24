@@ -265,6 +265,13 @@ package Test_Support is
                                  Bytes : Byte_Array;
                                  What  : String);
 
+   -- ... must hold exactly Count MSG_STATUS_ENDED, all naming the
+   -- catalogue entry Number (Count 0: none at all); empties the outbox
+   -- like the checks above
+   procedure Expect_Status_Ended (Number : Natural;
+                                  Count  : Natural;
+                                  What   : String);
+
    -- MSG_DESK_INPUT: a key of the DMI unit on the desk goes down
    -- (Pressed = 1) or comes up (0); DMI_Protocol.DESK_*
    procedure Send_Desk_Input (Input : Natural; Pressed : Natural);
