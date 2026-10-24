@@ -358,7 +358,7 @@ is
         EVC_Sessions.Indication_T'Pos (EVC_Sessions.Indication);
       --  3.18.4.6.2.3: the driver's "slippery rail" (the DMI's ST02)
       Slip  : constant Boolean :=
-        EVC_Stored_Information.Driver_Slippery_Rail;
+        EVC_Stored_Information.Slippery_Rail;
       --  5.22.4.1: the indication of the BTM alarm reaction inhibition
       --  until the procedure is ended (the DMI's ST07)
       BMM   : constant Boolean := EVC_Procedures.BMM_Inhibited;

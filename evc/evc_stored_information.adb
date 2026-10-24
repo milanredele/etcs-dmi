@@ -46,7 +46,7 @@ package body EVC_Stored_Information
                                    Cond_Due, Plan, Plan_Due,
                                    Driver_Slippery, PBD_Last, PBD_Known,
                                    MA_Board, Profile_Overlap,
-                                   Covered_Flag, Ext, Tun,
+                                   Covered_Flag, Slippery_Flag, Ext, Tun,
                                    Radio_MA, Radio_SH, Radio_SH_N,
                                    Radio_SH_Ids, Timer_Deletion,
                                    Contact_Braking, Linking_Braking,
@@ -97,6 +97,7 @@ is
    MA_Board        : Boolean := False;
    Profile_Overlap : Boolean := False;
    Covered_Flag    : Boolean := False;
+   Slippery_Flag   : Boolean := False;
    --  an MA by radio was accepted in the last Evaluate
    Radio_MA        : Boolean := False;
    --  4.4.8.1.8: the list of balise groups for the SH area that came
@@ -213,6 +214,10 @@ is
    function Train_Covered return Boolean is (Covered_Flag)
      with Refined_Global => Covered_Flag;
 
+   function Slippery_Rail return Boolean is
+     (Driver_Slippery or else Slippery_Flag)
+     with Refined_Global => (Driver_Slippery, Slippery_Flag);
+
    procedure Record_Event (Info, Change, Detail : Natural)
      with Global => (In_Out => (Events, Event_N))
    is
@@ -258,6 +263,7 @@ is
       MA_Board := False;
       Profile_Overlap := False;
       Covered_Flag := False;
+      Slippery_Flag := False;
       Radio_MA := False;
       Radio_SH := False;
       Radio_SH_N := 0;
@@ -2388,11 +2394,13 @@ is
    --  4.6.3 [10], [25], [31], [32]: an MA, the SSP and the gradients on
    --  board; the train position confidence interval overlaps a mode
    --  profile. 4.4.9.1.4: SSP and gradient known for the whole length of
-   --  the train, from its min safe rear end to its estimated front end
+   --  the train, from its min safe rear end to its estimated front end.
+   --  3.18.4.6.2.3: a trackside slippery rail area reaches the train
    procedure Build_Mode_Conditions (T     : Origin_Table_T;
                                     Train : Train_Frame_T;
                                     Ahead : Sense_T)
-     with Global => (Output => (MA_Board, Profile_Overlap, Covered_Flag),
+     with Global => (Output => (MA_Board, Profile_Overlap, Covered_Flag,
+                                Slippery_Flag),
                      Input  => (EVC_Movement_Authority.State,
                                 EVC_Track_Description.State))
    is
@@ -2404,6 +2412,11 @@ is
         Train.Valid
         and then EVC_Movement_Authority.Mode_Profile_Overlap
                    (T, Train.Min_Front, Train.Max_Front);
+      Slippery_Flag :=
+        Train.Valid
+        and then EVC_Track_Description.Slippery
+                   (T, Ahead, Train.Max_Front, Train.Est_Front,
+                    Train.Length);
       Covered_Flag :=
         Train.Valid
         and then EVC_Track_Description.Covered
@@ -2845,6 +2858,7 @@ is
           Global => (Output => (Sources, Steps, Ceiling, Indicated,
                                 Indicated_N, Cond_Due, Plan, Plan_Due,
                                 MA_Board, Profile_Overlap, Covered_Flag,
+                               Slippery_Flag,
                                 Ext, Tun),
                      In_Out => (Snap, Failures, Sent, Sent_N,
                                 EVC_Track_Conditions.State,
@@ -3319,7 +3333,8 @@ is
                         EVC_LS_Display.State,
                         Events, Event_N, Msg_Count, Balise_Buffer.State,
                         TAF_L2_New, TAF_L2_Loc),
-             Output => (MA_Board, Profile_Overlap, Covered_Flag),
+             Output => (MA_Board, Profile_Overlap, Covered_Flag,
+                        Slippery_Flag),
              Input  => (EVC_Origins.State, EVC_Position.State,
                         EVC_Odometry.State, EVC_Train_Data.State,
                         Group_Country))

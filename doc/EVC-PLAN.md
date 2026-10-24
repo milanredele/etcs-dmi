@@ -11331,3 +11331,22 @@ the curve model, blocked as Gamma; at 32 km/h no brake comes. The new
 first failures were triaged already: 4100103_43 114 S4ed4d50c (curves),
 4100103_17 79 S843421cc (s076, slippery rail), 3060400_02 SV30 59
 S1ebd7f2d (s076).
+
+Resumed, 4100103_17 step 79 traced to the on-board: ST02 showed only
+the driver's slippery rail, not a trackside slippery rail area of
+packet 71 (3.18.4.6.2.3: the driver is informed whether the adhesion
+factor is "slippery rail"). `EVC_Stored_Information.Slippery_Rail`
+(the driver's choice or `EVC_Track_Description.Slippery`, set in
+`Build_Mode_Conditions`) is what `EVC_Core.Outputs.Send_Status` sends;
+an area reaches the train from its start passed by the max safe front
+end (3.6.4.2.4) until the estimated front end passes its end plus the
+train length (3.13.5.3). Decision: the estimated front end at the end
+(no clause names the train's end for the indication; 9990600_06
+removes ST02 at end + L by the estimated front end and shows it again
+when the train reverses). Scenario: `EVC_Test_Profiles.Scenario_Other_Profiles`.
+Runner 1109 / 1074 / 1007 -> 1109 / 1070 / 1011, 0 regressions, 15
+improvements (4100103_17 79 -> blocked 83 Gamma, 9990600_06 76 -> 88,
+4080402_01 49 -> 126, 3130237_03 and _12 50 -> 55). New first failures:
+S20b67466 (4080402_01 126: packet 71 by radio in level 1 stored where
+the sequence says rejected, B1821), S97e6b50c and Sb0f6064b not
+analysed (B1822).

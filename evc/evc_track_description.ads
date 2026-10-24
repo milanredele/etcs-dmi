@@ -462,6 +462,20 @@ is
                              Areas : in out Adhesion_T)
      with Global => State;
 
+   --  3.18.4.6.2.3: a slippery rail area of the trackside's adhesion
+   --  profile reaches the train, from its start passed by the max safe
+   --  front end (its "max" location item, 3.6.4.2.4) until the estimated
+   --  front end passes its end with the train length added (3.13.5.3, the
+   --  "min" location item); frame positions along Ahead. Decision: the
+   --  driver's indication follows the estimated front end at the end of
+   --  the area (no clause names the train's end for it)
+   function Slippery (T         : Origin_Table_T;
+                      Ahead     : Sense_T;
+                      Max_Front : Dist_T;
+                      Est_Front : Dist_T;
+                      Length    : Length_T) return Boolean
+     with Global => State;
+
    --  4.6.3 [69] (EVC_Procedures): the estimated front end Est (a frame
    --  position) is in rear of the start of the SSP or of the gradient
    --  profile stored on board

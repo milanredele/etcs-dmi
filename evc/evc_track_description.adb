@@ -1034,6 +1034,31 @@ is
       end loop;
    end Adhesion_Areas;
 
+   function Slippery (T         : Origin_Table_T;
+                      Ahead     : Sense_T;
+                      Max_Front : Dist_T;
+                      Est_Front : Dist_T;
+                      Length    : Length_T) return Boolean
+   is
+   begin
+      if Adh_S.Sense /= Ahead then
+         return False;
+      end if;
+      for I in 1 .. Adh_S.Count loop
+         pragma Loop_Invariant (True);
+         if A (Ahead, Max_Front)
+              >= A (Ahead, Frame (T, Adh_S.List (I).Start, Max_Item))
+           and then Diff (A (Ahead, Est_Front),
+                          A (Ahead, Frame (T, Adh_S.List (I).Finish,
+                                           Min_Item)))
+                    < Dist_T (Length)
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Slippery;
+
    --  The estimated front end in rear of the start of the profile St
    --  (moved here from EVC_Procedures with Before_Profiles: the store is
    --  read in place, not copied)
