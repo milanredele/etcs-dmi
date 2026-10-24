@@ -2251,6 +2251,10 @@ package body S076_Run is
                --  the on-board shows stands for it
                if Much then
                   Kmh := S.V_Perm / 2;
+               elsif Below and then Same (W (4), "decrease") then
+                  --  "the train speed decreases": below the limit, never
+                  --  above the speed the train runs at
+                  Kmh := Integer'Min (S.V_Perm - 2, S.V_Cur);
                elsif Below then
                   Kmh := S.V_Perm - 2;
                elsif Has (E, "+6") then

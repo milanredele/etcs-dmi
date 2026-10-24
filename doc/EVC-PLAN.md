@@ -11316,3 +11316,18 @@ All three traced to their cause; none was the on-board's, no code changed.
 - Runner 1107 / 1073 / 1010 before and after (triage only).
 
 Left: B1820 (the runner's speed decrease) for the bench package.
+
+Resumed: B1820 done. `S076_Run.ODO_Input` takes "the train speed
+decreases (V_TRAIN <= V_PERMITTED)" as the lower of V_Perm - 2 and the
+speed the train runs at. Runner 1107 / 1073 / 1010 -> 1109 / 1074 /
+1007, 0 regressions, 9 improvements, baseline re-recorded. Outcome
+kinds changed: 4100103_39 SV22 and SV30 failed 65 -> passed (its step 65,
+the Acknowledge LS symbol, as in 4100103_43);
+4100103_17 blocked 72 (Gamma) -> failed 79, not a regression by the
+runner's rule (a failure later than the block, the steps 72 to 78 now
+run and pass): at step 58 the decrease had raised the train from 32 to
+98 km/h and step 72 (service brake not commanded in OS) met a brake of
+the curve model, blocked as Gamma; at 32 km/h no brake comes. The new
+first failures were triaged already: 4100103_43 114 S4ed4d50c (curves),
+4100103_17 79 S843421cc (s076, slippery rail), 3060400_02 SV30 59
+S1ebd7f2d (s076).
