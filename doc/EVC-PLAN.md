@@ -11591,3 +11591,36 @@ B1721 and record 41; B1840; then the Gamma model (B100), NL.
   present, never V_LSSMA's value: the runner did not move (1115 / 1076 /
   999, 0 regressions, 0 improvements). `EVC_Test_LS.Scenario_LS_Display`
   expects 40 km/h, `EVC_Test_JRU.Scenario_JRU_LSSMA` 60.
+### The level traces, second package: the history behind the two-balise trip, the level symbol family by family (e6/level-traces-2) (2026-10-24)
+
+None of the three traces was ours; no on-board code changed.
+
+- B510 done. 3050300_01 step 52 (SV21, SV22, SV30): BG2d's packet 12
+  has V_MAIN 0 (bits checked), a trip order by 7.5.1.158; taken in
+  level 1 with the order of balise 1 (4.8.1.3.1 2)), the switch trips
+  by 4.6.3 [67]. The history (level 1 FS, the order to level 0 at
+  D_LEVELTR 0, UN) is not the cause:
+  `EVC_Test_Levels.Scenario_L1_Order_After_L0_Order` builds that history
+  and group, V_MAIN 0 gives TR, V_MAIN 80 gives FS. The sequence and its
+  chart expect the MA: s076. 4080500_01 step 207: case 4080500 5 sends
+  four RBC messages in level 0 with level 2 announced so that the fourth
+  pushes the emergency stop of message 16 out of the transition buffer
+  (4.8.5.3); the message 24 of step 205 is 75 bits for L_MESSAGE 26, the
+  on-board refuses it, the emergency stop is accepted at the release and
+  the MA after it rejected (4.8.3 [5]): [39]. s076 (B1860, the runner to
+  block a truncated message). 5100200_05 step 45 (Sa9693d77) is not the
+  transition buffer: BG3d orders NTC 2 then level 0, the on-board
+  without NTC selects level 0 (5.10.2.4); triage NTC, B1900 for the
+  runner to judge such a step NTC.
+- B017 done. Sa03cccdc checked family by family at the data and split
+  into six triage lines: 4080455, 6060504_01 / 6060505_01 and the single
+  groups (5220200_03, 9990500_24, 3070300_12 / _13) s076 as earlier
+  agents found; 4080425_04 the runner's (B1901: step 65 judged against
+  the state column L2 while its comment says the level before);
+  4080100_06 SV21 and 4100103_15 SV21 / SV22 E7: a packet of system
+  version 2 (packet 72 for plain text in the message 24; packet 45
+  without Q_NETWORKTYPE in a 2.x telegram) that the on-board decodes in
+  the version 3 layout (chapter 6 conversions, 6.6.3.2.3 [23], not made).
+- Item 3 (the next failure of a sequence moved) not taken: no sequence
+  moved, and the bound was reached. B018 not taken.
+- Runner unchanged (triage only).

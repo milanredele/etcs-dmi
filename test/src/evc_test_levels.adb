@@ -3,6 +3,7 @@
 
 with ETCS_Message;
 with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P138;
 with ETCS_Track_Packets.P139;
 with EVC_Core;
@@ -681,6 +682,61 @@ package body EVC_Test_Levels is
              & "of one group, from level 0 UN: one message, the MA taken "
              & "in level 1 (4.8.5, 4.8.1.3.1 2)): FS, no trip by [39]");
    end Scenario_L1_Order_With_L1_MA_In_Second_Balise;
+
+   --  4.8.1.3.1, 7.5.1.158, 4.6.3 [67]: the same group after a history
+   --  in level 1: FS on the MA of the group 0, the order to level 0 of
+   --  the group 1 at its own location (D_LEVELTR 0), UN, then the group
+   --  2 orders level 1 at its own location in balise 1 with a level 1 MA
+   --  (an LOA of 80 km/h, T_EMA 0), open gradient and SSP in balise 2:
+   --  SUBSET-076 3050300_01 (BG0d, BG1d, BG2d at 50, 250 and 450 m). Its
+   --  V_MAIN 0 is a trip order (7.5.1.158), taken in level 1 with the
+   --  order (4.8.1.3.1 2)): TR by [67]; the same MA with a V_MAIN: FS
+   procedure Scenario_L1_Order_After_L0_Order is
+      procedure Run_Case (V_Main_Kmh : Natural);
+
+      procedure Run_Case (V_Main_Kmh : Natural) is
+         MA_2 : ETCS_Track_Packets.P12.Packet_T :=
+           MA_Of ((1 => 5000), V_Main_Kmh);
+         Name : constant String :=
+           "levels: V_MAIN" & V_Main_Kmh'Image & " after level 1 FS and "
+           & "the order to level 0: ";
+      begin
+         MA_2.V_EMA := 16;
+         MA_2.T_EMA := 0;
+         Start_X;
+         EVC_Core.Set_Mode_For_Test (M_SR, L1);
+         Stand_X (100);
+         Add_Group (Group (0, 50));
+         Carry (Track_N, 0, MA_Of ((1 => 2000), 80));
+         Carry (Track_N, 0, Grad (((0, 0), (3000, End_Mark))));
+         Carry (Track_N, 0, SSP (((0, 80, False), (3000, End_Mark, False))));
+         Add_Group (Group (1, 250));
+         Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_0, 0));
+         Add_Group (Group (2, 450));
+         Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, 0));
+         Carry (Track_N, 1, MA_2);
+         Carry (Track_N, 1, Grad ((1 => (0, 0))));
+         Carry (Track_N, 1, SSP ((1 => (0, 80, False))));
+         Run_X (20_000);
+         Check (EVC_Levels.Level = L1 and then EVC_Core.Mode = M_FS,
+                Name & "FS on the group 0's MA");
+         Run_X (35_000);
+         Check (EVC_Levels.Level = L0 and then EVC_Core.Mode = M_UN,
+                Name & "UN after the group 1");
+         Run_X (50_000, 100);
+         if V_Main_Kmh = 0 then
+            Check (EVC_Levels.Level = L1 and then EVC_Core.Mode = M_TR,
+                   Name & "the trip order taken in level 1: TR by [67]");
+         else
+            Check (EVC_Levels.Level = L1 and then SI.Current.MA.Present
+                   and then EVC_Core.Mode = M_FS,
+                   Name & "the MA taken in level 1: FS (4.8.1.3.1)");
+         end if;
+      end Run_Case;
+   begin
+      Run_Case (0);
+      Run_Case (80);
+   end Scenario_L1_Order_After_L0_Order;
 
    function Level_Message (NID_BG : Natural;
                            P      : ETCS_Track_Packets.P41.Packet_T)
