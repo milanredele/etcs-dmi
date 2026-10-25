@@ -779,9 +779,18 @@ package DMI_Protocol is
 
    MSG_DMI_HELLO : constant Msg_Type_T := 16#43#;
    --  The DMI (re)started: sent once by DMI_Core.Initialise, before any
-   --  other frame of the DMI, so that the on-board sends again what it
-   --  sends only once or at a change (MSG_TRAIN_TYPES, MSG_SYSTEM_VERSION,
-   --  MSG_STORED_VALUES, MSG_RBC_CONTACT) to a DMI that has lost them.
+   --  other frame of the DMI, so that the on-board sends again, in its
+   --  next cycle, what it sends only once or at a change and the DMI
+   --  shows until it changes: MSG_TRAIN_TYPES, MSG_SYSTEM_VERSION,
+   --  MSG_STORED_VALUES, MSG_RBC_CONTACT (when a contact is stored),
+   --  MSG_STATUS (once, with the position or "unknown"), MSG_TRACK_COND
+   --  and MSG_VBC_LIST (the lists as they are, empty included). Not sent
+   --  again: what the on-board sends every cycle (MSG_MODE_LEVEL,
+   --  MSG_ONBOARD, MSG_SPEED_STATE, MSG_STATUS while the position is
+   --  known), what the DMI asks for (MSG_RADIO_NETWORKS), and the starts
+   --  and ends of a display (MSG_SYSTEM_STATUS, MSG_TEXT,
+   --  MSG_TEXT_REMOVE): events, so a restarted DMI does not show again
+   --  the system status messages and texts displayed before its restart.
    --  No payload (Dmi_Hello_Length); a receiver ignores any other length.
    Dmi_Hello_Length : constant := 0;
 

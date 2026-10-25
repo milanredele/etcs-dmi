@@ -749,6 +749,11 @@ private
      with Part_Of => State;
    Values_Sent : EVC_DMI_Port.Stored_Values_Frame_T := (others => 0)
      with Part_Of => State;
+   --  the DMI said hello (MSG_DMI_HELLO) since the last cycle: the
+   --  track conditions (MSG_TRACK_COND) and the VBC list (MSG_VBC_LIST),
+   --  sent at a change only, are due again in this cycle
+   DMI_Restarted : Boolean := False
+     with Part_Of => State;
    --  5.17: the train configuration of the train interface seen last
    --  (EVC_Ports, TIU input 13), whether one was seen since power-up
    Config_Last : EVC_Bytes.Byte := 0

@@ -619,6 +619,21 @@ package body EVC_Test_Core is
          end loop;
       end Feed_DMI;
 
+      --  The frames of type T in the records of the last Feed_DMI
+      function Sent_To_DMI (T : DMI_Protocol.Msg_Type_T) return Natural is
+         use type DMI_Protocol.Msg_Type_T;
+         N : Natural := 0;
+      begin
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = DMI and then Rec_Length (I) >= 5
+              and then DMI_Protocol.Msg_Type_T (Out_Buf (Recs (I).First)) = T
+            then
+               N := N + 1;
+            end if;
+         end loop;
+         return N;
+      end Sent_To_DMI;
+
       --  What the DMI sends goes back to the on-board, frame by frame
       procedure Pump_To_EVC is
          Pos : Stream_Element_Offset := Outbox'First;
@@ -691,8 +706,11 @@ package body EVC_Test_Core is
          Pump_To_EVC;
       end loop;
       DMI_Core.Render;
-      Check (Frames = 18,
-             "end to end: the frames of five cycles reach the DMI");
+      --  the hello's answer in the first cycle included: MSG_STATUS,
+      --  MSG_TRACK_COND and MSG_VBC_LIST (both empty)
+      Check (Frames = 21,
+             "end to end: the frames of five cycles reach the DMI, frames"
+             & Img (Frames));
       Check (not DMI_Core.EVC_Link_Lost, "end to end: the DMI hears the EVC");
       Check (EVC_Core.Rejected (DMI) = 0,
              "end to end: the on-board accepts what the DMI sends");
@@ -739,6 +757,21 @@ package body EVC_Test_Core is
              and then DMI_Driver_Data.Onboard_Long_Known,
              "DMI restart: MSG_TRAIN_TYPES and MSG_STORED_VALUES sent "
              & "again after MSG_DMI_HELLO, frames" & Img (Frames));
+      --  and the status frame, the track conditions and the VBC list,
+      --  sent at a change only, in that cycle and not in the next
+      Check (Sent_To_DMI (DMI_Protocol.MSG_STATUS) = 1
+             and then Sent_To_DMI (DMI_Protocol.MSG_TRACK_COND) = 1
+             and then Sent_To_DMI (DMI_Protocol.MSG_VBC_LIST) = 1
+             and then Sent_To_DMI (DMI_Protocol.MSG_SYSTEM_VERSION) = 1,
+             "DMI restart: MSG_STATUS, MSG_TRACK_COND, MSG_VBC_LIST and "
+             & "MSG_SYSTEM_VERSION sent again after MSG_DMI_HELLO");
+      EVC_Core.Tick (100);
+      Feed_DMI;
+      Check (Sent_To_DMI (DMI_Protocol.MSG_STATUS) = 0
+             and then Sent_To_DMI (DMI_Protocol.MSG_TRACK_COND) = 0
+             and then Sent_To_DMI (DMI_Protocol.MSG_VBC_LIST) = 0
+             and then Sent_To_DMI (DMI_Protocol.MSG_TRAIN_TYPES) = 0,
+             "DMI restart: once only, not in the next cycle");
    end Scenario_End_To_End;
 
 end EVC_Test_Core;

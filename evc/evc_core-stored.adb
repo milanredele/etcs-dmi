@@ -160,7 +160,9 @@ is
                                              E.Detail);
          end;
       end loop;
-      if EVC_Stored_Information.Track_Cond_Due then
+      --  and again after the DMI's hello, the list as it is (a restarted
+      --  DMI shows none)
+      if EVC_Stored_Information.Track_Cond_Due or else DMI_Restarted then
          Track_Cond_Frame (EVC_Stored_Information.Track_Cond_Count,
                            EVC_Stored_Information.Track_Cond_List,
                            Frame, Last);

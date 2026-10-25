@@ -565,7 +565,7 @@ is
       Codes : VBC_Codes_T := (others => 0);
       N     : constant Natural := EVC_VBC.Count;
    begin
-      if EVC_VBC.List_Due then
+      if EVC_VBC.List_Due or else DMI_Restarted then
          for I in 1 .. N loop
             pragma Loop_Invariant (True);
             Codes (I) := EVC_VBC.Code (EVC_VBC.Item (I));
@@ -574,6 +574,7 @@ is
          EVC_Outbox.Put (DMI, Frame (1 .. Last));
          EVC_VBC.Mark_Sent;
       end if;
+      DMI_Restarted := False;
    end Send_VBC_List;
 
    procedure Send_RBC_Contact is

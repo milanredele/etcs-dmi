@@ -173,9 +173,12 @@ is
                      In_Out => EVC_Outbox.Queue);
 
    --  3.15.9: the Virtual Balise Covers stored, to the DMI's data view
-   --  when the store changed (DMI MSG_VBC_LIST, DMI Table 45)
+   --  when the store changed (DMI MSG_VBC_LIST, DMI Table 45) and after
+   --  the DMI's hello (DMI_Restarted, cleared here: the last reader)
    procedure Send_VBC_List
-     with Global => (In_Out => (EVC_VBC.State, EVC_Outbox.Queue));
+     with Global => (In_Out => (EVC_VBC.State, EVC_Outbox.Queue,
+                                DMI_Restarted)),
+          Post   => not DMI_Restarted;
 
    --  DMI 11.7.1.4: the RBC contact stored on-board (3.18.4.3,
    --  EVC_Radio.Contact), sent to the DMI when it changes (from none
@@ -333,7 +336,7 @@ is
                                 Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 Contact_Sent, Version_Sent, Types_Sent,
-                                Stored_Sent, Values_Sent,
+                                Stored_Sent, Values_Sent, DMI_Restarted,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_VBC.State));
