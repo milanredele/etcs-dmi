@@ -13407,3 +13407,125 @@ on the decision for a context without a valid level), none undecided, 4
 left; one backlog line (B2300). The review took 100 tool calls of 130
 to the bound, the most on items 1 to 5 (the traces and two scratch
 experiments, about 80).
+
+### E5 integration after the fifty-third round, the twenty-first of E6 (2026-10-25)
+
+Merged: e6/review-fixes (B2140 / B2206: `EVC_Position.Report_With` and
+`Position_Report_2` give an unknown LRBG and previous LRBG as NID_LRBG
+16777215 (NID_C 1023, NID_BG 16383), the reviewer's clause corrected
+once more (NID_BG is 7.5.1.85, 16383 for linking only);
+`S076_Run.Header_Unknown` counts only 16777215 as unknown; the three
+sequences expecting it are blocked before their expectation, 0
+movements; B2202: message 6 is R in level 1 by Table 4.8.3, so
+`Trip_Exit_Known` reaches level 1 only through a level change in PT;
+`EVC_Radio_Acceptance.In_PT` now tests the level, a context without a
+valid level judged by message 6 alone because
+`EVC_Sessions.Network.Take_Radio_Order` builds its packet 45 context
+without the level (B2220); `Scenario_PT_Acceptance_Level` covers the ten
+A [1] rows; B2201: with the rule off and the position's events printed,
+the linking reaction of 3130237_01 is No Reaction on every link and the
+SB at 1399 m is the target's intervention at 40 km/h against an SBI of
+45: B2041's remark was wrong, closed; fast-forwarded), e5/bookkeeping-6
+(B841 closed: 3.6.5.1.4 e) by `Scenario_Handover_Rear_Report`, the
+border's passage with the min safe rear end decided on the confidence
+interval counted from the border's reference group
+(`EVC_Position.Evaluate_Border`, 3.6.4.2.5 c)), a message 136 to both
+RBCs; 5.4.5.3 a) by `Scenario_SoM_L2_Override`, which found a defect:
+the override was also taken at S21 after 'Start',
+`Context_T.SoM_Started` (Waiting_For_RBC or Proposed) now excludes S21
+to S25 in `Override_Allowed`, B2280 the states before S10; 5.4.5.3 j)
+2nd bullet by `Scenario_Network_Level_1`, the RBC data not taken in
+level 1, the network taken; B781 narrowed: A.3.5.1 3rd bullet by
+`Scenario_Text_Roll_Back`, a text stays shown over a roll-back behind
+its start; the brief's "the procedure Override in SB" was wrong, the
+mode goes to SR at once (5.8.3.1 a)), e6/hello-reversing (B2204 / B2120:
+the hello resends MSG_STATUS (the next cycle's frame whatever the
+markers), MSG_TRACK_COND and MSG_VBC_LIST (`EVC_Core.DMI_Restarted`,
+cleared by `Send_VBC_List`), beside the four of round 52; not the
+per-cycle frames, not MSG_RADIO_NETWORKS (on request), not the TIU
+outputs (`TC_Sent` is the TIU track condition output of 5.20, not
+MSG_TRACK_COND: a brief premise wrong), not the events MSG_SYSTEM_STATUS
+and MSG_TEXT (B2240); the power-up reset moved to
+`EVC_Core.Reset_Status_Sent` (`Start` at 101 lines); B2203: one rule for
+both directions, a frame one byte short is the form before the train
+type and reads as type 0, the DMI now reads the 64-byte
+MSG_STORED_VALUES so (`Stored_Values_Typeless_Length`), both comments
+give the reason; B783 closed: `Scenario_Report_Reversing`, after 20 m of
+reversing D_LRBG 2030 -> 1830 and Q_DIRTRAIN 1 -> 0, Q_DIRLRBG and
+Q_DLRBG unchanged (3.6.1.3.4: RV does not change the orientation), no
+defect), e5/gamma-families-3 (B2205: our EB in 3131040_17 came at 1154 m
+by 3.14.1.2, the failed service brake detection, because the bench's
+train ignores our SB; the gamma image sets the detection off (60 s)
+where the bench disables its service brake, our EBI then at 1240 m
+against the workbook's 241 m before the EOA, within 1 m; a location rule
+for EB steps declined, 13 sequences expect an EB at a comment's EBI but
+one has a limit reference the runner reads; the verbose trace now prints
+a passed curve step's change against the workbook; B2200:
+`S076_Run.Reach_EOA_Antenna` drives a reach-point input with "overpasses
+EoA" on until the min safe antenna is past the on-board's EOA (5
+sequences of SV30 carry it, 2 blocked before, 2 already in TR),
+3131040_17 passes in three versions, the s076 line of S27eb0678 kept
+with the note; B2160: 3130237_01 SV21's own sheets differ from the
+twin's (A_brake 0.4 against 0.8, Kdry 0.8 against 0.5, computed at a
+99.9999999 % confidence), its Permitted at 70 km/h is 493 m before the
+EOA where the step uses the twin's 598 m, s076 (the brief's "takes the
+twin's whole sheet" wrong: own curve sets, the twin's two times only);
+resumed at 127 calls: 3131040_01 step 56 s076 (the step's 697 m is 200 m
+in rear of its own workbook's Indication at 897 m), the SB with TIU
+reason 512 between 554 and 700 m unexplained, B2260), and e5/review-53
+(the second blind review, see below).
+
+The review (e5/review-53, 103 calls, 5.4 USD): eleven items, seven
+reached before the bound, the four clause readings of items 8 to 11 not
+reviewed (the traces took the budget: next round the readings come first
+and the traces are three at most). Of the seven: 6 agreed, 1 disagreed
+(B2300, a decision: a context without a valid level cannot satisfy "for
+level 2" and should be rejected in PT, where `In_PT` accepts it on
+message 6 alone; or B2220 finished so that every caller passes the
+level). Remarks that are findings: B2260's brake narrowed by two scratch
+runs to the Train Data changed in motion (5.17.2.2 S2 / S4, `TD_Step`),
+the linking and the safe consist excluded; where the bench places a
+group read outside its window is not traced (no sequence has the case).
+Item 2 was not fully blind: the commit message of the round's last
+commit showed in the reviewer's git status at the start; the next review
+brief says to start without `git status`. Verdict on the review: two
+rounds, 15 of 21 items reviewed, 14 agreed, 3 disagreed (one triage
+category, two decisions / comments), 8 remark lines of which 3 led to
+fixes this round (B2140 / B2206, B2202, B2201 closed) and 2 are possible
+defects still open (B2260, B2300); 11.1 USD for the two reviews. It
+stays.
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13531 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6160 B; wasm and both smokes 0 failures; the
+runner 1160 / 1078 / 952 -> 1163 / 1075 / 952, 0 regressions against the
+merged baseline, no signature untriaged. The merge: review-fixes and the
+review fast-forwarded; backlog and plan conflicts on bookkeeping-6,
+hello-reversing and gamma-families-3, none in code; three chain runs,
+all green.
+
+Costs (doc/ROUNDS.csv): 31.9 USD with the review (26.5 for the four
+packages), 14 of 15 items done (one added in a resumption), 7 of 17
+brief premises wrong, no agent over budget; one resumption converted
+(twenty-three of twenty-three). Lessons: four of the seven wrong
+premises were the reviewer's or the previous agents' side remarks taken
+into the brief (the path to footnote [1], a clause number, "a service
+brake", "takes the twin's whole sheet"): a remark of a report is a claim
+like a backlog line; the others were readings of where a change sits
+(`TC_Sent`, the bench's place for a rule) and one of a procedure's
+effect ("Override in SB"). The round's defects of ours: the override
+taken at S21, the unknown LRBG's coding, the acceptance in PT without
+the level; all three found by scenarios of behaviour the code claimed or
+by the review.
+
+The matrix: clauses left 79 -> 75 (todo 2, partial 73); E6 done 219,
+partial 6 unchanged (the rows were E5's: 3.6.5.1.4 e), 4.4.18.1.7,
+5.4.5.3 a), 5.4.5.3 j) 2nd bullet). Open items: doc/BACKLOG.csv (42 open
+after this round; 6 added, 13 closed). Next: B2260 (the Train Data
+changed in motion brake of 3131040_01, a trace), B2300 with B2220 (the
+level in every acceptance context), B2280 (the override before S10),
+B2240 (the events after a DMI restart: a decision), B1960's rest
+(3131040_73 step 64, six status steps) and B2261 if any (runner); B781's
+other bullets; B1401, B1641 (protocol); the decisions B1060, B1063,
+B1340; the review again with the readings first and three traces at
+most.
