@@ -1048,7 +1048,7 @@ is
    procedure Apply_Order (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Order, Links, Pending, R.State,
                                 Ind, Requesting, Timer_On),
-                     Input  => Handover.State),
+                     Input  => (Handover.State, Network.State)),
           Post => R.Sessions = R.Sessions'Old
    is
       N : constant R.Session_Count_T := R.Sessions;
@@ -1056,7 +1056,13 @@ is
       if not Order.Present then
          return;
       end if;
-      if Order.Establish and then Order.RBC.NID_RBC = Last_Known_RBC then
+      if Order.Establish and then Network.Order_Unregistered then
+         --  4.8.3 [15]: an order to establish received together with a
+         --  Radio Network transition order to a network the on-board is
+         --  not registered to: rejected, neither session nor contact
+         null;
+      elsif Order.Establish and then Order.RBC.NID_RBC = Last_Known_RBC
+      then
          --  3.5.3.13: the stored contact, the number of the order
          --  ignored; none stored: the order ignored (3.5.3.13.1)
          if R.Contact.Known then

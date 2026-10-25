@@ -138,6 +138,15 @@ is
    function Ready return Boolean
      with Global => (State, EVC_Radio.State);
 
+   --  4.8.3 [15]: a Radio Network transition order taken and not applied
+   --  yet whose Radio Network type needs a radio system not registered
+   --  to the ordered network (3.5.6.7 a to d for the ordered type and,
+   --  for GSM-R, its NID_MN): a session establishment order received
+   --  together with it is rejected
+   --  @req 4.8.3.1.1 Table-footnote [15]
+   function Order_Unregistered return Boolean
+     with Global => (State, EVC_Radio.State);
+
    --  MSG_ONBOARD radio bits 0-6 (common/dmi_protocol.ads)
    function Radio_Bits return Natural
      with Global => (State, EVC_Radio.State),

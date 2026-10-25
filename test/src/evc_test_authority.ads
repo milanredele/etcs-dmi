@@ -43,6 +43,7 @@ package EVC_Test_Authority is
    procedure Scenario_PBD_By_Radio_Buffered;
    procedure Scenario_Buffer_Three_Sets;
    procedure Scenario_Own_Units_Stored;
+   procedure Scenario_Released_Linking;
 
    procedure Scenario_Start_After_Ack;
 

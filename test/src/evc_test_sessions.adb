@@ -5,8 +5,10 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P42;
+with ETCS_Track_Packets.P45;
 with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P74;
+with ETCS_Track_Packets.P131;
 with ETCS_Train_Packets.P5;
 with ETCS_Train_Packets.P11;
 with ETCS_Bits;
@@ -2489,5 +2491,147 @@ package body EVC_Test_Sessions is
       Check (not EVC_Sessions.Service_Brake,
              "link values: a new message releases it (3.14.1.7)");
    end Scenario_Session_NVCONTACT_Values;
+
+   --  A group NID at At_M metres with a session management order to
+   --  establish a session with RBC NID_RBC (packet 42) when Order, and a
+   --  Radio Network transition order to the GSM-R network MN (packet 45)
+   --  when Network, or an RBC transition order to RBC To_RBC at D_M
+   --  metres (packet 131) when Transition
+   procedure Order_Rows_Group (NID       : Natural;
+                               At_M      : Integer_64;
+                               NID_RBC   : Natural;
+                               Order     : Boolean;
+                               Network   : Boolean := False;
+                               MN        : ETCS_Variables.NID_MN_T := 0;
+                               Transition : Boolean := False;
+                               D_M       : Natural := 0;
+                               To_RBC    : Natural := 0)
+   is
+      W   : Writer_T;
+      Got : Boolean := True;
+      P   : TP42.Packet_T;
+      N   : ETCS_Track_Packets.P45.Packet_T;
+   begin
+      Add_Group (Group (NID, At_M));
+      if Order then
+         P.Q_DIR := 2;
+         P.Q_RBC := 1;
+         P.NID_C := 5;
+         P.NID_RBC := ETCS_Variables.NID_RBC_T (NID_RBC);
+         P.NID_RADIO := 16#0077#;
+         TP42.Encode (P, W, Got);
+         Check (Got, "order rows: packet encoded");
+      end if;
+      if Network then
+         N.Q_DIR := 2;
+         N.Q_NETWORKTYPE := 2;
+         N.Has_NID_MN := True;
+         N.NID_MN := MN;
+         ETCS_Track_Packets.P45.Encode (N, W, Got);
+         Check (Got, "order rows: packet encoded");
+      end if;
+      if Transition then
+         ETCS_Track_Packets.P131.Encode
+           ((NID_PACKET     => 131,
+             Q_DIR          => 2,
+             L_PACKET       => 0,
+             Q_SCALE        => 1,
+             D_RBCTR        => ETCS_Variables.D_RBCTR_T (D_M),
+             NID_C          => 5,
+             NID_RBC        => ETCS_Variables.NID_RBC_T (To_RBC),
+             NID_RADIO      => 16#0077#,
+             Q_SLEEPSESSION => 0), W, Got);
+         Check (Got, "order rows: packet encoded");
+      end if;
+      Finish_Carry (Track_N, 0, W, Got);
+   end Order_Rows_Group;
+
+   --  No session with RBC NID_RBC requested or open
+   function No_Session_With (NID_RBC : Natural) return Boolean is
+     (for all S in R.Session_T =>
+        R.Info (S).State = R.Idle
+        or else R.Info (S).RBC.NID_RBC
+                /= ETCS_Variables.NID_RBC_T (NID_RBC));
+
+   --  The exceptions of the session orders in 4.8.3 and 4.8.4:
+   --  [15] of 4.8.3 (an order to establish a session together with a
+   --  Radio Network transition order to a network not registered to:
+   --  rejected; to the network registered to: taken), [14] of 4.8.3 (an
+   --  order to establish a session with the Accepting RBC of an RBC
+   --  transition order received in the same message or stored: rejected,
+   --  the handover's), [8] of 4.8.4 with 4.4.8.1.5.3 and 4.4.20.1.13 (in
+   --  SH and PS only an RBC transition order at once, for the contact)
+   procedure Scenario_Session_Order_Rows is
+      use type ETCS_Variables.NID_MN_T;
+      MN : ETCS_Variables.NID_MN_T;
+   begin
+      Start_X;
+      Stand;
+      Order_Rows_Group (10, 100, 300, Order => True, Network => True,
+                        MN => 16#999FFF#);
+      Run_X (15_000);
+      Check (R.Network.NID_MN = 16#999FFF# and then No_Session_With (300)
+             and then not (R.Contact.Known
+                           and then R.Contact.RBC.NID_RBC = 300),
+             "order rows: an order to establish together with a Radio "
+             & "Network transition order to a network not registered to is "
+             & "rejected, the network order taken (4.8.3 [15])");
+      Start_X;
+      Stand;
+      MN := R.Network.NID_MN;
+      Order_Rows_Group (10, 100, 300, Order => True, Network => True,
+                        MN => MN);
+      Run_X (15_000);
+      Check (R.Info (1).State = R.Connecting
+             and then R.Info (1).RBC.NID_RBC = 300,
+             "order rows: together with an order to the network registered "
+             & "to, the session is requested (4.8.3 [15])");
+
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Order_Rows_Group (10, 100, 400, Order => True, Transition => True,
+                        D_M => 2000, To_RBC => 400);
+      Run_X (15_000);
+      Check (EVC_Sessions.RBC_Order_Stored and then No_Session_With (400),
+             "order rows: an order to establish with the Accepting RBC of "
+             & "an RBC transition order of the same message is rejected "
+             & "(4.8.3 [14])");
+      Order_Rows_Group (20, 300, 400, Order => True);
+      Run_X (35_000);
+      Stand;
+      Check (EVC_Sessions.RBC_Order_Stored and then No_Session_With (400),
+             "order rows: and with the Accepting RBC of the RBC transition "
+             & "order stored (4.8.3 [14])");
+
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      Order_Rows_Group (10, 100, 0, Order => False, Transition => True,
+                        D_M => 2000, To_RBC => 400);
+      Order_Rows_Group (20, 130, 0, Order => False, Transition => True,
+                        D_M => 0, To_RBC => 500);
+      Run_X (11_000);
+      Stand;
+      Check (not EVC_Sessions.RBC_Order_Stored
+             and then not (R.Contact.Known
+                           and then R.Contact.RBC.NID_RBC = 400),
+             "order rows: in SH an RBC transition announcement is rejected "
+             & "(4.8.4 [8], 4.4.8.1.5.3)");
+      Run_X (15_000);
+      Stand;
+      Check (not EVC_Sessions.RBC_Order_Stored
+             and then R.Contact.Known and then R.Contact.RBC.NID_RBC = 500
+             and then No_Session_With (500),
+             "order rows: in SH an RBC transition order at once stores the "
+             & "RBC contact only, no handover (4.8.4 [8], 4.4.8.1.5.3)");
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_PS, EVC_Modes.L2);
+      Order_Rows_Group (10, 100, 0, Order => False, Transition => True,
+                        D_M => 0, To_RBC => 500);
+      Run_X (15_000);
+      Check (not EVC_Sessions.RBC_Order_Stored
+             and then R.Contact.Known and then R.Contact.RBC.NID_RBC = 500
+             and then No_Session_With (500),
+             "order rows: in PS the same (4.8.4 [8], 4.4.20.1.13)");
+   end Scenario_Session_Order_Rows;
 
 end EVC_Test_Sessions;

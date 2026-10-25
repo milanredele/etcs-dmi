@@ -12248,3 +12248,82 @@ NL.
   page has no raw TIU input. The wasm was not built in the package.
 - Left (B2000, narrowed): the driver's type to the on-board and the data
   view item 3 (Table 44).
+### The released sets and two closings: the linking of a released set, the packet 79 keeper, the repositioning family by family, the acceptance rows [10], [14], [15] and 4.8.4 [8] (e6/released-sets) (2026-10-25)
+
+**The linking of a released set (B1980, first half).** Premise checked:
+`EVC_Core.Stored.Release_Transition_Buffer` hands the released messages
+to `EVC_Position.Take_Radio_Linking (Accepted, First)`. Scenario
+`EVC_Test_Authority.Scenario_Released_Linking`: a message 24 with a
+packet 5 referred to the LRBG in level 1 with level 2 announced is kept
+in the buffer and not used; at the transition the linking is in force
+from the LRBG (group 12 expected, its window supervised), group 12 read
+inside its window becomes the LRBG; missing, its window passed, the
+reaction of the linking is requested (3.16.2.3). No defect: a test only.
+Rows 4.8.5.5 and 4.8.4.2 Table noted.
+
+**The packet 79 keeper (B1980 done).** No caller gave Stored any more
+(`EVC_Core.Stored.Take_Radio_Geo` the only one, Stored mapped to
+Rejected): the keeper, its state (the kept packet, its sense and flag)
+and the Stored branch removed; `EVC_Position.Take_Radio_Geo (Accepted)`,
+its heading naming the transition buffer as the keeper of a packet 79
+stored for level 2. Edit outside the brief's named places: the caller
+`EVC_Core.Stored.Take_Radio_Geo` (one call, the profile). Proofs of
+`evc_position` and `evc_core-stored`; `Scenario_Own_Units_Stored` and
+`Scenario_Geo_By_Radio` unchanged. The note of 4.8.3.1.1
+Table-footnote [2] named the keeper: rewritten.
+
+**The repositioning family (B018 done).** 7 sequences left with
+S1531c721. 4080432_01 re-checked at SV30: BG101d (50 m) links BG1d by
+its identity (NID_BG 1 at D_LINK 100), not as unknown; 3.8.5.2.2 ("only
+if linking information has announced a following balise group as
+unknown") gives no update, the train trips at BG101d's EOA (750 m). The
+linking that would announce it is the packet 5 of step 44 (case 4080420
+3), an unnamed balise group with no telegram in the file: extraction
+defect, kept by decision. 3040400_08 and 6060504_07: the radio messages
+of the files are 32, 38, 8, 15 and 32, 8, 136, no message 3 beyond the
+level 1 MA (as traced by e5/trips-fs-2). The triage line split in two
+(s076 both); the families that left the signature (3080500_03,
+9990500_09, 5160000_01, 3040400_10) are named in B018's closing.
+
+**The acceptance rows (B784 done).** [15] of 4.8.3 (the rows Session
+Management, RBC Transition Order, Session Management with RIU):
+`EVC_Sessions.Network.Order_Unregistered` (a Radio Network transition
+order taken, not applied yet, whose type needs a radio system not
+registered to the ordered network: 3.5.6.7 a to d for the ordered type,
+a GSM-R mobile registered with no registration due and the ordered
+NID_MN the stored one); `EVC_Sessions.Apply_Order` rejects the order to
+establish (no session, no contact). Decision: "received together" is
+taken in the same cycle (the packets of one group or message reach the
+sessions together and the session order is applied before the network
+order). Before, the order was held by 3.5.6.7 until the mobile
+registered (decision 5 of `EVC_Sessions.Network`) and then executed.
+[14]: premise partly wrong, `EVC_Test_Handover.Scenario_Handover_Balise`
+already named it; now also with the transition order stored. 4.8.4 [8]
+with 4.4.8.1.5.3 and 4.4.20.1.13: in SH an announcement is rejected, an
+order at once stores the contact, no handover, no session; in PS the
+same. Scenario `EVC_Test_Sessions.Scenario_Session_Order_Rows` for the
+three. [10] is the row Assignment of Co-ordinate system (message 45):
+its rule is 3.4.2.3.3.8, applied by
+`EVC_Position.Assign_Coordinate_System`; message 45 is not taken from
+the radio (B840), so the row stays partial. Runner 1130 / 1073 / 987,
+0 regressions, 1 improvement: 4080437_01 SV30 (the sequence of [15])
+failed 52 -> 60, steps 52 to 57 pass; step 60 (the immediate level 2
+order of BG3d leaves the level at 1) triaged onboard under Sa03cccdc,
+B2060 (not traced).
+
+Rows: 4.8.5.5, 4.8.4.2 Table, 4.8.3.1.1 Table (partial) and its
+footnotes [2], [10] (deferred -> partial), [14] (partial -> done), [15]
+(deferred -> done); 4.8.4.2 Table-footnote [8], 4.4.8.1.5.3,
+4.4.20.1.13 (partial -> done); 3.8.5.2.2 re-read, unchanged. Left:
+B840 (message 45).
+
+**The trace of 4080437_01 SV30 step 60 (B2060 done, a resumption).**
+The linking of BG1d (50 m) is incremental: BG2 at +50 m (100 m), BG3 at
++100 m (200 m), BG4 at +700 m (900 m), Q_LOCACC 10 m, no reaction. The
+sequence places BG3d, with the immediate order to level 2 (packet 41,
+D_LEVELTR 0) and a packet 42, at 150 m: outside its expectation window,
+its message is rejected (3.4.4.4.3.2) and the level stays 1, the
+pattern of 4080455. The [15] rule is not involved: with it disabled the
+step fails the same way (5.10.2 and 4.8.1.3.1: the level order is not a
+session order, and `EVC_Levels` reads nothing of the radio). Triaged
+s076 under Sa03cccdc; no code change, the runner unchanged.

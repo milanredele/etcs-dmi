@@ -70,7 +70,6 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Balise_Groups; use EVC_Balise_Groups;
-with EVC_Acceptance;
 with EVC_Config;
 with EVC_Distances;     use EVC_Distances;
 with EVC_Linking;
@@ -913,20 +912,18 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
-   --  the packets 79 of the radio messages of the cycle (EVC_Radio_Info,
-   --  those whose LRBG was known at reception) in the verdict of the
-   --  tables (EVC_Acceptance.Radio_Geo_Verdict). Accepted: taken in the
-   --  order of reception, after the one kept for the transition; their
-   --  reference groups anchored when they are the LRBG or a group of
-   --  the last ones, the others when passed. Stored (4.8.3 [2]): the
-   --  last one kept for the level 2 transition (one is enough: a packet
-   --  79 replaces the references not yet applicable, 3.6.6.3, so the
-   --  sequential re-evaluation of 4.8.5.5 leaves the last). Rejected:
-   --  nothing taken, the one kept deleted (4.8.5.4 a: the announcement
-   --  is gone; or released in a mode that rejects it).
+   --  3.6.6.4.1, 4.8.3, 4.8.4.2: the packets 79 of the radio messages
+   --  of the cycle (EVC_Radio_Info, those whose LRBG was known at
+   --  reception, and the sets the transition buffer released in it),
+   --  taken in the order of reception when Accepted (the verdict of the
+   --  tables, EVC_Acceptance.Radio_Geo_Verdict); their reference groups
+   --  anchored when they are the LRBG or a group of the last ones, the
+   --  others when passed. Not accepted: nothing taken. The position
+   --  keeps none for the level 2 transition: a packet 79 stored for it
+   --  (4.8.3 [2]) is kept with its message by the transition buffer
+   --  (EVC_Radio_Authority) and judged again at the release (4.8.5.5)
    --  @req 3.6.6.4.1, 4.8.4.2 Table
-   procedure Take_Radio_Geo (Verdict : EVC_Acceptance.Radio_Verdict_T)
+   procedure Take_Radio_Geo (Accepted : Boolean)
      with Global => (In_Out   => State,
                      Input    => EVC_Radio_Info.State,
                      Proof_In => EVC_Odometry.State),
