@@ -12262,4 +12262,15 @@ Rows: 4.8.5.5, 4.8.4.2 Table, 4.8.3.1.1 Table (partial) and its
 footnotes [2], [10] (deferred -> partial), [14] (partial -> done), [15]
 (deferred -> done); 4.8.4.2 Table-footnote [8], 4.4.8.1.5.3,
 4.4.20.1.13 (partial -> done); 3.8.5.2.2 re-read, unchanged. Left:
-B2060, B840 (message 45).
+B840 (message 45).
+
+**The trace of 4080437_01 SV30 step 60 (B2060 done, a resumption).**
+The linking of BG1d (50 m) is incremental: BG2 at +50 m (100 m), BG3 at
++100 m (200 m), BG4 at +700 m (900 m), Q_LOCACC 10 m, no reaction. The
+sequence places BG3d, with the immediate order to level 2 (packet 41,
+D_LEVELTR 0) and a packet 42, at 150 m: outside its expectation window,
+its message is rejected (3.4.4.4.3.2) and the level stays 1, the
+pattern of 4080455. The [15] rule is not involved: with it disabled the
+step fails the same way (5.10.2 and 4.8.1.3.1: the level order is not a
+session order, and `EVC_Levels` reads nothing of the radio). Triaged
+s076 under Sa03cccdc; no code change, the runner unchanged.
