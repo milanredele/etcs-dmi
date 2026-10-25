@@ -11882,3 +11882,45 @@ B1901, B1860 (runner); B018's families; then NL.
 - The runner did not move (1115 / 1076 / 999, 0 regressions, 0
   improvements): no step of the corpus judges the data view's contact or
   the message 41.
+### Three runner gaps: the short radio message blocked as an extraction defect, the NTC-first order judged NTC, the level symbol step judged against the start column (e5/runner-gaps-2) (2026-10-25)
+
+Runner only (test/src); no on-board code changed.
+
+- B1860 done. `S076_Run.Radio_Input`: a message of the sequence with
+  fewer bytes than its L_MESSAGE (8.4.4.2, read from the message's own
+  bits) and a packet the step's input line names absent is truncated by
+  the extraction: blocked as S076-defect, not given to the on-board.
+  Decision: a short message with all its packets is given (8040400_01
+  step 65 sets L_MESSAGE 1023 on purpose; 8040100_01 step 79 has two
+  complete packets 44 and passes); the plain rule "bits below 8 *
+  L_MESSAGE" blocked those two and two more. Moved (blocked where they
+  failed later): 3131100_02 77 -> 71, 3131100_06 104 -> 102, 4080500_01
+  207 -> 205 (SV21, SV22, SV30), 6060400_07 SV30 77 -> 73.
+- B1900 done. `S076_Run.NTC_First` walks a telegram's packets to the
+  first M_LEVELTR of packet 41 (7.4.2.1); in the input branch of the
+  main loop a failed column check after a group with such an order is
+  judged NTC and blocks (the on-board without NTC takes the next level,
+  5.10.2.4). Judging the order step itself moved 54 sequences earlier
+  (announcements that pass), so only the failing step is converted.
+  5100200_05 failed 45 -> blocked 45 by NTC (three versions).
+- B1901 done. `S076_Run.Level_Symbol`: a "Level-0/1/2/NTC" step whose
+  comment says "Level X is already DISPLAYED" (case 5100100 17) is
+  judged against the start column. 4080425_04 failed 65 -> passed
+  (SV21, SV22, SV30): no next failure. The other five lines of
+  Sa03cccdc did not move.
+- Runner: 1115 passed, 1076 failed, 999 blocked before; 1118, 1060,
+  1012 after; 0 regressions.
+- B1881 done (added by the coordinator). `test/tools/evc_config.py`
+  learns the format version 2 of `EVC_Config`: the text form gains
+  `format = 2` with a `[train]` section (the braking model, the special
+  brakes the vehicle has) and, for a gamma train, `[gamma]` (the times,
+  the curves as lists of [speed cm/s, deceleration mm/s²], Kdry_rst,
+  Kwet_rst, Kn, the rotating mass) with the optional tables
+  `[gamma.normal_service]` and `[gamma.by_combination]`; the image is
+  written and read with the kernel's validation (`Decoded`, `Get_Gamma`:
+  the ranges, the curve counts, the speeds rising, the fields ending at
+  the CRC, a lambda train of 38 bytes). The two samples of
+  `EVC_Test_Config.Scenario_Config_Image_V2` (258 and 1248 bytes) give
+  the bytes of the kernel's `Encode_V2`, which `Decoded` accepts, and
+  decode back to the same text; the scenario's refusals are refused
+  alike. The version 1 image of ports/hosted/evc.cfg is unchanged.

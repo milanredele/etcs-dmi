@@ -2538,6 +2538,55 @@ package body S076_Run is
       return False;
    end Undecodable;
 
+   --  Whether telegram T carries a level transition order (packet 41,
+   --  7.4.2.1) whose first priority is an NTC (M_LEVELTR 1): the on-board
+   --  without NTC selects the next level it has (5.10.2.4) where the
+   --  sequence expects the NTC; the packets walked from the header's 50
+   --  bits by their L_PACKET, the first M_LEVELTR 40 bits into packet 41
+   function NTC_First (T : Telegram_T) return Boolean is
+      function Bits (At_Bit, Width : Natural) return Natural is
+         V : Natural := 0;
+      begin
+         for K in At_Bit .. At_Bit + Width - 1 loop
+            V := V * 2;
+            if K / 8 < T.Data'Length
+              and then (Natural (T.Data (T.Data'First + K / 8))
+                        / 2 ** (7 - K mod 8)) mod 2 = 1
+            then
+               V := V + 1;
+            end if;
+         end loop;
+         return V;
+      end Bits;
+      P : Natural := 50;
+   begin
+      while P + 23 <= T.Bits loop
+         declare
+            Nid : constant Natural := Bits (P, 8);
+            Len : constant Natural := Bits (P + 10, 13);
+         begin
+            if Nid = 255 or else Len < 23 then
+               return False;
+            elsif Nid = 41 then
+               return P + 43 <= T.Bits and then Bits (P + 40, 3) = 1;
+            end if;
+            P := P + Len;
+         end;
+      end loop;
+      return False;
+   end NTC_First;
+
+   --  Whether the balise group input of step St gives a telegram of an
+   --  order to an NTC first (NTC_First)
+   function Order_NTC_First (St : Step_T) return Boolean is
+     (W (2) = "BTM"
+      and then (for some I in 1 .. Seq.Telegram_Count =>
+                  Seq.Telegrams (I).Step = St.Number
+                  and then (for some K in 4 .. Line.Count =>
+                              Seq.Telegrams (I).Tag
+                                (1 .. Seq.Telegrams (I).Tag_Len) = W (K))
+                  and then NTC_First (Seq.Telegrams (I))));
+
    --  The telegrams of a balise group input: placed on the track and
    --  passed by the antenna, but those the step names undecodable
    function BTM_Input (St : Step_T) return Judgement_T is
@@ -3065,6 +3114,14 @@ package body S076_Run is
             return Shown (St_W, False, Now, "level " & Name
                           & " (code" & Img (S.Level) & ")");
          end;
+      elsif K = K_None
+        and then Has (Up (Image (St.Comment)), "LEVEL X IS ALREADY DISPLAYED")
+      then
+         --  "Level-0/1/2/NTC" with the comment "Level X is already
+         --  DISPLAYED" (case 5100100 17): the level before the transition,
+         --  the step's start column, its state column the level after it
+         --  (4080425_04 step 65: L1 until the transition location)
+         K := Level_Of (Trim (St.Lvl_Before));
       elsif K = K_None then
          --  "Level-0/1/2/NTC": the variant of the step's column
          K := Level_Of (Trim (St.Lvl_After));
@@ -6818,6 +6875,17 @@ package body S076_Run is
                         C := Columns (I);
                         if J.Verdict = Failed then
                            Record_Result (I, J);
+                        elsif C.Verdict = Failed and then Order_NTC_First (St)
+                        then
+                           --  the on-board without NTC took the next
+                           --  level of the order (5.10.2.4) where the
+                           --  sequence expects the NTC's: not judged
+                           --  (5100200_05 step 45)
+                           J := NJ (R_NTC, "an order to an NTC first"
+                                    & " (packet 41, M_LEVELTR 1): "
+                                    & Image (C.Sig));
+                           Record_Result (I, J);
+                           Block (I, J);
                         elsif C.Verdict = Failed then
                            Record_Result (I, C);
                         else
