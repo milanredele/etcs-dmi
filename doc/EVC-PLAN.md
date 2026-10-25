@@ -11839,3 +11839,46 @@ from the workbook, the Gamma curve steps judged) with B1881 and B1880;
 B1920 (the stored R [2] packets and the transition buffer) with B1921;
 B1940 (the RBC contact in the data view, protocol) with B1942; B1900,
 B1901, B1860 (runner); B018's families; then NL.
+
+### The RBC contact in the data view and the type of Train Data entry: the stored contact shown whatever the driver chose, the train interface's input recorded as message 41 (e6/rbc-contact-entry) (2026-10-25)
+
+- B1940 done, the row 3.18.6.1 done. The trace: the on-board sends its
+  stored contact at every change (`EVC_Core.Outputs.Send_RBC_Contact`,
+  from none at the power-up); after the driver's "Contact last RBC" it
+  keeps the contact it last sent (`EVC_Sessions.Mission.Driver_Contact`
+  takes `EVC_Radio.Contact`), after "Use short number" it stores the
+  short number (RBC identity unknown, then the identity EURORADIO
+  reports, 3.18.4.3.4) and sends it, after an entry it stores and sends
+  what was entered. No case leaves the DMI with a stale contact, so the
+  decision: `DMI_Data_View.Value_Of` shows the last MSG_RBC_CONTACT
+  while `RBC_Contact_Valid` (MSG_ONBOARD), whatever
+  `DMI_Radio_Data.Last_Choice` says; the gate protected nothing else
+  (its one other reader queues the driver's choice). No protocol change,
+  no change of `EVC_Core.Outputs` beyond the `@req 3.18.6.1` tag.
+  `DMI_Test_Windows.Scenario_Data_View_RBC_Contact`: MSG_RBC_CONTACT
+  (82220, 0077), the driver's "Contact last RBC" in the Radio data
+  window, the data view shows both (golden `data_view_p2_last_rbc`);
+  `vbc_data_view_p2_last_rbc` changed as intended (reviewed).
+- B1942 done, narrowed to the on-board. `EVC_Ports.Train_Data_Entry_Type`,
+  TIU signal 16, a two byte frame with the value 0 fixed, 1 flexible, 2
+  switchable (SUBSET-034 2.6.1.1, the coding of M_TRAIN_DATA_ENTRY),
+  another value refused by `Valid_TIU`. Decision: kept in `EVC_Core`'s
+  TIU values (`TIU_Value_Now`, `TIU_Known_Now`, latched like every
+  signal), no new state and no change of `EVC_Core.Inputs.Read_Ports`.
+  Decision: the message 41 at the first reception and at every change
+  (SUBSET-027 4.2.4.41 names no trigger; the other inputs of the train
+  interface are recorded so): an input of `EVC_JRU_Records.Inputs`
+  (`Entry_Type`, event 141, as 132 for 32) written by
+  `EVC_Core.Records.Record_Inputs_Radio_Data`, viewed by
+  `EVC_JRU_Messages.View` as event 141. `EVC_Test_JRU.Scenario_JRU_Entry_Type`;
+  the fuzzer picks signals 13 to 16. The row 3.20.1.2 names the message
+  41. Left: the DMI is not told the type of entry (B2000: the fixed
+  Train Data window, Table 44, and its protocol field) and the bench's
+  TIU panel does not offer it (B2001).
+- B1701 done: `golden_review.py`'s `jru_view` mirrors `View` for every
+  message the on-board writes (the message 23 was JRU:0), the view's
+  events are named, and a cycle group whose only change is one more copy
+  of a record is summarised as an added record (a multiset difference).
+- The runner did not move (1115 / 1076 / 999, 0 regressions, 0
+  improvements): no step of the corpus judges the data view's contact or
+  the message 41.

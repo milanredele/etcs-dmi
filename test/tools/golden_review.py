@@ -1006,6 +1006,17 @@ JRU_EVENT_TABLE = {
                      ("b4", 2, 1, _fmt_plain)]),
     41: ("mission", [("kind", 0, 1, _fmt_plain), ("b3", 1, 1, _fmt_plain),
                       ("b4", 2, 1, _fmt_plain)]),
+    # the events View gives the messages of SUBSET-027 whose number is
+    # another event of EVC_Ports (evc/evc_jru_messages.adb View)
+    50: ("train_integrity", [("value", 0, 1, _fmt_plain)]),
+    123: ("system_status", [("bits", 0, 3, _fmt_plain)]),
+    127: ("fault", [("b2", 0, 1, _fmt_plain)]),
+    141: ("train_data_entry", [("value", 0, 1, _fmt_plain)]),
+    143: ("tco_state", [("value", 0, 1, _fmt_plain)]),
+    144: ("lssma", [("v_div_4", 0, 1, _fmt_plain)]),
+    154: ("consist", [("available", 0, 1, _fmt_plain),
+                     ("front_div_16", 1, 1, _fmt_plain),
+                     ("rear_div_16", 2, 1, _fmt_plain)]),
 }
 
 
@@ -1056,6 +1067,41 @@ def jru_view(p):
     elif nid == 9:
         n = (8 * len(p) - b - 24) // 8
         v = [3, f(24, 8), n % 256, n // 256 % 256]
+    elif nid == 28:
+        v = [28, f(0, 6), f(16, 8), 0]
+    elif nid == 29:
+        v = [29, f(10, 6), 0, 0]
+    elif nid == 43:
+        v = [143, f(0, 1), 0, 0]
+    elif nid == 44:
+        v = [144, min(_jru_bits(p, b, 10) // 4, 255), 0, 0]
+    elif nid == 54:
+        v = [154, f(0, 1), _jru_bits(p, b + 1, 12) // 16,
+             _jru_bits(p, b + 37, 12) // 16]
+    elif nid == 2:
+        v = [41, 3, _jru_bits(p, b + 26, 12) // 100 & 0xFF,
+             f(58, 8) // 2 if f(57, 1) == 0 else 0]
+    elif nid == 25:
+        v = [41, 11, _jru_bits(p, b + 17, 10) // 5 & 0xFF,
+             min(_jru_bits(p, b, 17) // 100, 255)]
+    elif nid == 49:
+        i = 0
+        while i < 8 and _jru_bits(p, b + 4 * i, 4) != 15:
+            i += 1
+        v = [41, 2, i, 0]
+    elif nid == 50:
+        v = [50, f(0, 2), 0, 0]
+    elif nid == 41:
+        v = [141, f(0, 2), 0, 0]
+    elif nid == 23:
+        i = _jru_bits(p, b, 31)
+        v = [123, i % 256, i // 256 % 256, i // 65536 % 256]
+    elif nid == 27:
+        v = [127, 0, 0, 0]
+    elif nid == 15:
+        v = [9, 1, 0, 0] if f(0, 2) == 1 else [0, 0, 0, 0]
+    elif nid == 52:
+        v = [7, f(0, 8) - 8, 0, 0] if f(0, 8) in (9, 10) else [0, 0, 0, 0]
     else:
         v = [0, 0, 0, 0]
     return bytes(v)
@@ -1157,6 +1203,21 @@ def format_cycle_range(indices):
     return ", ".join(("%d" % a) if a == b else ("%d..%d" % (a, b)) for a, b in runs)
 
 
+def _surplus(recs, descs, other):
+    """The records of recs (described by descs) left over once each one
+    is matched with an equal description of other, in order."""
+    left = {}
+    for d in other:
+        left[d] = left.get(d, 0) + 1
+    out = []
+    for r, d in zip(recs, descs):
+        if left.get(d, 0) > 0:
+            left[d] -= 1
+        else:
+            out.append(r)
+    return out
+
+
 def evc_summarize(old_bytes, new_bytes):
     """The change summary of one on-board golden (AGENTS.md
     "Regression"): pair the removed/added records of each cycle-group
@@ -1189,8 +1250,10 @@ def evc_summarize(old_bytes, new_bytes):
             continue
         diff_groups += 1
         lines.append("cycle group %d:" % n)
-        removed = [r for r, d in zip(ca, da) if d not in db]
-        added = [r for r, d in zip(cb, db) if d not in da]
+        # the multiset differences: a record repeated once more on one
+        # side is added or removed, not hidden by its first copy
+        removed = _surplus(ca, da, db)
+        added = _surplus(cb, db, da)
         for r in removed:
             lines.append("  - " + evc_describe(r))
         for r in added:
@@ -2238,6 +2301,39 @@ def check_tool():
           "an unrecognised DMI frame type still pairs and replaces")
     check('bytes' in unknown.get('replaced', {}).get('fields', {}),
           "an unrecognised frame's content falls back to a 'bytes' field")
+
+    # JRU messages whose number is another event of EVC_Ports: the view's
+    # event (message 23 as 123, 41 as 141), and a cycle group whose only
+    # change is one more copy of a record it already holds
+    def jru_message(nid, body_bits):
+        bits = [0] * 311 + body_bits
+        bits += [0] * (-len(bits) % 8)
+        out = bytearray(len(bits) // 8)
+        for i, bit in enumerate(bits):
+            out[i // 8] |= bit << (7 - i % 8)
+        out[0] = nid
+        length = len(out)
+        for i in range(11):
+            if length >> (10 - i) & 1:
+                out[(8 + i) // 8] |= 1 << (7 - (8 + i) % 8)
+        return bytes(out)
+
+    def bits_of(value, width):
+        return [value >> (width - 1 - i) & 1 for i in range(width)]
+
+    m23 = jru_message(23, bits_of(5, 31))
+    m41 = jru_message(41, bits_of(2, 2))
+    check(evc_kind(('JRU', m23)) == 'JRU:system_status',
+          "JRU message 23 viewed as event 123, system_status")
+    check(jru_view(m41) == bytes([141, 2, 0, 0]),
+          "JRU message 41 viewed as event 141 with M_TRAIN_DATA_ENTRY")
+    JRU_PORT = 6
+    one = mode_level + rec(JRU_PORT, m23)
+    two = one + rec(JRU_PORT, m23)
+    summary2, _l, dg2, _t = evc_summarize(one, two)
+    check(dg2 == 1 and summary2.get('JRU:system_status', {})
+          .get('added', {}).get('total') == 1,
+          "one more copy of a record in a cycle group counted as added")
 
     # Shape: dropping counts, cycle ranges and a varying field's values
     # makes two otherwise different-looking summaries the same shape; a
