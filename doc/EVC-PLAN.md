@@ -12644,3 +12644,104 @@ already). `Take_Version` gives no "Trackside not compatible" in SL
 
 Left: B783's Reversing part (a position report in RV, 4.4.18.1.7), not
 taken (the bound).
+### The gamma families, second package: the SV21 / SV22 sheets completed from the twins, the optional step's window, the train that keeps its speed to the EBI, the traces left (e5/gamma-families-2) (2026-10-25)
+
+**The sixty SV21 / SV22 sequences** blocked because the old tool's gamma
+sheet lacks the reaction times (rows 85 and 86, T_brake_emergency_react
+and T_brake_service_react). Premises checked: 46 of the 60 have every
+curve set copied from the SV30 twin (`curves-from`), and that twin's
+sheet has the rows; 4 (3131040_01, _09, SV21 and SV22) have curve sets
+of their own and a twin with the rows; 10 (3131040_51, _57, _59, _69,
+_97) have a twin whose train is a lambda train (no gamma sheet, or _97's
+sheet beside a lambda curve set). Wrong premise: "the sequence's own
+sheet otherwise agrees with the twin's": it does not (3130232_04
+Kdry_rst J23 0.8 against the twin's 1 and no special brakes in B6:C8;
+3131040_17 and _01 H55 100 against 40, J56 0.6 against 0.8).
+**Decision** (`S076_Sequences.Gamma_From_T`, `Complete_Gamma` in
+`Read`, the twin read into its own copy by `Load`): a sequence whose
+curve sets are all the twin's takes the twin's whole sheet, Train (main)
+interfaces included, since the curves it is judged against were computed
+with it (`Twin_Sheet`); one with curve sets of its own takes the twin's
+two times alone (`Twin_Times`): the old tool's rows hold the same
+reaction times, its EBD and EBI rows equal a twin's with K85 1 s, K86
+1.2 s at 20, 40 and 80 km/h up to a constant shift of the origin
+(3131040_01 SV21 EBD 20.72 / 93.06 / 382.41 m, EBI less EBD 20.34 /
+40.22 / 87.16 m; its twin -275.89 / -203.55 / 85.80 m, the same EBI less
+EBD; a reaction time absent from one of them would differ by V * T,
+5.6 / 11.1 / 22.2 m per second), and 3131040_09 SV21's own rows equal
+3131040_01 SV30's EBD and SBD at 20, 40 and 80 km/h to the centimetre; a lambda twin gives nothing and
+the block stays with the sharper note "its SV30 twin's train a lambda
+train" (`S076_Run.Reference_Note`). The kernel's defaults (0 s,
+`Train_Data_Extra_T`) were not taken: the rows show the reaction time
+is in them.
+
+Outcome: 1133 / 1067 / 990 -> 1157 / 1081 / 952, recorded; of the 60, 46
+now have exactly their SV30 twin's outcome (step and signature), 3131040_01
+is blocked at its step 56 by the old tool's rows (A.3.12, the reason
+the other SV21 / SV22 own curves have) where the twin fails at 56, and
+the 10 lambda twins stay blocked; 3130700_07 passes where its twin
+fails at step 91 (RTM message 156 not sent, S185bee31, a radio step, not
+a curve). 22 other SV21 / SV22 sequences moved, every one to its twin's
+outcome (they had a gamma sheet without the times, so no train was
+installed and the lambda default ran): the movements of the SV30 round
+of e5/runner-gamma repeated in both versions (blocked Gamma to failed at
+the same step 3130232_15, 3130700_03, 3131040_17, _77, 3131050_17,
+4100103_17; one to four steps earlier 3130235_03, 3131040_75; passed to
+failed 3130237_01, 4100103_24; passed to blocked 3130235_05 (old-tool,
+the twin placement), 3131040_15, _33; 3131040_35 59 -> 58 and _85 61 ->
+58 still blocked; 3131050_21 83 -> 82). No new signature: the triage of
+the twins' signatures holds.
+
+**B2041, the window of an optional step**: 3130237_01 SV30 step 58 (an
+optional JRU expectation at 867 m) waits its window and drives the train
+at 70 km/h to 944 m; BG3d of 890 m (step 59) is then read at 952 m,
+outside its linking window (`EVC_Position.Check_Window` Late,
+3.4.4.4.3), its information rejected and the linking reaction, a
+service brake, taken at step 60. The corpus first: in SV30, 36 optional
+expect steps of 18 sequences have a BTM input step next within 100 m;
+the runner's traces show the window passing the group's location in 2
+(this one, and 4080438_01 step 119 to 1003 m for a group of 1000 m read
+at 1008 m, which passes anyway), the others passed at once or were not
+run. The rule (`S076_Run.Next_Group_Reached`, in both waits of an
+expectation): the wait ends when the train going forward reaches the
+location of the next input step's balise group, a location past the
+step's own. 3130237_01 SV30 passes (failed 74 before), SV21 and SV22 go
+on to step 77 (S5e648ecf: JRU status 2 expected at 1792 m, ours 1, our
+permitted 80 km/h where SV30's is 72 with the same target: B2160, the
+versions' data to compare); no other sequence moved.
+
+**B2040, the train that keeps its speed to the EBI**: the corpus first
+(SV21, SV22, SV30): an expected service brake followed, before any input
+step, by an expected emergency brake at a later location occurs in
+3131040_17, _53 and _54 of each version; _53 and _54 carry the comment
+"SB must be disabled" (the existing rule disables the bench's service
+brake for the sequence), 3131040_17 alone does not (step 56 at 1088 m,
+step 57 at 1265 m). A wider pattern (33 SV30 sequences with an EB step
+anywhere after an SB step) is mostly other features with inputs between;
+the curve sequences that keep their speed by an ODO speed input between
+(3131040_88, _89, _90) pass already. The rule
+(`S076_Run.EB_After_SB`, beside the comment in `Run_Loaded`): such a
+pair disables the bench's service brake for the sequence. 3131040_17
+step 57 passes in the three versions (our EB at 1265 m at 68 km/h); the
+sequence now fails at step 62 (S27eb0678: TR expected at 1455 m, ours FS
+at 1484 m with the EOA 12 m ahead, our EB revoked while moving: B2161).
+Runner 1158 / 1080 / 952, 3 improvements, recorded.
+
+Left at the bound: item 4, the traces of B1960 (3131040_01 step 56,
+3131040_73 step 64, the status steps of 3130700_03, 3131040_75, _77,
+3131050_17, _21, 4100103_17), not started; B2160 (3130237_01 SV21 /
+SV22 step 77) and B2161 (3131040_17 step 62) to trace.
+
+Resumed inside the budget, B2161 (3131040_17 SV30 step 62, TR expected
+at 1455 m): the sequence has no packet 3, so Q_NVEMRRLS is the default
+0 (A.3.2) and our EB of step 57 is released only at standstill
+(`EVC_SDM.Set_Commands`, r0 of Table 11); the train then runs on at
+10 km/h to the step's location. The release while moving that the first
+reading saw was not there. The trip of level 1 (4.6.3 condition [12],
+the min safe antenna past the EOA) is due at our EOA of 1500 m, the
+sequence's own packet 12 (BG2d at 500 m, L_ENDSECTION 1000 m); step 61
+places that passage at 1455 m, 45 m short of it (the workbook's EBI of
+172.96 m at 80 km/h from the EB step at 1265 m gives an EOA of about
+1438 m: the lab's locations run 45 to 60 m before the packet's). At
+step 62 ours is FS at 1484 m with the EOA 12 m ahead: triaged `s076`
+(S27eb0678, a line for this family). No code change.

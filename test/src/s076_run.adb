@@ -6295,7 +6295,12 @@ package body S076_Run is
    function Reference_Note (C : Curve_Set_T) return String is
       R : constant Reason_T := No_Reference (C);
    begin
-      if R = R_Gamma and then B.Gamma_Gap /= "" then
+      if R = R_Gamma and then B.Gamma_Gap /= ""
+        and then Seq.Gamma_From = Twin_Lambda
+      then
+         return "the gamma sheet lacks " & B.Gamma_Gap
+           & ", its SV30 twin's train a lambda train: ";
+      elsif R = R_Gamma and then B.Gamma_Gap /= "" then
          return "the gamma sheet lacks " & B.Gamma_Gap & ": ";
       elsif R = R_Gamma and then C.Gamma_Other then
          return "a gamma sheet other than the one installed: ";
@@ -6379,6 +6384,50 @@ package body S076_Run is
                 & (if EVC_National_Values.Current.From_Trackside
                    then ", from the track)" else ", the defaults)"));
    end Put_Factors;
+
+   --  Whether the train going forward has reached the location of the
+   --  balise group of the next input step after step I, a location
+   --  past step I's own: the wait of an expectation ends there, as a
+   --  window driven past it would have the group read outside its
+   --  linking window and its information rejected (3.4.4.4.3;
+   --  3130237_01 step 58 at 867 m, BG3d of 890 m read at 952 m)
+   function Next_Group_Reached (I : Positive) return Boolean is
+   begin
+      for K in I + 1 .. Seq.Step_Count loop
+         if Seq.Steps (K).IO = Input then
+            return B.Direction > 0
+              and then Starts (Image (Seq.Steps (K).Line),
+                               "input BTM balise-group")
+              and then Seq.Steps (K).Dist_Cm > Seq.Steps (I).Dist_Cm
+              and then B.Position >= Seq.Steps (K).Dist_Cm;
+         end if;
+      end loop;
+      return False;
+   end Next_Group_Reached;
+
+   --  Whether step I expects the service brake commanded and a later
+   --  step, before the next input step, the emergency brake at a
+   --  location further on: the sequence's train keeps its speed under
+   --  the service brake to the EBI, as the comment "SB must be disabled"
+   --  says elsewhere (3131040_17 step 56 at 1088 m, step 57 at 1265 m;
+   --  the only such pair of the corpus without that comment)
+   function EB_After_SB (I : Positive) return Boolean is
+   begin
+      if not Starts (Image (Seq.Steps (I).Line),
+                     "expect TIU service-brake commanded")
+      then
+         return False;
+      end if;
+      for K in I + 1 .. Seq.Step_Count loop
+         exit when Seq.Steps (K).IO = Input;
+         if Starts (Image (Seq.Steps (K).Line),
+                    "expect TIU emergency-brake commanded")
+         then
+            return Seq.Steps (K).Dist_Cm > Seq.Steps (I).Dist_Cm;
+         end if;
+      end loop;
+      return False;
+   end EB_After_SB;
 
    --  B176: how far the train was driven on past the sequence's
    --  location to our change of the limit's kind (cm, 0 when not)
@@ -6649,7 +6698,9 @@ package body S076_Run is
       --  for the brake percentage entered (the workbook's, else 109)
       B.Set_Brake_Percentage (Brake_Percentage);
       for I in 1 .. Seq.Step_Count loop
-         if Has (Image (Seq.Steps (I).Comment), "SB must be disabled") then
+         if Has (Image (Seq.Steps (I).Comment), "SB must be disabled")
+           or else EB_After_SB (I)
+         then
             B.Set_Service_Brake (False);
          end if;
          --  B620: the odometer states 1 % of the distance since the LRBG
@@ -6964,6 +7015,7 @@ package body S076_Run is
                   Note_Curve_Ref (I);
                   J := Expect (St);
                   while J.Verdict = Failed and then Wait_Used < Wait_Limit
+                    and then not Next_Group_Reached (I)
                   loop
                      Wait_Cycle;
                      Wait_Used := Wait_Used + 1;
@@ -7005,6 +7057,7 @@ package body S076_Run is
                      C : Judgement_T := Columns (I);
                   begin
                      while C.Verdict = Failed and then Wait_Used < Wait_Limit
+                       and then not Next_Group_Reached (I)
                      loop
                         Wait_Cycle;
                         Wait_Used := Wait_Used + 1;
