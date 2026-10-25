@@ -13308,3 +13308,102 @@ for none: BG1d's packet 5 links BG2 (500 m) and BG3 (600 m) with
 Q_LINKREACTION 10, No Reaction, and neither group is given. Which
 cause of `Other` is set (linking or message consistency, the consist,
 the Train Data changed in motion) is not traced: B2260 (onboard).
+
+### Review of the fifty-third round: eleven verdicts re-derived blind (e5/review-53) (2026-10-25)
+
+Each verdict below was written from the trace, the data and the clause
+before the author's record was read. Items 1 to 7 were taken; 8 to 11
+were left at the bound. Item 2 was not fully blind: the commit message
+of fcb12033 (the triage of S8722745e and B2260) was shown in the
+repository's status at the start of the review.
+
+1. 3130237_01 SV21 step 77. Mine: the sequence's data (s076). The SV21
+   workbooks a and b both give, at 70 km/h, Permitted 493.07 m and
+   Indication 668.07 m before the EOA; the SV30 twin's b gives Permitted
+   598.44 m (a 682.73 m), and the step's comment in both files ("598 m
+   ... according to 01b") is the twin's number. The SV21 gamma sheet is
+   its own (Brake parameters (gamma) V7 to V19 0.4 against 0.8, J23 0.8
+   against 0.5). Ours at 1792 m: permitted 80 km/h, Indication, the EOA
+   582 m ahead, consistent with the SV21 workbook's own limit about
+   90 m further on. Not the twin handling, not the on-board. Author
+   (S5e648ecf, B2160): the same, its limit at 1897 m. Agree.
+2. 3131040_01 SV30 step 56. Mine, the step: s076. The EOA is 1550 m
+   (BG1d at 50 m, L_ENDSECTION 1500 m); the workbook's Indication at
+   80 km/h is 653.09 m before it, at 897 m; the step's 697 m is 200 m in
+   rear (697 + 653 = 1350). The brake: reason 512 is
+   `TIU_Reason_Procedure`, `EVC_Procedures.Brake_Demand.Other` (or the
+   Data_Entry_Movement brake, an EB, not this one). BG1d's packet 5
+   links BG2 (500 m) and BG3 (600 m), Q_LOCACC 10 m, Q_LINKREACTION 10b
+   (No Reaction), neither given by the sequence, so 3.16.2.7.1.1 (no
+   balise between the start of one window and the end of the next)
+   would command the service brake; but a scratch copy with BG2 linked
+   4500 m away gives the same service brake, the same 73 km/h at 700 m:
+   not the linking. Consist_SB comes only in SM or SB
+   (`EVC_Stored_Information.Consist_Brake`, the safe consist length
+   lost), PT_SB and RV_EB not in FS: left is the Train Data changed in
+   motion (`TD_Step`, 5.17.2.2 S2 / S4, `C.TD_Change`). Nothing in the
+   data between 550 and 700 m asks for a brake: a defect of ours in
+   `EVC_Procedures` or the bench's train image changed in motion, to
+   trace. Author (S8722745e, B2260): the same category and numbers, the
+   brake asked by no step, cause not traced. Agree; B2260's candidates
+   narrow to the Train Data changed in motion.
+3. 3131040_17 step 57 and the bench's image. Mine: our EB at 1240 m
+   (estimated front end, 256 m before the EOA), 86 km/h, reason 1 alone
+   (speed and distance); the curve check gives ours 240 m against the
+   workbook's 241 m: the SDM's EBI, no EB of 3.14.1.2. 3.14.1.2 obliges
+   the EB when the service brake fails to be applied but states no
+   criterion of the failure (3.14.1.1 is about the type of brake, a weak
+   ground for the comment); the lab's train kept 85.5 km/h for 177 m
+   (about 7.5 s) under the SB without an EB, so the lab's on-board
+   detected nothing there. The bench's detection off (60 s) where it
+   disables its service brake, set for the whole sequence before the
+   run, reads the sequence rightly. Author (S8e8f4487, B2205): the same,
+   our earlier EB was the 3.14.1.2 one at 1154 m. Agree.
+4. 3131040_17 step 62. Mine: step 61's 1455 m is an event, the min safe
+   antenna past the EOA of 1500 m (45 m: the antenna offset and the
+   interval of the lab's odometry); driving to it is legitimate. Corpus
+   SV30: 12 min-safe-antenna reach-points carry "overpass" with EoA or
+   LoA in their text; the rule matches only "overpasses EoA" (5 of them,
+   the author's count), so 4080432_01 step 50 ("in order to overpass
+   the previous EOA/LOA", then no EB, no TR expected) is not driven by
+   it; it fails at step 50 with the signature it had before the round.
+   Author (B2200, S27eb0678): the same. Agree.
+5. 3130237_01 SV30, the linking reaction. Mine: Q_LINKREACTION of every
+   link of BG1d's packet 5 is 10b, No Reaction (7.5.1.117); BG3 at
+   890 m, Q_LOCACC 10 m. Without the optional step 58 BG3d is read at
+   901 m and the sequence passes with no service brake. No Reaction
+   brakes nothing (3.16.2.3.1), the message read outside its window is
+   rejected (3.4.4.4.3.2), so the SB at 1399 m was the target's
+   intervention at BG1d's EOA, not a linking reaction. Author (B2201):
+   the same, traced with the events. Agree. Remark: a scratch copy with
+   step 59 moved to 952 m gave BG3d's MA taken (1417 m ahead at 958 m,
+   an EOA of about 2375 m, as if read near 890 m): where the bench
+   stamps a group whose step lies past its linked location is not
+   traced; not a line, the corpus has no such step after the rule.
+6. Footnote [1] of Table 4.8.4. Mine: as quoted ("for level 2: only if
+   following the reception of the information 'Recognition of Exit from
+   TR mode' with a more recent time stamp; for level 1: rejected").
+   Table 4.8.3 gives message 6 from the RBC R in levels 0, NTC and 1, A
+   in 2: `Trip_Exit_Known` cannot be set in level 1, only kept through a
+   level change in PT after a message 6 in level 2; there the level test
+   is needed. A context without a valid level cannot satisfy "for level
+   2": rejected is the reading. Author (B2202, B2220): the level test
+   added; the decision "a context without a valid level is judged by
+   message 6 alone" in `EVC_Radio_Acceptance.In_PT`'s heading, B2220
+   open to give the network order's context the level. Agree on the
+   test, disagree on the decision: B2300.
+7. 5.4.5.3 a). Mine: the override at S10 and S20 only, in SB in level 2
+   (5.8.2.1 b)), with validated Train Data and train running number
+   (5.8.2.1 c)). `EVC_Procedures.Override_Allowed` excludes S21 to S25
+   by `SoM_Started` (`EVC_Mission.Waiting_For_RBC`) and relies on c)
+   before S10; whether c) can hold there is not decided from the code
+   read. Author (B2280, open): the same doubt. Agree; no line.
+8. to 11. Left at the bound: the border and the min safe rear end
+   (3.6.5.1.4 e)), the report in Reversing (4.4.18.1.7), the unknown
+   LRBG in the reports (7.5.1.90), the hello's reach.
+
+Counts: 7 agreed (1 to 5, 7, and 6 on the level test), 1 disagreed (6
+on the decision for a context without a valid level), none undecided, 4
+left; one backlog line (B2300). The review took 100 tool calls of 130
+to the bound, the most on items 1 to 5 (the traces and two scratch
+experiments, about 80).
