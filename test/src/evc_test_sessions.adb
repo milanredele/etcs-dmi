@@ -1233,6 +1233,36 @@ package body EVC_Test_Sessions is
              & "(4.6.3 [70])");
    end Scenario_SoM_L2_Mode_Proposal_LS;
 
+   procedure Scenario_SoM_L2_Override is
+   begin
+      --  S20 in SB in level 2, Train Data and train running number valid
+      --  (5.8.2.1 b), c)): Override taken, SR, the position kept (valid)
+      SoM_L2_At_S20;
+      Check (not EVC_Procedures.Override_Active,
+             "SoM L2 override: no override before the selection");
+      Send (Action (6));
+      Check (EVC_Procedures.Override_Active
+             and then EVC_Core.Mode = EVC_Modes.M_SR
+             and then EVC_Position."=" (EVC_Position.Status,
+                                        EVC_Position.Valid),
+             "SoM L2 override: selected at S20, the procedure Override "
+             & "active, the valid position kept (5.4.5.3 a), "
+             & "5.8.2.1 b) Stand By in level 2), SR at once "
+             & "(5.8.3.1 a)");
+
+      --  S21: 'Start' given, waiting for the RBC: not offered
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Check (EVC_Mission.Waiting_For_RBC,
+             "SoM L2 override: 'Start' in level 2 waits (5.4.3.2 S21)");
+      Send (Action (6));
+      Check (not EVC_Procedures.Override_Active,
+             "SoM L2 override: not taken at S21, only at S10 and S20 "
+             & "(5.4.5.3 a), EVC_Procedures.Override_Allowed)");
+      Check (EVC_Core.Mode = EVC_Modes.M_SB,
+             "SoM L2 override: SB kept at S21");
+   end Scenario_SoM_L2_Override;
+
    --  5.4.3.2 S21, E27 -> S25, E33 with a Shunting profile (packet 80
    --  M_MAMODE 1) at the train's position: Shunting proposed, the
    --  acknowledgement gives SH (4.6.3 [50])

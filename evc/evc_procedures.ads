@@ -112,6 +112,10 @@ is
       --  number is valid (5.8.2.1 c)
       Train_Data_Valid : Boolean := True;
       TRN_Valid        : Boolean := True;
+      --  5.4.5.3 a): the driver's 'Start' of the start of mission taken,
+      --  the RBC's answer awaited or a mode proposed (5.4.3.2 S21 to
+      --  S25): Override is offered in Stand By only at S10 and S20
+      SoM_Started      : Boolean := False;
       --  the speed the override is compared with (5.8.2.1 a): the
       --  estimated speed, the train speed of the speed monitoring and of
       --  the driver's indication (3.13.10.2.1)

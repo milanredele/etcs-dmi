@@ -870,7 +870,8 @@ is
        and then (C.Mode in M_FS | M_AD | M_LS | M_OS | M_SR | M_SH | M_UN
                          | M_PT | M_SN
                  or else (C.Mode = M_SB and then C.Level_Valid
-                          and then C.Level = L2))
+                          and then C.Level = L2
+                          and then not C.SoM_Started))
        and then (C.Mode = M_SH
                  or else (C.Train_Data_Valid and then C.TRN_Valid)));
 

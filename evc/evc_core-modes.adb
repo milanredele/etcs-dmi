@@ -166,6 +166,8 @@ is
          Train_Data_Valid  => EVC_Train_Data.Valid,
          --  the train running number of the start of mission (5.4.2)
          TRN_Valid         => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+         SoM_Started       => EVC_Mission.Waiting_For_RBC
+                              or else EVC_Mission.Proposed,
          Speed_Est         =>
            EVC_Supervision_Input.Speed_Cms_T
              (Natural'Min (Natural (Odometer_Now.V_Est),
