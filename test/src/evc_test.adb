@@ -371,6 +371,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Exception_2;
    EVC_Test_Handover.Scenario_Handover_Contact;
    EVC_Test_Handover.Scenario_Handover_Rear_Border;
+   EVC_Test_Handover.Scenario_Handover_Rear_Report;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;

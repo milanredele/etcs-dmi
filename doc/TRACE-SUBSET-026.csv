@@ -211,7 +211,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.5.1.4 b),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports"
 3.6.5.1.4 c),3,x,,,,,E2,done,"EVC_Sessions.Integrity (Evaluate, Confirmed_Length), EVC_Sessions.Reports Send_136; scenario EVC_Test_Sessions.Scenario_Train_Integrity [E5 session]"
 3.6.5.1.4 d),3,x,,,,,E2,done,"EVC_Sessions.Integrity (Evaluate, Confirmed_Length), EVC_Sessions.Reports Send_136; scenario EVC_Test_Sessions.Scenario_Train_Integrity [E5 session]"
-3.6.5.1.4 e),3,x,,,,,E2,partial,"EVC_Position Border_Rear -> EVC_Sessions.Handover Req.Report (to both RBCs); left: a scenario of the report at the passage (B841; evc_test Scenario_Handover_Rear_Repeat checks the session kept, not the report) [E5 session]"
+3.6.5.1.4 e),3,x,,,,,E2,done,"EVC_Position Border_Rear (the border's ""min"" location item, Table 2a, against its reference group) -> EVC_Sessions.Handover Req.Report (to both RBCs); evc_test Scenario_Handover_Rear_Report: the report in the cycle of the passage to the Handing Over RBC and the Accepting one [E5 session]"
 3.6.5.1.4 f),3,x,,,,,E2,deferred,E4 (level transition border)
 3.6.5.1.4 g),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports"
 3.6.5.1.4 h),3,x,,,,,E2,done,"EVC_Sessions.Reports: the supervising session established (the SoM report 157 is that report during the start of mission); evc_test Scenario_Session_Establish, Scenario_Session_Reports [E5 session]"
