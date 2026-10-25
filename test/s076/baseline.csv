@@ -1896,9 +1896,9 @@ Subset-076-6-3_4080425_02_v400_SV30,failed,49,Sa8a3ba1a
 Subset-076-6-3_4080425_03_v400_SV21,blocked,83,E7-euroloop
 Subset-076-6-3_4080425_03_v400_SV22,blocked,83,E7-euroloop
 Subset-076-6-3_4080425_03_v400_SV30,blocked,83,E7-euroloop
-Subset-076-6-3_4080425_04_v400_SV21,failed,65,Sa03cccdc
-Subset-076-6-3_4080425_04_v400_SV22,failed,65,Sa03cccdc
-Subset-076-6-3_4080425_04_v400_SV30,failed,65,Sa03cccdc
+Subset-076-6-3_4080425_04_v400_SV21,passed,0,-
+Subset-076-6-3_4080425_04_v400_SV22,passed,0,-
+Subset-076-6-3_4080425_04_v400_SV30,passed,0,-
 Subset-076-6-3_4080426_01_v400_SV21,blocked,64,runner
 Subset-076-6-3_4080426_01_v400_SV22,blocked,64,runner
 Subset-076-6-3_4080426_01_v400_SV30,blocked,64,runner

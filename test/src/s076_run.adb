@@ -3114,6 +3114,14 @@ package body S076_Run is
             return Shown (St_W, False, Now, "level " & Name
                           & " (code" & Img (S.Level) & ")");
          end;
+      elsif K = K_None
+        and then Has (Up (Image (St.Comment)), "LEVEL X IS ALREADY DISPLAYED")
+      then
+         --  "Level-0/1/2/NTC" with the comment "Level X is already
+         --  DISPLAYED" (case 5100100 17): the level before the transition,
+         --  the step's start column, its state column the level after it
+         --  (4080425_04 step 65: L1 until the transition location)
+         K := Level_Of (Trim (St.Lvl_Before));
       elsif K = K_None then
          --  "Level-0/1/2/NTC": the variant of the step's column
          K := Level_Of (Trim (St.Lvl_After));
