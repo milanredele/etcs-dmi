@@ -11,6 +11,7 @@ package DMI_Test_Windows is
    procedure Scenario_Other_Windows;
 
    procedure Scenario_Data_View;
+   procedure Scenario_Data_View_RBC_Contact;
 
    procedure Scenario_Button_Down_Type;
 

@@ -4,6 +4,7 @@
 with DMI_Buttons;
 with DMI_Data_Format;
 with DMI_Driver_Data;
+with DMI_Radio_Data;
 with DMI_Sounds;
 with DMI_Test_Support;
 with DMI_Text_Messages;
@@ -394,6 +395,40 @@ package body DMI_Test_Windows is
              "3.18.6.1: the on-board's codes shown as the labels of the "
              & "entry");
    end Scenario_Data_View;
+
+   -- 3.18.6.1, Table 45 items 13, 14: the RBC contact stored on-board is
+   -- shown whatever the driver chose last in the Radio data window; after
+   -- 'Contact last RBC' the on-board keeps the contact it last sent
+   -- (MSG_RBC_CONTACT) and sends nothing new
+   procedure Scenario_Data_View_RBC_Contact is
+      use type DMI_Windows.Window_ID_T;
+      use type DMI_Radio_Data.RBC_Choice_T;
+      use type Interfaces.Unsigned_8;
+   begin
+      Reset;
+      Win_Onboard (Data => Win_Data_All or 16#10#, Radio => Win_Radio_GSMR);
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Win_At_Standstill;
+      -- the contact stored on-board: RBC ID 82220, phone 0077
+      Send_Raw (16#10#, (1, 16#2C#, 16#41#, 16#01#, 0, 4,
+                         48, 48, 55, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+      Win_Open_Main;
+      Win_Menu (10);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "3.18.6.1: the Radio data window opened");
+      Win_Menu (1);                             -- 'Contact last RBC'
+      Check (DMI_Radio_Data.Last_Choice = DMI_Radio_Data.Contact_Last_RBC,
+             "3.18.6.1: the driver chose 'Contact last RBC'");
+      Check (DMI_Windows.Top /= DMI_Windows.W_Radio_Data,
+             "3.18.6.1: the Radio data window left");
+      Win_Default;
+      Press (610, 140);                         -- F3: Data view
+      Press_Next;
+      Check (DMI_Windows.Top = DMI_Windows.W_Data_View,
+             "3.18.6.1: the Data view opened");
+      Step;
+      Check_Frame ("data_view_p2_last_rbc");
+   end Scenario_Data_View_RBC_Contact;
 
    ---------------------------------------------------------------------
    -- DMI 5.3.2.6.4 and 5.3.2.6.5 (audit finding GEN-4). E11, the [Down]

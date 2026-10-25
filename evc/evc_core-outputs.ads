@@ -184,6 +184,7 @@ is
    --  Decision: NID_C 1023 with NID_RBC 16383 ("contact last known RBC",
    --  7.5.1.96) is no RBC ID the window can show (16 777 215, above
    --  A.3.11): sent as no contact stored
+   --  @req 3.18.6.1
    procedure Send_RBC_Contact
      with Global => (Input  => EVC_Radio.State,
                      In_Out => (Contact_Sent, EVC_Outbox.Queue));

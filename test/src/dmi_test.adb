@@ -73,6 +73,7 @@ begin
    DMI_Test_Messages.Scenario_Text_Wrap;
    DMI_Test_Messages.Scenario_Ack_And_Windows;
    DMI_Test_Windows.Scenario_Data_View;
+   DMI_Test_Windows.Scenario_Data_View_RBC_Contact;
    DMI_Test_Windows.Scenario_Button_Down_Type;
    DMI_Test_Windows.Scenario_Button_Up_Type;
    DMI_Test_Windows.Scenario_Enabling_Conditions;

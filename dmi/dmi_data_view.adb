@@ -195,11 +195,14 @@ package body DMI_Data_View is
    --   choice: the registration is the only status of the network ID
    --   the protocol carries, SUBSET-026 3.18.4.3). Chosen from a list
    --   (a dedicated keyboard), so not grouped (5.1.5.2.2).
-   -- - 12, 13 the RBC ID and phone number the driver entered on this DMI
-   --   (11.3.5), while the RBC contact information is valid (MSG_ONBOARD
-   --   data bit 4) and the driver's last choice was to enter them: after
-   --   'Contact last RBC' or 'Use short number' the on-board uses
-   --   contact information the DMI does not know.
+   -- - 12, 13 the RBC ID and phone number of the RBC contact information
+   --   stored on-board (3.18.6.1), while it is valid (MSG_ONBOARD data
+   --   bit 4). Decision: shown whatever the driver chose last. The
+   --   on-board sends its stored contact at every change
+   --   (MSG_RBC_CONTACT, EVC_Core.Outputs.Send_RBC_Contact): after
+   --   'Contact last RBC' it keeps the contact it last sent, after 'Use
+   --   short number' it sends the new one; what the driver entered
+   --   (11.3.5) is stored on-board as entered.
    -- VBC rows: the set code the EVC reported (MSG_VBC_LIST), a number
    -- grouped per 5.1.5.
    function Value_Of (Index : Positive) return Value_T is
@@ -219,9 +222,7 @@ package body DMI_Data_View is
 
       function RBC_Entered return Boolean is
         (DMI_Conditions.RBC_Contact_Valid
-         and then DMI_Radio_Data.RBC_Entered
-         and then DMI_Radio_Data."=" (DMI_Radio_Data.Last_Choice,
-                                      DMI_Radio_Data.Entered));
+         and then DMI_Radio_Data.RBC_Entered);
 
       -- 3.18.6.1: the Train Data the on-board stored (items 3 to 9)
       function Onboard_Train (Index : Positive) return Value_T is

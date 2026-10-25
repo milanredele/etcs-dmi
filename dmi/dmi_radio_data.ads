@@ -63,11 +63,11 @@ package DMI_Radio_Data is
    --  Table 50 S5-1), as MSG_DRIVER_DATA kind 5 reports it
    type RBC_Choice_T is (Entered, Contact_Last_RBC, Use_Short_Number);
 
-   --  The choice the driver made last on this DMI. Only after 'Entered'
-   --  are RBC_ID and RBC_Phone what the on-board stores (the Data view
-   --  window, Table 45 items 13 and 14); after the two others the
-   --  on-board uses contact information the DMI does not know until
-   --  MSG_RBC_CONTACT tells it (which sets 'Entered' again).
+   --  The choice the driver made last on this DMI, sent to the on-board
+   --  with the RBC data (MSG_RBC_CONTACT sets 'Entered' again). The Data
+   --  view shows RBC_ID and RBC_Phone whatever it is (Table 45 items 13
+   --  and 14): they are the on-board's stored contact, which it sends at
+   --  every change.
    Last_Choice : RBC_Choice_T := Entered;
 
    procedure Reset;
