@@ -323,6 +323,8 @@ is
       --  release; Stored takes nothing here
       EVC_Position.Take_Radio_Geo
         (Accepted => EVC_Acceptance."=" (V, EVC_Acceptance.Radio_Accepted));
+      --  3.4.2.3.3.6: message 45, judged by 4.8 at its reception
+      EVC_Position.Take_Radio_Assignment;
    end Take_Radio_Geo;
 
    procedure Release_LS_Held is

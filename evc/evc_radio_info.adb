@@ -5,7 +5,7 @@
 package body EVC_Radio_Info
   with SPARK_Mode => On,
        Refined_State => (State => (Messages, Slots, N, Refused_N, MAR,
-                              MAR_K))
+                              MAR_K, Assign))
 is
 
    type Message_Array_T is array (Index_T) of ETCS_Message.Message_T;
@@ -17,6 +17,7 @@ is
    Refused_N : Natural := 0;
    MAR       : Unsigned_64 range 0 .. Max_T_MAR_Ms := 0;
    MAR_K     : Boolean := False;
+   Assign    : Assignment_T := (others => <>);
 
    function T_MAR_Ms return Unsigned_64 is (MAR)
      with Refined_Global => MAR;
@@ -37,6 +38,16 @@ is
    begin
       MAR_K := Known;
    end Set_MAR_Known;
+
+   function Assignment return Assignment_T is (Assign)
+     with Refined_Global => Assign;
+
+   procedure Put_Assignment (A : Assignment_T)
+     with Refined_Global => (Output => Assign, Proof_In => N)
+   is
+   begin
+      Assign := A;
+   end Put_Assignment;
 
    function Count return Count_T is (N)
      with Refined_Global => N;
@@ -66,9 +77,10 @@ is
 
    procedure Clear
      with Refined_Global => (Output => (Messages, Slots, N, Refused_N, MAR,
-                                         MAR_K))
+                                         MAR_K, Assign))
    is
    begin
+      Assign := (others => <>);
       MAR := 0;
       MAR_K := False;
       Messages := (others => (others => <>));
@@ -78,16 +90,19 @@ is
    end Clear;
 
    procedure Empty
-     with Refined_Global => (Output => N)
+     with Refined_Global => (Output => (N, Assign))
    is
    begin
+      Assign := (others => <>);
       N := 0;
    end Empty;
 
    procedure Keep_Granted
-     with Refined_Global => (In_Out => (Messages, Slots, N))
+     with Refined_Global => (In_Out => (Messages, Slots, N),
+                             Output => Assign)
    is
    begin
+      Assign := (others => <>);
       for I in reverse 1 .. N loop
          pragma Loop_Invariant (N <= Max_Messages);
          if Slots (I).Action = Shortening then

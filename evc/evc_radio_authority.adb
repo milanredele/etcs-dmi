@@ -1020,6 +1020,15 @@ is
          Take_Emergency (S, Kind, Now_Ms);
       elsif Kind = ETCS_Message_Catalogue.Track_M34 then
          Take_TAF (S);
+      elsif Kind = ETCS_Message_Catalogue.Track_M45 then
+         --  3.4.2.3.3.6: the assignment of a co-ordinate system, to the
+         --  position through EVC_Radio_Info (taken in step 5c by
+         --  EVC_Position.Take_Radio_Assignment); Q_ORIENTATION 1
+         --  nominal, 0 reverse
+         EVC_Radio_Info.Put_Assignment
+           ((Valid   => True,
+             Id      => LRBG_Of_Last,
+             Nominal => EVC_Received.Last_Value (Q_ORIENTATION) mod 2 = 1));
       elsif Kind = ETCS_Message_Catalogue.Track_M24
         and then General_Taken (C)
       then

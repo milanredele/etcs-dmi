@@ -203,7 +203,9 @@ is
    --  4.8.5: the packets 79 of the radio messages of the cycle (and of
    --  those the transition buffer released) to the position, judged in
    --  the level and mode after the transitions of the cycle (4.8.5.5: a
-   --  packet kept for the level 2 transition is used at the transition)
+   --  packet kept for the level 2 transition is used at the transition);
+   --  then the assignment of a co-ordinate system of the cycle (message
+   --  45, 3.4.2.3.3.6)
    --  @req 3.6.6.4.1
    procedure Take_Radio_Geo
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
