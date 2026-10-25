@@ -12546,3 +12546,51 @@ rest); B1960's rest (3131040_01, _73, the six status steps, the 60 SV21
 (runner); B840 (message 45 by radio, completing [10]); then the E5
 bookkeeping lines B781, B783, B787, B841 and the decisions B1060, B1063,
 B1340.
+
+### The gamma families, second package: the SV21 / SV22 sheets completed from the twins, the optional step's window, the train that keeps its speed to the EBI, the traces left (e5/gamma-families-2) (2026-10-25)
+
+**The sixty SV21 / SV22 sequences** blocked because the old tool's gamma
+sheet lacks the reaction times (rows 85 and 86, T_brake_emergency_react
+and T_brake_service_react). Premises checked: 46 of the 60 have every
+curve set copied from the SV30 twin (`curves-from`), and that twin's
+sheet has the rows; 4 (3131040_01, _09, SV21 and SV22) have curve sets
+of their own and a twin with the rows; 10 (3131040_51, _57, _59, _69,
+_97) have a twin whose train is a lambda train (no gamma sheet, or _97's
+sheet beside a lambda curve set). Wrong premise: "the sequence's own
+sheet otherwise agrees with the twin's": it does not (3130232_04
+Kdry_rst J23 0.8 against the twin's 1 and no special brakes in B6:C8;
+3131040_17 and _01 H55 100 against 40, J56 0.6 against 0.8).
+**Decision** (`S076_Sequences.Gamma_From_T`, `Complete_Gamma` in
+`Read`, the twin read into its own copy by `Load`): a sequence whose
+curve sets are all the twin's takes the twin's whole sheet, Train (main)
+interfaces included, since the curves it is judged against were computed
+with it (`Twin_Sheet`); one with curve sets of its own takes the twin's
+two times alone (`Twin_Times`): the old tool's rows hold the same
+reaction times, its EBD and EBI rows equal a twin's with K85 1 s, K86
+1.2 s at 20, 40 and 80 km/h up to a constant shift of the origin
+(3131040_01 SV21 EBD 20.72 / 93.06 / 382.41 m, EBI less EBD 20.34 /
+40.22 / 87.16 m; its twin -275.89 / -203.55 / 85.80 m, the same EBI less
+EBD; a reaction time absent from one of them would differ by V * T,
+5.6 / 11.1 / 22.2 m per second), and 3131040_09 SV21's own rows equal
+3131040_01 SV30's EBD and SBD at 20, 40 and 80 km/h to the centimetre; a lambda twin gives nothing and
+the block stays with the sharper note "its SV30 twin's train a lambda
+train" (`S076_Run.Reference_Note`). The kernel's defaults (0 s,
+`Train_Data_Extra_T`) were not taken: the rows show the reaction time
+is in them.
+
+Outcome: 1133 / 1067 / 990 -> 1157 / 1081 / 952, recorded; of the 60, 46
+now have exactly their SV30 twin's outcome (step and signature), 3131040_01
+is blocked at its step 56 by the old tool's rows (A.3.12, the reason
+the other SV21 / SV22 own curves have) where the twin fails at 56, and
+the 10 lambda twins stay blocked; 3130700_07 passes where its twin
+fails at step 91 (RTM message 156 not sent, S185bee31, a radio step, not
+a curve). 22 other SV21 / SV22 sequences moved, every one to its twin's
+outcome (they had a gamma sheet without the times, so no train was
+installed and the lambda default ran): the movements of the SV30 round
+of e5/runner-gamma repeated in both versions (blocked Gamma to failed at
+the same step 3130232_15, 3130700_03, 3131040_17, _77, 3131050_17,
+4100103_17; one to four steps earlier 3130235_03, 3131040_75; passed to
+failed 3130237_01, 4100103_24; passed to blocked 3130235_05 (old-tool,
+the twin placement), 3131040_15, _33; 3131040_35 59 -> 58 and _85 61 ->
+58 still blocked; 3131050_21 83 -> 82). No new signature: the triage of
+the twins' signatures holds.

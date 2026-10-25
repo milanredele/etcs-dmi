@@ -1125,7 +1125,15 @@ package body S076_Sequences is
          null;
    end On_Line;
 
-   procedure Read (Path : String; Ok : out Boolean) is
+   --  The SV30 twin of an SV21 or SV22 sequence whose gamma sheet lacks
+   --  the reaction times (Read)
+   Twin_Loaded : aliased Sequence_T;
+
+   --  Read the file at Path into Into (Loaded or Twin_Loaded)
+   procedure Load (Into : not null access Sequence_T; Path : String;
+                   Ok : out Boolean)
+   is
+      Loaded : Sequence_T renames Into.all;
    begin
       Loaded.Name := (others => <>);
       Loaded.SV := 0;
@@ -1153,6 +1161,7 @@ package body S076_Sequences is
       Loaded.Release_OB := False;
       Loaded.Train_Count := 0;
       Loaded.Gamma := (others => <>);
+      Loaded.Gamma_From := Own_Sheet;
       Loaded.Gamma_Sets := 0;
       Loaded.Lambda_Sets := 0;
       WB_Gamma := (others => <>);
@@ -1167,9 +1176,72 @@ package body S076_Sequences is
       Length_Row := (others => <>);
       Traction_Row := (others => <>);
       Brake_Row := (others => <>);
-      Cur := Loaded'Access;
+      Cur := Into;
       Block := 0;
       Scn_Reader.Read_File (Path, On_Line'Access, Ok);
+   end Load;
+
+   --  Whether the gamma sheet G has the reaction times, rows 85 and 86
+   --  of its first combination
+   function Has_Times (G : Gamma_Sheet_T) return Boolean is
+     (G.Present
+      and then G.Cells (1, Time_Column, 85) /= No_Value
+      and then G.Cells (1, Time_Column, 86) /= No_Value);
+
+   --  The sequence's SV30 twin when its gamma sheet lacks the reaction
+   --  times (Gamma_From_T): sequences/sv21/<name>_SV21.scn reads
+   --  sequences/sv30/<name>_SV30.scn
+   procedure Complete_Gamma (Path : String) is
+      D  : constant Natural :=
+        Ada.Strings.Fixed.Index (Path, "/sv2", Ada.Strings.Backward);
+      Ok : Boolean := False;
+      All_Twin, No_Twin : Boolean := True;
+   begin
+      if not Loaded.Gamma.Present or else Has_Times (Loaded.Gamma)
+        or else Loaded.SV = 30 or else D = 0
+        or else Path'Length < D + 14
+        or else Path (Path'Last - 8 .. Path'Last - 5) /= "_SV2"
+      then
+         return;
+      end if;
+      for K in 1 .. Loaded.Curve_Count loop
+         All_Twin := All_Twin and Loaded.Curves (K).From_Twin;
+         No_Twin := No_Twin and not Loaded.Curves (K).From_Twin;
+      end loop;
+      Load (Twin_Loaded'Access,
+            Path (Path'First .. D) & "sv30/"
+            & Path (D + 6 .. Path'Last - 9) & "_SV30.scn", Ok);
+      Cur := Loaded'Access;
+      if not Ok or else not (All_Twin or No_Twin) then
+         return;
+      elsif not Has_Times (Twin_Loaded.Gamma) then
+         Loaded.Gamma_From := Twin_Lambda;
+      elsif All_Twin then
+         Loaded.Gamma := Twin_Loaded.Gamma;
+         Loaded.Gamma_From := Twin_Sheet;
+         if Twin_Loaded.Curve_Count = Loaded.Curve_Count then
+            for K in 1 .. Loaded.Curve_Count loop
+               Loaded.Curves (K).Gamma_Other :=
+                 Twin_Loaded.Curves (K).Gamma_Other;
+            end loop;
+         end if;
+      else
+         for C in 1 .. 2 loop
+            for R in 85 .. 86 loop
+               Loaded.Gamma.Cells (C, Time_Column, R) :=
+                 Twin_Loaded.Gamma.Cells (C, Time_Column, R);
+            end loop;
+         end loop;
+         Loaded.Gamma_From := Twin_Times;
+      end if;
+   end Complete_Gamma;
+
+   procedure Read (Path : String; Ok : out Boolean) is
+   begin
+      Load (Loaded'Access, Path, Ok);
+      if Ok then
+         Complete_Gamma (Path);
+      end if;
    end Read;
 
    function DMI_Data (S : Sequence_T; Step : Natural) return String is

@@ -239,6 +239,17 @@ package S076_Sequences is
       Traction_Cut_Off   : Boolean := True;
    end record;
 
+   --  Where the gamma sheet of a sequence comes from. The old tool's
+   --  sheets (SV21, SV22) lack the reaction times, rows 85 and 86: a
+   --  sequence whose gamma curve sets are all copies of its SV30
+   --  twin's (curves-from) takes the twin's whole sheet, the one the
+   --  curves were computed with (Twin_Sheet); one with curve sets of
+   --  its own takes the twin's two times alone (Twin_Times: the old
+   --  tool's rows equal the twin's, so they hold the same reaction
+   --  times); a twin whose train is a lambda train has none to give
+   --  (Twin_Lambda), the block stays
+   type Gamma_From_T is (Own_Sheet, Twin_Sheet, Twin_Times, Twin_Lambda);
+
    --  The factor of the step table T at X (No_Value when T is empty)
    function Sheet_Factor (T : Sheet_Table_T; X : Long_Float)
                           return Long_Float;
@@ -370,6 +381,7 @@ package S076_Sequences is
       --  Gamma train (Train (main)!Gamma 1); Gamma_Sets and Lambda_Sets
       --  count its curve sets of either train
       Gamma : Gamma_Sheet_T;
+      Gamma_From : Gamma_From_T := Own_Sheet;
       Gamma_Sets, Lambda_Sets : Natural := 0;
       --  B471, B472: the trains of the packets 11 of its messages 129, the
       --  first Max_Trains

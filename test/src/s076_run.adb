@@ -6295,7 +6295,12 @@ package body S076_Run is
    function Reference_Note (C : Curve_Set_T) return String is
       R : constant Reason_T := No_Reference (C);
    begin
-      if R = R_Gamma and then B.Gamma_Gap /= "" then
+      if R = R_Gamma and then B.Gamma_Gap /= ""
+        and then Seq.Gamma_From = Twin_Lambda
+      then
+         return "the gamma sheet lacks " & B.Gamma_Gap
+           & ", its SV30 twin's train a lambda train: ";
+      elsif R = R_Gamma and then B.Gamma_Gap /= "" then
          return "the gamma sheet lacks " & B.Gamma_Gap & ": ";
       elsif R = R_Gamma and then C.Gamma_Other then
          return "a gamma sheet other than the one installed: ";
