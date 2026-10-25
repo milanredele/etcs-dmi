@@ -661,6 +661,8 @@ package body DMI_Core is
       Desk_Settings_Down := False;
       Desk_Isolation_Down := False;
       Desk_Isolation_Ms := 0;
+      -- the on-board sends again what it sends once (MSG_DMI_HELLO)
+      Queue_Message (MSG_DMI_HELLO, (1 .. 0 => 0));
       -- DMI 5.2.2.2 / 5.2.3.2: the luminance and the volume are not reset
       -- here. They are settings of the DMI unit stored on board
       -- (General_Parameters), not data of the mission: the last stored

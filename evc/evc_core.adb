@@ -390,6 +390,14 @@ is
             --  (EVC_Driver_Requests; the isolation, 4.6.3 condition [1],
             --  among them)
             EVC_Driver_Requests.Receive (Payload);
+            --  the DMI (re)started: what is sent once or at a change is
+            --  sent again in the next cycle
+            if Is_DMI_Hello (Payload) then
+               Types_Sent := False;
+               Stored_Sent := False;
+               Version_Sent := 16#FF#;
+               Contact_Sent := EVC_Radio.No_Contact;
+            end if;
             --  3.14.1.5: the release of a brake acknowledged
             if Is_Brake_Release_Ack (Payload) then
                Latched_Brake_Ack := True;

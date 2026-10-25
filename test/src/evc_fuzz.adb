@@ -1420,6 +1420,8 @@ procedure EVC_Fuzz is
       --  number, 'Start', the acknowledgement of SR), a cycle each
       procedure Driver_Start (Step : Natural) is
       begin
+         --  MSG_DMI_HELLO: the DMI (re)started, the markers reset
+         DMI_Frame (16#43#, (1 .. 0 => 0));
          DMI_Frame (16#41#, (0, 4, 49, 50, 51, 52));
          One_Cycle (0, Step);
          Action (11, 4);

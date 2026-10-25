@@ -49,6 +49,8 @@ is
    --  The DMI ended a system status message by itself: entry u8
    MSG_STATUS_ENDED     : constant Byte := 16#42#;
    Status_Ended_Length  : constant := 1;
+   --  The DMI (re)started (common/dmi_protocol.ads): no payload
+   MSG_DMI_HELLO        : constant Byte := 16#43#;
 
    --  Driver actions (MSG_DRIVER_ACTION) the on-board uses
    Action_Ack     : constant Byte := 2;
@@ -71,7 +73,13 @@ is
                Frame'Length > Header_Length,
             when MSG_STATUS_ENDED =>
                Frame'Length = Header_Length + Status_Ended_Length,
+            when MSG_DMI_HELLO =>
+               Frame'Length = Header_Length,
             when others => False));
+
+   function Is_DMI_Hello (Frame : Byte_Array) return Boolean is
+     (Frame'Length = Header_Length
+      and then Frame (Frame'First) = MSG_DMI_HELLO);
 
    function Is_Driver_Action (Frame : Byte_Array) return Boolean is
      (Frame'Length > Header_Length

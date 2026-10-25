@@ -870,6 +870,21 @@ package body DMI_Test_Data_Entry is
       function Text (V : DMI_Driver_Data.Text_Value_T) return Wide_String
       is (V.Text (1 .. V.Length));
    begin
+      --  MSG_DMI_HELLO: the first frame of the DMI after its start
+      DMI_Core.Initialise;
+      declare
+         use Ada.Streams;
+         use type DMI_Protocol.Msg_Type_T;
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+      begin
+         DMI_Core.Take_Outbox (Buffer, Last);
+         Check (Last >= Stream_Element_Offset (DMI_Protocol.Header_Length)
+                and then DMI_Protocol.Msg_Type_T (Buffer (1))
+                         = DMI_Protocol.MSG_DMI_HELLO
+                and then Buffer (2) = 0,
+                "DMI start: MSG_DMI_HELLO is the first frame, no payload");
+      end;
       Reset;
       Check (DMI_Train_Types.Count = 0
              and then DMI_Conditions.Train_Entry

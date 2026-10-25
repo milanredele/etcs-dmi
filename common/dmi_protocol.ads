@@ -777,6 +777,14 @@ package DMI_Protocol is
    --  Status_Ended_Length bytes; a receiver ignores any other length
    Status_Ended_Length : constant := 1;
 
+   MSG_DMI_HELLO : constant Msg_Type_T := 16#43#;
+   --  The DMI (re)started: sent once by DMI_Core.Initialise, before any
+   --  other frame of the DMI, so that the on-board sends again what it
+   --  sends only once or at a change (MSG_TRAIN_TYPES, MSG_SYSTEM_VERSION,
+   --  MSG_STORED_VALUES, MSG_RBC_CONTACT) to a DMI that has lost them.
+   --  No payload (Dmi_Hello_Length); a receiver ignores any other length.
+   Dmi_Hello_Length : constant := 0;
+
    -- DMI -> UI
    MSG_FRAME : constant Msg_Type_T := 16#60#;
    --  x u16, y u16, w u16, h u16, pixels w*h bytes (colour indices)
