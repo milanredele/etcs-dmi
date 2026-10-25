@@ -599,9 +599,9 @@ Subset-076-6-3_3130235_04_v400_SV30,blocked,69,runner
 Subset-076-6-3_3130235_05_v400_SV21,blocked,62,old-tool
 Subset-076-6-3_3130235_05_v400_SV22,blocked,62,old-tool
 Subset-076-6-3_3130235_05_v400_SV30,blocked,62,placement
-Subset-076-6-3_3130237_01_v400_SV21,failed,74,S256875a4
-Subset-076-6-3_3130237_01_v400_SV22,failed,74,S256875a4
-Subset-076-6-3_3130237_01_v400_SV30,failed,74,S256875a4
+Subset-076-6-3_3130237_01_v400_SV21,failed,77,S5e648ecf
+Subset-076-6-3_3130237_01_v400_SV22,failed,77,S5e648ecf
+Subset-076-6-3_3130237_01_v400_SV30,passed,0,-
 Subset-076-6-3_3130237_02_v400_SV21,passed,0,-
 Subset-076-6-3_3130237_02_v400_SV22,passed,0,-
 Subset-076-6-3_3130237_02_v400_SV30,passed,0,-

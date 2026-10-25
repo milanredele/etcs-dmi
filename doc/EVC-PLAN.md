@@ -12594,3 +12594,21 @@ failed 3130237_01, 4100103_24; passed to blocked 3130235_05 (old-tool,
 the twin placement), 3131040_15, _33; 3131040_35 59 -> 58 and _85 61 ->
 58 still blocked; 3131050_21 83 -> 82). No new signature: the triage of
 the twins' signatures holds.
+
+**B2041, the window of an optional step**: 3130237_01 SV30 step 58 (an
+optional JRU expectation at 867 m) waits its window and drives the train
+at 70 km/h to 944 m; BG3d of 890 m (step 59) is then read at 952 m,
+outside its linking window (`EVC_Position.Check_Window` Late,
+3.4.4.4.3), its information rejected and the linking reaction, a
+service brake, taken at step 60. The corpus first: in SV30, 36 optional
+expect steps of 18 sequences have a BTM input step next within 100 m;
+the runner's traces show the window passing the group's location in 2
+(this one, and 4080438_01 step 119 to 1003 m for a group of 1000 m read
+at 1008 m, which passes anyway), the others passed at once or were not
+run. The rule (`S076_Run.Next_Group_Reached`, in both waits of an
+expectation): the wait ends when the train going forward reaches the
+location of the next input step's balise group, a location past the
+step's own. 3130237_01 SV30 passes (failed 74 before), SV21 and SV22 go
+on to step 77 (S5e648ecf: JRU status 2 expected at 1792 m, ours 1, our
+permitted 80 km/h where SV30's is 72 with the same target: B2160, the
+versions' data to compare); no other sequence moved.

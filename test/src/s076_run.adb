@@ -6385,6 +6385,26 @@ package body S076_Run is
                    then ", from the track)" else ", the defaults)"));
    end Put_Factors;
 
+   --  Whether the train going forward has reached the location of the
+   --  balise group of the next input step after step I, a location
+   --  past step I's own: the wait of an expectation ends there, as a
+   --  window driven past it would have the group read outside its
+   --  linking window and its information rejected (3.4.4.4.3;
+   --  3130237_01 step 58 at 867 m, BG3d of 890 m read at 952 m)
+   function Next_Group_Reached (I : Positive) return Boolean is
+   begin
+      for K in I + 1 .. Seq.Step_Count loop
+         if Seq.Steps (K).IO = Input then
+            return B.Direction > 0
+              and then Starts (Image (Seq.Steps (K).Line),
+                               "input BTM balise-group")
+              and then Seq.Steps (K).Dist_Cm > Seq.Steps (I).Dist_Cm
+              and then B.Position >= Seq.Steps (K).Dist_Cm;
+         end if;
+      end loop;
+      return False;
+   end Next_Group_Reached;
+
    --  B176: how far the train was driven on past the sequence's
    --  location to our change of the limit's kind (cm, 0 when not)
    Driven_Cm : Integer_64 := 0;
@@ -6969,6 +6989,7 @@ package body S076_Run is
                   Note_Curve_Ref (I);
                   J := Expect (St);
                   while J.Verdict = Failed and then Wait_Used < Wait_Limit
+                    and then not Next_Group_Reached (I)
                   loop
                      Wait_Cycle;
                      Wait_Used := Wait_Used + 1;
@@ -7010,6 +7031,7 @@ package body S076_Run is
                      C : Judgement_T := Columns (I);
                   begin
                      while C.Verdict = Failed and then Wait_Used < Wait_Limit
+                       and then not Next_Group_Reached (I)
                      loop
                         Wait_Cycle;
                         Wait_Used := Wait_Used + 1;
