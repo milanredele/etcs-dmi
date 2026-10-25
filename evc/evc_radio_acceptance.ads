@@ -176,9 +176,16 @@ is
        elsif C.L2_Announced then Stored                         -- [2]
        else Rejected);
 
-   --  4.8.4 [1]: level 2 in PT, after message 6
+   --  4.8.4 [1], the rows A [1] of PT: "for level 2: only if following
+   --  the reception of the information "Recognition of Exit from TR
+   --  mode" with a more recent time stamp; for level 1: rejected"
+   --  (message 6: Trip_Exit_Known, its time stamp judged by EVC_Sessions)
+   --  decision: a context without a valid level is judged by message 6
+   --  alone
+   --  @req 4.8.4.2 Table-footnote [1]
    function In_PT (C : Context_T) return Boolean is
-     (C.Trip_Exit_Known);
+     (C.Trip_Exit_Known
+      and then not (C.Level_Valid and then C.Level = L1));
 
    --  4.8.4, the third filter in the mode of C
    --  @req 4.8.4.2 Table

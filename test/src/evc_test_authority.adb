@@ -26,6 +26,7 @@ with EVC_Levels;
 with EVC_Linking;
 with EVC_Procedures;
 with EVC_Radio;
+with EVC_Radio_Acceptance;
 with EVC_Radio_Authority;
 with EVC_SDM;
 with EVC_Stored_Information;
@@ -1403,6 +1404,76 @@ package body EVC_Test_Authority is
              "post trip, level 2: the stop revoked, 'Start' requests an "
              & "MA (5.11.2.2 E135, S140)");
    end Scenario_Trip_L2;
+
+   --  4.8.4 [1] in PT: "for level 2: only if following the reception of
+   --  the information "Recognition of Exit from TR mode" with a more
+   --  recent time stamp; for level 1: rejected". Message 45 (the row
+   --  "Assignment of Co-ordinate system", A in every level by 4.8.3, A
+   --  [1] in PT) after a message 6: accepted in level 2, rejected once
+   --  the level is 1 in PT; the filter alone for the other rows A [1]
+   --  of PT
+   procedure Scenario_PT_Acceptance_Level is
+      package Acc renames EVC_Radio_Acceptance;
+      R0 : Natural;
+
+      procedure Enter_PT (Level : Level_T) is
+      begin
+         EVC_Core.Set_Mode_For_Test (M_TR, Level);
+         Stand_X (200);
+         Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+         Stand_X (200);
+      end Enter_PT;
+
+      --  every row A [1] of PT the third filter judges, in Level
+      function All_Accepted (Level : Level_T) return Boolean is
+         C : constant Acc.Context_T :=
+           (Mode => M_PT, Level_Valid => True, Level => Level,
+            Trip_Exit_Known => True, Train_Data_Valid => True,
+            others => <>);
+      begin
+         return (for all I in Acc.Info_T =>
+                   (if I in Acc.Movement_Authority | Acc.SR_Authorisation
+                         | Acc.Stop_Revocation | Acc.SH_Refused
+                         | Acc.SH_Authorised | Acc.SM_Authorisation
+                         | Acc.SM_Refused | Acc.TAF_Request
+                         | Acc.Coordinate_Assignment | Acc.Network_Order
+                    then Acc.Third_Filter (I, C) = (Level = L2)));
+      end All_Accepted;
+   begin
+      Check (All_Accepted (L2) and then All_Accepted (L1),
+             "post trip by level: the rows A [1] of PT after message 6 "
+             & "accepted in level 2, rejected in level 1 (4.8.4 [1])");
+
+      --  level 2, PT, message 6, message 45: accepted
+      Start_L2;
+      Run_X (15_000);
+      Enter_PT (L2);
+      Give_Radio_Message (1, Header_Message (MCat.Track_M6));
+      Stand_X (200);
+      R0 := RA.Messages_Rejected;
+      Give_Radio_Message (1, Header_Message (MCat.Track_M45));
+      Stand_X (200);
+      Check (EVC_Core.Mode = M_PT and then EVC_Levels.Level = L2
+             and then RA.Trip_Exit_Recognised
+             and then RA.Messages_Rejected = R0,
+             "post trip, level 2: message 45 after message 6 accepted "
+             & "(4.8.4 [1])");
+
+      --  the level 1 in PT after it (message 6 itself is R in level 1,
+      --  4.8.3, so only a level change in PT after it leads there: the
+      --  row "Level Transition Order" is A [1] [5] in PT): message 45
+      --  rejected
+      EVC_Core.Set_Mode_For_Test (M_PT, L1);
+      Stand_X (200);
+      R0 := RA.Messages_Rejected;
+      Give_Radio_Message (1, Header_Message (MCat.Track_M45));
+      Stand_X (200);
+      Check (EVC_Core.Mode = M_PT and then EVC_Levels.Level = L1
+             and then RA.Trip_Exit_Recognised
+             and then RA.Messages_Rejected = R0 + 1,
+             "post trip, level 1: message 45 after message 6 rejected "
+             & "(4.8.4 [1])");
+   end Scenario_PT_Acceptance_Level;
 
    --  4.6.3 [11], 3.13.10.2.6 b) in level 2, FS: an MA of 500 m from the
    --  group 10 (EOA at 600 m, a danger point 50 m beyond, release speed

@@ -39,6 +39,8 @@ package EVC_Test_Authority is
    --  4.4.11.1.3 d): a "stop if in SR" group in the RBC's list passed
    procedure Scenario_SR_Stop_Listed;
    procedure Scenario_Trip_L2;
+   --  4.8.4 [1]: the rows A [1] of PT, in level 1 rejected after message 6
+   procedure Scenario_PT_Acceptance_Level;
    --  4.6.3 [11], 3.13.10.2.6 b): the level 2 trip for a group known by
    --  the linking to be at the EOA, read in release speed monitoring
    procedure Scenario_Linked_Group_At_EOA;

@@ -263,10 +263,12 @@ package body EVC_Test_Network is
              "radio order: packet 45 by radio accepted in every level and "
              & "mode but NP, SF, IS (4.8.3, 4.8.4)");
       Check (V (EVC_Modes.M_SB, True) and then not V (EVC_Modes.M_SB)
-             and then V (EVC_Modes.M_PT, Exit_TR => True)
-             and then not V (EVC_Modes.M_PT),
+             and then V (EVC_Modes.M_PT, Exit_TR => True, L => EVC_Modes.L2)
+             and then not V (EVC_Modes.M_PT, L => EVC_Modes.L2)
+             and then not V (EVC_Modes.M_PT, Exit_TR => True),
              "radio order: in SB only with a cab active (4.8.4 [2]), in PT "
-             & "only after the recognition of the exit from TR ([1])");
+             & "only after the recognition of the exit from TR in level 2, "
+             & "not in level 1 ([1])");
       --  through the ports: SB, a cab active, the session of the
       --  supervising RBC established
       SoM_To_S3;
