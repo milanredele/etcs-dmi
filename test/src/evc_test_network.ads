@@ -24,4 +24,8 @@ package EVC_Test_Network is
    --  4.8.3 / 4.8.4 (EVC_Radio_Acceptance), 4.8.4 [1], [2], [13]
    procedure Scenario_Network_Radio_Order;
 
+   --  5.4.5.3 j) 2nd bullet: in level 1 at S10 and S20 the Radio data
+   --  re-entered: the Radio Network taken, the RBC contact not
+   procedure Scenario_Network_Level_1;
+
 end EVC_Test_Network;

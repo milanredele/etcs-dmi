@@ -8,11 +8,13 @@ with ETCS_Track_Packets.P131;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P74;
 with ETCS_Track_Packets.P180;
+with ETCS_Train_Packets.P0;
 with ETCS_Variables;
 with EVC_Config;
 with EVC_Core;
 with EVC_LS_Display;
 with EVC_Modes;
+with EVC_Position;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
@@ -740,5 +742,65 @@ package body EVC_Test_Handover is
              & "switch, kept (3.5.3.8 f, decision: not the sessions with "
              & "the supervising or accepting role)");
    end Scenario_Handover_Rear_Border;
+
+   --  The min safe rear end of the reported position, cm from the LRBG:
+   --  packet 0's D_LRBG less L_DOUBTOVER, less the train length
+   function Reported_Rear return Integer_64 is
+      P : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Position_Report (EVC_Core.Mode, EVC_Modes.L2);
+      S : constant Integer_64 :=
+        (case Natural (P.Q_SCALE) is
+            when 0 => 10, when 1 => 100, when others => 1000);
+   begin
+      return (Integer_64 (P.D_LRBG) - Integer_64 (P.L_DOUBTOVER)) * S
+        - Integer_64 (EVC_Position.Length_Of_Train);
+   end Reported_Rear;
+
+   procedure Scenario_Handover_Rear_Report is
+      Passed     : Boolean := False;
+      Lag, Doubt : Integer_64;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Run_X (32_000);
+      Check (R.Supervising = 2 and then R.Info (1).State = R.Established
+             and then EVC_Position.Train_Length_Known,
+             "rear report: the front past the border at 300 m, 400 "
+             & "supervises, the session with 300 kept");
+
+      --  5 m a cycle until the min safe rear end passes the border
+      while not Passed and then Train_Cm < 100_000 loop
+         Seen := EVC_Position.No_Triggers;
+         Run_X (Train_Cm + 500);
+         Passed := Seen.Border_Rear;
+      end loop;
+      Check (Passed and then Sent (136, 1) >= 1 and then Sent (136, 2) >= 1,
+             "rear report: in the cycle the min safe rear end passes the "
+             & "border, a report to the Handing Over RBC 300 (3.6.5.1.4 e, "
+             & "3.15.1.3.1 c) and to 400 (3.15.1.3.4), at"
+             & Integer_64'Image (Train_Cm));
+      --  the true rear end past the border by at least the confidence
+      --  interval; a cycle (5 m) earlier not by that interval plus the
+      --  odometer's 2 % of the 200 m between group 10, the border's
+      --  reference, and group 20, the LRBG ("min" location item of Table
+      --  2a relocated by 3.6.4.2.5 c)
+      Lag := Train_Cm - Integer_64 (EVC_Position.Length_Of_Train) - 30_000;
+      Doubt := Integer_64 (EVC_Position.Doubt_Over);
+      Check (Lag >= Doubt and then Lag - 500 < Doubt + 400
+             and then Reported_Rear >= 0,
+             "rear report: the min safe rear end past the border at the "
+             & "report, the report's own (D_LRBG less L_DOUBTOVER less the "
+             & "length from group 20) too; true rear end past by"
+             & Integer_64'Image (Lag) & ", the interval"
+             & Integer_64'Image (Doubt));
+   end Scenario_Handover_Rear_Report;
 
 end EVC_Test_Handover;

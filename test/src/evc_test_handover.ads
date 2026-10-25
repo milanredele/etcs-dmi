@@ -57,5 +57,8 @@ package EVC_Test_Handover is
    procedure Scenario_Handover_Contact;
    --  3.5.3.8 f)
    procedure Scenario_Handover_Rear_Border;
+   --  3.6.5.1.4 e), 3.15.1.3.1 c), 3.15.1.3.4: the report in the cycle
+   --  the min safe rear end passes the border, to both RBCs
+   procedure Scenario_Handover_Rear_Report;
 
 end EVC_Test_Handover;

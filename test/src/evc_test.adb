@@ -330,6 +330,7 @@ begin
    Scenario_Session_NVCONTACT_Values;
    Scenario_Session_Order_Rows;
    Scenario_SoM_L2_Mode_Proposal_LS;
+   Scenario_SoM_L2_Override;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;
@@ -358,6 +359,7 @@ begin
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;
    Scenario_Network_Radio_Order;
+   Scenario_Network_Level_1;
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;
@@ -371,6 +373,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Exception_2;
    EVC_Test_Handover.Scenario_Handover_Contact;
    EVC_Test_Handover.Scenario_Handover_Rear_Border;
+   EVC_Test_Handover.Scenario_Handover_Rear_Report;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;
@@ -406,6 +409,7 @@ begin
    Scenario_Own_Units_Stored;
    Scenario_Released_Linking;
    Scenario_Text_Shortening;
+   Scenario_Text_Roll_Back;
 
    Scenario_Start_After_Ack;
    Scenario_TAF_Up_To_L2;

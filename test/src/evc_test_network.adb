@@ -12,6 +12,8 @@ with EVC_DMI_Port;
 with EVC_Radio;
 with EVC_Sessions;
 with EVC_Test_Modes;
+with EVC_Train_Data;
+with EVC_Bytes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with ETCS_Variables;
 with EVC_Ports;           use EVC_Ports;
@@ -289,5 +291,51 @@ package body EVC_Test_Network is
              & "packet 45 in it (4.8.4 [13])");
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_Radio_Order;
+
+   procedure Scenario_Network_Level_1 is
+      use type EVC_Modes.Mode_T, EVC_Modes.Level_T, R.Session_State_T;
+      use type EVC_Bytes.Byte_Array;
+      Train : constant Byte_Array :=
+        Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+               Byte_Array'(1 => 2) & U16 (200) & U16 (135) & U16 (160)
+               & Byte_Array'(1 => 2) & U16 (4) & Byte_Array'(0, 0, 1));
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, Default_MN => 16#262FFF#,
+          others => <>));
+      EVC_Test_Modes.Start_E4;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      Check (EVC_Core.Mode = EVC_Modes.M_SB
+             and then EVC_Core.Level = EVC_Modes.L1
+             and then not R.Contact.Known
+             and then R.Info (1).State = R.Idle,
+             "network level 1: S10 in level 1, no RBC contact, no session");
+
+      --  S10: the RBC contact entered is not taken, no session opened
+      Send (RBC_Entry);
+      Stand;
+      Check (not R.Contact.Known and then R.Info (1).State = R.Idle,
+             "network level 1: at S10 the RBC data are not taken in level "
+             & "1, no session (5.4.5.3 j) 2nd bullet)");
+      --  the Radio Network is
+      Send (Text_Entry (4, "123"));
+      Check (R.Network.NID_MN = 16#123FFF#,
+             "network level 1: at S10 the driver's Radio Network taken "
+             & "(5.4.5.3 j) 2nd bullet, 3.18.4.3.6)");
+
+      --  S20 alike
+      Send (Train);
+      Send (Text_Entry (1, "5678"));
+      Send (RBC_Entry);
+      Send (Text_Entry (4, "456"));
+      Check (EVC_Core.Mode = EVC_Modes.M_SB
+             and then EVC_Train_Data.Valid
+             and then not R.Contact.Known and then R.Info (1).State = R.Idle
+             and then R.Network.NID_MN = 16#456FFF#,
+             "network level 1: at S20 the Radio Network taken, the RBC "
+             & "data not (5.4.5.3 j) 2nd bullet)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_Level_1;
 
 end EVC_Test_Network;

@@ -2081,6 +2081,50 @@ package body EVC_Test_Authority is
              & "[8])");
    end Scenario_Text_Shortening;
 
+   --  The text from 300 m (the group 10 at 100 m) shown when the train's
+   --  estimated front end passes its start; the train then rolls back
+   --  1.5 m, in rear of the start (within D_NVROLL, no trip), and comes
+   --  forward over it again
+   procedure Scenario_Text_Roll_Back is
+      M : Natural := 0;
+      X : Integer_64;
+      --  50 cm a cycle to To, the texts' records of the cycles counted
+      procedure Go_To (To : Integer_64) is
+      begin
+         while Train_Cm /= To loop
+            Run_X ((if To > Train_Cm then Train_Cm + 50 else Train_Cm - 50),
+                   50);
+            M := M + EVC_Text_Messages.Event_Count;
+         end loop;
+      end Go_To;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400)), Stamp));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 200));
+      Stand_X (100);
+      Run_X (29_000);
+      while EVC_Text_Messages.Displayed = 0 and then Train_Cm < 32_000 loop
+         Run_X (Train_Cm + 50, 50);
+      end loop;
+      X := Train_Cm;
+      Check (EVC_Text_Messages.Displayed = 1,
+             "text roll back: shown at its start, at" & X'Image);
+      Go_To (X - 150);
+      Check (EVC_Text_Messages.Displayed = 1
+             and then EVC_Core.Mode = EVC_Modes.M_FS and then M = 0,
+             "text roll back: 1.5 m in rear of its start, still shown, "
+             & "not reverted (A.3.5.1 3rd bullet), got"
+             & EVC_Text_Messages.Displayed'Image & " "
+             & EVC_Core.Mode'Image & M'Image);
+      Go_To (X + 500);
+      Check (EVC_Text_Messages.Displayed = 1 and then M = 0,
+             "text roll back: forward over the start again, not shown a "
+             & "second time, no record of the texts (A.3.5.1 3rd bullet), "
+             & "got" & M'Image);
+   end Scenario_Text_Roll_Back;
+
    --  Message 24 referred to the group Ref of country 123, its packet 5
    --  linking the group Id at D_LINK metres (accuracy 10 m, reaction R)
    function Linking_Message (Ref, Id, D_LINK : Natural;

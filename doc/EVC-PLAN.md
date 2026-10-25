@@ -13106,3 +13106,53 @@ Backlog: B2140, B2206, B2202, B2201 closed; B2220 new (the level in the
 context of `EVC_Sessions.Network.Take_Radio_Order`). Proofs: `evc_position`
 and `evc_radio_acceptance`, no unproved check. Runner: 1160 / 1078 / 952,
 0 regressions, 0 improvements.
+### The scenarios of B841 and one of B781: the report at the RBC/RBC border, the override and the Radio data at S10 / S20, a text over a relocation (e5/bookkeeping-6) (2026-10-25)
+
+Premises checked: the three rows of B841 claimed behaviour that existed;
+one of them did not hold in full (5.4.5.3 a), a defect). The brief's
+units held but for two placements: the level 2 start of mission up to
+S20 is `SoM_L2_At_S20`, private to `EVC_Test_Sessions`, so the override
+scenario went there, not into `EVC_Test_Procedures`; the text scenarios
+are in `EVC_Test_Authority` (`Text_At_Message`), not `EVC_Test_Profiles`.
+
+3.6.5.1.4 e) (done, no defect): `EVC_Test_Handover.
+Scenario_Handover_Rear_Report`, the handover from 300 to 400 at 300 m
+(200 m from group 10), both sessions established, 5 m a cycle until
+`Border_Rear`: in that cycle a message 136 to 300 (3.15.1.3.1 c) and to
+400 (3.15.1.3.4). A first check that the report's own min safe rear end
+(D_LRBG less L_DOUBTOVER less the length, from the LRBG group 20 at the
+border) is in rear of the border a cycle before failed (150 cm past):
+`EVC_Position.Evaluate_Border` compares the border with the confidence
+interval since group 10, its reference, which is Table 2a's "min"
+location item of the RBC transition order relocated by 3.6.4.2.5 c)
+(min safe front end against the FRBG less against the SOLR); the report
+uses the interval since the LRBG, 2 % of 200 m narrower. The check now
+says that: the true rear end past the border by at least the interval at
+the report, a cycle earlier not by that interval plus 4 m.
+
+5.4.5.3 a) (done, a defect fixed): `EVC_Test_Sessions.
+Scenario_SoM_L2_Override`: at S20 Override is taken, the mode SR at once
+(5.8.3.1 a; the brief's "the procedure Override starts" in SB is SR),
+the valid position kept (the position of this on-board is never invalid,
+row g). At S21 ('Start' given, `EVC_Mission.Waiting_For_RBC`) it was
+taken too: `EVC_Procedures.Override_Allowed` allowed SB in level 2
+without the start of mission's state. Fixed: `Context_T.SoM_Started`
+(`EVC_Mission.Waiting_For_RBC` or `Proposed`, S21 to S25, set by
+`EVC_Core.Modes` in the procedures' context) excludes it; proofs of
+`evc_procedures` and `evc_core-modes`; runner 0 regressions, 0
+improvements. Before S10 the condition 5.8.2.1 c) stands alone: B2280.
+
+5.4.5.3 j) 2nd bullet (done, no defect): `EVC_Test_Network.
+Scenario_Network_Level_1`: a level 1 start of mission, at S10 and at S20
+the driver's RBC data are not taken (no contact, no session:
+`EVC_Sessions.Mission.Evaluate_SoM` takes them in level 2 only), the
+Radio Network is (`EVC_Sessions.Network.Driver_Entries`). The row's
+"restriction not traced" was that level 2 guard. B841 closed.
+
+A.3.5.1 3rd bullet (B781 narrowed, no defect): `EVC_Test_Authority.
+Scenario_Text_Roll_Back`: the text from 300 m shown when the estimated
+front end passes its start; the train rolls back 1.5 m in rear of it
+(within D_NVROLL, FS kept) and comes forward 5 m beyond: the text stays
+shown, no record of the texts in any cycle (neither removed nor shown
+again). Left of the bullet: a relocation on a balise group that becomes
+the SOLR back over the start, and the stop location.
