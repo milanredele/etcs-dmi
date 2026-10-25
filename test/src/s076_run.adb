@@ -6462,7 +6462,14 @@ package body S076_Run is
    is
       C     : Curve_Set_T renames Seq.Curves (Ref.Set);
       Limit : constant String := Curve_Column_T'Image (Ref.Column);
-      N     : constant Natural := Change_Of (Ref.Column);
+      --  a Gamma train without the service brake interface intervenes
+      --  with the emergency brake at the SBI (the workbook's SBI is its
+      --  EBI, T_bs2 0 by 3.13.9.3.3.5)
+      Col   : constant Curve_Column_T :=
+        (if Ref.Column = SBI and then Gamma_Set (C)
+           and then not Seq.Gamma.Service_Brake
+         then EBI else Ref.Column);
+      N     : constant Natural := Change_Of (Col);
       Ch    : constant B.Change_T :=
         (if N > 0 then B.Change (N) else B.Current);
       V     : constant Long_Float := Long_Float (Ch.V_Est) * 0.036;
@@ -6478,6 +6485,19 @@ package body S076_Run is
       Seq_D : constant Long_Float :=
         Long_Float (Ch.Track_Cm + B.Front_Offset - Ref.End_Cm) / 100.0
         + D_Est;
+      --  a status passed over (Change_Of): the limit of the status
+      --  entered, the one our change places
+      Over  : constant Curve_Column_T :=
+        (case Ch.Kind is
+            when B.To_Indication => Indication,
+            when B.To_Overspeed  => Permitted,
+            when B.To_Warning    => Warning,
+            when others          => SBI);
+      Passed : constant Boolean :=
+        N > 0 and then Ch.Kind in B.To_Indication .. B.To_Intervention
+        and then Over /= Col;
+      Wb_Over : constant Long_Float :=
+        (if Passed then Curve_Distance (C, Over, V) else No_Value);
       Res   : Judgement_T;
    begin
       if Verbose and then (N > 0 or else Ch.Shown) then
@@ -6540,6 +6560,17 @@ package body S076_Run is
       elsif Diff > Curve_Out then
          Res := Fail ("curve " & Limit & ": ours further out by "
                       & Band (Diff));
+      elsif Diff < -(Curve_In + Mg) and then Wb_Over /= No_Value
+        and then Ours - Wb_Over in -(Curve_In + Mg) .. Curve_Out
+      then
+         --  passed over at once (a target that came with the train
+         --  beyond the workbook's location of the limit): the limit of
+         --  the status entered agrees, the limit named was passed before
+         --  our change, as the workbook has it
+         Res := NJ (R_Placement, "curve " & Limit & ": passed over to "
+                    & Curve_Column_T'Image (Over) & ", which agrees with"
+                    & " the workbook within"
+                    & Img (Integer (abs (Ours - Wb_Over))) & " m");
       elsif Diff < -(Curve_In + Mg) then
          Res := Fail ("curve " & Limit & ": ours nearer by "
                       & Band (-Diff));

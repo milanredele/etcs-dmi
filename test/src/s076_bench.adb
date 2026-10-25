@@ -951,6 +951,16 @@ package body S076_Bench is
          C.Train.Has_Regenerative := Gamma_Sheet.Brakes (1, 6);
          C.Train.Has_Eddy_Current := Gamma_Sheet.Brakes (1, 7);
          C.Train.Has_Magnetic_Shoe := Gamma_Sheet.Brakes (1, 8);
+         --  the workbook's train interfaces: the service brake and
+         --  traction cut-off commands and the traction cut-off time
+         C.Supervision.Service_Brake_Command := Gamma_Sheet.Service_Brake;
+         C.Supervision.Traction_Cut_Off := Gamma_Sheet.Traction_Cut_Off;
+         if Gamma_Sheet.T_Traction_Cut_Off in 0.0 .. 60.0 then
+            C.Train.T_Traction_Cut_Off :=
+              EVC_Supervision_Input.Time_Ms_T
+                (Long_Float'Rounding
+                   (Gamma_Sheet.T_Traction_Cut_Off * 1000.0));
+         end if;
          EVC_Config.Encode_V2 (C, G, Img, Len);
          EVC_Core.Configure (Img (1 .. Len));
       elsif Gamma_Installed then

@@ -231,6 +231,12 @@ package S076_Sequences is
       --  the confidence level the sheet's Kdry_rst is for (the cell
       --  EBCL0 .. EBCL9 that is 1); -1 none
       EBCL    : Integer := -1;
+      --  the workbook's train interfaces (Train (main)): the traction
+      --  cut-off time D4 in s, the option buttons of the service brake
+      --  and traction cut-off interfaces (3.13.2.2.7.1, 3.13.2.2.8.1)
+      T_Traction_Cut_Off : Long_Float := No_Value;
+      Service_Brake      : Boolean := True;
+      Traction_Cut_Off   : Boolean := True;
    end record;
 
    --  The factor of the step table T at X (No_Value when T is empty)
