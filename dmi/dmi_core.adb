@@ -1734,7 +1734,8 @@ package body DMI_Core is
          DMI_Driver_Data.Onboard_Max_Speed := U16 (5);
          DMI_Train_Data.Take_Onboard
            (CD => U8 (7), Other => U16 (8), Axle => U8 (10),
-            Airtight => U8 (11), Gauge => U8 (12));
+            Airtight => U8 (11), Gauge => U8 (12),
+            Type_Index => Natural (Payload (Payload'Last)));
          DMI_Driver_Data.Onboard_Network := Text_At (Net_At, Net_Len);
       end if;
    end Apply_Stored_Values;

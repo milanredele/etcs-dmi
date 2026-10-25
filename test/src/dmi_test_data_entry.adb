@@ -937,6 +937,31 @@ package body DMI_Test_Data_Entry is
       Check (Text (DMI_Train_Data.Stored_Type_Text) = "Passenger",
              "fixed entry: the type stored (Table 44 item 3)");
 
+      --  11.5.1.4, Table 44: the data view of the fixed entry, item 3
+      --  'Train type' before the train category
+      while DMI_Windows.Is_Open loop
+         DMI_Windows.Close_Top;
+      end loop;
+      Win_Onboard (Train => Win_Standing + 64);
+      Press (610, 140);                        -- F3: Data view
+      Check (DMI_Windows.Top = DMI_Windows.W_Data_View,
+             "fixed entry: the data view open");
+      Check_Frame ("data_view_fixed");
+      --  the on-board's Train Data of the locomotive type (MSG_STORED_VALUES
+      --  with train_type 1, 3.18.6.1): its name for item 3
+      Send_Raw (16#11#, (1 .. 34 => 0, 35 => 1, 36 => 20, 37 => 0,
+                         38 => 100, 39 => 0, 40 => 80, 41 => 0,
+                         42 .. 46 => 0, 47 => 1, 48 .. 64 => 0, 65 => 1));
+      Check (Text (DMI_Train_Data.Onboard_Type_Text) = "Locomotive",
+             "fixed entry: the on-board's type in force, MSG_STORED_VALUES "
+             & "train_type 1 (Table 44 item 3)");
+      Send_Raw (16#11#, (1 .. 34 => 0, 35 => 1, 36 => 20, 37 => 0,
+                         38 => 100, 39 => 0, 40 => 80, 41 => 0,
+                         42 .. 46 => 0, 47 => 1, 48 .. 64 => 0));
+      Check (Text (DMI_Train_Data.Onboard_Type_Text) = "Locomotive",
+             "fixed entry: MSG_STORED_VALUES a byte short is ignored");
+      DMI_Windows.Close_Top;
+
       --  11.3.9.6 c), 11.3.9.7: the switchable entry, flexible first,
       --  'Select type' at (246,400); switched, 'Enter data'; retained
       Win_Onboard (Train => Win_Standing + 192);

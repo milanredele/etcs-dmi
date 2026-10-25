@@ -315,7 +315,11 @@ package DMI_Protocol is
    --    network_len u8: 0 .. Stored_Text_Max (0: no network stored),
    --    network 16 bytes: the GSM-R network ID as the list of
    --      MSG_RADIO_NETWORKS names it (the digits of NID_MN), padded
-   --      with 0 bytes.
+   --      with 0 bytes,
+   --    train_type u8: the train type of MSG_TRAIN_TYPES the Train Data
+   --      above are (the driver chose it on the fixed layout, DMI
+   --      11.3.9.6 a), 0 none (entered item by item, or no Train Data);
+   --      for the data view's item 3 (DMI Table 44).
    --  Fixed length Stored_Values_Length; the short form of
    --  Stored_Values_Short_Length bytes (the Driver ID and the train
    --  running number alone) is read too. A message of any other length
@@ -328,7 +332,7 @@ package DMI_Protocol is
    Stored_Values_Short_Length : constant := 2 + 2 * Stored_Text_Max;
    Stored_Values_Length : constant :=
      Stored_Values_Short_Length + 1 + Stored_Train_Length
-     + 1 + Stored_Text_Max;
+     + 1 + Stored_Text_Max + 1;
 
    MSG_TRAIN_TYPES : constant Msg_Type_T := 16#12#;
    --  The pre-configured train types of the fixed Train Data entry (DMI

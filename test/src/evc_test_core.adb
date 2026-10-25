@@ -171,7 +171,8 @@ package body EVC_Test_Core is
              and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 51) = 1,
              "power-up: MSG_TRAIN_TYPES, the two default train types "
              & "(DMI 11.3.9.6 a, 3.18.3.2.1)");
-      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 64
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 65
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 70) = 0
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6) = 0
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 0
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 40) = 0

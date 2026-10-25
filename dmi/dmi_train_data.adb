@@ -288,12 +288,17 @@ package body DMI_Train_Data is
                      when others => 0);
    end Positions_Of;
 
-   procedure Take_Onboard (CD, Other, Axle, Airtight, Gauge : Natural) is
+   --  The train type of the on-board's Train Data (0 none)
+   Onboard_Type : Natural := 0;
+
+   procedure Take_Onboard (CD, Other, Axle, Airtight, Gauge : Natural;
+                           Type_Index : Natural := 0) is
       use DMI_Driver_Data;
    begin
       Positions_Of (CD, Other, Axle, Airtight, Gauge,
                     Onboard_Category, Onboard_Axle_Load, Onboard_Airtight,
                     Onboard_Gauge);
+      Onboard_Type := Type_Index;
    end Take_Onboard;
 
    function Onboard_Text (Item : Item_T)
@@ -381,6 +386,7 @@ package body DMI_Train_Data is
    begin
       Last_Layout := Flexible_Layout;
       Stored_Type := 0;
+      Onboard_Type := 0;
    end Reset_Layout;
 
    --  The name of the train type Index (Length 0 outside the list)
@@ -394,6 +400,12 @@ package body DMI_Train_Data is
       end if;
       return Text_Of (T.Name (1 .. T.Name_Length));
    end Type_Text;
+
+   function Onboard_Type_Text return DMI_Driver_Data.Text_Value_T is
+     (if DMI_Driver_Data.Onboard_Train_Valid
+        and then Onboard_Type <= DMI_Train_Types.Count
+      then Type_Text (Onboard_Type)
+      else (others => <>));
 
    function Stored_Type_Text return DMI_Driver_Data.Text_Value_T is
      (if DMI_Driver_Data.Train_Data_Entered then Type_Text (Stored_Type)

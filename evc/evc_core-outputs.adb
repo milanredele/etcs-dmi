@@ -633,7 +633,8 @@ is
                Other         => Unsigned_16 (C.Other),
                Axle_Load     => Byte (C.Axle_Load),
                Airtight      => Byte (C.Airtight),
-               Gauge         => Byte (C.Loading_Gauge));
+               Gauge         => Byte (C.Loading_Gauge),
+               Type_Index    => Byte (EVC_Train_Data.Type_In_Force));
          end;
       end if;
       --  the name of the network as the list of 3.18.4.3.6.2 gives it
@@ -690,7 +691,8 @@ is
                Other         => Unsigned_16 (T.Other),
                Axle_Load     => Byte (T.Axle_Load),
                Airtight      => Byte (T.Airtight),
-               Gauge         => Byte (T.Loading_Gauge));
+               Gauge         => Byte (T.Loading_Gauge),
+               Type_Index    => 0);
          end;
       end loop;
       Train_Types_Frame (EVC_Config.Default_Train_Type_Count, Types,

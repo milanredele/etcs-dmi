@@ -417,7 +417,16 @@ package body EVC_Test_Train_Data is
       Send (Text_Entry (0, "1234"));
       Send (Action (11, 4));
       --  the passenger type of EVC_Config.Default_Train_Types
-      Send (Type_Entry (2, 200, 135, 160, 4));
+      Input (DMI, Type_Entry (2, 200, 135, 160, 4));
+      Cycle_X;
+      --  MSG_STORED_VALUES: train_valid at 40, the type at 70 (after the
+      --  header of 5 and the payload's 64 bytes before it)
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 40) = 1
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 70) = 2,
+             "train type: MSG_STORED_VALUES carries the type in force 2 "
+             & "(DMI Table 44 item 3), got"
+             & DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 70)'Image);
+      Stand_X (100);
       Check (EVC_Train_Data.Valid and then Length = 20_000
              and then EVC_Train_Data.Type_In_Force = 2,
              "train type: the passenger type's Train Data in force with "
@@ -427,7 +436,8 @@ package body EVC_Test_Train_Data is
       --  the short form, without the type: entered item by item
       Send (Train_Entry (300));
       Check (EVC_Train_Data.Valid and then Length = 30_000
-             and then EVC_Train_Data.Type_In_Force = 0,
+             and then EVC_Train_Data.Type_In_Force = 0
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 70) /= 2,
              "train type: an entry item by item has no type in force, type"
              & Img (EVC_Train_Data.Type_In_Force));
       --  an index above the installation's types: refused
