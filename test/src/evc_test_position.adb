@@ -472,9 +472,11 @@ package body EVC_Test_Position is
       Check (Pos.LRBG.Id.NID_BG = 20 and then not Pos.Previous_LRBG.Valid,
              "single: passed the other way, previous LRBG unknown");
       P := Pos.Position_Report_2 (M_SB, L1);
-      Check (P.NID_BG_PRVLRBG = 16383 and then P.Q_DIRLRBG = 2
+      Check (P.NID_C_PRVLRBG = 1023 and then P.NID_BG_PRVLRBG = 16383
+             and then P.Q_DIRLRBG = 2
              and then P.Q_DLRBG = 2 and then P.Q_DIRTRAIN = 2,
-             "single: directions unknown (3.4.2.3.3.3)");
+             "single: directions unknown (3.4.2.3.3.3), NID_PRVLRBG "
+             & "16777215 (7.5.1.94)");
       --  back over 30: now after 20, another previous LRBG
       Run_To (45_000);
       Check (Pos.LRBG.Id.NID_BG = 30
@@ -1409,9 +1411,10 @@ package body EVC_Test_Position is
    end Scenario_Crossing_Direction;
 
    --  3.6.2.2.2.3: in SR in level 2 with the train position unknown
-   --  (no group passed), the position reported with NID_LRBG "unknown";
-   --  the RBC's SR authorisation (message 2) with NID_LRBG "unknown"
-   --  (16#FFFFFF#, 7.5.1.98) is accepted: its SR distance given
+   --  (no group passed), the position reported with NID_LRBG "unknown"
+   --  (16#FFFFFF#: NID_C 1023 and NID_BG 16383, 7.5.1.90); the RBC's SR
+   --  authorisation (message 2) with NID_LRBG "unknown" is accepted: its
+   --  SR distance given
    procedure Scenario_LRBG_Unknown_Accepted is
       W : Writer_T;
       V : ETCS_Message.Value_Array := (others => 0);
@@ -1423,9 +1426,9 @@ package body EVC_Test_Position is
       Stand_X (200);
       R := Pos.Position_Report (EVC_Modes.M_SR, EVC_Modes.L2);
       Check (Pos.Status = Pos.Unknown and then not Pos.LRBG.Valid
-             and then R.NID_BG = 16383,
+             and then R.NID_C = 1023 and then R.NID_BG = 16383,
              "LRBG unknown: the position unknown, the LRBG reported "
-             & "unknown (3.6.2.2.2.1)");
+             & "unknown, NID_LRBG 16777215 (3.6.2.2.2.1, 7.5.1.90)");
       V (3) := Interfaces.Unsigned_64
         (EVC_Radio.T_Train_At (Interfaces.Unsigned_64 (EVC_Core.Time_Ms)));
       V (5) := 1023;

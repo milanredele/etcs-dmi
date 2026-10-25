@@ -118,6 +118,12 @@ is
    type Events_T is array (1 .. Max_Events) of Event_T;
    No_Event : constant Event_T := (others => <>);
 
+   --  The identity "unknown" of an LRBG or a previous LRBG in a position
+   --  report: NID_LRBG and NID_PRVLRBG 16777215 (7.5.1.90, 7.5.1.94), all
+   --  24 bits set; NID_BG 16383 alone is for linking information only
+   --  (7.5.1.85)
+   Unknown_Reported : constant Identity_T := (NID_C => 1023, NID_BG => 16383);
+
    --  3.6.6: a track kilometre reference
    Max_Geo : constant := 32;
    type Geo_Ref_T is record
@@ -2828,8 +2834,8 @@ is
       if not LRBG_A.Valid then
          --  3.6.2.2.2.1: LRBG "unknown"
          P.Q_SCALE := 1;
-         P.NID_C := 0;
-         P.NID_BG := Unknown_Identity.NID_BG;
+         P.NID_C := Unknown_Reported.NID_C;
+         P.NID_BG := Unknown_Reported.NID_BG;
          P.D_LRBG := D_LRBG_Unknown_Or_Greater_Than;
          P.Q_DIRLRBG := 2;
          P.Q_DLRBG := 2;
@@ -2881,12 +2887,14 @@ is
       P.Has_NID_NTC := Level = NTC;
       P.V_TRAIN := V_Train_Of;
       P.Q_INTEGRITY := 0;
-      P.NID_C := LRBG_A.Id.NID_C;
+      P.NID_C := (if LRBG_A.Valid then LRBG_A.Id.NID_C
+                  else Unknown_Reported.NID_C);
       P.NID_BG := (if LRBG_A.Valid then LRBG_A.Id.NID_BG
-                   else Unknown_Identity.NID_BG);
-      P.NID_C_PRVLRBG := (if Prev_A.Valid then Prev_A.Id.NID_C else 0);
+                   else Unknown_Reported.NID_BG);
+      P.NID_C_PRVLRBG := (if Prev_A.Valid then Prev_A.Id.NID_C
+                          else Unknown_Reported.NID_C);
       P.NID_BG_PRVLRBG := (if Prev_A.Valid then Prev_A.Id.NID_BG
-                           else Unknown_Identity.NID_BG);
+                           else Unknown_Reported.NID_BG);
       Fill (Dref, 0, Gamma_Over, Gamma_Under,
             P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
             P.L_DOUBTOVER, P.L_DOUBTUNDER, P.Q_DIRTRAIN);

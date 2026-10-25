@@ -3994,10 +3994,11 @@ package body S076_Run is
    end Header_Value;
 
    --  The value "unknown" of a header field (7.5.1.90, 7.5.1.13, 7.5.1.104,
-   --  7.5.1.106, 7.5.1.43, 7.5.1.44 by analogy); NID_C 0 with NID_BG
-   --  16383 (unknown, 7.5.1.86) counts as unknown too
+   --  7.5.1.106, 7.5.1.43, 7.5.1.44 by analogy); an identity is unknown
+   --  only with its 24 bits set (NID_BG 16383 alone is for linking
+   --  information, 7.5.1.85)
    function Header_Unknown (Name : String; F : Integer) return Boolean is
-     (if Has (Name, "NID_") then F in 16777215 | 16383
+     (if Has (Name, "NID_") then F = 16777215
       elsif Starts (Name, "D_") or else Starts (Name, "L_DOUBT")
       then F = 32767
       elsif Starts (Name, "Q_DIR") or else Starts (Name, "Q_D") then F = 2
