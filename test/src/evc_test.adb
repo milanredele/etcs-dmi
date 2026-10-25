@@ -388,6 +388,7 @@ begin
    Scenario_Track_Condition_By_Radio;
    Scenario_Conditional_Stop_Ends;
    Scenario_SR_Authorisation;
+   Scenario_SR_Stop_Listed;
    Scenario_Trip_L2;
    Scenario_Linked_Group_At_EOA;
    Scenario_Override_Ends_By_Radio;

@@ -35,6 +35,7 @@ with EVC_Text_Messages;
 with EVC_Position;
 with ETCS_Track_Packets.P74;
 with ETCS_Track_Packets.P79;
+with ETCS_Track_Packets.P137;
 with EVC_Movement_Authority;
 with EVC_Sessions;
 with EVC_Test_Support;       use EVC_Test_Support;
@@ -1266,6 +1267,64 @@ package body EVC_Test_Authority is
              "SR authorisation: past the RBC's former distance and group "
              & "20 in SR");
    end Scenario_SR_Authorisation;
+
+   --  The first balise of group G carries packet 137, "stop if in SR"
+   --  (Q_SRSTOP 0), valid in both directions
+   procedure Carry_SR_Stop (G : Positive) is
+      W  : Writer_T;
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P137.Packet_T;
+   begin
+      P.Q_DIR := 2;
+      P.Q_SRSTOP := 0;
+      ETCS_Track_Packets.P137.Encode (P, W, OK);
+      Check (OK, "stop if in SR: packet 137 encoded");
+      Carry_Writer (G, 0, W);
+   end Carry_SR_Stop;
+
+   --  4.4.11.1.3 c), d), 4.6.3 [54], [36]: in SR in level 2, the group 20
+   --  at 300 m says "stop if in SR". With the RBC's list of expected
+   --  groups (packet 63) naming it: passed without a trip. Without a
+   --  list (every group may pass, c): the trip by the order (d). With a
+   --  list naming only group 30: the trip
+   procedure Scenario_SR_Stop_Listed is
+      use type EVC_Procedures.Trip_Reason_T;
+
+      procedure Track (Listed : Boolean; List : Nat_List) is
+      begin
+         Start_X;
+         EVC_Core.Set_Mode_For_Test (M_SR, L2);
+         Add_Group (Group (10, 100));
+         Add_Group (Group (20, 300));
+         Carry_SR_Stop (2);
+         Establish;
+         Run_X (15_000);
+         if Listed then
+            Give_Radio_Message
+              (1, SR_Message (10, 32767, With_63 => True, List => List));
+            Stand_X (200);
+         end if;
+         Run_X (40_000);
+      end Track;
+   begin
+      Track (True, (1 => 20));
+      Check (EVC_Core.Mode = M_SR and then RA.In_SR_List ((123, 20)),
+             "stop if in SR: the group in the RBC's list passed in SR "
+             & "without a trip (4.4.11.1.3 d)");
+      Track (False, (1 .. 0 => 0));
+      Check (EVC_Core.Mode = M_TR
+             and then EVC_Procedures.Trip_Reason
+                        = EVC_Procedures.SR_Stop_Order,
+             "stop if in SR: without a list, the order trips the train "
+             & "(4.4.11.1.3 d), 4.6.3 [54])");
+      Track (True, (1 => 30));
+      Check (EVC_Core.Mode = M_TR
+             and then EVC_Procedures.Trip_Reason
+                        in EVC_Procedures.SR_Stop_Order
+                         | EVC_Procedures.SR_Balise_Not_Listed,
+             "stop if in SR: the group not in the RBC's list, the train "
+             & "tripped (4.4.11.1.3 c), d))");
+   end Scenario_SR_Stop_Listed;
 
    --  A message of the RBC with the header fields only (message 6)
    function Header_Message (Kind : MCat.Known_Message_T) return Byte_Array

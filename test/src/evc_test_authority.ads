@@ -36,6 +36,8 @@ package EVC_Test_Authority is
    --  and an SvL further (a danger point), and one beyond a LOA
    procedure Scenario_Conditional_Stop_Ends;
    procedure Scenario_SR_Authorisation;
+   --  4.4.11.1.3 d): a "stop if in SR" group in the RBC's list passed
+   procedure Scenario_SR_Stop_Listed;
    procedure Scenario_Trip_L2;
    --  4.6.3 [11], 3.13.10.2.6 b): the level 2 trip for a group known by
    --  the linking to be at the EOA, read in release speed monitoring
