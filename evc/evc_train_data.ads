@@ -165,13 +165,23 @@ is
                   and then Categories = Default_Categories
                   and then not Consist_Available
                   and then not Consist_Known
-                  and then not Manoeuvre_Set;
+                  and then not Manoeuvre_Set and then Type_In_Force = 0;
 
-   --  New Train Data
-   procedure Set (D : Train_Data_T; C : Categories_T)
+   --  The pre-configured train type the Train Data in force were taken
+   --  from (3.18.3.2.1, EVC_Config.Default_Train_Types): 0 none, the
+   --  Train Data were entered item by item or came from elsewhere
+   subtype Type_Index_T is Natural range 0 .. EVC_Config.Train_Types_Max;
+
+   function Type_In_Force return Type_Index_T
+     with Global => State;
+
+   --  New Train Data, those of the train type T (DMI 11.3.9.6 a), or of
+   --  no type (0)
+   --  @req 3.18.3.2
+   procedure Set (D : Train_Data_T; C : Categories_T; T : Type_Index_T := 0)
      with Global => (In_Out => State),
           Post => Valid and then Data = D and then Categories = C
-                  and then not Manoeuvre_Set;
+                  and then not Manoeuvre_Set and then Type_In_Force = T;
 
    --  The Train Data are no longer valid
    procedure Invalidate
@@ -194,7 +204,8 @@ is
    procedure Start_Manoeuvre_Set (F : EVC_Config.Fixed_Train_T)
      with Global => (In_Out => State, Input => EVC_Config.State),
           Post => Manoeuvre_Set and then not Valid
-                  and then Length = Consist_Length;
+                  and then Length = Consist_Length
+                  and then Type_In_Force = 0;
 
    --  3.18.3.9: the mission ended or continued in Non Leading: the
    --  default set no longer in force (the Train Data stay not valid)

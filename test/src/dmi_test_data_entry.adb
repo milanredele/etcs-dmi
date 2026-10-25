@@ -674,6 +674,43 @@ package body DMI_Test_Data_Entry is
    -- what MSG_DRIVER_DATA carries to the EVC
    ---------------------------------------------------------------------
 
+   --  The last MSG_DRIVER_DATA of kind 2 in the DMI's outbox (Len 0:
+   --  none); the outbox is emptied
+   procedure Take_Train_Data_Msg
+     (Train_Msg     : out Ada.Streams.Stream_Element_Array;
+      Train_Msg_Len : out Natural)
+   is
+      use Ada.Streams;
+      use DMI_Protocol;
+      Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+      Last   : Stream_Element_Offset;
+      Offset : Stream_Element_Offset := Buffer'First;
+   begin
+      Train_Msg_Len := 0;
+      Train_Msg := (others => 0);
+      DMI_Core.Take_Outbox (Buffer, Last);
+      while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+         declare
+            The_Type : constant Msg_Type_T :=
+              Msg_Type_T (Get_U8 (Buffer, Offset));
+            Length   : constant Stream_Element_Offset :=
+              Stream_Element_Offset (Get_U32 (Buffer, Offset));
+            Next     : constant Stream_Element_Offset := Offset + Length;
+         begin
+            exit when Next - 1 > Last;
+            if The_Type = MSG_DRIVER_DATA
+              and then Length = Stream_Element_Offset
+                                  (Driver_Data_Train_Length)
+              and then Natural (Buffer (Offset)) = 2
+            then
+               Train_Msg_Len := Natural (Length);
+               Train_Msg := Buffer (Offset .. Next - 1);
+            end if;
+            Offset := Next;
+         end;
+      end loop;
+   end Take_Train_Data_Msg;
+
    procedure Scenario_Train_Data_Windows is
       use type DMI_Windows.Window_ID_T;
       use Ada.Streams;
@@ -686,32 +723,8 @@ package body DMI_Test_Data_Entry is
       Train_Msg_Len : Natural := 0;
 
       procedure Collect_Train_Data is
-         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
-         Last   : Stream_Element_Offset;
-         Offset : Stream_Element_Offset := Buffer'First;
       begin
-         Train_Msg_Len := 0;
-         DMI_Core.Take_Outbox (Buffer, Last);
-         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
-            declare
-               The_Type : constant Msg_Type_T :=
-                 Msg_Type_T (Get_U8 (Buffer, Offset));
-               Length   : constant Stream_Element_Offset :=
-                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
-               Next     : constant Stream_Element_Offset := Offset + Length;
-            begin
-               exit when Next - 1 > Last;
-               if The_Type = MSG_DRIVER_DATA
-                 and then Length = Stream_Element_Offset
-                                     (Driver_Data_Train_Length)
-                 and then Natural (Buffer (Offset)) = 2
-               then
-                  Train_Msg_Len := Natural (Length);
-                  Train_Msg := Buffer (Offset .. Next - 1);
-               end if;
-               Offset := Next;
-            end;
-         end loop;
+         Take_Train_Data_Msg (Train_Msg, Train_Msg_Len);
       end Collect_Train_Data;
 
       function Byte (I : Positive) return Natural is
@@ -795,6 +808,7 @@ package body DMI_Test_Data_Entry is
       Check (Byte (11) = 12, "M_AXLELOADCAT 12 is E5");
       Check (Byte (12) = 0, "M_AIRTIGHT 0: no airtight system fitted");
       Check (Byte (13) = 0, "M_LOADINGGAUGE 0: out of the profiles");
+      Check (Byte (14) = 0, "train type 0: the items entered one by one");
 
       -- Table 45: the data view window shows what was stored
       Press (370, 440);                       -- close the TRN window
@@ -848,6 +862,10 @@ package body DMI_Test_Data_Entry is
       use type DMI_Windows.Window_ID_T;
       use type DMI_Train_Data.Layout_T;
       T : DMI_Train_Types.Train_Type_T;
+      Msg : Ada.Streams.Stream_Element_Array
+        (1 .. Ada.Streams.Stream_Element_Offset
+                (DMI_Protocol.Driver_Data_Train_Length));
+      Msg_Len : Natural;
 
       function Text (V : DMI_Driver_Data.Text_Value_T) return Wide_String
       is (V.Text (1 .. V.Length));
@@ -898,7 +916,16 @@ package body DMI_Test_Data_Entry is
       Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
              "fixed entry: the validation window follows");
       Check_Frame ("train_data_fixed_validation");
+      Take_Train_Data_Msg (Msg, Msg_Len);      -- the outbox emptied
       Press (487, 40);                         -- validate: Yes
+      Take_Train_Data_Msg (Msg, Msg_Len);
+      Check (Msg_Len = DMI_Protocol.Driver_Data_Train_Length
+             and then Natural (Msg (2)) = 200 and then Natural (Msg (8)) = 0
+             and then Natural (Msg (9)) = 4 and then Natural (Msg (11)) = 0
+             and then Natural (Msg (12)) = 0 and then Natural (Msg (13)) = 1
+             and then Natural (Msg (14)) = 2,
+             "fixed entry: MSG_DRIVER_DATA kind 2 carries the passenger "
+             & "type's codes and its index 2");
       Check (DMI_Driver_Data.Train_Data_Entered
              and then DMI_Driver_Data.Train_Length = 200
              and then DMI_Driver_Data.Brake_Pct = 135

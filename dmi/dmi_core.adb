@@ -353,8 +353,9 @@ package body DMI_Core is
       end Send_Numeric_Data;
 
       --  The train data of the flexible train data entry (DMI 11.3.9,
-      --  Table 40); the four items of a dedicated keyboard go as the
-      --  ERTMS/ETCS variables of SUBSET-026 chapter 7
+      --  Table 40) or of the train type of the fixed entry (11.3.9.6 a),
+      --  with the type's index; the four items of a dedicated keyboard go
+      --  as the ERTMS/ETCS variables of SUBSET-026 chapter 7
       procedure Send_Train_Data_Msg is
          Payload : Stream_Element_Array
            (1 .. Stream_Element_Offset (Driver_Data_Train_Length));
@@ -377,6 +378,7 @@ package body DMI_Core is
          Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Axle_Load_Value));
          Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Airtight_Value));
          Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Gauge_Value));
+         Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Stored_Type_Index));
          Queue_Message (MSG_DRIVER_DATA, Payload);
       end Send_Train_Data_Msg;
 

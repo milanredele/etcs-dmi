@@ -69,6 +69,17 @@ package body EVC_Test_Train_Data is
               & U16 (Unsigned_16 (Length_M)) & U16 (135) & U16 (160)
               & Byte_Array'(1 => 2) & U16 (4) & Byte_Array'(Axle_Load, 0, 1)));
 
+   --  The Train Data of the fixed entry (DMI 11.3.9.6 a): the items of
+   --  a train type and its index (MSG_DRIVER_DATA kind 2, 14 bytes)
+   function Type_Entry (Index : Byte; Length_M, Brake, Speed : Natural;
+                        Other : Natural) return Byte_Array
+   is (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+              Byte_Array'(1 => 2)
+              & U16 (Unsigned_16 (Length_M)) & U16 (Unsigned_16 (Brake))
+              & U16 (Unsigned_16 (Speed))
+              & Byte_Array'(1 => 0) & U16 (Unsigned_16 (Other))
+              & Byte_Array'(0, 0, 1, Index)));
+
    procedure Send (Bytes : Byte_Array) is
    begin
       Input (DMI, Bytes);
@@ -396,5 +407,45 @@ package body EVC_Test_Train_Data is
              "train data: packet 140 of the released message taken "
              & "(3.18.4.5.3, 4.8.5.5)");
    end Scenario_Released_TRN;
+
+   procedure Scenario_Train_Type is
+      function Length return Natural is
+        (Natural (EVC_Train_Data.Data.Length));
+   begin
+      EVC_Test_Modes.Start_E4;
+      Stand_X (200);
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      --  the passenger type of EVC_Config.Default_Train_Types
+      Send (Type_Entry (2, 200, 135, 160, 4));
+      Check (EVC_Train_Data.Valid and then Length = 20_000
+             and then EVC_Train_Data.Type_In_Force = 2,
+             "train type: the passenger type's Train Data in force with "
+             & "their type (DMI 11.3.9.6 a, 3.18.3.2.1), length"
+             & Img (Length) & " type"
+             & Img (EVC_Train_Data.Type_In_Force));
+      --  the short form, without the type: entered item by item
+      Send (Train_Entry (300));
+      Check (EVC_Train_Data.Valid and then Length = 30_000
+             and then EVC_Train_Data.Type_In_Force = 0,
+             "train type: an entry item by item has no type in force, type"
+             & Img (EVC_Train_Data.Type_In_Force));
+      --  an index above the installation's types: refused
+      Send (Type_Entry (3, 200, 135, 160, 4));
+      Check (Length = 30_000 and then EVC_Train_Data.Type_In_Force = 0,
+             "train type: an index above the types is refused, length"
+             & Img (Length));
+      --  the passenger data named as the locomotive: refused
+      Send (Type_Entry (1, 200, 135, 160, 4));
+      Check (Length = 30_000 and then EVC_Train_Data.Type_In_Force = 0,
+             "train type: data differing from the type's are refused, "
+             & "length" & Img (Length));
+      --  the locomotive type itself
+      Send (Type_Entry (1, 20, 100, 80, 0));
+      Check (Length = 2_000 and then EVC_Train_Data.Type_In_Force = 1,
+             "train type: the locomotive type in force, length"
+             & Img (Length) & " type"
+             & Img (EVC_Train_Data.Type_In_Force));
+   end Scenario_Train_Type;
 
 end EVC_Test_Train_Data;

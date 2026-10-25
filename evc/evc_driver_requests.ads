@@ -108,8 +108,10 @@ is
    end record;
 
    --  The Train Data the driver validated (DMI Table 40, the flexible
-   --  entry), as the DMI sends them: no value is 16#FF# (16#0000# for
-   --  the other international categories)
+   --  entry, or the train type of the fixed entry, 11.3.9.6 a), as the
+   --  DMI sends them: no value is 16#FF# (16#0000# for the other
+   --  international categories); Type_Index the train type chosen (1 ..
+   --  the count of MSG_TRAIN_TYPES), 0 the data entered item by item
    type Train_Entry_T is record
       Length_M         : Unsigned_16 := 0;   -- L_TRAIN, m
       Brake_Percentage : Unsigned_16 := 0;   -- %
@@ -119,6 +121,7 @@ is
       Axle_Load        : Byte := 16#FF#;     -- M_AXLELOADCAT
       Airtight         : Byte := 16#FF#;     -- M_AIRTIGHT
       Loading_Gauge    : Byte := 16#FF#;     -- M_LOADINGGAUGE
+      Type_Index       : Byte := 0;
    end record;
 
    --  The SR speed limit (km/h) and distance (m) the driver entered

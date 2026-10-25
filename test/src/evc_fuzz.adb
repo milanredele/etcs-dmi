@@ -515,17 +515,28 @@ procedure EVC_Fuzz is
                         end loop;
                      end;
                   when 3 =>
-                     Add (16#41#);
-                     Add_U32 (13);
-                     Add (2);
-                     Add_U16 (Pick (0, 5_000));
-                     Add_U16 (Pick (0, 300));
-                     Add_U16 (Pick (0, 700));
-                     Add (Pick (0, 12));
-                     Add_U16 (Pick (0, 8));
-                     Add (Pick (0, 13));
-                     Add (Pick (0, 2));
-                     Add (Pick (0, 5));
+                     --  the short form or the long one with a train type
+                     --  index 0 .. 3 (3: above the installation's types),
+                     --  both from the length drawn, the random stream
+                     --  unchanged
+                     declare
+                        L : constant Natural := Pick (0, 5_000);
+                     begin
+                        Add (16#41#);
+                        Add_U32 (if L mod 2 = 1 then 14 else 13);
+                        Add (2);
+                        Add_U16 (L);
+                        Add_U16 (Pick (0, 300));
+                        Add_U16 (Pick (0, 700));
+                        Add (Pick (0, 12));
+                        Add_U16 (Pick (0, 8));
+                        Add (Pick (0, 13));
+                        Add (Pick (0, 2));
+                        Add (Pick (0, 5));
+                        if L mod 2 = 1 then
+                           Add (L / 2 mod 4);
+                        end if;
+                     end;
                   when 4 =>
                      Add (16#41#);
                      Add_U32 (5);

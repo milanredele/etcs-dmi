@@ -59,6 +59,10 @@ package DMI_Train_Data is
    --  fixed entry (Length 0: the Train Data were not entered by type)
    function Stored_Type_Text return DMI_Driver_Data.Text_Value_T;
 
+   --  The index of that train type in MSG_TRAIN_TYPES (0: none), sent
+   --  with the Train Data (MSG_DRIVER_DATA kind 2)
+   function Stored_Type_Index return Natural;
+
    function In_Progress return Boolean;
    function Current_Window return Window_Index_T;
 

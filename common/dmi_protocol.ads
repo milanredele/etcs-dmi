@@ -689,7 +689,16 @@ package DMI_Protocol is
    --                    airtight u8 (M_AIRTIGHT, 7.5.1.61), 16#FF# no
    --                      value,
    --                    loading gauge u8 (M_LOADINGGAUGE, 7.5.1.68),
-   --                      16#FF# no value
+   --                      16#FF# no value,
+   --                    train type u8: 0 the items were entered one by
+   --                      one (the flexible layout), 1 .. the count of
+   --                      MSG_TRAIN_TYPES the type chosen on the fixed
+   --                      layout (11.3.9.6 a), whose data the items
+   --                      above are; the on-board refuses an index above
+   --                      its types or items that differ from the type's.
+   --                  Driver_Data_Train_Length bytes; the short form of
+   --                  Driver_Data_Train_Short_Length bytes, without the
+   --                  train type, is read as type 0
    --   3 SR data    : speed u16, distance u16
    --   4 GSM-R network ID (DMI 11.3.4, SUBSET-026 3.18.4.3.6): len u8,
    --                  Latin-1 bytes.
@@ -743,7 +752,8 @@ package DMI_Protocol is
    --                  (SUBSET-026 A.3.4) and chooses the fixed text
    --                  messages with it (3.12.3.3.1, Q_TEXT 7.5.1.136).
    --                  Driver_Data_Language_Length bytes
-   Driver_Data_Train_Length : constant := 13;
+   Driver_Data_Train_Length : constant := 14;
+   Driver_Data_Train_Short_Length : constant := 13;
    Driver_Data_RBC_Length   : constant := 23;
    Driver_Data_Byte_Length  : constant := 2;
    Driver_Data_VBC_Length   : constant := 5;

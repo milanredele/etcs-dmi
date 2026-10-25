@@ -334,20 +334,26 @@ package body DMI_Train_Data is
       then Categories (DMI_Driver_Data.Train_Category).Other
       else 0);
 
+   function Stored_Type_Index return Natural is (Stored_Type);
+
    function Axle_Load_Value return Natural is
-     (if DMI_Driver_Data.Axle_Load in 1 .. Max_Axle
+     (if Stored_Type > 0 then Type_Of.Axle
+      elsif DMI_Driver_Data.Axle_Load in 1 .. Max_Axle
       then Axle_Loads (DMI_Driver_Data.Axle_Load).Value
       else Unknown_Value);
 
    --  M_AIRTIGHT: 0 not fitted, 1 fitted (SUBSET-026 7.5.1.61)
    function Airtight_Value return Natural is
-     (case DMI_Driver_Data.Airtight is
-         when No_Choice  => 0,
-         when Yes_Choice => 1,
-         when others     => Unknown_Value);
+     (if Stored_Type > 0 then Type_Of.Airtight
+      else
+        (case DMI_Driver_Data.Airtight is
+            when No_Choice  => 0,
+            when Yes_Choice => 1,
+            when others     => Unknown_Value));
 
    function Gauge_Value return Natural is
-     (if DMI_Driver_Data.Loading_Gauge in 1 .. Max_Gauge
+     (if Stored_Type > 0 then Type_Of.Gauge
+      elsif DMI_Driver_Data.Loading_Gauge in 1 .. Max_Gauge
       then Gauges (DMI_Driver_Data.Loading_Gauge).Value
       else Unknown_Value);
 
