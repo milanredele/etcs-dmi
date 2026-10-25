@@ -110,7 +110,7 @@ S1b7d1437,NTC,the level NTC announcement (STM out of scope)
 S122decbf,s076,override expected while the train runs: V_NVALLOWOVTRP is 0 by default (A.3.2) and no packet 3 raises it, so override is at standstill only; 5080400_11: in SB DMI Table 34 needs level 2
 S03d81c7b,s076,override button expected disabled at a speed the sequence does not give (V_NVALLOWOVTRP of the packet, see S122decbf)
 S1ebd7f2d,s076,FS expected at a group of which a balise is missing or carries errors in the tables (3160200_14: consistency test, E6)
-Sf1cbf469,s076,the override symbol expected removed where the train passes the SR distance of before the override: the override restarts the SR distance (3.6.7.5, 4.4.11.1.6.5) and ends after D_NVOVTRP (300 m) or T_NVOVTRP (60 s) of packet 3 (5.8.4.1)
+Sf1cbf469,s076,the override symbol expected removed where the train passes the SR distance of before the override: the override restarts the SR distance (3.6.7.5, 4.4.11.1.6.5) and ends after D_NVOVTRP (300 m) or T_NVOVTRP (60 s) of packet 3 (5.8.4.1); 5080400_02 and _03 were the missing ends f) and g) of 5.8.4.1 instead (B845: _03 passes and _02 goes on to step 101)
 # the runner's model
 S86d6c102,model,the generation of a change of allowed current consumption starts at point C, which the sequence says is not real (implementation dependent: our 10 s at the current speed, 5.18.2.2)
 Seb6766c6,model,the train runs on per the speed chart into the next EOA or trip location before the step's group (chart and step distances)

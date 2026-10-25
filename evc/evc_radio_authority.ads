@@ -278,6 +278,12 @@ is
    function Groups_Passed_Listed return Boolean
      with Global => State;
 
+   --  5.8.4.1 g): with that list stored, a group passed in the cycle is
+   --  not in it (as of the last Evaluate; the end of the override,
+   --  EVC_Procedures)
+   function Group_Passed_Unlisted return Boolean
+     with Global => State;
+
    --  5.11.2.2 S120, E125: the RBC recognised the exit from TRIP mode
    --  (message 6) in the PT mode of the on-board (for 4.8.4 [1] and
    --  the choices of S140)

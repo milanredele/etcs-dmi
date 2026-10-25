@@ -1414,6 +1414,62 @@ package body EVC_Test_Authority is
       Run (510, 501, True, "at the EOA");
    end Scenario_Linked_Group_At_EOA;
 
+   --  5.8.4.1 f), g) in level 2. f): in FS with an MA, the override
+   --  selected at standstill (SR), then an MA of the RBC ends it. g): in
+   --  SR with the list of packet 63 (group 20), the override selected
+   --  at standstill: group 20 passed, it stays active; group 30, not in
+   --  the list, ends it, with no trip ([36] is not met while it is active)
+   procedure Scenario_Override_Ends_By_Radio is
+      procedure Select_Override is
+      begin
+         --  the driver's request 6, Override (EVC_Driver_Requests)
+         Input (DMI, (16#40#, 3, 0, 0, 0, 6, 0, 0));
+         Stand_X (200);
+      end Select_Override;
+      --  the train running number (5.8.2.1 c)
+      procedure Enter_TRN is
+      begin
+         Input (DMI, (16#41#, 6, 0, 0, 0, 1, 4, 49, 50, 51, 52));
+         Stand_X (100);
+      end Enter_TRN;
+   begin
+      Start_L2;
+      Enter_TRN;
+      Run_X (15_000);
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((1 => 500)), Stamp));
+      Stand_X (200);
+      Select_Override;
+      Check (EVC_Procedures.Override_Active,
+             "override, level 2: selected at standstill with an MA");
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((1 => 600)), Stamp));
+      Stand_X (200);
+      Check (not EVC_Procedures.Override_Active,
+             "override, level 2: ended by an MA of the RBC (5.8.4.1 f)");
+
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 200));
+      Add_Group (Group (30, 280));
+      Establish;
+      Enter_TRN;
+      Run_X (15_000);
+      Give_Radio_Message
+        (1, SR_Message (10, 32767, With_63 => True, List => (1 => 20)));
+      Stand_X (200);
+      Select_Override;
+      Check (EVC_Procedures.Override_Active,
+             "override, SR list: selected at standstill");
+      Run_X (25_000);
+      Check (EVC_Procedures.Override_Active,
+             "override, SR list: a listed group passed, still active");
+      Run_X (30_000);
+      Check (not EVC_Procedures.Override_Active
+             and then EVC_Core.Mode = M_SR,
+             "override, SR list: a group not in the list passed ends it, "
+             & "no trip (5.8.4.1 g)");
+   end Scenario_Override_Ends_By_Radio;
+
    --  The driver selects Shunting (MSG_DRIVER_ACTION 7)
    procedure Select_Shunting is
    begin

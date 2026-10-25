@@ -12194,3 +12194,47 @@ set, packet 79's keeper), B2000 (the DMI's fixed Train Data window,
 Table 44, with its protocol field), B018's families (S1531c721, the
 repositioning information); B1840's question stays with the user; then
 NL.
+
+### Four bookkeeping items: the level 2 trip for a linked group at the EOA in release speed monitoring, the override ended by an MA of the RBC and by the SR list, the texts deleted by a shortening, a balise group read in SL, PS or SH against the orientation (e5/bookkeeping-4) (2026-10-25)
+
+B842 (done): the line held at the source, C_11 was never set. The level 1
+counterpart [12] is only the min safe antenna passing the EOA
+(3.13.10.2.7), so there was no linking reading to reuse.
+`EVC_Radio_Authority.Linked_Group_At_EOA` measures both locations from
+the group the EOA's location is referred to (the anchor of its origin's
+estimated item: the MA's reference, or the group it was relocated to).
+The group's first possible location is its linking distance from that
+group (none for the group itself) less its location accuracy. It holds
+when this is beyond the EOA less the antenna to front end distance
+(strictly: "in rear by a distance shorter than"). `Evaluate` holds C_11
+with it in release speed monitoring (`Facts_T.Release_Monitoring`, from
+`EVC_Core.Modes.Evaluate_Radio`), in level 2, while the override is not
+active (5.8.3.6). `Evaluate` and `Evaluate_Radio` now read
+`EVC_Origins.State`. A first reading that took the old LRBG's frame
+position held the condition wrongly 11 m in rear: the relocation on the
+group moves the origins.
+Finding: in this position model the relocation on the linked group makes
+its accuracy the confidence interval, so [16] (the min safe front end
+past the EOA) holds in the same cycle whenever [11] does.
+`Scenario_Linked_Group_At_EOA` checks the condition in the cycle of the
+reading. Rows 3.13.10.2.6, b) and its three bullets are done, and the
+note of the 4.6.3 Table row is updated.
+
+B845 (done): the line held. `EVC_Procedures.Override_Step` now ends the
+override on `Context_T.Radio_MA_L2` (f), end 6: an MA of the RBC accepted
+in the cycle in level 2) and on `Context_T.SR_Unlisted` (g), end 7, beside
+the SH list: with the list of packet 63 stored, a group passed in the
+cycle is not in it, `EVC_Radio_Authority.Group_Passed_Unlisted`). Both are
+set by `EVC_Core.Modes`. [36] does not trip in that cycle because it reads
+the override as of the last cycle. `Scenario_Override_Ends_By_Radio` is in
+`EVC_Test_Authority`: `EVC_Test_Procedures` has no radio harness. It fails
+with the two inputs forced False. Rows 5.8.4.1 f) and g) are done.
+
+Runner: B842 moved nothing; B845 moved 5080400_02 and _03 in the
+three versions (1130 / 1073 / 987 -> 1133 / 1070 / 987, 0 regressions,
+the baseline re-recorded): _03 passes and _02 fails at step 101 on
+S69f1f87e (model, already triaged) instead of 82. Their signature
+Sf1cbf469, triaged s076 as the override not ended, was the missing g);
+its line keeps _06 and says so. Left: B780 (the texts
+deleted by a shortening) and B032 (a group read in SL, PS or SH against
+the orientation), not taken at the bound.

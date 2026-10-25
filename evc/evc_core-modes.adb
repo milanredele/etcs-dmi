@@ -179,6 +179,10 @@ is
          TD_Category       => (Config and TIU_Config_Category) /= 0,
          SR_Distance_Passed => SR_Distance_Passed,
          SR_Listed         => EVC_Radio_Authority.Groups_Passed_Listed,
+         SR_Unlisted       => EVC_Radio_Authority.Group_Passed_Unlisted,
+         Radio_MA_L2       => EVC_Stored_Information.Radio_MA_Accepted
+                              and then EVC_Levels.Valid
+                              and then EVC_Levels.Level = L2,
          --  the start of mission's proposal comes first (EVC_Mission)
          Mode_Ack          => EVC_Driver_Requests.Mode_Acknowledged
                               and then not EVC_Mission.Ack_Taken,

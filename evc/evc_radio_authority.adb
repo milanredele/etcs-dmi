@@ -31,6 +31,7 @@ package body EVC_Radio_Authority
                                    SR_Authorised, Requests, Start_Reason,
                                    Deleted_Reason, Shortening, Emergency,
                                    SR_Auth, SR_Taken, Passed_Listed,
+                                   Passed_Unlisted,
                                    Mode_Now,
                                    Exit_Recognised, Exit_Acknowledged,
                                    SH_Req, SM_Auth,
@@ -149,6 +150,9 @@ is
    SR_Taken : Natural := 0;
    --  4.4.11.1.3 d): the groups passed in the cycle are in the list
    Passed_Listed : Boolean := False;
+   --  5.8.4.1 g): a group passed in the cycle not in the list of
+   --  expected balise groups in SR
+   Passed_Unlisted : Boolean := False;
 
    --  The mode of the last cycle (EVC_Radio.Context_T.Mode, Evaluate),
    --  and 5.11.2.2 S120: message 6, "Recognition of exit from TRIP mode",
@@ -312,6 +316,8 @@ is
 
    function Groups_Passed_Listed return Boolean is (Passed_Listed);
 
+   function Group_Passed_Unlisted return Boolean is (Passed_Unlisted);
+
    function Trip_Exit_Recognised return Boolean is (Exit_Recognised);
 
    function Trip_Exit_Acknowledged return Boolean is (Exit_Acknowledged);
@@ -467,6 +473,7 @@ is
       SR_Auth := (others => <>);
       SR_Taken := 0;
       Passed_Listed := False;
+      Passed_Unlisted := False;
       Mode_Now := M_NP;
       Exit_Recognised := False;
       Exit_Acknowledged := False;
@@ -1510,6 +1517,9 @@ is
       SM_Auth.Taken := False;
       Evaluate_SH (Ctx, Facts,
                    EVC_Levels.Valid and then EVC_Levels.Level = L2);
+      Passed_Unlisted := SR_Auth.List_Known
+        and then (for some G in 1 .. EVC_Position.Taken_Count =>
+                    not In_SR_List (EVC_Position.Taken (G).Group.Id));
       Passed_Listed := SR_Auth.List_Known
         and then EVC_Position.Taken_Count > 0
         and then (for all G in 1 .. EVC_Position.Taken_Count =>

@@ -140,6 +140,12 @@ is
       --  expected balise groups in SR of the RBC (EVC_Radio_Authority):
       --  their "stop if in SR" does not trip
       SR_Listed        : Boolean := False;
+      --  5.8.4.1 g): with that list stored, a group passed in the cycle
+      --  is not in it (EVC_Radio_Authority)
+      SR_Unlisted      : Boolean := False;
+      --  5.8.4.1 f): in level 2, an MA of the RBC accepted in the cycle
+      --  (EVC_Stored_Information)
+      Radio_MA_L2      : Boolean := False;
       --  the driver acknowledged a mode change in this cycle and the
       --  start of mission did not take it (EVC_Mission: the mode it
       --  proposed)

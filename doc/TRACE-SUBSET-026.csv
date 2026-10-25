@@ -1556,8 +1556,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.8.4.1 c),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
 5.8.4.1 d),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
 5.8.4.1 e),5,x,,,,,E4,done,a balise group with a packet 12 of V_MAIN not 0 (EVC_Procedures.Override_Step)
-5.8.4.1 f),5,x,,,,,E4,deferred,in level 2 an MA of the RBC does not end the override: EVC_Procedures.Override_Step has no end condition f) (B845) [E5 authority]
-5.8.4.1 g),5,x,,,,,E4,partial,"the list of balise groups for the SH area (packet 49) done; a group not in the SR list of the RBC (packet 63) does not end the override (EVC_Procedures.Override_Step, B845) [E5 authority]"
+5.8.4.1 f),5,x,,,,,E4,done,"EVC_Procedures.Override_Step ends the override (end 6) on Context_T.Radio_MA_L2, an MA of the RBC accepted in the cycle in level 2 (EVC_Stored_Information.Radio_MA_Accepted, EVC_Core.Modes); evc_test_authority Scenario_Override_Ends_By_Radio"
+5.8.4.1 g),5,x,,,,,E4,done,"EVC_Procedures.Override_Step ends the override (end 7) on a group not in the list for the SH area (packet 49) or, with the SR list of the RBC stored (packet 63), on a group passed in the cycle not in it (EVC_Radio_Authority.Group_Passed_Unlisted, Context_T.SR_Unlisted); evc_test_authority Scenario_Override_Ends_By_Radio"
 5.8.4.1 h),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (the override selected in SR, the SR distance of EVC_Mission passed); evc_test_procedures Integration_SR_Override_Trip"
 5.8.4.1 i),5,x,,,,,E4,done,"EVC_Procedures.Mode_Changed (TR, LS, OS, SH)"
 5.8.4.2,5,x,,,,,E4,done,the trips of the cycle see the override as before the group's information ended it (EVC_Procedures.Ovr_For_Trips)
