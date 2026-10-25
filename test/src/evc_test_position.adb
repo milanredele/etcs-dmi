@@ -1406,4 +1406,37 @@ package body EVC_Test_Position is
              & "train's orientation (3.6.3.1.3)");
    end Scenario_Crossing_Direction;
 
+   --  3.6.2.2.2.3: in SR in level 2 with the train position unknown
+   --  (no group passed), the position reported with NID_LRBG "unknown";
+   --  the RBC's SR authorisation (message 2) with NID_LRBG "unknown"
+   --  (16#FFFFFF#, 7.5.1.98) is accepted: its SR distance given
+   procedure Scenario_LRBG_Unknown_Accepted is
+      W : Writer_T;
+      V : ETCS_Message.Value_Array := (others => 0);
+      R : R0.Packet_T;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      EVC_Test_Authority.Establish_Session;
+      Stand_X (200);
+      R := Pos.Position_Report (EVC_Modes.M_SR, EVC_Modes.L2);
+      Check (Pos.Status = Pos.Unknown and then not Pos.LRBG.Valid
+             and then R.NID_BG = 16383,
+             "LRBG unknown: the position unknown, the LRBG reported "
+             & "unknown (3.6.2.2.2.1)");
+      V (3) := Interfaces.Unsigned_64
+        (EVC_Radio.T_Train_At (Interfaces.Unsigned_64 (EVC_Core.Time_Ms)));
+      V (5) := 1023;
+      V (6) := 16383;
+      V (7) := 1;
+      V (8) := 250;
+      Start_Message (W, ETCS_Message_Catalogue.Track_M2, V);
+      Give_Radio_Message (1, Message_Bytes (W));
+      Stand_X (200);
+      Check (EVC_Radio_Authority.RBC_SR_Given
+             and then EVC_Radio_Authority.RBC_SR_Distance.Active,
+             "LRBG unknown: the RBC's message with NID_LRBG unknown "
+             & "accepted, its SR distance given (3.6.2.2.2.3)");
+   end Scenario_LRBG_Unknown_Accepted;
+
 end EVC_Test_Position;

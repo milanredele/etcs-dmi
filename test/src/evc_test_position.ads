@@ -34,5 +34,7 @@ package EVC_Test_Position is
       procedure Scenario_SL_Deletes_Invalid;
    --  3.6.3.1.3.1: a group read in SH against the orientation
    procedure Scenario_Crossing_Direction;
+   --  3.6.2.2.2.3: a message of the RBC with NID_LRBG unknown accepted
+   procedure Scenario_LRBG_Unknown_Accepted;
 
 end EVC_Test_Position;
