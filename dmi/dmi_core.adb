@@ -1694,7 +1694,10 @@ package body DMI_Core is
         Payload'First + 1 + Stored_Text_Max;
       ID_Len  : constant Natural := Natural (Payload (ID_At));
       TRN_Len : constant Natural := Natural (Payload (TRN_At));
-      Long    : constant Boolean := Payload'Length = Stored_Values_Length;
+      --  the long form, or the long form before the train type (type 0)
+      Typed   : constant Boolean := Payload'Length = Stored_Values_Length;
+      Long    : constant Boolean :=
+        Typed or else Payload'Length = Stored_Values_Typeless_Length;
       Train_At : constant Stream_Element_Offset :=
         TRN_At + 1 + Stored_Text_Max;
       Net_At  : constant Stream_Element_Offset :=
@@ -1737,7 +1740,8 @@ package body DMI_Core is
          DMI_Train_Data.Take_Onboard
            (CD => U8 (7), Other => U16 (8), Axle => U8 (10),
             Airtight => U8 (11), Gauge => U8 (12),
-            Type_Index => Natural (Payload (Payload'Last)));
+            Type_Index =>
+              (if Typed then Natural (Payload (Payload'Last)) else 0));
          DMI_Driver_Data.Onboard_Network := Text_At (Net_At, Net_Len);
       end if;
    end Apply_Stored_Values;
@@ -1876,6 +1880,7 @@ package body DMI_Core is
             end if;
          when MSG_STORED_VALUES =>
             if Payload'Length = Stored_Values_Length
+              or else Payload'Length = Stored_Values_Typeless_Length
               or else Payload'Length = Stored_Values_Short_Length
             then
                Apply_Stored_Values (Payload);
