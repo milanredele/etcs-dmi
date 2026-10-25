@@ -12922,3 +12922,129 @@ disagreed (3 on the category, 9 on two comments), none undecided;
 seven backlog lines (B2200 to B2206), four of them remarks to trace.
 The review took about 95 tool calls of 130, the most on items 1 to 3
 (the traces and the corpus checks, about 35) and 9 (about 14).
+
+### E5 integration after the fifty-second round, the twentieth of E6 (2026-10-25)
+
+Merged: e5/bookkeeping-5 (B780: `EVC_Text_Messages.Delete_Beyond (X)`
+deletes the stored texts whose start lies beyond X, called by
+`EVC_Stored_Information.Apply` with the new SvL for [8] (situations a)
+to d), f), n)) and the max safe front end for [13] (e), g) to j), l),
+m), o)) per the columns of A.3.4.1.3; the texts' state entered four
+public and twelve private contracts, `Apply` being private with seven
+callers; `Scenario_Text_Shortening`; the brief's "texts already
+displayed unchanged" narrowed: the footnotes name the start location
+only; B032: `Scenario_Crossing_Direction`, a group read in SH against
+the orientation taken by the crossing direction, no defect; B787:
+`Scenario_SR_Stop_Listed` with a packet 137 carrier, a stop-if-in-SR
+group in the RBC's list passed without a trip, the trip without a list
+and with a list naming another group, no defect; B841 narrowed:
+3.6.2.2.2.3 done by `Scenario_LRBG_Unknown_Accepted`, which found B2140,
+an unknown LRBG reported as NID_C 0 / NID_BG 16383 where NID_LRBG
+reserves 16777215), e6/message-45 (B840: message 45 taken by
+`EVC_Radio_Authority.Take_Message` into `EVC_Radio_Info.Assignment`,
+applied by `EVC_Position.Take_Radio_Assignment` from
+`EVC_Core.Stored.Take_Radio_Geo`; the rows: 4.8.3 [10] accepted in every
+level, 4.8.4 SB [2], SM, SR, NL, UN, SN and PT [1] accepted, rejected
+elsewhere, FS included, which the brief did not say; decision: the
+orientation is written to the stored passages of the group and read back
+by `EVC_Position.Assigned`, not into the LRBG record, so that the
+cycle's posts on the LRBG and the Tick post hold; a refused assignment
+is not recorded; `Scenario_Coordinate_Assignment`; 4080403_01 SV22 and
+SV30 pass; B783's Sleeping part: `EVC_Sessions.Mode_Changed` opened no
+session for a change out of SB, so the entry to SL in level 2 opened
+none (4.4.6.1.10 b), fixed); `Take_Version` gives no driver's indication
+in SL (4.4.6.1.13), the message 154 and the termination kept;
+`Scenario_Session_Sleeping`; the Reversing part left),
+e5/gamma-families-2 (the 60 SV21 / SV22 sequences blocked for the
+reaction times take them from their SV30 twin,
+`S076_Sequences.Complete_Gamma`: 46 whose curve sets are the twin's take
+the twin's whole sheet, 4 with own sets (3131040_01, _09) only the two
+times, their rows' EBI minus EBD being the twin's exactly, 10 whose twin
+is a lambda train stay blocked with the twin named; the brief's "the own
+sheet agrees with the twin's" was wrong (J23 0.8 against 1, H55 100
+against 40); 46 of the 60 now have their twin's outcome, 22 others moved
+to their twin's too; B2041: BG3d of 3130237_01 was refused by its
+linking window (`EVC_Position.Check_Window` Late, 3.4.4.4.3), 2 of 36
+optional steps of the corpus let the window pass the next group's
+location, `S076_Run.Next_Group_Reached` ends the wait there, 3130237_01
+SV30 passes; B2040: 3 sequences of the corpus have an expected EB after
+an expected SB with no input between, two carry "SB must be disabled",
+`S076_Run.EB_After_SB` treats the third alike, 3131040_17 step 57
+passes; B2161 traced in a resumption: step 62's 1455 m is 45 m in rear
+of the EOA the sequence's own packet 12 gives (s076); left: the B1960
+traces and B2160), e6/fixed-entry-2 (B2000 done: MSG_DRIVER_DATA kind 2
+is 14 bytes with the train type index (0 entered item by item; the
+13-byte form read as 0: `Sim_Onboard_Env` and twelve scenarios send it),
+decoded by `EVC_Driver_Requests.Take_Data`, checked by
+`EVC_Mission.Type_Matches` (an index above the count or data not the
+type's refused as an invalid entry), `EVC_Train_Data.Set (D, C, T)` with
+`Type_In_Force`; MSG_STORED_VALUES 65 bytes with the type (the 64-byte
+form no longer read); data view item 3 "Train type"
+(`DMI_Data_View.Type_Row`, the rows renumbered to Tables 44 and 45);
+B2080 done: MSG_DMI_HELLO 16#43# from `DMI_Core.Initialise`, taken by
+`EVC_Core.Handle_Input`, resets `Types_Sent`, `Stored_Sent`,
+`Version_Sent`, `Contact_Sent` (B2120 the other markers);
+`Scenario_Train_Type`, `Scenario_End_To_End` part 3 restarting the DMI;
+fourteen on-board goldens and one DMI golden reviewed), and e5/review-52
+(the blind review, see below).
+
+The review (e5/review-52, 100 calls, 5.7 USD): ten verdicts of the round
+re-derived from the trace, the data and the clause before the author's
+record was read: 8 agreed, 2 disagreed, none undecided. Disagreed:
+S27eb0678 (3131040_17 step 62) is the runner's, not the sequences': the
+step is an event (the min safe antenna overpasses the EOA) a runner
+driving to the event could judge (B2200); two protocol comments of
+e6/fixed-entry-2 state a reading of an old length without its reason
+(B2203). Agreed with remarks that are findings in their own right:
+B2041's "linking reaction a service brake" where BG1d's Q_LINKREACTION
+is No Reaction, to trace (B2201); `EVC_Radio_Acceptance.In_PT` is
+`Trip_Exit_Known` whatever the level where footnote [1] of Table 4.8.4
+rejects in level 1 (B2202); the hello does not reset the status frame's
+markers (B2204); the runner does not check where an EB step happens (our
+EB came before 1265 m in 3131040_17, B2205); B2140 corrected: NID_LRBG
+is 7.5.1.90, the corpus has 23 occurrences of 16777215 of which 3 are
+expectations on our reports, and `S076_Run.Header_Unknown` counts NID_C
+0 / NID_BG 16383 as unknown, so the defect passes the runner (B2206).
+Verdict on the review: at a sixth of the round's cost it overturned one
+triage category, found two possible on-board defects (B2201, B2202) and
+one masking tolerance of the runner (B2206) that no chain stage could
+see; the two agents whose verdicts it checked had themselves narrowed
+their briefs' claims. It runs again next round; the measure stays:
+verdicts overturned and defects found per round.
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13522 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6160 B; wasm and both smokes 0 failures (the
+hello, the longer frames and the new golden of the bench included); the
+runner 1133 / 1067 / 990 -> 1160 / 1078 / 952, 0 regressions against the
+merged baseline, no signature untriaged. The merge: bookkeeping-5 and
+the review fast-forwarded; backlog and plan conflicts on message-45,
+gamma-families-2 and fixed-entry-2, none in code; two chain runs (after
+bookkeeping-5 and after the three others), both green.
+
+Costs (doc/ROUNDS.csv): 39.2 USD with the review (33.5 for the four
+packages), 12 of 15 items done, 6 of 17 brief premises wrong, no agent
+over budget; one resumption converted (twenty-two of twenty-two).
+Lessons: the wrong premises were two readings of where the code sits
+(kind 2 is decoded in `EVC_Driver_Requests`, DMI frames in the parent's
+`Handle_Input`), one row of a table read too narrowly (4.8.4 rejects
+message 45 in FS), one scope claim (`Apply` is private with seven
+callers: a change there is a contract change), one claim about the
+corpus (the SV21 sheets agree with the twins': they do not) and one
+narrowing of a footnote: the brief should outline the subprogram and
+print the table page before stating where a change goes. The review's
+finding that an author's remark ("a service brake") contradicts the data
+(No Reaction) says the authors' side remarks deserve the same check as
+their verdicts.
+
+The matrix: clauses left 88 -> 79 (todo 2, partial 77); E6 done 219,
+partial 6 unchanged (the rows were E5's: 3.4.2.3.3.6, 3.4.2.3.3.7,
+3.6.2.2.2.3, 3.6.3.1.3.1, 4.4.11.1.3 and d), 4.4.6.1.10 b), 4.4.6.1.13,
+4.8.3.1.1 [10]). Open items: doc/BACKLOG.csv (49 open after this round;
+12 added of which 7 by the review, 10 closed). Next: the review's lines
+first, B2201 (the linking service brake with No Reaction), B2202 (In_PT
+in level 1), B2140 with B2206 (the unknown LRBG in the report and the
+runner's tolerance), B2204 with B2120 (the hello and the markers);
+B783's Reversing part; B841's three scenarios; B1960's traces and B2160,
+B2200, B2205 (runner); B2203 (the protocol comments); then B781, B1401,
+the decisions B1060, B1063, B1340.
