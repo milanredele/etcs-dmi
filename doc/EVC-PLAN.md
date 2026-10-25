@@ -12194,3 +12194,54 @@ set, packet 79's keeper), B2000 (the DMI's fixed Train Data window,
 Table 44, with its protocol field), B018's families (S1531c721, the
 repositioning information); B1840's question stays with the user; then
 NL.
+
+### The gamma families: the Gamma curve steps traced by cause, the two status steps, the SV21 / SV22 sheets without reaction times (e5/gamma-families) (2026-10-25)
+
+Premises checked: the decisions of `S076_Bench.Build_Gamma` hold for the
+sequences traced; a premise the brief did not name was wrong: the
+bench's gamma image kept the default configuration's train interfaces
+(service brake command, traction cut-off command, T_traction_cut_off
+1 s), while 12 of the 144 SV30 gamma workbooks have no service brake
+interface, 14 no traction cut-off interface, and 116 a
+T_traction_cut_off of 0.5 s, 11 of 2 s, 17 of 0 (Train (main)!D4). For
+3130237_01 the brief's suspect, the Kdry_rst of EBCL 1, is not the cause.
+
+**The train interfaces** (`S076_Sequences.Gamma_Sheet_T`
+T_Traction_Cut_Off, Service_Brake, Traction_Cut_Off, read from Train
+(main) with the sheet; `S076_Bench.Install_Train` puts them in the image:
+`Supervision.Service_Brake_Command`, `Supervision.Traction_Cut_Off`,
+`Train.T_Traction_Cut_Off`). Without the service brake T_bs1 and T_bs2
+are 0 (3.13.9.3.3.5): the workbook's SBI is its EBI, and ours was 2.5 s
+(T_bs) further out (3131040_85 SBI 425 m against 383 m at 60 km/h,
+_99 215 against 173, _96 the Indication 225 against 195 at 45 km/h).
+**Judged** (`S076_Run.Curve_Judgement`): the SBI of such a train by our
+EB command; a status passed over at once (the target arrived with the
+train beyond the workbook's location of the limit named) by the limit of
+the status entered, placement when that agrees (3130235_05: the target at
+566 m with the workbook's Permitted 600 m and Warning 564 m at 65 km/h,
+we enter Warning, the step expects Overspeed); the rule moved no other
+sequence.
+
+**Causes** (triage lines with the sequence each was drawn at):
+3130235_03 step 68 `s076` (S27e0151b: the workbook takes A_NVMAXREDADH1
+1 m/s2 where the packet 3 sends 0.4 and the driver selects slippery
+rail; A_safe = MIN (0.64, 0.4), 3.13.6.2.1.3; ours 391 m against 289 m
+at 50 km/h, the hand computation at 0.4 gives about 380 m);
+3131040_17 step 57 `model` (S8e8f4487, B2040: the bench's train obeys our
+SB intervention where the sequence drives on to the EBI); 3130237_01
+step 74 `model` (S256875a4, B2041: the window of the optional step 58
+drives the train to 944 m, BG3d of 890 m is read at 952 m and its MA,
+EOA 2390 m, is not in force; our EOA stays 1536 m, the SB at 1399 m and
+the trip at 1694 m follow). Left untraced in `~[gamma train]` and B1960:
+3131040_01 step 56, _73 step 64; 4100103_24 step 87 not traced (its two
+workbooks carry EBCL0 and EBCL1, a candidate is the one Kdry_rst set
+for every M_NVEBCL).
+
+Outcome: 1130 / 1073 / 987 -> 1130 / 1070 / 990, recorded: 3131040_99
+failed 59 -> passed; _96 failed 53 -> blocked 53 placement; _85 failed
+61 -> blocked 58 placement (step 58 passed before only because our SBI
+was 2.5 s further out); 3130235_05 passed -> blocked 62 placement
+(traced above). Left at the bound (120 calls): item 2's 4100103_24,
+item 3 (the 60 SV21 / SV22 sequences blocked for the reaction times,
+rows 85 and 86) and item 4 (the curve probe on a Gamma sheet) not
+started.
