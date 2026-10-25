@@ -488,7 +488,7 @@ procedure EVC_Fuzz is
             --  the train configuration of 5.17 (13, phase E4) now and then
             Add (if Chance (50) then Pick (1, 2)
                  elsif Chance (80) then Pick (1, 5)
-                 elsif Chance (30) then 13 else Pick (0, 255));
+                 elsif Chance (30) then Pick (13, 16) else Pick (0, 255));
             Add (if Chance (90) then Pick (0, 1) else Pick (0, 255));
          when DMI =>
             --  phase E4: the frames of the start of mission and of the

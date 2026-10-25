@@ -200,7 +200,8 @@ is
          when Non_Leading      => 132,
          when Direction        => 39,
          when Integrity        => 50,
-         when Remote_Shunting  => 51);
+         when Remote_Shunting  => 51,
+         when Entry_Type       => 141);
 
    function Direction_Code (TIU_Value : Natural) return Input_Value_T is
      (case TIU_Value is

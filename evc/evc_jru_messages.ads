@@ -38,6 +38,7 @@
 --       and NID_RBC (Q_RBCENTRY 2 or 3), NID_RADIO (3);
 --    30, 31, 32, 39, 51 the TIU inputs and the remote shunting state:
 --       their one variable;
+--    41 type of train data entry of the TIU: M_TRAIN_DATA_ENTRY;
 --    38 cab status: M_CAB_A_STATUS, Q_CAB_B, M_CAB_B_STATUS (Q_CAB_B 1);
 --    48 GSM-R radio network ID entered by the driver: NID_MN;
 --   255 proprietary juridical data (4.2.4.255): every other event of
@@ -98,6 +99,7 @@ is
    NID_Direction      : constant := 39;
    NID_Network        : constant := 48;
    NID_Integrity      : constant := 50;
+   NID_Entry_Type     : constant := 41;
    NID_Remote_SH      : constant := 51;
    NID_TCO_State      : constant := 43;
    NID_Consist        : constant := 54;
@@ -243,8 +245,9 @@ is
    No_Fields : constant Fields_T := (others => (Value => 0, Bits => 0));
 
    --  The message of an event of EVC_Ports given by its three bytes:
-   --  11, 30, 31, 39, 51, 132 (as 32), 38, 48 and 50 as the heading
-   --  gives them, every other event as the message 255
+   --  11, 30, 31, 39, 51, 132 (as 32), 38, 48, 50 and 141 (as 41, the
+   --  view's event of the message) as the heading gives them, every
+   --  other event as the message 255
    procedure Event_Message (Event      : Byte;
                             B2, B3, B4 : Byte;
                             NID        : out Byte;

@@ -451,6 +451,57 @@ package body EVC_Test_JRU is
       end;
    end Scenario_JRU_On_Board;
 
+   --  SUBSET-027 4.2.4.41: the type of train data entry of the train
+   --  interface (SUBSET-034 2.6.1.1, TIU signal 16) recorded as message
+   --  41 at its first reception and at each change, M_TRAIN_DATA_ENTRY
+   --  0 fixed, 1 flexible, 2 switchable; a value of 3 refused
+   procedure Scenario_JRU_Entry_Type is
+      --  the messages 41 of one cycle after the input (none when
+      --  Value is 255), the value of the last
+      procedure Cycle (Value : Byte; Count : out Natural; Last : out Byte)
+      is
+      begin
+         if Value /= 255 then
+            EVC_Core.Handle_Input (TIU, (16, Value));
+         end if;
+         Reset_Capture;
+         EVC_Core.Tick (100);
+         Take;
+         Count := 0;
+         Last := 255;
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = JRU and then JRU_NID (I) = NID_Entry_Type
+            then
+               Count := Count + 1;
+               Last := View (Payload (I)).B2;
+               Check (View (Payload (I)).Event = 141,
+                      "4.2.4.41: the view's event of message 41");
+            end if;
+         end loop;
+      end Cycle;
+      Count : Natural;
+      Last  : Byte;
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Set_UTC (Reference);
+      Cycle (255, Count, Last);
+      Check (Count = 0, "4.2.4.41: no message 41 before the first input");
+      Cycle (1, Count, Last);
+      Check (Count = 1 and then Last = 1,
+             "4.2.4.41: message 41 at the first input, 1 flexible");
+      Cycle (1, Count, Last);
+      Check (Count = 0, "4.2.4.41: no message 41 while the input holds");
+      Cycle (0, Count, Last);
+      Check (Count = 1 and then Last = 0,
+             "4.2.4.41: message 41 at the change, 0 fixed");
+      Cycle (3, Count, Last);
+      Check (Count = 0, "4.2.4.41: a TIU value of 3 is refused");
+      Cycle (2, Count, Last);
+      Check (Count = 1 and then Last = 2,
+             "4.2.4.41: message 41 at the change, 2 switchable");
+      Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
+   end Scenario_JRU_Entry_Type;
+
    --  SUBSET-027 4.2.4.11 M_DRIVERACTIONS 51 to 55: the driver's radio
    --  network type (DMI Table 43b, MSG_DRIVER_DATA kind 6: 1 FRMCS, 2
    --  FRMCS+GSM-R, 3 GSM-R) and the choice of the mission with only one

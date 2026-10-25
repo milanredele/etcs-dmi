@@ -120,9 +120,10 @@ is
                                 EVC_Stored_Information.State),
                      In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
 
-   --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .48, .50, .51,
+   --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .41, .48, .50, .51,
    --  EVC_JRU_Records): the sleeping, passive shunting and non leading
-   --  inputs and the direction controller of the train interface and the
+   --  inputs, the direction controller and the type of train data entry
+   --  of the train interface and the
    --  output permitting remote shunting, the one Send_Remote_Shunting
    --  sent to the train interface this cycle (SH and SM, SUBSET-026
    --  4.4.8.1.4, 4.4.21.1.13), when they change; the RBC contact and

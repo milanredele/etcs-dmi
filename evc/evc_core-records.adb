@@ -310,7 +310,17 @@ is
             else No_Value),
          Remote_Shunting  =>
            (if (TIU_RS_Sent and EVC_Ports.TIU_RS_Ready) /= 0
-            then 1 else 0));
+            then 1 else 0),
+         --  SUBSET-027 4.2.4.41: message 41 at the first value received
+         --  and at each change (decision: the record names no trigger,
+         --  the other inputs of the train interface are recorded so);
+         --  the TIU value is M_TRAIN_DATA_ENTRY
+         Entry_Type       =>
+           (if TIU_Known_Now (Train_Data_Entry_Type)
+            then Input_Value_T
+                   (EVC_Bytes.Byte'Min
+                      (TIU_Value_Now (Train_Data_Entry_Type), 3))
+            else No_Value));
       Changes : Input_Changes_T;
       RBC     : constant Bytes_23_T := EVC_Driver_Requests.RBC_Data;
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));

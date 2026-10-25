@@ -307,6 +307,9 @@ is
             return (41, 2, Byte (Id), 0);
          when NID_Integrity =>
             return (50, F (0, 2), 0, 0);
+         when NID_Entry_Type =>
+            --  event 141 (41 is the driver's data): M_TRAIN_DATA_ENTRY
+            return (141, F (0, 2), 0, 0);
          when NID_System_Status =>
             --  event 123 (23 is the procedures'): SYSTEM_STATUS_MESSAGE's
             --  bits 1 to 24
@@ -390,6 +393,11 @@ is
             --  4.2.4.50: M_TRAIN_INTEGRITY_INFO (0 confirmed, 1 lost, 2
             --  unknown)
             NID := NID_Integrity;
+            Fields (1) := F (B2, 2);
+         when 141 =>
+            --  4.2.4.41: M_TRAIN_DATA_ENTRY (0 fixed, 1 flexible, 2
+            --  switchable)
+            NID := NID_Entry_Type;
             Fields (1) := F (B2, 2);
          when 9 =>
             --  4.2.4.15: M_COLD_MVT (1 cold movement detected)

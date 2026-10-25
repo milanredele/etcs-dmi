@@ -235,6 +235,7 @@ begin
    Scenario_Config_Behaviour;
    Scenario_JRU_Format;
    Scenario_JRU_On_Board;
+   Scenario_JRU_Entry_Type;
    Scenario_JRU_To_RBC;
    Scenario_JRU_Track_Conditions;
    Scenario_JRU_General;

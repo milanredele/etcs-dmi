@@ -152,16 +152,17 @@ is
      with Global => (In_Out => State);
 
    --  The inputs and states recorded when they change (SUBSET-027
-   --  4.2.4.30, .31, .32, .39, .50, .51)
+   --  4.2.4.30, .31, .32, .39, .41, .50, .51)
    type Input_T is (Sleeping, Passive_Shunting, Non_Leading, Direction,
-                    Integrity, Remote_Shunting);
+                    Integrity, Remote_Shunting, Entry_Type);
    --  Their values in SUBSET-027's coding, No_Value while not known
    No_Value : constant := -1;
    subtype Input_Value_T is Integer range No_Value .. 3;
    type Input_Values_T is array (Input_T) of Input_Value_T;
    type Input_Changes_T is array (Input_T) of Boolean;
 
-   --  The event of an input (the header: 132 for record 32)
+   --  The event of an input (the header: 132 for record 32, 141 for
+   --  record 41)
    function Input_Event (I : Input_T) return Byte
      with Global => null;
 
