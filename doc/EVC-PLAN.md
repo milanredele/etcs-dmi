@@ -11839,3 +11839,75 @@ from the workbook, the Gamma curve steps judged) with B1881 and B1880;
 B1920 (the stored R [2] packets and the transition buffer) with B1921;
 B1940 (the RBC contact in the data view, protocol) with B1942; B1900,
 B1901, B1860 (runner); B018's families; then NL.
+
+### The runner's half of the Gamma braking model: the workbook's gamma sheet, the bench's version 2 image, the Gamma curve steps judged (e5/runner-gamma) (2026-10-25)
+
+Premises checked: the sheet "Brake parameters (gamma)" has the shape
+the brief gives in all 258 SV30 workbooks that carry it (lambda
+workbooks carry it too: the train is the option button Train
+(main)!Gamma); a step function at a row First has V0 at First, V_k at
+First + 2k - 1, AD_k at First + 2k (A_brake_emergency 7, Kdry_rst 23,
+Kwet_rst 38, A_brake_service 54, A_brake_normal_service 70; the times
+K52, K68, K85, K86; combination 2 in T, V, W). The SV21 and SV22
+workbooks (the old tool) have no reaction times (rows 85, 86). Wrong
+premise: "item 1 moves nothing but the event 33": the gamma train
+installed changes the on-board's limits, so steps judged in their
+window pass or fail differently (item 1 alone: 18 improvements, 10
+movements, blocked Gamma at another step).
+
+**The sheet** (`S076_Sequences.Gamma_Sheet_T`, `On_Gamma_Cell`): the
+numbers of the columns H to K and T to W by row, the special brakes
+of each combination (B6:C8), the EBCL cell that is 1; the sequence
+keeps the sheet of its first Gamma workbook (`Sequence_T.Gamma`), a
+set of another sheet is marked (`Curve_Set_T.Gamma_Other`) and stays
+blocked; the trace says when a sequence mixes lambda and gamma sets.
+
+**The image** (`S076_Bench.Set_Gamma`, `Build_Gamma`, `Install_Train`
+in `Power_On`): after `EVC_Core.Initialise` / `Power_Up`, in No Power,
+`EVC_Config.Encode_V2` of the configuration in use with Model Gamma and
+the special brakes of combination 1, offered with `EVC_Core.Configure`;
+the radio and the voltages set again (the image replaces them; the
+radio was taken at the power-up). The JRU shows event 33 "1 0 0"
+(loaded, accepted) at the first cycle (3110200_03). After a gamma
+sequence the default configuration is loaded back and its report taken.
+Decisions: the models by combination of the special brakes in use:
+combination 2 (the workbook's brake inhibition area) for the set of its
+brakes (emergency; the service brake without the magnetic shoe, the
+times with and without Ep), combination 1 for every other set; Kn+ and
+Kn- none (the kernel's default), M_rotating_nom 0 (the workbooks'
+RotatingMassUnknown, A.3.1), no normal service sets (A_SB01, A_SB12);
+Kdry_rst and Kwet_rst of combination 1, the sheet's Kdry_rst (for its
+own EBCL, 9 in the three read) for every M_NVEBCL; an empty interval of
+a curve (the normal service's V2 to V6 at 280 km/h) dropped; a sheet
+with a number missing offers no image and keeps the block, the field
+named ("the gamma sheet lacks T_brake_emergency_react row 85").
+
+**Judged** (`S076_Run.No_Reference`, `Gamma_Set`, `Tool_Margin`,
+`Reference_Note`, `Curve_Judgement`): a gamma set with its sheet
+installed is a reference (the old tool, tool target and release
+checks still apply; the integrated correction factors are the lambda
+train's), no lambda tool margin; a failed curve step of a gamma set
+ends with "[gamma train]", the triage family `~[gamma train]`.
+`Enter_Train_Data` and `Brake_Percentage` unchanged (the brake
+percentage entered for every train, 3.13.2.2.5.1).
+
+Outcome: 1115 / 1076 / 999 -> 1125 / 1092 / 973; 22 regressions and 18
+improvements, recorded: blocked Gamma to failed at the same step (12:
+3130232_15, 3130234_02, 3130700_03, 3131040_01, _17, _73, _77, _85,
+_96, _99, 3131050_17, 4100103_17) or one to four steps before it
+(3130235_03, 3131040_75), allowed because the step was never judged;
+passed to failed where the gamma train changes the run (3130234_03,
+_06, 3130237_01, 4100103_24) or to blocked by the tool target or the
+placement (3131040_15, _33, _35); 3131050_21 83 -> 82; passed now:
+3131030_07, 3131040_03, _07, _09, _11, _25, _71, _83, _89, 3131050_15,
+3131060_13, _15, _17 (and 3131020_01, _03, 3131050_19). Blocked Gamma
+left: 60, all SV21/SV22 (the old tool's sheets). Families: `~[gamma
+train]` 14 signatures, 10 first failures (category curves); the gamma
+sequences' status steps under `~[workbook train]` and `~[release
+speed`. Traced: 3130234_02 step 58 (ours 92 m nearer at 75 km/h): the
+sequence switches off the eddy current brake for the emergency brake
+only (M_TRACKCOND 10), the workbook's inhibition area applies
+combination 2's A_brake_service (0.6 against 0.8): the sequence's data
+against 3.13.6.3.1.4. B100 done; B1960 the families to trace. Left:
+item 3 (B1881, `test/tools/evc_config.py` version 2), not started at
+the bound.

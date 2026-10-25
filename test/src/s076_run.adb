@@ -5910,6 +5910,13 @@ package body S076_Run is
    --  SBD and 14 m of T_bs at 60 km/h there, the probe's 26 to 27 m.
    --  The EBD-based limits also move by V_bec times the difference of
    --  T_be_reduced, whose ramp depends on A_EB (A.3.12, 3.13.9.3.2.6)
+   --  Set C is the curves of a Gamma train (Train (main)!Gamma,
+   --  else the sheet's name)
+   function Gamma_Set (C : Curve_Set_T) return Boolean is
+     (if C.Cells.Gamma = S076_Sequences.Unknown
+      then Has (Image (C.Sheet), "Gamma")
+      else C.Cells.Gamma = First);
+
    function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
                          return Long_Float
    is
@@ -5926,6 +5933,11 @@ package body S076_Run is
         and then (S2 = No_Value or else S1 >= S2);
       Service : Long_Float := 0.0;
    begin
+      if Gamma_Set (C) then
+         --  A gamma train, the workbook's models installed: no
+         --  brake percentage of the tool to correct for
+         return 0.0;
+      end if;
       if On_Sbd or else Ref.Column in SBI2 | SBI | Warning | Permitted
                                       | Indication
       then
@@ -6226,7 +6238,11 @@ package body S076_Run is
    function Reference_Note (C : Curve_Set_T) return String is
       R : constant Reason_T := No_Reference (C);
    begin
-      if R = R_S076_Defect then
+      if R = R_Gamma and then B.Gamma_Gap /= "" then
+         return "the gamma sheet lacks " & B.Gamma_Gap & ": ";
+      elsif R = R_Gamma and then C.Gamma_Other then
+         return "a gamma sheet other than the one installed: ";
+      elsif R = R_S076_Defect then
          return "the MA's V_RELEASEDP "
            & Img (Seq.Release_DP (1).From) & " km/h, the workbook's fixed"
            & " release speed " & Img (Integer (C.Cells.Release_Kmh))
@@ -6249,9 +6265,8 @@ package body S076_Run is
    function No_Reference (C : Curve_Set_T) return Reason_T is
       K, V1 : Long_Float;
    begin
-      if (if C.Cells.Gamma = S076_Sequences.Unknown
-          then Has (Image (C.Sheet), "Gamma")
-          else C.Cells.Gamma = First)
+      if Gamma_Set (C)
+        and then (not B.Gamma_Installed or else C.Gamma_Other)
       then
          return R_Gamma;
       elsif Seq.SV in 21 | 22 and then not C.From_Twin then
@@ -6260,6 +6275,11 @@ package body S076_Run is
          return R_Tool_Target;
       elsif Release_Defect (C) then
          return R_S076_Defect;
+      elsif Gamma_Set (C) then
+         --  The bench installed the workbook's gamma train; the
+         --  integrated correction factors are the lambda train's
+         --  (3.13.6.2.1.3), no reference difference of a gamma train
+         return R_None;
       elsif C.Cells.Present then
          return (if Sheet_Difference (C) = "" then R_None else R_Factors);
       end if;
@@ -6368,8 +6388,8 @@ package body S076_Run is
    --  against the workbook's distance of the limit at our speed there.
    --  Within the tolerances our curves agree, the sequence's location is
    --  the author's (blocked, R_Placement); else ours is nearer or
-   --  further out. A Gamma train's step is not judged (B100), nor a
-   --  Lambda step of an SV21 / SV22 sequence whose workbook is its own
+   --  further out. A Gamma train's step without its sheet installed is not
+   --  judged, nor a Lambda step of an SV21 / SV22 sequence whose workbook is its own
    --  (the ERA tool without A.3.12, B170), nor one of a workbook that is
    --  no reference for the sequence (B200, No_Reference)
    --
@@ -6488,6 +6508,10 @@ package body S076_Run is
             Put_Factors (C);
          end if;
          return NJ (No_Reference (C), Reference_Note (C) & Image (Res.Sig));
+      elsif Gamma_Set (C) and then Res.Verdict = Failed then
+         --  Judged against the gamma train installed, not a lambda
+         --  reference (the triage's family ~[gamma train])
+         return Fail (Image (Res.Sig) & " [gamma train]");
       end if;
       return Res;
    end Curve_Judgement;
@@ -6577,6 +6601,7 @@ package body S076_Run is
          B.Set_Radio_Systems (EVC_Config.GSMR_Only);
          B.Set_Network_Type (EVC_Config.GSMR);
       end if;
+      B.Set_Gamma (Seq.Gamma);
       B.Set_Voltages (S076_Sequences.Engine_Voltages
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;
@@ -6619,7 +6644,18 @@ package body S076_Run is
       --  B200: the sets that are no reference, in the trace (those
       --  of other correction factors are known at their steps only)
       for I in 1 .. (if Verbose then Seq.Curve_Count else 0) loop
-         if No_Reference (Seq.Curves (I)) not in R_None | R_Factors then
+         if Gamma_Set (Seq.Curves (I)) then
+            --  Judged with the gamma train the bench installs at
+            --  the power-up (S076_Bench.Set_Gamma), from the sequence's
+            --  first gamma sheet
+            Put_Line ("curves: set" & Natural'Image (I) & " is a gamma train"
+                      & (if Seq.Curves (I).Gamma_Other
+                         then ", not the sheet installed: not judged"
+                         else ", the sheet installed")
+                      & (if Seq.Lambda_Sets > 0
+                         then " (the sequence mixes lambda and gamma sets)"
+                         else ""));
+         elsif No_Reference (Seq.Curves (I)) not in R_None | R_Factors then
             Put_Line ("curves: set" & Natural'Image (I) & " is no reference: "
                       & Reason_Image (No_Reference (Seq.Curves (I))));
          end if;

@@ -37,6 +37,10 @@ package body S076_Bench is
    Radio_Systems : EVC_Config.Radio_Systems_T := EVC_Config.Both_Systems;
    Network_Type : EVC_Config.Network_Type_T := EVC_Config.GSMR;
    Voltages : Natural := EVC_Config.Default_Fixed_Train.Voltages;
+   --  The gamma sheet of Set_Gamma and the field it lacked
+   Gamma_Sheet : S076_Sequences.Gamma_Sheet_T;
+   Gap         : String (1 .. 48) := (others => ' ');
+   Gap_Length  : Natural := 0;
    Clock      : Unsigned_64 := 0;
 
    --  the RTM input held by Hold_RTM
@@ -766,20 +770,217 @@ package body S076_Bench is
       S076_Bench.Voltages := Natural'Min (Voltages, 2**16 - 1);
    end Set_Voltages;
 
-   procedure Power_On is
+   procedure Set_Gamma (Sheet : S076_Sequences.Gamma_Sheet_T) is
    begin
+      Gamma_Sheet := Sheet;
+   end Set_Gamma;
+
+   function Gamma_Installed return Boolean is
+     (EVC_Supervision_Input."=" (EVC_Config.Current.Train.Model,
+                                 EVC_Supervision_Input.Gamma));
+
+   function Gamma_Gap return String is (Gap (1 .. Gap_Length));
+
+   type Kept_T is array (1 .. 7) of Boolean;
+
+   --  The gamma train of the sheet S; Gap names the first number
+   --  missing. The two combinations of the sheet are the models by
+   --  combination of the special brakes in use (3.13.2.2.3.1.7,
+   --  3.13.2.2.3.2.8): combination 2 (the workbook's brake inhibition
+   --  area, Track!Brake_inhibition) for the set of its brakes, for the
+   --  service brake without the magnetic shoe brake (which counts for
+   --  the emergency brake only, EVC_Config.Default), and with or without
+   --  the Ep brake for the times; combination 1 for every other set.
+   --  Decisions on what the sheet has no cells for: Kn+ and Kn- none
+   --  (the kernel's default), M_rotating_nom 0 (A.3.1 applies: the
+   --  workbooks' Train (main)!RotatingMassUnknown), no normal service
+   --  sets (A_SB01, A_SB12); Kdry_rst and Kwet_rst of combination 1 (the
+   --  image has one set), the sheet's Kdry_rst, for its own confidence
+   --  level, for every M_NVEBCL
+   procedure Build_Gamma (S : S076_Sequences.Gamma_Sheet_T;
+                          G : out EVC_Config.Gamma_T)
+   is
+      package SQ renames S076_Sequences;
+      package SIn renames EVC_Supervision_Input;
+      subtype Comb_T is Positive range 1 .. 2;
+      Kept, Unused : Kept_T := (others => False);
+
+      procedure Missing (What : String; Row : Natural) is
+         M : constant String := What & " row" & Natural'Image (Row);
+      begin
+         if Gap_Length = 0 then
+            Gap_Length := Natural'Min (M'Length, Gap'Length);
+            Gap (1 .. Gap_Length) := M (M'First .. M'First + Gap_Length - 1);
+         end if;
+      end Missing;
+
+      function Cell (Comb : Comb_T; Col : SQ.Gamma_Column_T; Row : Positive;
+                     What : String) return Long_Float
+      is
+         V : constant Long_Float := S.Cells (Comb, Col, Row);
+      begin
+         if V = SQ.No_Value or else V < 0.0 then
+            Missing (What, Row);
+            return 0.0;
+         end if;
+         return V;
+      end Cell;
+
+      function Milli (V : Long_Float; Max : Natural) return Natural is
+        (Natural'Min (Max, Natural (V * 1000.0)));
+
+      --  the step function at the rows from First: a step whose upper
+      --  speed does not rise is an empty interval and is dropped (the
+      --  normal service curves repeat 280 km/h from V2 to V6)
+      function Curve (Comb : Comb_T; First : Positive; What : String;
+                      K : in out Kept_T) return SIn.Decel_Curve_T
+      is
+         C    : SIn.Decel_Curve_T := SIn.No_Decel_Curve;
+         Last : Long_Float := 0.0;
+      begin
+         for J in 1 .. 7 loop
+            declare
+               V : constant Long_Float :=
+                 Cell (Comb, SQ.Speed_Column, First + 2 * J - 1, What);
+               A : constant Long_Float :=
+                 Cell (Comb, SQ.Value_Column, First + 2 * (J - 1), What);
+            begin
+               if V > Last then
+                  C.Count := C.Count + 1;
+                  C.Steps (C.Count) :=
+                    (Speed => Natural'Min
+                       (SIn.Speed_Cms_T'Last,
+                        Natural (V * 100_000.0 / 3_600.0)),
+                     Decel => Milli (A, 30_000));
+                  K (J) := True;
+                  Last := V;
+               end if;
+            end;
+         end loop;
+         return C;
+      end Curve;
+
+      --  a factor per kept step of A_brake_emergency
+      function Factors (First : Positive; What : String)
+        return SIn.Factor_Steps_T
+      is
+         F : SIn.Factor_Steps_T := (others => 1_000);
+         N : Natural := 0;
+      begin
+         for J in Kept_T'Range loop
+            if Kept (J) then
+               N := N + 1;
+               F (N) := Milli
+                 (Cell (1, SQ.Value_Column, First + 2 * (J - 1), What),
+                  2_000);
+            end if;
+         end loop;
+         return F;
+      end Factors;
+
+      function Ms (Comb : Comb_T; Row : Positive; What : String)
+        return SIn.Time_Ms_T is
+        (Milli (Cell (Comb, SQ.Time_Column, Row, What), 60_000));
+
+      --  the set of special brakes of a combination (bit 0 regenerative,
+      --  1 eddy current, 2 magnetic shoe)
+      function Set_Of (Comb : Comb_T) return SIn.Brake_Combination_T is
+        ((if S.Brakes (Comb, 6) then 1 else 0)
+         + (if S.Brakes (Comb, 7) then 2 else 0)
+         + (if S.Brakes (Comb, 8) then 4 else 0));
+
+      Second : constant SIn.Brake_Combination_T := Set_Of (2);
+      Second_Service : constant SIn.Brake_Combination_T := Second mod 4;
+      Times_E, Times_S : array (Comb_T) of SIn.Build_Up_T;
+   begin
+      G := EVC_Config.No_Gamma;
+      G.A_Brake_Emergency :=
+        Curve (1, SQ.Gamma_Emergency_Row, "A_brake_emergency", Kept);
+      G.A_Brake_Service :=
+        Curve (1, SQ.Gamma_Service_Row, "A_brake_service", Unused);
+      G.A_Brake_Normal :=
+        Curve (1, SQ.Gamma_Normal_Row, "A_brake_normal_service", Unused);
+      G.T_Brake_Emergency :=
+        Ms (1, SQ.Gamma_T_Emergency_Row, "T_brake_emergency");
+      G.T_Brake_Service := Ms (1, SQ.Gamma_T_Service_Row, "T_brake_service");
+      G.Extra.T_Brake_Emergency_React :=
+        Ms (1, SQ.Gamma_T_Emergency_React_Row, "T_brake_emergency_react");
+      G.Extra.T_Brake_Service_React :=
+        Ms (1, SQ.Gamma_T_Service_React_Row, "T_brake_service_react");
+      G.Extra.Kdry_Rst := (others => Factors (SQ.Gamma_Kdry_Row, "Kdry_rst"));
+      G.Extra.Kwet_Rst := Factors (SQ.Gamma_Kwet_Row, "Kwet_rst");
+      for C in Comb_T loop
+         Times_E (C) :=
+           (Ms (C, SQ.Gamma_T_Emergency_React_Row, "T_brake_emergency_react"),
+            Ms (C, SQ.Gamma_T_Emergency_Row, "T_brake_emergency"));
+         Times_S (C) :=
+           (Ms (C, SQ.Gamma_T_Service_React_Row, "T_brake_service_react"),
+            Ms (C, SQ.Gamma_T_Service_Row, "T_brake_service"));
+      end loop;
+      G.Extra.By_Combination := True;
+      G.Extra.A_Emergency_Combination := (others => G.A_Brake_Emergency);
+      G.Extra.A_Service_Combination := (others => G.A_Brake_Service);
+      G.Extra.T_Emergency_Combination := (others => Times_E (1));
+      G.Extra.T_Service_Combination := (others => Times_S (1));
+      Unused := (others => False);
+      G.Extra.A_Emergency_Combination (Second) :=
+        Curve (2, SQ.Gamma_Emergency_Row, "A_brake_emergency 2", Unused);
+      G.Extra.A_Service_Combination (Second_Service) :=
+        Curve (2, SQ.Gamma_Service_Row, "A_brake_service 2", Unused);
+      G.Extra.T_Emergency_Combination (Second) := Times_E (2);
+      G.Extra.T_Emergency_Combination (Second + 8) := Times_E (2);
+      G.Extra.T_Service_Combination (Second_Service) := Times_S (2);
+      G.Extra.T_Service_Combination (Second_Service + 8) := Times_S (2);
+   end Build_Gamma;
+
+   --  At the power-up, in No Power: the image of the gamma train
+   --  of Set_Gamma when its sheet is complete; back to the default
+   --  configuration (its JRU report taken) after a gamma sequence
+   procedure Install_Train is
+      C   : EVC_Config.Config_T := EVC_Config.Current;
+      G   : EVC_Config.Gamma_T;
+      Img : EVC_Config.Max_Image_T;
+      Len : Natural;
+   begin
+      Gap_Length := 0;
+      if Gamma_Sheet.Present then
+         Build_Gamma (Gamma_Sheet, G);
+      end if;
+      if Gamma_Sheet.Present and then Gap_Length = 0 then
+         C.Train.Model := EVC_Supervision_Input.Gamma;
+         C.Train.Has_Regenerative := Gamma_Sheet.Brakes (1, 6);
+         C.Train.Has_Eddy_Current := Gamma_Sheet.Brakes (1, 7);
+         C.Train.Has_Magnetic_Shoe := Gamma_Sheet.Brakes (1, 8);
+         EVC_Config.Encode_V2 (C, G, Img, Len);
+         EVC_Core.Configure (Img (1 .. Len));
+      elsif Gamma_Installed then
+         EVC_Core.Configure (EVC_Config.Encode (EVC_Config.Default));
+         EVC_Config.Report_Taken;
+      end if;
+   end Install_Train;
+
+   procedure Power_On is
       --  The ETCS identity of the on-board the sequences were recorded
       --  with (NID_ENGINE 76000 in nearly all of them, e5/session-3)
-      EVC_Config.Set_Radio_For_Test
-        ((Sessions => EVC_Config.Current.Radio.Sessions,
-          Engine_Id => 76_000, Systems => Radio_Systems,
-          Default_Type => Network_Type, others => <>));
-      EVC_Config.Set_Voltages_For_Test (Voltages);
+      procedure Set_Test_Data is
+      begin
+         EVC_Config.Set_Radio_For_Test
+           ((Sessions => EVC_Config.Current.Radio.Sessions,
+             Engine_Id => 76_000, Systems => Radio_Systems,
+             Default_Type => Network_Type, others => <>));
+         EVC_Config.Set_Voltages_For_Test (Voltages);
+      end Set_Test_Data;
+   begin
+      Set_Test_Data;
       if Was_Powered then
          EVC_Core.Power_Up;
       else
          EVC_Core.Initialise;
       end if;
+      --  the installation's image replaces the radio and the voltages of
+      --  the configuration: set again (the radio was taken at the power-up)
+      Install_Train;
+      Set_Test_Data;
       --  the bench page's UTC reference, 2026-01-01 00:00:00 at the
       --  on-board time 0 (Sim_Onboard_Env): the JRU messages' DATE and
       --  TIME known (SUBSET-027 4.2.3.3, 4.2.3.4)

@@ -200,6 +200,39 @@ package S076_Sequences is
       Release_Kmh : Long_Float := No_Value;
    end record;
 
+   --  The workbook's sheet "Brake parameters (gamma)", its cells
+   --  as numbers by combination (1 columns G to K, 2 columns S to W):
+   --  the speed column (H, T, km/h), the value column (J, V: m/s² or
+   --  a factor) and the time column (K, W, s) by row. A step function
+   --  starts at a row First: V0 at First, V_k at First + 2 k - 1 (k 1
+   --  to 7, v7 the last), AD_k (or the factor k) at First + 2 k; the
+   --  rows below
+   Gamma_Rows : constant := 90;
+   Gamma_Emergency_Row       : constant := 7;    -- A_brake_emergency
+   Gamma_Kdry_Row            : constant := 23;   -- Kdry_rst (V, EBCL)
+   Gamma_Kwet_Row            : constant := 38;   -- Kwet_rst (V)
+   Gamma_T_Emergency_Row     : constant := 52;   -- T_brake_emergency
+   Gamma_Service_Row         : constant := 54;   -- A_brake_service
+   Gamma_T_Service_Row       : constant := 68;   -- T_brake_service
+   Gamma_Normal_Row          : constant := 70;   -- A_brake_normal_service
+   Gamma_T_Emergency_React_Row : constant := 85;
+   Gamma_T_Service_React_Row : constant := 86;
+   type Gamma_Column_T is (Speed_Column, Value_Column, Time_Column);
+   type Gamma_Cells_T is
+     array (1 .. 2, Gamma_Column_T, 1 .. Gamma_Rows) of Long_Float;
+   --  the special brakes of a combination (rows 6 regenerative, 7 eddy
+   --  current, 8 magnetic shoe; X in column B for combination 1, C for
+   --  combination 2, "Brake inhibition of special brake(s) area")
+   type Gamma_Brakes_T is array (1 .. 2, 6 .. 8) of Boolean;
+   type Gamma_Sheet_T is record
+      Present : Boolean := False;   -- a number of the sheet read
+      Cells   : Gamma_Cells_T := (others => (others => (others => No_Value)));
+      Brakes  : Gamma_Brakes_T := (others => (others => False));
+      --  the confidence level the sheet's Kdry_rst is for (the cell
+      --  EBCL0 .. EBCL9 that is 1); -1 none
+      EBCL    : Integer := -1;
+   end record;
+
    --  The factor of the step table T at X (No_Value when T is empty)
    function Sheet_Factor (T : Sheet_Table_T; X : Long_Float)
                           return Long_Float;
@@ -234,6 +267,9 @@ package S076_Sequences is
       Grades     : Grades_T;
       --  B290, B291: its workbook's factor sheet and option buttons
       Cells      : Sheet_T;
+      --  A set of a Gamma train whose gamma sheet is not the
+      --  sequence's (Sequence_T.Gamma, the train the bench installs)
+      Gamma_Other : Boolean := False;
       Limits    : Limits_T := (others => No_Value);
       Rows      : Curve_Rows_T;
       Row_Count : Natural := 0;
@@ -324,6 +360,11 @@ package S076_Sequences is
       --  its brake position (Train (main), "Current brake position:"):
       --  0 not given, 1 passenger in P, 2 freight in P, 3 freight in G
       WB_Brake_Position : Natural := 0;
+      --  The gamma sheet of its first workbook whose train is a
+      --  Gamma train (Train (main)!Gamma 1); Gamma_Sets and Lambda_Sets
+      --  count its curve sets of either train
+      Gamma : Gamma_Sheet_T;
+      Gamma_Sets, Lambda_Sets : Natural := 0;
       --  B471, B472: the trains of the packets 11 of its messages 129, the
       --  first Max_Trains
       Trains      : Trains_T;
