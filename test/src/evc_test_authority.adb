@@ -13,6 +13,7 @@ with ETCS_Track_Packets.P68;
 with ETCS_Track_Packets.P71;
 with ETCS_Track_Packets.P90;
 with ETCS_Train_Packets.P9;
+with ETCS_Track_Packets.P5;
 with ETCS_Bits;
 with ETCS_Catalogue;
 with ETCS_Variables;
@@ -22,6 +23,7 @@ with EVC_DMI_Port;
 with EVC_Ports;              use EVC_Ports;
 with EVC_Modes;              use EVC_Modes;
 with EVC_Levels;
+with EVC_Linking;
 with EVC_Procedures;
 with EVC_Radio;
 with EVC_Radio_Authority;
@@ -1755,6 +1757,80 @@ package body EVC_Test_Authority is
              "own units: the text and the geographical position taken at "
              & "the level 2 transition (4.8.5.5)");
    end Scenario_Own_Units_Stored;
+
+   --  Message 24 referred to the group Ref of country 123, its packet 5
+   --  linking the group Id at D_LINK metres (accuracy 10 m, reaction R)
+   function Linking_Message (Ref, Id, D_LINK : Natural;
+                             R : ETCS_Variables.Q_LINKREACTION_T)
+     return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      P  : ETCS_Track_Packets.P5.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (Ref);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_LINK := ETCS_Variables.D_LINK_T (D_LINK);
+      P.NID_BG := ETCS_Variables.NID_BG_T (Id);
+      P.Q_LINKORIENTATION := 1;
+      P.Q_LINKREACTION := R;
+      P.Q_LOCACC := 10;
+      ETCS_Track_Packets.P5.Encode (P, W, OK);
+      Check (OK, "released linking: packet 5 encoded");
+      return Message_Bytes (W);
+   end Linking_Message;
+
+   --  4.8.3 Linking From RBC (R [2] outside level 2), 4.8.5.5: the
+   --  linking of a message 24 received in level 1 with level 2 announced
+   --  is kept with its set in the transition buffer, not used; released
+   --  at the transition, it is in force: the linked group read inside its
+   --  window becomes the LRBG; missing, its window passed, the reaction
+   --  of Q_LINKREACTION (3.16.2.3) is requested
+   procedure Scenario_Released_Linking is
+      use type ETCS_Variables.NID_BG_T;
+   begin
+      Start_L2_Announced;
+      Give_Radio_Message (1, Linking_Message (10, 12, 600, 2));
+      Stand_X (200);
+      Check (RA.Buffered = 1 and then not EVC_Position.Linking.Stored,
+             "released linking: kept with its message in the transition "
+             & "buffer, not used in level 1 (4.8.3 [2], 4.8.5.1)");
+      Run_X (45_000);
+      Check (EVC_Levels.Level = L2 and then RA.Buffered = 0
+               and then EVC_Position.LRBG.Id.NID_BG = 10
+               and then EVC_Position.Linking.Stored
+               and then EVC_Position.Linking.Count = 1
+               and then EVC_Position.Linking.Links (1).Id.NID_BG = 12
+               and then EVC_Position.Linking.Links (1).D = 60_000
+               and then EVC_Position.Linking.Expected = 1
+               and then EVC_Linking.Checked (EVC_Position.Linking),
+             "released linking: taken at the level 2 transition from the "
+             & "LRBG, the window of group 12 supervised (4.8.5.5)");
+      Add_Group (Group (12, 690));
+      Run_X (75_000);
+      Check (EVC_Position.LRBG.Id.NID_BG = 12
+               and then EVC_Position.Linking.Expected = 2
+               and then not EVC_Position.Linking_Reaction_Requested,
+             "released linking: group 12 read inside its window, the LRBG");
+
+      Start_L2_Announced;
+      Give_Radio_Message (1, Linking_Message (10, 12, 600, 1));
+      Stand_X (200);
+      Run_X (45_000);
+      Check (EVC_Levels.Level = L2 and then EVC_Position.Linking.Stored
+               and then not EVC_Position.Linking_Reaction_Requested,
+             "released linking: in force after the transition, no reaction "
+             & "before the window");
+      Run_X (75_000);
+      Check (EVC_Position.Linking_Reaction_Requested,
+             "released linking: group 12 missing, its window passed: the "
+             & "reaction of the linking requested (3.16.2.3)");
+   end Scenario_Released_Linking;
 
    --  5.4.3.2 D15, S11, S20, S21: in SB, the driver's Start in level 2
    --  requests the MA once the RBC acknowledged the Train Data (3.18.3.4)
