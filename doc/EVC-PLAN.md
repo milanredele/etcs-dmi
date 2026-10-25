@@ -13121,3 +13121,19 @@ traced. Not started: 3131040_73 step 64 and the status steps of
 3130700_03, 3131040_75, _77, 3131050_17, _21 and 4100103_17.
 
 Runner 1160 / 1078 / 952 -> 1163 / 1075 / 952, recorded.
+
+Resumed inside the budget, 3131040_01 SV30 step 56 (TSM Warning
+expected at 697 m; ours in ceiling speed monitoring, no target shown).
+The EOA is the sequence's packet 12: BG1d at 50 m plus L_ENDSECTION
+1500 m gives 1550 m, and ours is 846 m ahead of the front end at
+700 m. The workbook places the Indication 653.09 m before its EOA at
+80 km/h (Track!B3 1000; the comments of steps 49 and 54 say 653 m),
+so at 897 m. The step's 697 m is 853 m before the EOA, 200 m in rear
+of its own Indication, where no target is due: triaged `s076`
+(S8722745e, a line for this family). Our service brake from about
+554 m has the TIU reason word 512, Procedure (`EVC_Core.Outputs`
+`TIU_Reasons`: `EVC_Procedures.Brake_Demand.Other`). The sequence asks
+for none: BG1d's packet 5 links BG2 (500 m) and BG3 (600 m) with
+Q_LINKREACTION 10, No Reaction, and neither group is given. Which
+cause of `Other` is set (linking or message consistency, the consist,
+the Train Data changed in motion) is not traced: B2260 (onboard).
