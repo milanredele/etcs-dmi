@@ -12431,3 +12431,118 @@ Indication at 506 m: the step's location is 109 m off its own workbook
 ceiling speed monitoring at 498 m with the EOA 548 m ahead, is
 consistent with the workbook: triaged `s076` (Sc70786e6, one line for
 this family). No code change; the runner unchanged.
+
+### E5 integration after the fifty-first round, the nineteenth of E6 (2026-10-25)
+
+Merged: e6/fixed-entry (B2000 narrowed: the type of Train Data entry in
+MSG_ONBOARD's train bits 6 and 7 (0 not known, read as flexible; 1
+fixed, 2 flexible, 3 switchable: the brief's coding with 0 fixed would
+have read every existing frame as fixed) filled by
+`EVC_Core.Outputs.Train_Bits` from TIU signal 16; MSG_TRAIN_TYPES 16#12#
+from the on-board, the pre-configured train types (count, name, the 12
+bytes of MSG_DRIVER_DATA kind 2 per type), sent once after the power-up
+(`Send_Train_Types`, `EVC_Core.Types_Sent`), the types a default table
+`EVC_Config.Default_Train_Types` (a locomotive from the SM defaults and
+a 200 m passenger train; not in the image, B2081; no resend at a DMI
+restart, B2080); the DMI's fixed layout of the Train data window (one
+field Train type, the dedicated keyboard of Table 39, the validation
+echoing the type) and the switchable layout with its 'switch' button at
+(246, 400) labelled 'Select type' / 'Enter data', the layout retained
+(11.3.9.6 a) and c), 11.3.9.7.1 to .5, 11.3.9.8.1 built; new unit
+`DMI_Train_Types`); four new DMI goldens, fourteen on-board goldens
+re-recorded (the new frame at the power-up); B2001: the bench page's TIU
+panel offers signal 16 through a new export
+`onboard_set_train_data_entry` of the wasm glue; left: the driver's
+train type to the on-board and data view item 3, route proposed, a 13th
+byte of MSG_DRIVER_DATA kind 2; fast-forwarded), e6/released-sets
+(B1980: `Scenario_Released_Linking`, a message 24 with packet 5 kept in
+level 1 with level 2 announced and its linking in force after the
+transition, the missing group's window passed asking the linking
+reaction; the position's keeper of a stored packet 79 removed,
+`EVC_Position.Take_Radio_Geo (Accepted)`, the transition buffer keeps
+it; B018 closed by family: 4080432_01 re-checked, BG101d links BG1d by
+its identity so 3.8.5.2.2's "only if" gives no update, and the packet 5
+that should announce it belongs to an unnamed group without a telegram
+(extraction), 3040400_08 and 6060504_07 without a message 3
+(extraction), S1531c721 split in two lines; B784: [15] built,
+`EVC_Sessions.Network.Order_Unregistered` lets `Apply_Order` reject an
+order to establish a session that comes with a Radio Network transition
+order to a network the on-board is not registered to (decision: in the
+same cycle), [14] had `Scenario_Handover_Balise` already,
+`Scenario_Session_Order_Rows` for [14], [15] and 4.8.4 [8] with
+4.4.8.1.5.3 and 4.4.20.1.13, [10] is message 45's row, partial until
+B840; its one movement, 4080437_01 step 60, traced in a resumption: BG3d
+read outside its linking window, 3.4.4.4.3.2, the sequence's data, B2060
+done), e5/bookkeeping-4 (B842: `EVC_Radio_Authority.Linked_Group_At_EOA`
+measures a linked group's first possible location from the anchor the
+EOA is referred to, less its accuracy, against the EOA less the antenna
+to front end distance, held as C_11 in release speed monitoring in level
+2 while the override is not active (5.8.3.6), a fact
+`Release_Monitoring` from the SDM result in
+`EVC_Core.Modes.Evaluate_Radio`; the brief's "reuse [12]" was wrong,
+[12] has no linking reading; `Scenario_Linked_Group_At_EOA`; B845: the
+override ends by f) an MA of the RBC in level 2
+(`Context_T.Radio_MA_L2`) and g) a group passed that is not in the
+stored packet 63 list (`EVC_Radio_Authority.Group_Passed_Unlisted`),
+`Scenario_Override_Ends_By_Radio`; 5080400_03 passes in three versions,
+5080400_02 goes on to step 101; Sf1cbf469 was really the missing g);
+B780 and B032 left at the bound), e5/gamma-families (a premise the brief
+did not name: the bench's gamma image kept the default train interfaces,
+service brake and traction cut-off commands on and T_traction_cut_off 1
+s, where 12 of the 144 SV30 gamma workbooks have no service brake
+interface, 14 no traction cut-off and 116 a cut-off of 0.5 s:
+`Gamma_Sheet_T` reads them from Train (main), `S076_Bench.Install_Train`
+writes them, `Curve_Judgement` judges the SBI of a train without a
+service brake by our EB (3.13.9.3.3.5): 3131040_85, _96, _99 explained
+(our SBI 2.5 s further out), _99 passes; a status passed over is judged
+by the limit of the status entered (3130235_05, blocked by placement);
+3130235_03 the workbook's A_NVMAXREDADH1 1 m/s2 where the packet 3 sends
+0.4 (s076); 3131040_17 the bench's train obeys our SB where the
+sequence's keeps its speed to the EBI (model, B2040); 3130237_01 step 74
+the runner's wait for an optional step drives the train past BG3d, whose
+MA is then not in force (model, B2041); 4100103_24 step 87 the step's
+location 109 m off its own workbook, computed at 0.7 m/s2 under slippery
+rail (s076; the coordinator's resumption premise, two sheets, was
+3130237_01's); left: 3131040_01 step 56, 3131040_73 step 64, the status
+steps of six sequences, the 60 SV21 / SV22 sequences without reaction
+times, the curve probe on a Gamma sheet).
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13490 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6160 B; wasm and both smokes 0 failures (the new
+export and the power-up frame included); the runner 1130 / 1073 / 987 ->
+1133 / 1067 / 990, 0 regressions against the merged baseline, no
+signature untriaged. The merge: fixed-entry fast-forwarded; backlog and
+plan conflicts on released-sets and gamma-families, a plan conflict on
+bookkeeping-4, none in code; `EVC_Test_Authority` edited by two agents
+at different places and auto-merged; four chain runs, all green.
+
+Costs (doc/ROUNDS.csv): 40.5 USD, 12 of 17 items done (one added at 118
+calls), 5 of 20 brief premises wrong, one agent at its budget exactly,
+none over; three resumptions inside the budgets, all converted
+(twenty-one of twenty-one). Lessons: two wrong premises were readings of
+the code the brief should have outlined first ("reuse the [12] reading",
+"[14] has no scenario"), two were scope claims ("page only": the bench
+page has no raw TIU input; the bit coding 0 fixed: an unused value must
+read as today's behaviour), one was mine in a resumption message (the
+two sheets belonged to another sequence: a resumption premise is checked
+like a brief's). The gamma agent found the premise the brief did not
+name, the bench's default train interfaces, by comparing the workbooks'
+Train (main) cells across the corpus: a bench default is a claim about
+every workbook. Items left at the bound were two of bookkeeping-4's four
+and two of gamma-families' four: four items of 160 calls is the ceiling
+when two are builds in large units.
+
+The matrix: clauses left 93 -> 88 (todo 2, partial 86); E6 done 219,
+partial 6 unchanged (the round's rows were E5's: 3.13.10.2.6 b) and its
+bullets, 5.8.4.1 f) and g), 4.8.3.1.1 [14] and [15], 4.8.4.2 [8],
+4.4.8.1.5.3, 4.4.20.1.13 done, [10] from deferred to partial). Open
+items: doc/BACKLOG.csv (47 open after this round; 5 added, 7 closed).
+Next: B2000's rest (the driver's train type to the on-board by a 13th
+byte of MSG_DRIVER_DATA kind 2, `EVC_Train_Data` keeping the type in
+force, data view item 3) with B2080; B780 and B032 (bookkeeping-4's
+rest); B1960's rest (3131040_01, _73, the six status steps, the 60 SV21
+/ SV22 sequences: the twin's sheet or a default) with B2040 and B2041
+(runner); B840 (message 45 by radio, completing [10]); then the E5
+bookkeeping lines B781, B783, B787, B841 and the decisions B1060, B1063,
+B1340.
