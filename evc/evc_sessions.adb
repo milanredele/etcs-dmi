@@ -29,7 +29,7 @@ package body EVC_Sessions
                                    Requesting, Timer_On, Timer_Since,
                                    Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code, Mode_Session,
-                                   Mode_Capped, Contact_Tripped,
+                                   Mode_Capped, Sleeping, Contact_Tripped,
                                    In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Integrity.State,
@@ -153,6 +153,8 @@ is
    --  3.5.3.7 a: the session of Mode_Session is for 3.5.3.4 c) alone, its
    --  set-up requests repeated a defined number of times (A.3.1)
    Mode_Capped  : Boolean := False;
+   --  4.4.6.1.13: the mode is Sleeping (the last change of Mode_Changed)
+   Sleeping     : Boolean := False;
    --  3.16.3.4: the reaction of T_NVCONTACT triggered in this cycle
    Contact_Tripped : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
@@ -559,6 +561,7 @@ is
       Order := (others => <>);
       Mode_Session := False;
       Mode_Capped := False;
+      Sleeping := False;
       Contact_Tripped := False;
       Ref_On := False;
       Ref_Ms := 0;
@@ -685,9 +688,10 @@ is
    --  156) and reads 32 and 39, which are too; after it 154 or 159.
    --  The one layout of each is its layout in every version
    --  @req 3.5.3.7 d), 3.5.3.7 d) 1st bullet, 3.5.3.7 d) 2nd bullet, 3.5.4.7
-   --  @req 3.17.3.7, 8.5.2 Table
+   --  @req 3.17.3.7, 8.5.2 Table, 4.4.6.1.13
    procedure Take_Version (S : Session_T; V : M_VERSION_T; Now : Time_Ms_T)
-     with Global => (In_Out => (Links, R.State, Ind, Requesting,
+     with Global => (Input  => Sleeping,
+                     In_Out => (Links, R.State, Ind, Requesting,
                                 Timer_On, Status_List, Status_N)),
           Pre  => R.Usable (S),
           Post => R.Sessions = R.Sessions'Old
@@ -713,11 +717,14 @@ is
          end if;
       else
          --  3.5.3.7 d) second bullet: the driver informed (DMI
-         --  "Trackside not compatible", entry 15)
+         --  "Trackside not compatible", entry 15), not in Sleeping
+         --  (4.4.6.1.13)
          Terminate_Session (S, Now);
          Links (S).Send_154 := True;
-         Show (EVC_DMI_Port.SS_Trackside_Not_Compatible,
-               Natural (EVC_DMI_Port.SS_Event_Start));
+         if not Sleeping then
+            Show (EVC_DMI_Port.SS_Trackside_Not_Compatible,
+                  Natural (EVC_DMI_Port.SS_Event_Start));
+         end if;
       end if;
    end Take_Version;
 
@@ -1468,11 +1475,13 @@ is
       Network.Mode_Changed (To);
       --  3.5.3.4 c): a change reported (4.5.2) that is no End of Mission
       --  (5.5.2) and not out of SB (decision: the start of mission's
-      --  exits from SB are a) and g)); the level and the contact are
-      --  looked at by the next Evaluate (Mode_Session_Order)
+      --  exits from SB are a) and g)), except into Sleeping (4.4.6.1.10
+      --  b): entering and exiting SL in level 2); the level and the
+      --  contact are looked at by the next Evaluate (Mode_Session_Order)
+      Sleeping := To = M_SL;
       if Reports.Mode_Reported (From, To)
         and then not Mission.Ends_Mission (From, To)
-        and then From /= M_SB
+        and then (From /= M_SB or else To = M_SL)
       then
          Mode_Capped := not Mode_Session or else Mode_Capped;
          Mode_Session := True;

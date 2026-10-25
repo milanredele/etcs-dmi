@@ -1398,6 +1398,56 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_EoM;
 
+   --  e6/message-45: Sleeping with the RBC. 4.4.6.1.10 b): in level 2
+   --  the session is opened when entering and when exiting Sleeping, to
+   --  report the change of mode; 4.4.6.1.13: no compatible version with
+   --  the on-board in Sleeping, the reaction of 3.5.3.7 d) 2nd bullet
+   --  (154, the session terminated) without a driver's indication
+   procedure Scenario_Session_Sleeping is
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 0, others => <>));
+      Start_X;
+      --  in Shunting the group's packet 42 stores the contact, no
+      --  session (4.8.4 [3]); then Stand By with the desk closed
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      Run_X (15_000);
+      Stand_X (2_000);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L2);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand_X (1_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_SB and then R.Info (1).State = R.Idle
+             and then R.Contact.Known,
+             "sleeping: SB in level 2, the contact stored, no session "
+             & EVC_Modes.Mode_T'Image (EVC_Core.Mode) & " "
+             & R.Session_State_T'Image (R.Info (1).State));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 1));
+      Stand_X (1_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_SL
+             and then R.Info (1).State = R.Connecting,
+             "sleeping: SL entered in level 2, the session requested "
+             & "(4.4.6.1.10 b) " & EVC_Modes.Mode_T'Image (EVC_Core.Mode)
+             & " " & R.Session_State_T'Image (R.Info (1).State));
+      Establish (1, V => 64);
+      Check (Is_Message (1, 154) and then R.Info (1).State = R.Terminating,
+             "sleeping: no compatible version: 154, the session "
+             & "terminated (4.4.6.1.13, 3.5.3.7 d) 2nd bullet)");
+      Check (not Status_Shown (EVC_DMI_Port.SS_Trackside_Not_Compatible, 0),
+             "sleeping: no driver's indication ""Trackside not "
+             & "compatible"" in SL (4.4.6.1.13)");
+      Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
+      Stand_X (1_000);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 0));
+      Stand_X (1_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_SB
+             and then R.Info (1).State = R.Connecting,
+             "sleeping: SL left in level 2, the session requested "
+             & "(4.4.6.1.10 b) " & EVC_Modes.Mode_T'Image (EVC_Core.Mode)
+             & " " & R.Session_State_T'Image (R.Info (1).State));
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_Sleeping;
+
    ---------------------------------------------------------------------
    --  Phase 3 (e5/session-4): the position reports of 3.6.5
    ---------------------------------------------------------------------

@@ -207,6 +207,7 @@ is
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
    --  @req 3.5.3.4 c), 3.5.3.4 g), 3.5.3.8 b), 3.15.1.3.8 b), 4.10.1.3 Table
+   --  @req 4.4.6.1.10 b)
    procedure Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => EVC_Mission.State),
