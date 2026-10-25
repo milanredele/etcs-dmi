@@ -125,6 +125,51 @@ function Radio_Input (St : Step_T) return Judgement_T is
       end loop;
    end Put_Bits;
 
+   --  The L_MESSAGE of message I of the sequence, its bytes: the 10 bits
+   --  after the 8 of NID_MESSAGE (8.4.4.2)
+   function L_Message (I : Positive) return Natural is
+     (Natural (Seq.Messages (I).Data (2)) * 4
+      + Natural (Seq.Messages (I).Data (3)) / 64);
+
+   --  Whether a packet the step's input line names ("packets 15 21 27
+   --  5 57", an alternative as "72/73") is absent from message I
+   function Packet_Missing (I : Positive) return Boolean is
+      M : Message_T renames Seq.Messages (I);
+      K : Positive := 6;
+
+      function Present (Nid : String) return Boolean is
+        (for some J in 1 .. M.Packet_Count =>
+            Img (Natural (M.Packets (J))) = Nid);
+
+      --  whether no alternative of word Word ("72/73") is present
+      function Absent (Word : String) return Boolean is
+         From : Positive := Word'First;
+      begin
+         for C in Word'Range loop
+            if Word (C) = '/' or else C = Word'Last then
+               if Present (Word (From .. (if Word (C) = '/' then C - 1
+                                          else C)))
+               then
+                  return False;
+               end if;
+               From := C + 1;
+            end if;
+         end loop;
+         return True;
+      end Absent;
+   begin
+      if W (5) /= "packets" then
+         return False;
+      end if;
+      while W (K) /= "" and then not Has (W (K), "=") loop
+         if Absent (W (K)) then
+            return True;
+         end if;
+         K := K + 1;
+      end loop;
+      return False;
+   end Packet_Missing;
+
    function Get_Bits (Data : B.Byte_Array; At_Bit, Width : Natural)
      return Unsigned_64
    is
@@ -292,6 +337,22 @@ begin
       elsif not Seq.Messages (Msg).Has_Bits then
          return NJ (R_Extractor, "RTM message " & Nid
                     & " refused by the extractor");
+      elsif (Seq.Messages (Msg).Bits + 7) / 8 < L_Message (Msg)
+        and then Packet_Missing (Msg)
+      then
+         --  8.4.4.2: L_MESSAGE, the 10 bits after NID_MESSAGE, counts
+         --  the message's bytes; fewer bits than that, with a packet the
+         --  step names absent, are a message truncated by the extraction
+         --  (3131100_02 step 71: 253 bits for 57 bytes, packets 5 and 57
+         --  missing), not given to the on-board, which would refuse it
+         --  (8.4.4.2.1) and fail a later step for the sequence's data;
+         --  decision: a short message with all its packets is given (the
+         --  wrong L_MESSAGE of 8040400_01 step 65 is the step's purpose)
+         return NJ (R_S076_Defect, "RTM message " & Nid & " of"
+                    & Natural'Image (Seq.Messages (Msg).Bits)
+                    & " bits for L_MESSAGE"
+                    & Natural'Image (L_Message (Msg))
+                    & " (truncated in the extraction)");
       end if;
       declare
          M     : Message_T renames Seq.Messages (Msg);
