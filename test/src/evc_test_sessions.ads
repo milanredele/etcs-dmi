@@ -94,5 +94,7 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_Stamp_Increment;
    --  3.16.3.4.5 a)
    procedure Scenario_Session_NVCONTACT_Values;
+   --  4.8.3 [14], [15], 4.8.4 [8]
+   procedure Scenario_Session_Order_Rows;
 
 end EVC_Test_Sessions;

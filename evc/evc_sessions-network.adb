@@ -468,21 +468,43 @@ is
    end Produce;
 
    --  3.5.6.7 a) to d) (decision 5)
-   function Ready return Boolean is
-     (case R.Network.Net_Type is
+   --  3.5.6.7 a) to d) for the Radio Network type T, GSMR telling
+   --  whether a GSM-R Mobile Terminal is registered to the network
+   function Ready_For (T : EVC_Config.Network_Type_T; GSMR : Boolean)
+     return Boolean
+   is
+     (case T is
          when EVC_Config.FRMCS =>
             FRMCS_Registered,
          when EVC_Config.GSMR =>
-            GSMR_Registered,
+            GSMR,
          when EVC_Config.FRMCS_GSMR =>
            (case Systems is
                when EVC_Config.FRMCS_Only => FRMCS_Registered,
-               when EVC_Config.GSMR_Only  => GSMR_Registered,
+               when EVC_Config.GSMR_Only  => GSMR,
                when EVC_Config.Both_Systems =>
                  (if One_Radio
-                  then FRMCS_Registered or else GSMR_Registered
-                  else FRMCS_Registered and then GSMR_Registered)))
+                  then FRMCS_Registered or else GSMR
+                  else FRMCS_Registered and then GSMR)))
+     with Global => (Systems, One_Radio);
+
+   function Ready return Boolean is
+     (Ready_For (R.Network.Net_Type, GSMR_Registered))
      with Refined_Global => (Reg, Systems, One_Radio, R.State);
+
+   --  decision: registered to the ordered GSM-R network when a mobile is
+   --  registered, no registration of it is due and the network stored
+   --  (or the configured default, Power_Up) is the ordered one; received
+   --  together: the order taken in the cycle of the session order, not
+   --  applied yet (Evaluate applies it after the session order)
+   function Order_Unregistered return Boolean is
+     (Ordered and then Ord_Type <= 2
+      and then not Ready_For
+        (EVC_Config.Network_Type_T'Val (Ord_Type),
+         (for some S in R.Session_T => Reg (S) and then not Due (S))
+         and then R.Network.NID_MN = Ord_MN))
+     with Refined_Global => (Ordered, Ord_Type, Ord_MN, Reg, Due, Systems,
+                             One_Radio, R.State);
 
    function Radio_Bits return Natural is
      (EVC_Config.Network_Type_T'Pos (R.Network.Net_Type) + 1
