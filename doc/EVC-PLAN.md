@@ -12233,15 +12233,26 @@ step 74 `model` (S256875a4, B2041: the window of the optional step 58
 drives the train to 944 m, BG3d of 890 m is read at 952 m and its MA,
 EOA 2390 m, is not in force; our EOA stays 1536 m, the SB at 1399 m and
 the trip at 1694 m follow). Left untraced in `~[gamma train]` and B1960:
-3131040_01 step 56, _73 step 64; 4100103_24 step 87 not traced (its two
-workbooks carry EBCL0 and EBCL1, a candidate is the one Kdry_rst set
-for every M_NVEBCL).
+3131040_01 step 56, _73 step 64.
 
 Outcome: 1130 / 1073 / 987 -> 1130 / 1070 / 990, recorded: 3131040_99
 failed 59 -> passed; _96 failed 53 -> blocked 53 placement; _85 failed
 61 -> blocked 58 placement (step 58 passed before only because our SBI
 was 2.5 s further out); 3130235_05 passed -> blocked 62 placement
-(traced above). Left at the bound (120 calls): item 2's 4100103_24,
-item 3 (the 60 SV21 / SV22 sequences blocked for the reaction times,
+(traced above). Left at the bound (120 calls): item 3 (the 60 SV21 / SV22 sequences blocked for the reaction times,
 rows 85 and 86) and item 4 (the curve probe on a Gamma sheet) not
 started.
+
+Resumed inside the budget, 4100103_24 step 87 (Indication expected at
+432 m with the EOA 615 m ahead at 59 km/h, in OS after the driver chose
+slippery rail): the coordinator's candidate, the Kdry_rst of a second
+sheet, does not apply (the two sheets EBCL0 and EBCL1 were 3130237_01's;
+this sequence has one workbook, EBCL9 with Kdry_rst 1, matching BG1d's
+M_NVEBCL 9; BG8d's M_NVEBCL 1 lies at 700 m, beyond the step). The
+workbook computes its EBD at 0.7 m/s2 (191.85 m at 59 km/h is 134.3 m /
+0.7, the A_NVMAXREDADH2 / 3 of BG1d, 3.13.6.2.1.3) and places the
+Indication at 506 m: the step's location is 109 m off its own workbook
+(at A_NVMAXREDADH1 0.4 it would be about 730 m), and ours, still in
+ceiling speed monitoring at 498 m with the EOA 548 m ahead, is
+consistent with the workbook: triaged `s076` (Sc70786e6, one line for
+this family). No code change; the runner unchanged.
