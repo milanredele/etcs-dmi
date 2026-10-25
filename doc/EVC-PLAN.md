@@ -11904,10 +11904,21 @@ placement (3131040_15, _33, _35); 3131050_21 83 -> 82; passed now:
 left: 60, all SV21/SV22 (the old tool's sheets). Families: `~[gamma
 train]` 14 signatures, 10 first failures (category curves); the gamma
 sequences' status steps under `~[workbook train]` and `~[release
-speed`. Traced: 3130234_02 step 58 (ours 92 m nearer at 75 km/h): the
-sequence switches off the eddy current brake for the emergency brake
-only (M_TRACKCOND 10), the workbook's inhibition area applies
-combination 2's A_brake_service (0.6 against 0.8): the sequence's data
-against 3.13.6.3.1.4. B100 done; B1960 the families to trace. Left:
+speed`. B100 done; B1960 the families to trace. Left:
 item 3 (B1881, `test/tools/evc_config.py` version 2), not started at
 the bound.
+
+Resumed inside the budget, the four sequences that went from passed
+to failed: 3130234_03 and _06 (step 58, ours 104 m nearer at 75 km/h)
+failed because the bench signalled no special brake active, so the
+on-board used combination 0 and combination 1's models everywhere
+(3.13.5.2, `EVC_Braking.Build_Brakes`), while the workbook applies its
+combination 2 in its brake inhibition area (M_TRACKCOND 8 and 10).
+`S076_Bench.Power_On` now signals the special brakes of combination 1
+active on the TIU for a gamma train. Both pass, and 3130234_02 is now
+blocked by placement: the first reading of it as the sequence's data
+was wrong. 3130237_01 step 74 is traced to the symptom only (an SB
+intervention at 1399 m, then a trip at 1694 m) and 4100103_24 step 87
+is not traced (TSM Indication expected at 432 m, ours still CSM at
+498 m): both are in B1960. The runner 1125 / 1092 / 973 -> 1127 / 1089 / 974,
+recorded.

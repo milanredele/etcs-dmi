@@ -988,6 +988,17 @@ package body S076_Bench is
       DMI_Core.Initialise;
       Is_Powered := True;
       Was_Powered := True;
+      --  the special brakes of a gamma train active (their status
+      --  counts, 3.13.5.2): the combination in use is the train's, or
+      --  combination 2 of the sheet where a track condition inhibits one
+      if Gamma_Installed then
+         for B in 6 .. 8 loop
+            if Gamma_Sheet.Brakes (1, B) then
+               TIU_Input (TIU_Signal_T'Pos (Regenerative_Brake_Active) + 1
+                            + (B - 6), 1);
+            end if;
+         end loop;
+      end if;
       Pending_Count := 0;
       Now := (others => <>);
       Last_Mode := No_Value;

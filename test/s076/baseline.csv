@@ -562,10 +562,10 @@ Subset-076-6-3_3130234_01_v400_SV22,passed,0,-
 Subset-076-6-3_3130234_01_v400_SV30,passed,0,-
 Subset-076-6-3_3130234_02_v400_SV21,blocked,58,Gamma
 Subset-076-6-3_3130234_02_v400_SV22,blocked,58,Gamma
-Subset-076-6-3_3130234_02_v400_SV30,failed,58,Sc80142bd
+Subset-076-6-3_3130234_02_v400_SV30,blocked,58,placement
 Subset-076-6-3_3130234_03_v400_SV21,passed,0,-
 Subset-076-6-3_3130234_03_v400_SV22,passed,0,-
-Subset-076-6-3_3130234_03_v400_SV30,failed,58,S94fd7205
+Subset-076-6-3_3130234_03_v400_SV30,passed,0,-
 Subset-076-6-3_3130234_04_v400_SV21,blocked,39,S076-defect
 Subset-076-6-3_3130234_04_v400_SV22,blocked,39,S076-defect
 Subset-076-6-3_3130234_04_v400_SV30,blocked,39,S076-defect
@@ -574,7 +574,7 @@ Subset-076-6-3_3130234_05_v400_SV22,failed,50,S256875a4
 Subset-076-6-3_3130234_05_v400_SV30,failed,50,S256875a4
 Subset-076-6-3_3130234_06_v400_SV21,passed,0,-
 Subset-076-6-3_3130234_06_v400_SV22,passed,0,-
-Subset-076-6-3_3130234_06_v400_SV30,failed,58,S22ef3c97
+Subset-076-6-3_3130234_06_v400_SV30,passed,0,-
 Subset-076-6-3_3130234_07_v400_SV21,passed,0,-
 Subset-076-6-3_3130234_07_v400_SV22,passed,0,-
 Subset-076-6-3_3130234_07_v400_SV30,passed,0,-
