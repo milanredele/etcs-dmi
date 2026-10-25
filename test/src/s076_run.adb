@@ -2176,6 +2176,36 @@ package body S076_Run is
       end if;
    end Reach_Border_Rear;
 
+   --  B2200: a reach-point of the min safe antenna whose comment says the
+   --  train overpasses the EoA/LoA with it (the trip of 4.6.3 condition
+   --  [12]), on a train moving forward towards an EOA the on-board shows:
+   --  the event is the on-board's passage of its EOA, the step's location
+   --  is nominal (3131040_17 step 61 at 1455 m, the EOA of its packet 12
+   --  at 1500 m); the train runs on until the min safe antenna is past the
+   --  EOA, at most 100 m beyond the step's location
+   procedure Reach_EOA_Antenna (St : Step_T) is
+   begin
+      if not (Same (W (4), "min-safe-antenna")
+              and then Has (Image (St.Comment), "overpasses EoA")
+              and then B.Direction >= 0)
+      then
+         return;
+      end if;
+      for Round in 1 .. 4 loop
+         declare
+            Ch : constant B.Change_T := B.Current;
+            --  the EOA ahead of the min safe antenna, cm
+            Ahead : constant Integer_64 :=
+              Ch.D_EOA + B.Front_Offset + B.Doubt_Under;
+         begin
+            exit when not Ch.Shown or else not Ch.EOA_Kind
+              or else Ahead < 0
+              or else B.Position + Ahead > St.Dist_Cm + 10_000;
+            Drive_To (B.Position + Ahead + 100);
+         end;
+      end loop;
+   end Reach_EOA_Antenna;
+
    function ODO_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
    begin
@@ -2212,6 +2242,7 @@ package body S076_Run is
                exit when B.Position + Off >= St.Dist_Cm - 50;
             end loop;
             Reach_Border_Rear (St);
+            Reach_EOA_Antenna (St);
             return Pass ("ODO " & W (4) & " at" & Img (Integer (St.Dist_Cm)));
          end;
       elsif Same (Kind, "reach") then
