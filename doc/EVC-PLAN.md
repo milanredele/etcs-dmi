@@ -12612,3 +12612,25 @@ step's own. 3130237_01 SV30 passes (failed 74 before), SV21 and SV22 go
 on to step 77 (S5e648ecf: JRU status 2 expected at 1792 m, ours 1, our
 permitted 80 km/h where SV30's is 72 with the same target: B2160, the
 versions' data to compare); no other sequence moved.
+
+**B2040, the train that keeps its speed to the EBI**: the corpus first
+(SV21, SV22, SV30): an expected service brake followed, before any input
+step, by an expected emergency brake at a later location occurs in
+3131040_17, _53 and _54 of each version; _53 and _54 carry the comment
+"SB must be disabled" (the existing rule disables the bench's service
+brake for the sequence), 3131040_17 alone does not (step 56 at 1088 m,
+step 57 at 1265 m). A wider pattern (33 SV30 sequences with an EB step
+anywhere after an SB step) is mostly other features with inputs between;
+the curve sequences that keep their speed by an ODO speed input between
+(3131040_88, _89, _90) pass already. The rule
+(`S076_Run.EB_After_SB`, beside the comment in `Run_Loaded`): such a
+pair disables the bench's service brake for the sequence. 3131040_17
+step 57 passes in the three versions (our EB at 1265 m at 68 km/h); the
+sequence now fails at step 62 (S27eb0678: TR expected at 1455 m, ours FS
+at 1484 m with the EOA 12 m ahead, our EB revoked while moving: B2161).
+Runner 1158 / 1080 / 952, 3 improvements, recorded.
+
+Left at the bound: item 4, the traces of B1960 (3131040_01 step 56,
+3131040_73 step 64, the status steps of 3130700_03, 3131040_75, _77,
+3131050_17, _21, 4100103_17), not started; B2160 (3130237_01 SV21 /
+SV22 step 77) and B2161 (3131040_17 step 62) to trace.

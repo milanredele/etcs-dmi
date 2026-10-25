@@ -6405,6 +6405,30 @@ package body S076_Run is
       return False;
    end Next_Group_Reached;
 
+   --  Whether step I expects the service brake commanded and a later
+   --  step, before the next input step, the emergency brake at a
+   --  location further on: the sequence's train keeps its speed under
+   --  the service brake to the EBI, as the comment "SB must be disabled"
+   --  says elsewhere (3131040_17 step 56 at 1088 m, step 57 at 1265 m;
+   --  the only such pair of the corpus without that comment)
+   function EB_After_SB (I : Positive) return Boolean is
+   begin
+      if not Starts (Image (Seq.Steps (I).Line),
+                     "expect TIU service-brake commanded")
+      then
+         return False;
+      end if;
+      for K in I + 1 .. Seq.Step_Count loop
+         exit when Seq.Steps (K).IO = Input;
+         if Starts (Image (Seq.Steps (K).Line),
+                    "expect TIU emergency-brake commanded")
+         then
+            return Seq.Steps (K).Dist_Cm > Seq.Steps (I).Dist_Cm;
+         end if;
+      end loop;
+      return False;
+   end EB_After_SB;
+
    --  B176: how far the train was driven on past the sequence's
    --  location to our change of the limit's kind (cm, 0 when not)
    Driven_Cm : Integer_64 := 0;
@@ -6674,7 +6698,9 @@ package body S076_Run is
       --  for the brake percentage entered (the workbook's, else 109)
       B.Set_Brake_Percentage (Brake_Percentage);
       for I in 1 .. Seq.Step_Count loop
-         if Has (Image (Seq.Steps (I).Comment), "SB must be disabled") then
+         if Has (Image (Seq.Steps (I).Comment), "SB must be disabled")
+           or else EB_After_SB (I)
+         then
             B.Set_Service_Brake (False);
          end if;
          --  B620: the odometer states 1 % of the distance since the LRBG
