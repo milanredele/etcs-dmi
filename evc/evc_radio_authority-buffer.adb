@@ -16,6 +16,9 @@ is
       Data    : Data_T := (others => 0);
       --  4.8.2.1 c): held from the Accepting RBC (EVC_Sessions)
       Accepting : Boolean := False;
+      --  4.8.5.2.1: a general message whose packets on the rows R [2]
+      --  are the set kept, the others taken at the reception
+      Part      : Boolean := False;
    end record;
 
    --  the oldest first
@@ -116,9 +119,12 @@ is
 
    function Oldest_Accepting return Boolean is (Slots (1).Accepting);
 
+   function Oldest_Part return Boolean is (Slots (1).Part);
+
    procedure Store (S         : EVC_Radio.Session_T;
                     Data      : EVC_Bytes.Byte_Array;
-                    Accepting : Boolean := False)
+                    Accepting : Boolean := False;
+                    Part      : Boolean := False)
      with Refined_Global => (In_Out => (Slots, Count))
    is
    begin
@@ -132,7 +138,8 @@ is
       end if;
       Count := Count + 1;
       Slots (Count) := (Session => S, Length => Data'Length, Data => <>,
-                        Accepting => Accepting);
+                        Accepting => Accepting, Part => Part);
+
       Slots (Count).Data (1 .. Data'Length) := Data;
    end Store;
 

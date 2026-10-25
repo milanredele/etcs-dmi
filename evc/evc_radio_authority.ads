@@ -58,12 +58,16 @@ is
    --  EVC_Position.Radio_Origin), for the stored information of the
    --  cycle (EVC_Stored_Information.Evaluate).
    --  Accepting: the message is the Accepting RBC's, released from the
-   --  handover buffer of EVC_Sessions (4.8.2.1 c) exception 2)
+   --  handover buffer of EVC_Sessions (4.8.2.1 c) exception 2).
+   --  Part: a general message released from the transition buffer as a
+   --  set of information (Released_Part): only its packets on the rows
+   --  R [2] taken, the others were at the reception (4.8.5.2.1)
    --  @req 3.8.2.3.2 b), 3.8.4.2.1, 3.8.4.2.1 a), 3.8.6.1, 4.8.3.1.1 Table
    --  @req 4.8.4.2 Table, 4.8.5.6, 4.8.5.6 b), 4.8.3.1.1 Table-footnote [3]
    procedure Take_Message (S         : EVC_Radio.Session_T;
                            Now_Ms    : EVC_Radio.Time_Ms_T;
-                           Accepting : Boolean := False)
+                           Accepting : Boolean := False;
+                           Part      : Boolean := False)
      with Global => (In_Out => (State, EVC_Origins.State,
                                 EVC_Radio_Info.State),
                      Input  => (EVC_Received.Store, EVC_Position.State,
@@ -87,7 +91,30 @@ is
      with Global => (In_Out => State, Input => EVC_Received.Store),
           Pre  => EVC_Ports.Valid_RTM (Data);
 
+   --  1. 4.8.5.2.1, 4.8.3 [2], 4.8.1.3.1: the last message (EVC_Received,
+   --  its bytes Data, of the session S) is a general message received
+   --  outside level 2 with packets on the rows R [2] that the first
+   --  filter stores (level 2 announced, or a level transition order in
+   --  the same message: step 1, as if announced): kept in the transition
+   --  buffer as a set of information, its other packets taken at once
+   --  (Take_Message). Decision: the message is kept whole and the row
+   --  applied again at the release, only its packets on the rows R [2]
+   --  taken then (Released_Part); with an order in the message, step 2
+   --  is the buffer's: released at once when the order makes the level
+   --  2 in this cycle, deleted when it is for another level (4.8.5.4 a)
+   --  @req 4.8.5.1, 4.8.1.3.1
+   procedure Keep_Level_2_Part (S    : EVC_Radio.Session_T;
+                                Data : EVC_Bytes.Byte_Array)
+     with Global => (In_Out => State, Input => EVC_Received.Store),
+          Pre  => EVC_Ports.Valid_RTM (Data);
+
+   --  4.8.5.2.1: of the message Take_Released gives next only the
+   --  packets on the rows R [2] are the set (Keep_Level_2_Part)
+   function Released_Part return Boolean
+     with Global => State;
+
    --  4.8.5.1: the messages the transition buffer keeps
+
    Buffer_Size : constant := 3;
 
    --  The messages in the transition buffer

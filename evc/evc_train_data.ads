@@ -187,10 +187,12 @@ is
    --  the configured default set of F in force, no valid Train Data;
    --  3.18.3.2.4: its train length is the sum of the max safe consist
    --  lengths in front of and in rear of the engine (Consist_Length,
-   --  following a later safe consist length input)
+   --  following a later safe consist length input); with a gamma train
+   --  (F.Model) the braking models of the installation's gamma train
+   --  (EVC_Config.Gamma_Models)
    --  @req 3.18.3.9, 3.18.3.2.4
    procedure Start_Manoeuvre_Set (F : EVC_Config.Fixed_Train_T)
-     with Global => (In_Out => State),
+     with Global => (In_Out => State, Input => EVC_Config.State),
           Post => Manoeuvre_Set and then not Valid
                   and then Length = Consist_Length;
 

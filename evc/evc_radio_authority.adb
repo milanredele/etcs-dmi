@@ -327,23 +327,53 @@ is
 
    use type EVC_Radio_Acceptance.Verdict_T;
 
-   --  The last message is a message 24 with an axle load speed profile
-   --  or a permitted braking distance (packets 51, 52)
-   function Carries_Level_2_Track return Boolean is
-     (EVC_Received.Last_Kind = ETCS_Message_Catalogue.Track_M24
-      and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
-                  EVC_Received.Last_Packet_Kind (I)
-                    in ETCS_Catalogue.Track_P51 | ETCS_Catalogue.Track_P52))
+   --  4.8.1.3.1: the last message carries a level transition order
+   --  (packet 41 or 46)
+   function Order_In_Last return Boolean is
+     (for some I in 1 .. EVC_Received.Last_Packet_Count =>
+        EVC_Received.Last_Packet_Kind (I)
+          in ETCS_Catalogue.Track_P41 | ETCS_Catalogue.Track_P46)
      with Global => EVC_Received.Store;
 
-   --  decision: a message 24 with packet 51 or 52 kept for level 2
-   --  (4.8.3 [2]) is kept whole; its other packets of the track
-   --  description carry R [2] as well
+   --  4.8.3, From RBC: R [2] outside level 2, A in level 2, for the
+   --  packets a general message hands to their own units: linking (5,
+   --  EVC_Position.Take_Radio_Linking), plain and fixed text (73, 74,
+   --  EVC_Text_Messages.Take_Radio), geographical position (79,
+   --  EVC_Position.Take_Radio_Geo)
+   function Own_Unit_Row (P : ETCS_Catalogue.Packet_Kind_T) return Boolean
+   is (P in ETCS_Catalogue.Track_P5 | ETCS_Catalogue.Track_P73
+          | ETCS_Catalogue.Track_P74 | ETCS_Catalogue.Track_P79);
+
+   --  4.8.3 [2] for the packets of the last message, a general message:
+   --  one of them stored by the first filter of its row (Level_2_Row, or
+   --  a row of the units' own packets)
+   function Holds_Level_2_Part return Boolean is
+     (EVC_Received.Last_Kind = ETCS_Message_Catalogue.Track_M24
+      and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
+                  EVC_Radio_Acceptance.Packet_Filter
+                    (EVC_Received.Last_Packet_Kind (I),
+                     Buffer.Context.Level_Valid, Buffer.Context.Level,
+                     Buffer.Context.L2_Announced, Order_In_Last)
+                  = EVC_Radio_Acceptance.Stored
+                  or else (Own_Unit_Row (EVC_Received.Last_Packet_Kind (I))
+                           and then not (Buffer.Context.Level_Valid
+                                         and then Buffer.Context.Level = L2)
+                           and then (Buffer.Context.L2_Announced
+                                     or else Order_In_Last))))
+     with Global => (Buffer.State, EVC_Received.Store);
+
    function To_Buffer return Boolean is
-     (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored
-      or else (Carries_Level_2_Track
-               and then EVC_Radio_Acceptance.Level_2_Track_Filter
-                          (Buffer.Context) = EVC_Radio_Acceptance.Stored));
+     (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored);
+
+   procedure Keep_Level_2_Part (S    : EVC_Radio.Session_T;
+                                Data : EVC_Bytes.Byte_Array) is
+   begin
+      if Holds_Level_2_Part then
+         Buffer.Store (S, Data, Part => True);
+      end if;
+   end Keep_Level_2_Part;
+
+   function Released_Part return Boolean is (Buffer.Oldest_Part);
 
    procedure Store_Message (S         : EVC_Radio.Session_T;
                             Data      : EVC_Bytes.Byte_Array;
@@ -492,13 +522,16 @@ is
    --  the time stamp of the message; Action: how the stored information
    --  takes it (Shortening: message 9, 3.8.6); Reversed: for the train
    --  orientation after the shift of a Supervised Manoeuvre
-   --  authorisation in the opposite direction (4.4.21.1.7)
-   procedure Take_Stored_Information (Shifted : Boolean;
+   --  authorisation in the opposite direction (4.4.21.1.7); Part: a set
+   --  of information released from the transition buffer (Take_Message)
+   procedure Take_Stored_Information
+ (Shifted : Boolean;
                                       Now_Ms  : EVC_Radio.Time_Ms_T;
                                       Action  : EVC_Radio_Info.Action_T :=
                                         EVC_Radio_Info.Packets;
                                       Accepting : Boolean := False;
-                                      Reversed  : Boolean := False)
+                                      Reversed  : Boolean := False;
+                                      Part      : Boolean := False)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State, Emergency),
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State))
@@ -518,6 +551,7 @@ is
       Sl.Start_Ms := EVC_Radio.Time_Of_Stamp (Stamp_Of_Last, Now_Ms);
       Sl.Action := Action;
       Sl.From_Accepting := Accepting;
+      Sl.Level_2_Part := Part;
       --  3.10.2.4: no MA while an emergency stop is not revoked
       Sl.MA_Allowed := not Any_Stop;
       --  3.10.2.2: the stop location of message 15 from the shifted
@@ -861,9 +895,45 @@ is
         Natural (EVC_Received.Last_Value (V_SM) mod 128);
    end Take_SM_Authorisation;
 
+   --  A general message (24): one of its packets is taken through the
+   --  stored information in the context C (Take_Message)
+   function General_Taken (C : EVC_Radio_Acceptance.Context_T)
+     return Boolean is
+     (for some I in 1 .. EVC_Received.Last_Packet_Count =>
+          EVC_Received.Last_Packet_Kind (I)
+            in ETCS_Catalogue.Track_P73
+               | ETCS_Catalogue.Track_P74
+               | ETCS_Catalogue.Track_P79
+               | ETCS_Catalogue.Track_P41
+               | ETCS_Catalogue.Track_P46
+               | ETCS_Catalogue.Track_P64
+               | ETCS_Catalogue.Track_P67
+               | ETCS_Catalogue.Track_P71
+               | ETCS_Catalogue.Track_P5
+          or else (EVC_Received.Last_Packet_Kind (I)
+                     in ETCS_Catalogue.Track_P21
+                      | ETCS_Catalogue.Track_P27
+                      | ETCS_Catalogue.Track_P39
+                      | ETCS_Catalogue.Track_P40
+                      | ETCS_Catalogue.Track_P65
+                      | ETCS_Catalogue.Track_P66
+                      | ETCS_Catalogue.Track_P68
+                      | ETCS_Catalogue.Track_P69
+                      | ETCS_Catalogue.Track_P70
+                      | ETCS_Catalogue.Track_P88
+                      | ETCS_Catalogue.Track_P180
+                   and then not C.Train_Data_Unacked)
+          or else (EVC_Received.Last_Packet_Kind (I)
+                     in ETCS_Catalogue.Track_P51
+                      | ETCS_Catalogue.Track_P52
+                   and then EVC_Radio_Acceptance.Level_2_Track_Filter
+                              (C) = EVC_Radio_Acceptance.Accepted))
+     with Global => EVC_Received.Store;
+
    procedure Take_Message (S         : EVC_Radio.Session_T;
                            Now_Ms    : EVC_Radio.Time_Ms_T;
-                           Accepting : Boolean := False)
+                           Accepting : Boolean := False;
+                           Part      : Boolean := False)
    is
       Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
         EVC_Received.Last_Kind;
@@ -942,35 +1012,7 @@ is
       elsif Kind = ETCS_Message_Catalogue.Track_M34 then
          Take_TAF (S);
       elsif Kind = ETCS_Message_Catalogue.Track_M24
-        and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
-                    EVC_Received.Last_Packet_Kind (I)
-                      in ETCS_Catalogue.Track_P73
-                         | ETCS_Catalogue.Track_P74
-                         | ETCS_Catalogue.Track_P79
-                         | ETCS_Catalogue.Track_P41
-                         | ETCS_Catalogue.Track_P46
-                         | ETCS_Catalogue.Track_P64
-                         | ETCS_Catalogue.Track_P67
-                         | ETCS_Catalogue.Track_P71
-                         | ETCS_Catalogue.Track_P5
-                    or else (EVC_Received.Last_Packet_Kind (I)
-                               in ETCS_Catalogue.Track_P21
-                                | ETCS_Catalogue.Track_P27
-                                | ETCS_Catalogue.Track_P39
-                                | ETCS_Catalogue.Track_P40
-                                | ETCS_Catalogue.Track_P65
-                                | ETCS_Catalogue.Track_P66
-                                | ETCS_Catalogue.Track_P68
-                                | ETCS_Catalogue.Track_P69
-                                | ETCS_Catalogue.Track_P70
-                                | ETCS_Catalogue.Track_P88
-                                | ETCS_Catalogue.Track_P180
-                             and then not C.Train_Data_Unacked)
-                   or else (EVC_Received.Last_Packet_Kind (I)
-                              in ETCS_Catalogue.Track_P51
-                               | ETCS_Catalogue.Track_P52
-                            and then EVC_Radio_Acceptance.Level_2_Track_Filter
-                                       (C) = EVC_Radio_Acceptance.Accepted))
+        and then General_Taken (C)
       then
          --  3.12.3, 3.6.2.2.2 c): a general message with a text message,
          --  to the stores through EVC_Radio_Info referred to its LRBG (the
@@ -998,7 +1040,9 @@ is
          --  kept for level 2 when announced, To_Buffer); or linking
          --  (packet 5, EVC_Position.Take_Radio_Linking).
          --  Not taken: packets 3, 57, 138, 139
-         Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
+         Take_Stored_Information (False, Now_Ms, Accepting => Accepting,
+                                  Part => Part);
+
       end if;
    end Take_Message;
 

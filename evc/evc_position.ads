@@ -951,8 +951,12 @@ is
    --  LRBG); a location reference ahead of the SOLR (message 33 shifted
    --  forward) is not taken. The country of a first linked group without
    --  Q_NEWCOUNTRY is the SOLR's (the relocated origin keeps no other).
+   --  From the message First of the table on (4.8.5.5: the sets of the
+   --  transition buffer released at the level 2 transition, after the
+   --  cycle's own messages; 4.8.3, Linking From RBC: A in level 2, R [2]
+   --  in the other levels, the caller decides Accepted)
    --  @req 4.8.1.6, 4.8.4.2 Table
-   procedure Take_Radio_Linking (Accepted : Boolean)
+   procedure Take_Radio_Linking (Accepted : Boolean; First : Positive := 1)
      with Global => (In_Out => State,
                      Input  => (EVC_Radio_Info.State, EVC_Origins.State,
                                 EVC_Odometry.State)),

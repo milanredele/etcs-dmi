@@ -12006,3 +12006,79 @@ intervention at 1399 m, then a trip at 1694 m) and 4100103_24 step 87
 is not traced (TSM Indication expected at 432 m, ours still CSM at
 498 m): both are in B1960. The runner 1125 / 1092 / 973 -> 1127 / 1089 / 974,
 recorded.
+### The stored radio information: the three sets of the transition buffer, the row applied to the packets of their own units, the Supervised Manoeuvre default train of a gamma installation (e6/radio-stored) (2026-10-25)
+
+**The three sets (B1920 done).** Premise checked: the buffer
+(`EVC_Radio_Authority.Buffer`) already kept three messages, the oldest
+replaced, deleted by 4.8.5.4 a) to c) and released at the transition;
+what it did not keep was a general message whose packets on the rows R
+[2] of Table 4.8.3 the first filter stores (`Packet_Filter` Stored):
+`EVC_Stored_Information.Take_Radio` took them at once. Now
+`EVC_Radio_Authority.Keep_Level_2_Part` keeps such a message 24 as a set
+(level 2 announced, or a level transition order in the message,
+4.8.1.3.1 step 1), `Take_Radio` no longer takes a Stored packet, and at
+the release (`Released_Part`, the slot's `EVC_Radio_Info.Slot_T.Level_2_Part`)
+only the packets on the rows R [2] are taken. Decision: the message is
+kept whole and the row applied again at the release (4.8.5.2.1: the set
+is the part neither accepted nor rejected at once); its other packets
+are taken at the reception. Decision: with an order in the message, step
+2 of 4.8.1.3.1 is the buffer's own: released in the same cycle when the
+order makes the level 2 (`Release_Transition_Buffer`), deleted at the
+next `Buffer.Update` when it is for another level (4.8.5.4 a). The
+special case of a message 24 with 51 or 52 kept whole and not taken
+(e5/buffer-radio) is folded into it: its other packets are now taken at
+once. `EVC_Radio_Info.Max_Messages` 2 -> 5: three released sets beside
+the cycle's two (the third released message was refused before, also
+for the messages 3 of `Scenario_Transition_Buffer`; 4.8 KB of static
+storage). Scenario `EVC_Test_Authority.Scenario_Buffer_Three_Sets`
+(adhesion, track condition, level crossing, then a PBD replacing the
+adhesion; none used before the transition; the three taken at it, the
+replaced one not; an order to level 0 by a balise group deletes a set).
+Edits outside the units: `EVC_Radio_Info` (the slot's flag, the
+constant), `EVC_Core.Inputs` (the caller of `To_Buffer` and
+`Read_Released_Messages`). Runner 1115 / 1076 / 999 before and after, 0
+regressions, no improvement.
+
+**The row applied to the packets of their own units (B1921 done).** The
+rows Linking, Plain Text, Fixed Text and Geographical Position From
+RBC read R [2] in levels 0, NTC and 1 and A in level 2. The texts (73,
+74) were taken in every level: `EVC_Text_Messages.Take_Radio` has an
+`Accepted` parameter, the cycle's call gives level 2, the release's
+True. The linking was already taken in level 2 only, but the linking of
+a released set was lost (`Take_Radio_Linking` runs before the release
+and the cycle empties the table): `EVC_Position.Take_Radio_Linking`
+takes a `First` and the release calls it for the released messages.
+Decision for packet 79: the transition buffer is its keeper; a packet
+79 stored for level 2 is in the set of its message
+(`EVC_Radio_Authority.Own_Unit_Row` makes a message 24 with 5, 73, 74 or
+79 a set), so `EVC_Core.Stored.Take_Radio_Geo` hands the position
+Rejected for Stored and the position's own keeper is no longer used by
+the radio (B1980). `EVC_Test_Sessions.Scenario_Text_Ack_Report` now runs
+in level 2 (its texts by radio in level 1 are rejected). Scenario
+`EVC_Test_Authority.Scenario_Own_Units_Stored` (a fixed text and a
+packet 79 in level 1: rejected; with level 2 announced: kept, taken at
+the transition); `EVC_Test_Position.Scenario_Geo_By_Radio` passes
+unchanged through the buffer. The linking of a released set has no
+scenario (B1980). The row 4.8.3.1.1 Table had a stray eleventh column
+(a comma outside the quotes), folded into its note. Runner 1115 / 1076
+/ 999, 0 regressions (47 steps more failed after a first failure).
+
+**The Supervised Manoeuvre default train of a gamma installation (B1880
+done).** Premise checked: `EVC_Train_Data` already depends on
+`EVC_Config`; `Start_Manoeuvre_Set (F)` copied `F.Model` with empty
+curves. It now takes the installation's models with
+`EVC_Config.Gamma_Models` when `F.Model` is Gamma, as
+`EVC_Mission.Train_Data_Of` does (its Global reads `EVC_Config.State`;
+the caller `EVC_Core.Modes.Adjust_For_Manoeuvre` already did). Checked
+at the end of `EVC_Test_Config.Config_Gamma_Train` (the gamma image of
+that scenario: the SM default set with the installation's curves and
+times, not valid Train Data; a test unit outside the brief's list,
+because the gamma sample image is built there). Row 3.18.3.9's note
+names it.
+
+Rows: 4.8.5.1, 4.8.5.3, 4.8.5.4 a), 4.8.5.5, 4.8.1.3.1, 4.8.3.1.1 Table
+and 3.18.3.9 re-read and noted (done, 4.8.3.1.1 Table partial as
+before); 4.8.5.6 and 4.8.5.7 unchanged (the sets are judged in level 2
+as new messages before the mode machine). Left: B1980 (a scenario for
+the linking of a released set; the position's unused keeper of packet
+79).

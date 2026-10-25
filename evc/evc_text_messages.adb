@@ -523,13 +523,16 @@ is
    --  the estimated position of the LRBG their message names (its origin
    --  in EVC_Origins; none, the message is not taken: the stored
    --  information records it), kept until the next Evaluate stores them
-   procedure Take_Radio (First : Positive := 1)
+   procedure Take_Radio (First : Positive := 1; Accepted : Boolean := True)
      with Refined_Global => (Input  => (EVC_Radio_Info.State,
                                         EVC_Origins.State),
                              In_Out => (Pending, Pending_N))
    is
       use type ETCS_Catalogue.Packet_Kind_T;
    begin
+      if not Accepted then
+         return;
+      end if;
       for I in First .. EVC_Radio_Info.Count loop
          pragma Loop_Invariant (True);
          declare

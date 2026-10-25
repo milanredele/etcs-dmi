@@ -37,9 +37,13 @@ package EVC_Radio_Info
 is
 
    --  An engineering constant: the messages with stored information
-   --  taken in one cycle (each about 1.6 KB of static storage); one
-   --  more in the same cycle is refused and counted (Refused)
-   Max_Messages : constant := 2;
+   --  taken in one cycle (each about 1.6 KB of static storage): two
+   --  received, and the three sets of the transition buffer released in
+   --  the same cycle at the level 2 transition (4.8.5.1, 4.8.5.5:
+   --  EVC_Radio_Authority.Buffer_Size); one more in the same cycle is
+   --  refused and counted (Refused)
+   Max_Messages : constant := 5;
+
    subtype Count_T is Natural range 0 .. Max_Messages;
    subtype Index_T is Count_T range 1 .. Max_Messages;
 
@@ -66,6 +70,10 @@ is
       --  Accepting RBC released from the handover buffer; its LSSMA
       --  display toggle order is rejected
       From_Accepting : Boolean := False;
+      --  4.8.5.2.1: a general message released from the transition
+      --  buffer as a set of information: only its packets on the rows
+      --  R [2] are taken (the others were at its reception)
+      Level_2_Part : Boolean := False;
    end record;
 
    function Count return Count_T

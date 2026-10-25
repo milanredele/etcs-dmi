@@ -2663,7 +2663,7 @@ is
    end Skip_Passed_Windows;
 
    --  3.4.4.1.1, 4.8.1.6, 4.8.4
-   procedure Take_Radio_Linking (Accepted : Boolean)
+   procedure Take_Radio_Linking (Accepted : Boolean; First : Positive := 1)
    is
       R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
       P  : ETCS_Track_Packets.P5.Packet_T;
@@ -2675,7 +2675,7 @@ is
       if not Accepted or else not SOLR_A.Valid then
          return;
       end if;
-      for I in 1 .. EVC_Radio_Info.Count loop
+      for I in First .. EVC_Radio_Info.Count loop
          pragma Loop_Invariant (True);
          for J in 1 .. EVC_Radio_Info.Packet_Count (I) loop
             pragma Loop_Invariant (True);

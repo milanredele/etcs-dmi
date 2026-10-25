@@ -253,6 +253,10 @@ is
                        (Slot.Session, Slot.Data (1 .. Slot.Length),
                         Accepting => Verdict = EVC_Sessions.Buffered);
                   else
+                     --  4.8.5.2.1: the packets on the rows R [2] kept as a
+                     --  set, the others taken
+                     EVC_Radio_Authority.Keep_Level_2_Part
+                       (Slot.Session, Slot.Data (1 .. Slot.Length));
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
                      --  3.18.4.5.3: packet 140
@@ -291,8 +295,10 @@ is
       S         : RTM_Session_T;
       Last      : Natural;
       Accepting : Boolean;
+      Part      : Boolean;
    begin
       for I in 1 .. RTM_Latch_Size loop
+
          pragma Loop_Invariant (True);
          exit when not EVC_Sessions.Has_Released;
          EVC_Sessions.Take_Released (S, Latched_RTM (1).Data, Last);
@@ -310,13 +316,14 @@ is
          pragma Loop_Invariant (True);
          exit when not EVC_Radio_Authority.Has_Released;
          Accepting := EVC_Radio_Authority.Released_Accepting;
+         Part := EVC_Radio_Authority.Released_Part;
          EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
          EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
             --  4.8.2.1 c) exception 2: the Accepting RBC's
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
-                                              Accepting);
+                                              Accepting, Part);
             EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
