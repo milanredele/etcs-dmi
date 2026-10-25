@@ -220,7 +220,7 @@ package body S076_Sequences is
    --  the bit of the next "var" row of a message block
    Var_Bit    : Natural := 0;
    --  the rows of the labels of the workbook's train
-   Length_Row, Brake_Row : Text_T;
+   Length_Row, Brake_Row, Traction_Row : Text_T;
    --  the workbook of the lines read, its open "curves" block (0 none)
    --  and the column of each word of its "curve" lines (-1 not taken)
    Workbook_Name : Text_T;
@@ -563,6 +563,10 @@ package body S076_Sequences is
          C.Gamma := (if Set then First else C.Gamma);
       elsif Name = "Train (main)!Lambda" then
          C.Gamma := (if Set then Second else C.Gamma);
+      elsif Name = "Train (main)!Service_brake_interface_yes" then
+         WB_Gamma.Service_Brake := Set;
+      elsif Name = "Train (main)!Traction_cut_off_interface_yes" then
+         WB_Gamma.Traction_Cut_Off := Set;
       elsif Name = "Track!EoA_SvL" then
          C.Target := (if Set then First else C.Target);
       elsif Name = "Track!LoA_MRSP" then
@@ -1004,6 +1008,12 @@ package body S076_Sequences is
                Length_Row := To_Text (Row);
             elsif Col = 'C' and then Text = "Current brake position:" then
                Brake_Row := To_Text (Row);
+            elsif Col = 'C'
+              and then Text = "Traction model: T_traction_cut_off (seconds)"
+            then
+               Traction_Row := To_Text (Row);
+            elsif Col = 'D' and then Row = Image (Traction_Row) then
+               WB_Gamma.T_Traction_Cut_Off := Curve_Value (Word (L, 4));
             elsif Col = 'D' and then Row = Image (Length_Row) then
                S.WB_Length := To_Nat (Word (L, 4), OK1);
             elsif Col = 'D' and then Row = Image (Brake_Row) then
@@ -1155,6 +1165,7 @@ package body S076_Sequences is
       Workbook_Name := (others => <>);
       Curve_Set := 0;
       Length_Row := (others => <>);
+      Traction_Row := (others => <>);
       Brake_Row := (others => <>);
       Cur := Loaded'Access;
       Block := 0;
