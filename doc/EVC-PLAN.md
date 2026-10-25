@@ -11895,3 +11895,23 @@ unchanged through the buffer. The linking of a released set has no
 scenario (B1980). The row 4.8.3.1.1 Table had a stray eleventh column
 (a comma outside the quotes), folded into its note. Runner 1115 / 1076
 / 999, 0 regressions (47 steps more failed after a first failure).
+
+**The Supervised Manoeuvre default train of a gamma installation (B1880
+done).** Premise checked: `EVC_Train_Data` already depends on
+`EVC_Config`; `Start_Manoeuvre_Set (F)` copied `F.Model` with empty
+curves. It now takes the installation's models with
+`EVC_Config.Gamma_Models` when `F.Model` is Gamma, as
+`EVC_Mission.Train_Data_Of` does (its Global reads `EVC_Config.State`;
+the caller `EVC_Core.Modes.Adjust_For_Manoeuvre` already did). Checked
+at the end of `EVC_Test_Config.Config_Gamma_Train` (the gamma image of
+that scenario: the SM default set with the installation's curves and
+times, not valid Train Data; a test unit outside the brief's list,
+because the gamma sample image is built there). Row 3.18.3.9's note
+names it.
+
+Rows: 4.8.5.1, 4.8.5.3, 4.8.5.4 a), 4.8.5.5, 4.8.1.3.1, 4.8.3.1.1 Table
+and 3.18.3.9 re-read and noted (done, 4.8.3.1.1 Table partial as
+before); 4.8.5.6 and 4.8.5.7 unchanged (the sets are judged in level 2
+as new messages before the mode machine). Left: B1980 (a scenario for
+the linking of a released set; the position's unused keeper of packet
+79).

@@ -532,6 +532,23 @@ package body EVC_Test_Config is
              "configure: the snapshot's Extra.Train is the installation's: "
              & "Kdry, Kwet, Kn, the normal service sets, M_rotating_nom "
              & "(3.18.3.2 c) 4th and 5th bullets)");
+      --  3.18.3.9: the default Train Data of Supervised Manoeuvre of a
+      --  gamma installation carry its models
+      EVC_Train_Data.Start_Manoeuvre_Set (CFG.Current.Train);
+      declare
+         D : constant SIn.Train_Data_T := EVC_Train_Data.Data;
+      begin
+         Check (EVC_Train_Data.Manoeuvre_Set and then not EVC_Train_Data.Valid
+                and then D.Model = SIn.Gamma
+                and then D.A_Brake_Emergency = G.A_Brake_Emergency
+                and then D.A_Brake_Service = G.A_Brake_Service
+                and then D.T_Brake_Emergency = G.T_Brake_Emergency
+                and then D.T_Brake_Service = G.T_Brake_Service,
+                "configure: the Supervised Manoeuvre default train of a "
+                & "gamma installation with its models (3.18.3.9, "
+                & "3.18.3.2 c))");
+      end;
+      EVC_Train_Data.End_Manoeuvre_Set;
    end Config_Gamma_Train;
 
    --  EVC_Core.Configure: accepted in No Power, kept over a power-up,

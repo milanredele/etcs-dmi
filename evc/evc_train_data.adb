@@ -116,6 +116,12 @@ is
          Has_Magnetic_Shoe     => F.Has_Magnetic_Shoe,
          Has_Electro_Pneumatic => F.Has_Electro_Pneumatic,
          T_Traction_Cut_Off    => F.T_Traction_Cut_Off);
+      --  a gamma installation: the models of its gamma train (the
+      --  configuration image, format version 2), as
+      --  EVC_Mission.Train_Data_Of takes them for the driver's data
+      if F.Model = Gamma then
+         EVC_Config.Gamma_Models (SM_Data);
+      end if;
       SM_Categories :=
         (Cant_Deficiency => F.SM_Cant_Deficiency,
          Other           => F.SM_Other,
