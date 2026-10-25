@@ -359,6 +359,7 @@ begin
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;
    Scenario_Network_Radio_Order;
+   Scenario_Network_Level_1;
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;
