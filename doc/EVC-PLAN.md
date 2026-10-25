@@ -12546,3 +12546,56 @@ rest); B1960's rest (3131040_01, _73, the six status steps, the 60 SV21
 (runner); B840 (message 45 by radio, completing [10]); then the E5
 bookkeeping lines B781, B783, B787, B841 and the decisions B1060, B1063,
 B1340.
+
+### Four bookkeeping items, second package: the texts deleted by a shortening, a balise group read in SL, PS or SH against the orientation, a stop-if-in-SR group in the RBC's list, the scenarios of B841 (e5/bookkeeping-5) (2026-10-25)
+
+Premises checked: the four lines held at the source. B780: `Apply`
+deleted the track description, the mode profiles and the track
+conditions, not the texts. B032 and B787: the behaviour existed, the
+scenarios did not (no test carried packet 137 at all). A premise of the
+brief was wrong in scope: `Apply` is private with seven callers, so
+the texts' state entered the contracts of `Evaluate`,
+`Evaluate_Released`, `Release_Balise_Buffer` and
+`Train_Data_Shortening` (public) and of twelve private subprograms
+(`Store_MA`, `Take_Stop`, the three shortenings, `Brake_Shortenings`,
+`Take_MA_Packet`, `Take_Radio`, `Dispatch`, `Take_Packet`,
+`Take_Group`, `Take_Balise_Set`), not `Apply` alone;
+`EVC_Core.Stored` already wrote that state.
+
+B780 (done): `EVC_Text_Messages.Delete_Beyond (X)` deletes the stored
+texts whose start location lies beyond the frame position X in their own
+direction, removed from the DMI when shown; `Apply` calls it with
+`Delete_X`, which is the new SvL in the situations a) to d), f), n)
+([8]) and the max safe front end in e), g) to j), l), m), o) ([13]).
+The texts taken in the cycle wait in `Pending` until `Evaluate`, so the
+texts of the message that shortens are never deleted. A text shown by
+its mode or level condition while its start location lies beyond is
+deleted too: the footnotes name only the start location (the brief's
+"the texts already displayed unchanged" does not follow from the
+clause). `Scenario_Text_Shortening` (`EVC_Test_Authority`): an MA of the
+RBC to 800 m shortened to 400 m, the texts from 300 m and 700 m stored
+before; the first shown at 350 m, the second never shown at 750 m once
+the MA is extended again (fails without the call).
+
+B032 (done): `Scenario_Crossing_Direction` (`EVC_Test_Position`): cab A,
+the train backing over group 10 in SH, the group taken with direction
+and sense Minus, the orientation still Plus; the same in FS taken Plus.
+Row 3.6.3.1.3.1 done; no change in `EVC_Position`.
+
+B787 (done): `Scenario_SR_Stop_Listed` (`EVC_Test_Authority`, with a
+carrier of packet 137, `Carry_SR_Stop`): in SR in level 2, group 20 says
+"stop if in SR"; with the RBC's packet 63 list naming it, passed without
+a trip; without a list, the trip by the order [54]; with a list naming
+only group 30, the trip. Rows 4.4.11.1.3, c), d) done; no defect.
+
+B841 (narrowed): 3.6.2.2.2.3 done by `Scenario_LRBG_Unknown_Accepted`
+(`EVC_Test_Position`): in SR in level 2 with the position unknown, the
+SR authorisation with NID_LRBG unknown accepted. It found B2140:
+`EVC_Position.Position_Report` reports an unknown LRBG as NID_C 0 and
+NID_BG 16383, where 7.5.1.98 reserves NID_LRBG 16777215 (the SV30
+sequences expect 16777215 in 27 places); not fixed here because the
+report is in the part of `EVC_Position` that e6/message-45 edits this
+round. Left at the bound: 3.6.5.1.4 e), 5.4.5.3 a), 5.4.5.3 j) 2nd
+bullet.
+
+Runner: unchanged, 1133 / 1067 / 990, 0 regressions, 0 improvements.
