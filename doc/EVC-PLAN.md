@@ -12804,3 +12804,121 @@ step 62 ours is FS at 1484 m with the EOA 12 m ahead: triaged `s076`
   Runner: 0 regressions. Edits outside the named units:
   `EVC_Driver_Requests` (the decoder), `EVC_Core.Handle_Input` (the
   hello), `test/src/evc_test.adb` (the call), `doc/TRACE-SUBSET-026.csv`.
+
+### Review of the fifty-second round: ten verdicts re-derived blind (e5/review-52) (2026-10-25)
+
+Each verdict below was written from the trace, the data and the clause
+before the author's record was read; the code on master is the
+author's record where no triage or backlog line was named.
+
+1. 3131040_17 SV30 step 57. Mine: the runner's bench model. The
+   workbook places the SBI 411.91 m and the EBI 234.79 m before the EOA
+   at 85.5 km/h, the steps 54 and 57 say 412 m and 235 m, so the
+   sequence's train keeps 85.5 km/h under the service brake from
+   1088 m to 1265 m; our bench braked under our service brake and never
+   reached the EBI. The on-board was right. The rule `EB_After_SB`
+   (bench SB off when an expected EB at a later location follows an
+   expected SB with no input between) catches 3131040_17, _53 and _54
+   in sv30, the last two already marked "SB must be disabled". Author
+   (S8e8f4487, model; B2040): the same. Agree. Remark: step 57 passes
+   with ours at 68 km/h at 1265 m with the EB latched, so our EB came
+   tens of metres before 1265 m; the runner does not place an EB step,
+   whether ours is early is not traced (B2205).
+2. 3130237_01 SV30 step 74. Mine: BG1d links BG3 at 340 m (890 m,
+   Q_LOCACC 10 m); the window of the optional step 58 (not met) drove
+   the train past 890 m and BG3d was read after its expectation window,
+   its message rejected (3.4.4.4.3.2): its MA of 1500 m and packet 5
+   not in force, our EOA stayed at about 1536 m, hence the SB at
+   1399 m and the trip. Runner's fault; ending an expectation's wait at
+   the next input's group (`Next_Group_Reached`) is the right reading
+   (58 output steps marked optional are followed by a balise input
+   further on in sv30). Author (S256875a4, model; B2041,
+   `EVC_Position.Check_Window` Late): the same. Agree. Remark: B2041
+   says the linking reaction was a service brake at step 60, but
+   BG1d's packet 5 gives Q_LINKREACTION 10, No Reaction (7.5.1.117),
+   for BG3, and S256875a4 puts the SB at 1399 m on the target; to
+   settle (B2201).
+3. 3131040_17 step 62 (SV21, SV22, SV30). Mine: EOA = BG2d 500 m +
+   L_ENDSECTION 1000 m = 1500 m; the step's 1455 m is 45 m in rear of
+   it, where the min safe antenna cannot have passed the EOA (4.6.3
+   [12]); Q_NVEMRRLS is the default (only at standstill, A.3.2), our
+   EB was revoked at standstill and the runner then drove on at
+   10 km/h: at 1484 m the EOA is 12 m ahead, no trip is due. Not ours.
+   Author (S27eb0678, s076; B2161): the same numbers, triaged s076.
+   Disagree on the category: the input is an event ("overpasses
+   EoA/LoA with its minimum safe antenna", in 5 sv30 sequences), and
+   our train is still running towards the EOA, so a runner that drives
+   such a reach-point to the event would judge the step (model, not
+   s076) (B2200).
+4. Message 45 in Tables 4.8.3 and 4.8.4. Mine: 4.8.3, from the RBC
+   only, A [10] in levels 0, NTC, 1, 2; 4.8.4: NR in NP, SF, IS; A [2]
+   in SB; A in SM, SR, NL, UN, SN; A [1] in PT; R in PS, SH, FS, AD,
+   LS, OS, SL, TR, RV. `EVC_Radio_Acceptance` (`Info_Of`, the level
+   row, `Third_Filter`): the same. Agree. Remark: [1] says "for level
+   1: rejected", `In_PT` is `Trip_Exit_Known` alone, set by any
+   message 6 in PT whatever the level (B2202).
+5. A.3.4.1.3 [8] and [13]. Mine: [8] for a) to d), f), n); [13] for
+   e), g) to j), l), m), o); k) deletes every text. A text whose start
+   location lies beyond the new SvL is deleted whether shown or not;
+   a start in rear of it keeps the whole text, its end included.
+   `EVC_Stored_Information.Apply` calls `EVC_Text_Messages.Delete_Beyond`
+   with the new SvL (`Delete_Beyond_SvL`) or the max safe front end
+   (end section over, `Shorten_To_Train`). Agree.
+6. 3.4.2.3.3.6 and the position report. Mine: after a nominal
+   assignment the next report is a packet 0 on the group (no previous
+   LRBG), and a train that moved on from it in the reference direction
+   reports Q_DLRBG, Q_DIRLRBG and Q_DIRTRAIN nominal; a reverse
+   assignment flips the three (Figure 2b). `EVC_Position.Report_With`
+   fills the three from `Assigned`, and
+   `EVC_Test_Sessions.Scenario_Coordinate_Assignment` checks a reverse
+   assignment in SR (Q_DIRLRBG 0, packet 0 on group 40) after a
+   refusal in FS. Agree; the nominal case and Q_DLRBG, Q_DIRTRAIN are
+   not asserted.
+7. 4.4.6.1.13 and 4.4.6.1.10 b). Mine: 3.5.3.7 d) second bullet is
+   message 154, the session terminated and the driver informed; in SL
+   the same without the indication. `EVC_Sessions.Take_Version`
+   terminates, sends 154 and shows "Trackside not compatible" only when
+   not Sleeping; `Mode_Changed` orders a session for a reported change
+   into SL from SB and for any change out of SL, the level left to
+   `Evaluate`. Agree.
+8. The twins' reaction times. Mine: in 3131040_01 SV21's own curves
+   EBI minus EBD is 10.98, 20.34, 40.22, 62.72 and 87.16 m at 10, 20,
+   40, 60, 80 km/h, the same as in its SV30 twin (K85 1 s, K86 1.2 s)
+   and growing with the speed, so the SV21 rows were computed with the
+   same times; SV21 has no SBD and its SBI is the twin's SBI1 shifted
+   (55.56 m after the EBI at 80 km/h in both), so the service reaction
+   time does not show there and taking it is harmless.
+   `S076_Sequences.Complete_Gamma` reads the twin. Agree.
+9. The protocol change. The code does what the comments say: kind 2
+   read at 13 or 14 bytes (index 0 for 13), an index above the types or
+   data other than the type's refused (`EVC_Mission.Type_Matches`),
+   MSG_STORED_VALUES read at its new length or the short form, the
+   hello queued by `DMI_Core.Initialise` and resetting the four
+   markers it names in `EVC_Core.Handle_Input`, both fuzzers offering
+   the new forms. Disagree on two points of the comments: neither old
+   length's reading has its reason (kind 2's 13 bytes "read as type 0";
+   the old long MSG_STORED_VALUES is not named, dropped under "any
+   other length", so an old DMI is served while an old on-board's
+   values are dropped, unargued); and the hello claims what "it sends
+   only once or at a change" is sent again, while the status frame
+   without a geographical position (`EVC_Core.Outputs`, `Geo_Sent`, the
+   `Status_*_Sent` markers) is also sent only at a change and is not
+   reset (B2203, B2204).
+10. B2140. Checked: the substance holds and is a defect of ours:
+    `EVC_Position.Report_With` gives NID_C 0 and NID_BG 16383 (NID_LRBG
+    16383) for an unknown LRBG, where NID_LRBG reserves 16777215 for
+    Unknown and NID_BG 16383 is for linking information only. Two
+    details are wrong: the variable is 7.5.1.90 (7.5.1.98 is NID_NTC),
+    and sv30 holds 23 occurrences of NID_LRBG=16777215, of which 3 are
+    expectations on our reports (message 157 packet 0 in 3180600_01,
+    5040300_04, 5040500_05), the rest RBC inputs and comments. The
+    runner judges the field but `S076_Run.Header_Unknown` counts NID_C
+    0 with NID_BG 16383 as unknown, so the defect passes; fix the
+    report and the tolerance together (B2140 left as written;
+    mine B2206).
+
+Counts: 8 agreed (1, 2, 4, 5, 6, 7, 8, 10 with its corrections), 2
+disagreed (3 on the category, 9 on two comments), none undecided;
+seven backlog lines (B2200 to B2206), four of them remarks to trace.
+The review took about 95 tool calls of 130, the most on items 1 to 3
+(the traces and the corpus checks, about 35) and 9 (about 14).
