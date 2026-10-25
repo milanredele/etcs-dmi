@@ -34,6 +34,31 @@ package DMI_Train_Data is
 
    --  10.6.1.1: a data entry / validation process about the train data
    --  is running
+   --  11.3.9.6 a) and b): the two layouts of the Train data window; the
+   --  fixed one is a single window with the input field 'Train type'
+   type Layout_T is (Flexible_Layout, Fixed_Layout);
+
+   --  The layout presented: fixed when the type of entry is fixed, the
+   --  layout lastly used when it is switchable (11.3.9.7.1), flexible
+   --  otherwise (flexible or not known)
+   function Layout return Layout_T;
+
+   --  11.3.9.6 c), 11.3.9.7.2: the window presents the 'switch' button
+   function Switchable return Boolean;
+
+   --  11.3.9.7.3: the driver pressed the 'switch' button: the other
+   --  layout, on its first window, retained for the next time
+   --  (11.3.9.7.1, while the DMI runs: Reset_Layout at its start)
+   procedure Switch_Layout;
+   procedure Reset_Layout;
+
+   --  The windows of the layout presented: Window_Count or 1
+   function Windows_Shown return Window_Index_T;
+
+   --  11.5.1.4, Table 44 item 3: the name of the train type stored by the
+   --  fixed entry (Length 0: the Train Data were not entered by type)
+   function Stored_Type_Text return DMI_Driver_Data.Text_Value_T;
+
    function In_Progress return Boolean;
    function Current_Window return Window_Index_T;
 

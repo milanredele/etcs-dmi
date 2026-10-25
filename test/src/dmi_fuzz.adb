@@ -96,11 +96,11 @@ procedure DMI_Fuzz is
    -- In-domain generators, one per message (see dmi_protocol.ads)
    ---------------------------------------------------------------------
 
-   EVC_Types : constant array (1 .. 14) of Msg_Type_T :=
+   EVC_Types : constant array (1 .. 15) of Msg_Type_T :=
      (MSG_SPEED_STATE, MSG_MODE_LEVEL, MSG_TEXT, MSG_TEXT_REMOVE,
       MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS, MSG_ONBOARD, MSG_ATO,
       MSG_SYSTEM_STATUS, MSG_RADIO_NETWORKS, MSG_SYSTEM_VERSION,
-      MSG_VBC_LIST, MSG_RBC_CONTACT);
+      MSG_VBC_LIST, MSG_RBC_CONTACT, MSG_TRAIN_TYPES);
 
    procedure Build_In_Domain (The_Type : Msg_Type_T) is
    begin
@@ -283,6 +283,33 @@ procedure DMI_Fuzz is
                begin
                   U8 (Length);
                   for C in 1 .. Length loop
+                     U8 (Pick (0, 255));
+                  end loop;
+               end;
+            end loop;
+            --  now and then one byte too few or too many
+            if Chance (5) and then Last > 0 then
+               Last := Last - 1;
+            elsif Chance (5) then
+               U8 (Pick (0, 255));
+            end if;
+         end;
+      elsif The_Type = MSG_TRAIN_TYPES then
+         declare
+            --  up to two types beyond the limit, names of every length
+            --  up to two beyond the limit (0 is not allowed), any Train
+            --  Data
+            Count : constant Natural := Pick (0, Train_Types_Max + 2);
+         begin
+            U8 (Count);
+            for I in 1 .. Count loop
+               declare
+                  Length : constant Natural :=
+                    (if Chance (5) then Pick (0, Train_Type_Name_Max + 2)
+                     else Pick (1, Train_Type_Name_Max));
+               begin
+                  U8 (Length);
+                  for C in 1 .. Length + Stored_Train_Length loop
                      U8 (Pick (0, 255));
                   end loop;
                end;

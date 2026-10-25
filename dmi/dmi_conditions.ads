@@ -66,6 +66,13 @@ package DMI_Conditions is
    Passive_Shunting    : Boolean := False;
    BMM_Inhibit_Active  : Boolean := False; -- "BTM alarm reaction inhibition"
 
+   --  11.3.9.6: the type of Train Data entry the train interface selects
+   --  (MSG_ONBOARD train bits 6 and 7); not known before the first input
+   --  of the train interface, read as flexible
+   type Train_Entry_T is (Entry_Fixed, Entry_Flexible, Entry_Switchable,
+                          Entry_Unknown);
+   Train_Entry : Train_Entry_T := Entry_Unknown;
+
    --  National values and on-board storage
    NV_Driver_ID_Running : Boolean := False; -- modification while running
    NV_Adhesion          : Boolean := False; -- modification by the driver

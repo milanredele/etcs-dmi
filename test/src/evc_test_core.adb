@@ -94,6 +94,37 @@ package body EVC_Test_Core is
    end Scenario_System_Version_To_DMI;
    pragma Warnings (On, "condition is always*");
 
+   --  DMI 11.3.9.6 with SUBSET-034 2.6.1.1: the type of Train Data entry
+   --  of the train interface (signal 16: 0 fixed, 1 flexible, 2
+   --  switchable) in MSG_ONBOARD's train bits 6 and 7 (0 not known, 1
+   --  fixed, 2 flexible, 3 switchable); MSG_TRAIN_TYPES only once
+   procedure Scenario_Onboard_Entry_Type is
+      function Entry_Bits return Natural is (Onboard_Field (4) / 64);
+   begin
+      EVC_Core.Initialise;
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      Take;
+      Check (Entry_Bits = 0, "entry type: 0 before the first input");
+      EVC_Core.Handle_Input (TIU, (16, 0));
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      Take;
+      Check (Entry_Bits = 1, "entry type: fixed, 1");
+      Check (Find_DMI (EVC_DMI_Port.MSG_TRAIN_TYPES) = 0,
+             "entry type: MSG_TRAIN_TYPES once after the start");
+      EVC_Core.Handle_Input (TIU, (16, 1));
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      Take;
+      Check (Entry_Bits = 2, "entry type: flexible, 2");
+      EVC_Core.Handle_Input (TIU, (16, 2));
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      Take;
+      Check (Entry_Bits = 3, "entry type: switchable, 3");
+   end Scenario_Onboard_Entry_Type;
+
    --  Power-up: NP until the first cycle, then SB and the DMI messages
    --  of SB every cycle (SUBSET-026 4.4.4.1.1, 4.6.2 NP -> SB [4])
    procedure Scenario_Power_Up is
@@ -116,8 +147,30 @@ package body EVC_Test_Core is
       --  the general message at the mode change, EVC_JRU_Messages)
       --  and at the start-up the messages 15 and 47 (SUBSET-027 4.3.1.1)
       --  3.18.6.1: and the stored values for the DMI's data view, none
-      Check (Rec_Count = 11, "power-up: eleven records, got"
+      --  DMI 11.3.9.6 a): and the pre-configured train types, once
+      Check (Rec_Count = 12, "power-up: twelve records, got"
              & Img (Rec_Count));
+      --  MSG_TRAIN_TYPES: two types, "Locomotive" (20 m, 100 %, 80 km/h,
+      --  gauge G1) and "Passenger" (200 m, 135 %, 160 km/h, NC_TRAIN 4)
+      Check (DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 2) = 46
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 6) = 2
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 7) = 10
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 8)
+                      = Character'Pos ('L')
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 18) = 20
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 20) = 100
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 22) = 80
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 29) = 1
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 30) = 9
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 31)
+                      = Character'Pos ('P')
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 40) = 200
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 42) = 135
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 44) = 160
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 47) = 4
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 51) = 1,
+             "power-up: MSG_TRAIN_TYPES, the two default train types "
+             & "(DMI 11.3.9.6 a, 3.18.3.2.1)");
       Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 64
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6) = 0
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 0
@@ -633,7 +686,7 @@ package body EVC_Test_Core is
          Pump_To_EVC;
       end loop;
       DMI_Core.Render;
-      Check (Frames = 17,
+      Check (Frames = 18,
              "end to end: the frames of five cycles reach the DMI");
       Check (not DMI_Core.EVC_Link_Lost, "end to end: the DMI hears the EVC");
       Check (EVC_Core.Rejected (DMI) = 0,

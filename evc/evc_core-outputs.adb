@@ -409,7 +409,13 @@ is
       or (if TIU_Now (Passive_Shunting_Permitted)
           then Train_Passive_Shunting else 0)
       or (if EVC_Procedures.BMM_Inhibited then Train_BMM_Inhibition
-          else 0));
+          else 0)
+      or (if not TIU_Known_Now (Train_Data_Entry_Type)
+          then Train_Entry_Unknown
+          else (case TIU_Value_Now (Train_Data_Entry_Type) is
+                   when 0      => Train_Entry_Fixed,
+                   when 2      => Train_Entry_Switchable,
+                   when others => Train_Entry_Flexible)));
 
    function National_Bits return Bits_T is
      ((if EVC_VBC.Full then 0 else National_VBC_Room)
@@ -658,6 +664,41 @@ is
       end if;
    end Send_Stored_Values;
 
+   procedure Send_Train_Types is
+      Frame : Frame_Buffer_T;
+      Last  : Natural;
+      Types : Train_Type_Entries_T;
+   begin
+      if Types_Sent then
+         return;
+      end if;
+      for I in 1 .. EVC_Config.Default_Train_Type_Count loop
+         declare
+            T : EVC_Config.Train_Type_T renames
+              EVC_Config.Default_Train_Types (I);
+         begin
+            Types (I).Name_Length := T.Name_Length;
+            for C in Type_Name_T'Range loop
+               Types (I).Name (C) := Character'Pos (T.Name (C));
+            end loop;
+            Types (I).Train :=
+              (Valid         => True,
+               Length_M      => Unsigned_16 (T.Length_M),
+               Brake_Pct     => Unsigned_16 (T.Brake_Percentage),
+               Max_Speed_Kmh => Unsigned_16 (T.Max_Speed_Kmh),
+               Cant          => Byte (T.Cant_Deficiency),
+               Other         => Unsigned_16 (T.Other),
+               Axle_Load     => Byte (T.Axle_Load),
+               Airtight      => Byte (T.Airtight),
+               Gauge         => Byte (T.Loading_Gauge));
+         end;
+      end loop;
+      Train_Types_Frame (EVC_Config.Default_Train_Type_Count, Types,
+                         Frame, Last);
+      EVC_Outbox.Put (DMI, Frame (1 .. Last));
+      Types_Sent := True;
+   end Send_Train_Types;
+
    procedure Send_System_Version is
       X : constant EVC_System_Version.Major_T :=
         EVC_System_Version.Operated;
@@ -892,6 +933,7 @@ is
       Send_RBC_Contact;             -- DMI MSG_RBC_CONTACT
       Send_Stored_Values;           -- DMI MSG_STORED_VALUES
       Send_System_Version;          -- DMI MSG_SYSTEM_VERSION
+      Send_Train_Types;             -- DMI MSG_TRAIN_TYPES
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20

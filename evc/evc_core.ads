@@ -739,6 +739,10 @@ private
    --  (MSG_SYSTEM_VERSION; 16#FF# none since the start)
    Version_Sent : EVC_Bytes.Byte := 16#FF#
      with Part_Of => State;
+   --  the pre-configured train types were sent to the DMI
+   --  (MSG_TRAIN_TYPES, once after the start)
+   Types_Sent : Boolean := False
+     with Part_Of => State;
    --  the stored values frame sent last to the DMI (MSG_STORED_VALUES;
    --  none sent since the start while not Stored_Sent)
    Stored_Sent : Boolean := False

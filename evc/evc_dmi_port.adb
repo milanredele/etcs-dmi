@@ -395,4 +395,41 @@ is
       end loop;
    end Stored_Values_Frame;
 
+   procedure Train_Types_Frame (Count : Natural;
+                                Types : Train_Type_Entries_T;
+                                Frame : out Frame_Buffer_T;
+                                Last  : out Natural)
+   is
+      Top : constant := Header_Length + 2
+                        + Train_Types_Max * Train_Type_Length;
+      --  the next free byte; the types start after the count
+      Pos : Natural range Header_Length + 2 .. Top := Header_Length + 2;
+      N   : Natural range 1 .. Train_Type_Name_Max;
+   begin
+      Frame := (others => 0);
+      for I in 1 .. Count loop
+         pragma Loop_Invariant
+           (Pos <= Header_Length + 2 + (I - 1) * Train_Type_Length);
+         N := Types (I).Name_Length;
+         Frame (Pos) := Byte (N);
+         for C in 1 .. N loop
+            pragma Loop_Invariant (True);
+            Frame (Pos + C) := Types (I).Name (C);
+         end loop;
+         Pos := Pos + 1 + N;
+         Put_U16 (Frame, Pos, Types (I).Train.Length_M);
+         Put_U16 (Frame, Pos + 2, Types (I).Train.Brake_Pct);
+         Put_U16 (Frame, Pos + 4, Types (I).Train.Max_Speed_Kmh);
+         Frame (Pos + 6) := Types (I).Train.Cant;
+         Put_U16 (Frame, Pos + 7, Types (I).Train.Other);
+         Frame (Pos + 9) := Types (I).Train.Axle_Load;
+         Frame (Pos + 10) := Types (I).Train.Airtight;
+         Frame (Pos + 11) := Types (I).Train.Gauge;
+         Pos := Pos + Stored_Train_Length;
+      end loop;
+      Frame (Header_Length + 1) := Byte (Count);
+      Put_Header (Frame, MSG_TRAIN_TYPES, Pos - 1 - Header_Length);
+      Last := Pos - 1;
+   end Train_Types_Frame;
+
 end EVC_DMI_Port;

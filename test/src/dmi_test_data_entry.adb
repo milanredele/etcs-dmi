@@ -6,7 +6,11 @@ with DMI_Core;
 with DMI_Data_Entry;
 with DMI_Driver_Data;
 with DMI_Protocol;
+with DMI_Conditions;
 with DMI_Test_Support;
+with DMI_Train_Types;
+with DMI_Train_Data;
+with Display;
 with DMI_Windows;
 with General_Parameters;
 with Test_Support;
@@ -829,5 +833,107 @@ package body DMI_Test_Data_Entry is
              and then DMI_Windows.Top = DMI_Windows.W_Train_Data,
              "train data request: a new request opens it again");
    end Scenario_Train_Data_Request;
+
+   --  The two types of the on-board's defaults, as MSG_TRAIN_TYPES
+   --  carries them: name, then the 12 bytes of MSG_DRIVER_DATA kind 2
+   Two_Types : constant Byte_Array :=
+     (2,
+      10, 76, 111, 99, 111, 109, 111, 116, 105, 118, 101,  -- Locomotive
+      20, 0, 100, 0, 80, 0, 0, 0, 0, 0, 0, 1,
+      9, 80, 97, 115, 115, 101, 110, 103, 101, 114,         -- Passenger
+      200, 0, 135, 0, 160, 0, 0, 4, 0, 0, 0, 1);
+
+   procedure Scenario_Train_Types is
+      use type DMI_Conditions.Train_Entry_T;
+      use type DMI_Windows.Window_ID_T;
+      use type DMI_Train_Data.Layout_T;
+      T : DMI_Train_Types.Train_Type_T;
+
+      function Text (V : DMI_Driver_Data.Text_Value_T) return Wide_String
+      is (V.Text (1 .. V.Length));
+   begin
+      Reset;
+      Check (DMI_Train_Types.Count = 0
+             and then DMI_Conditions.Train_Entry
+                      = DMI_Conditions.Entry_Unknown,
+             "train types: none and the type of entry not known before "
+             & "the on-board spoke");
+      Send_Raw (16#12#, Two_Types (1 .. Two_Types'Last - 1));
+      Check (DMI_Train_Types.Count = 0,
+             "train types: a message a byte short is ignored as a whole");
+      Send_Raw (16#12#, Two_Types & (1 => 0));
+      Check (DMI_Train_Types.Count = 0,
+             "train types: a byte beyond the list drops the message");
+      Send_Raw (16#12#, Two_Types);
+      T := DMI_Train_Types.Get (2);
+      Check (DMI_Train_Types.Count = 2
+             and then DMI_Train_Types.Get (1).Name (1 .. 10) = "Locomotive"
+             and then T.Name (1 .. T.Name_Length) = "Passenger"
+             and then T.Length_M = 200 and then T.Brake_Pct = 135
+             and then T.Max_Speed = 160 and then T.Other = 4
+             and then T.Gauge = 1,
+             "train types: the two types and their Train Data "
+             & "(DMI 11.3.9.6 a, Table 39)");
+      Win_Onboard (Train => Win_Standing + 64);
+      Check (DMI_Conditions.Train_Entry = DMI_Conditions.Entry_Fixed,
+             "train types: train bits 6-7 = 1, the fixed entry");
+      Win_Onboard (Train => Win_Standing + 192);
+      Check (DMI_Conditions.Train_Entry = DMI_Conditions.Entry_Switchable,
+             "train types: train bits 6-7 = 3, the switchable entry");
+      Win_Onboard (Train => Win_Standing);
+      Check (DMI_Conditions.Train_Entry = DMI_Conditions.Entry_Unknown,
+             "train types: train bits 6-7 = 0, not known");
+
+      --  11.3.9.6 a): the fixed layout, the one input field 'Train type'
+      --  with the names as keys (Table 39); its validation (Figure 123)
+      Send_Mode_Level (Mode => 1, Level => 0);  -- SB
+      Win_Onboard (Train => Win_Standing + 64, SOM => 3);
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data
+             and then DMI_Train_Data.Layout = DMI_Train_Data.Fixed_Layout,
+             "fixed entry: the Train data window with one input field");
+      Key (2);                                 -- 'Passenger'
+      Enter_Field (1);
+      Check_Frame ("train_data_fixed");
+      Press (167, 440);                        -- entry complete? Yes
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
+             "fixed entry: the validation window follows");
+      Check_Frame ("train_data_fixed_validation");
+      Press (487, 40);                         -- validate: Yes
+      Check (DMI_Driver_Data.Train_Data_Entered
+             and then DMI_Driver_Data.Train_Length = 200
+             and then DMI_Driver_Data.Brake_Pct = 135
+             and then DMI_Driver_Data.Max_Speed = 160
+             and then DMI_Train_Data.Category_CD = 0
+             and then DMI_Train_Data.Category_Other = 4
+             and then DMI_Train_Data.Gauge_Value = 1,
+             "fixed entry: the type stands for all the Train Data");
+      Check (Text (DMI_Train_Data.Stored_Type_Text) = "Passenger",
+             "fixed entry: the type stored (Table 44 item 3)");
+
+      --  11.3.9.6 c), 11.3.9.7: the switchable entry, flexible first,
+      --  'Select type' at (246,400); switched, 'Enter data'; retained
+      Win_Onboard (Train => Win_Standing + 192);
+      Win_Onboard (Train => Win_Standing + 192, SOM => 3);
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data
+             and then DMI_Train_Data.Layout = DMI_Train_Data.Flexible_Layout,
+             "switchable entry: the flexible layout first");
+      Check_Frame ("train_data_switch_flexible");
+      declare
+         A : constant Display.Area_T :=
+           DMI_Windows.Button_Area (DMI_Data_Entry.Button_Count + 1);
+      begin
+         Check (A.Width = 60 and then A.Height = 50,
+                "switchable entry: the 'switch' button, 60 x 50");
+         Press (A.Position.X + 30, A.Position.Y + 25);
+      end;
+      Check (DMI_Train_Data.Layout = DMI_Train_Data.Fixed_Layout,
+             "switchable entry: 'Select type' switches to the fixed one");
+      Check_Frame ("train_data_switch_fixed");
+      DMI_Windows.Close_Top;
+      Win_Onboard (Train => Win_Standing + 192);
+      Win_Onboard (Train => Win_Standing + 192, SOM => 3);
+      Check (DMI_Train_Data.Layout = DMI_Train_Data.Fixed_Layout,
+             "switchable entry: the layout lastly used (11.3.9.7.1)");
+   end Scenario_Train_Types;
 
 end DMI_Test_Data_Entry;

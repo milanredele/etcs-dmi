@@ -605,4 +605,41 @@ is
    --  function is active (5.22.4.1)
    Train_BMM_Inhibition : constant Bits_T := 16;
 
+   --  MSG_ONBOARD train bits 6 and 7: the type of Train Data entry of
+   --  the train interface (DMI 11.3.9.6, SUBSET-034 2.6.1.1), not known
+   --  before the first input
+   Train_Entry_Unknown    : constant Bits_T := 0;
+   Train_Entry_Fixed      : constant Bits_T := 64;
+   Train_Entry_Flexible   : constant Bits_T := 128;
+   Train_Entry_Switchable : constant Bits_T := 192;
+
+   --  MSG_TRAIN_TYPES (common/dmi_protocol.ads): the pre-configured
+   --  train types of the fixed Train Data entry (DMI 11.3.9.6 a, Table
+   --  39): count u8, then per type its name (length u8, Latin-1 bytes)
+   --  and its Train Data, the 12 bytes of MSG_STORED_VALUES
+   MSG_TRAIN_TYPES     : constant Byte := 16#12#;
+   Train_Types_Max     : constant := 8;
+   Train_Type_Name_Max : constant := 16;
+   Train_Type_Length   : constant :=
+     1 + Train_Type_Name_Max + Stored_Train_Length;
+   type Type_Name_T is array (1 .. Train_Type_Name_Max) of Byte;
+   type Train_Type_Entry_T is record
+      Name_Length : Natural range 1 .. Train_Type_Name_Max := 1;
+      Name        : Type_Name_T := (others => 0);
+      --  the Train Data of the type; Valid is not sent
+      Train       : Stored_Train_T;
+   end record;
+   type Train_Type_Entries_T is
+     array (1 .. Train_Types_Max) of Train_Type_Entry_T;
+
+   procedure Train_Types_Frame (Count : Natural;
+                                Types : Train_Type_Entries_T;
+                                Frame : out Frame_Buffer_T;
+                                Last  : out Natural)
+     with Pre  => Count <= Train_Types_Max,
+          Post => Last in Header_Length + 1
+                          .. Header_Length + 1
+                             + Train_Types_Max * Train_Type_Length
+                  and then Frame (1) = MSG_TRAIN_TYPES;
+
 end EVC_DMI_Port;

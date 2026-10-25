@@ -434,6 +434,7 @@ package body DMI_Conditions is
       RBC_Contact_Valid    := False;
       Position_Valid       := False;
       Position_Status_Valid := False;
+      Train_Entry          := Entry_Unknown;
       Consist_Length       := False;
       Consist_Front_Zero   := False;
       Session              := No_Session;

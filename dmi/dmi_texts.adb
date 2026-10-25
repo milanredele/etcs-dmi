@@ -91,6 +91,9 @@ package body DMI_Texts is
      "Axle load category";
    En_Airtight : aliased constant Wide_String := "Airtight";
    En_Loading_Gauge : aliased constant Wide_String := "Loading gauge";
+   En_Train_Type : aliased constant Wide_String := "Train type";
+   En_Select_Type : aliased constant Wide_String := "Select type";
+   En_Enter_Data : aliased constant Wide_String := "Enter data";
    En_Maximum_Speed : aliased constant Wide_String := "Maximum speed (km/h)";
    En_VBC_Code_Before : aliased constant Wide_String := "VBC #";
    En_VBC_Code_After : aliased constant Wide_String := " set code";
@@ -224,6 +227,9 @@ package body DMI_Texts is
       Axle_Load_Category => En_Axle_Load_Category'Access,
       Airtight => En_Airtight'Access,
       Loading_Gauge => En_Loading_Gauge'Access,
+      Train_Type => En_Train_Type'Access,
+      Select_Type => En_Select_Type'Access,
+      Enter_Data => En_Enter_Data'Access,
       Maximum_Speed => En_Maximum_Speed'Access,
       VBC_Code_Before => En_VBC_Code_Before'Access,
       VBC_Code_After => En_VBC_Code_After'Access,
@@ -350,6 +356,9 @@ package body DMI_Texts is
    De_Axle_Load_Category : aliased constant Wide_String := "Achslastklasse";
    De_Airtight : aliased constant Wide_String := "Druckdicht";
    De_Loading_Gauge : aliased constant Wide_String := "Lichtraumprofil";
+   De_Train_Type : aliased constant Wide_String := "Zugtyp";
+   De_Select_Type : aliased constant Wide_String := "Zugtyp";
+   De_Enter_Data : aliased constant Wide_String := "Daten";
    De_Maximum_Speed : aliased constant Wide_String :=
      "H["F6"]chstgeschw. (km/h)";
    De_VBC_Code_Before : aliased constant Wide_String := "VBC #";
@@ -488,6 +497,9 @@ package body DMI_Texts is
       Axle_Load_Category => De_Axle_Load_Category'Access,
       Airtight => De_Airtight'Access,
       Loading_Gauge => De_Loading_Gauge'Access,
+      Train_Type => De_Train_Type'Access,
+      Select_Type => De_Select_Type'Access,
+      Enter_Data => De_Enter_Data'Access,
       Maximum_Speed => De_Maximum_Speed'Access,
       VBC_Code_Before => De_VBC_Code_Before'Access,
       VBC_Code_After => De_VBC_Code_After'Access,
@@ -700,6 +712,9 @@ package body DMI_Texts is
    Hu_Airtight : aliased constant Wide_String := "L["E9"]gt["F6"]m["F6"]r";
    -- Choice
    Hu_Loading_Gauge : aliased constant Wide_String := "Rakszelv["E9"]ny";
+   Hu_Train_Type : aliased constant Wide_String := "Vonatt["ED"]pus";
+   Hu_Select_Type : aliased constant Wide_String := "T["ED"]pus";
+   Hu_Enter_Data : aliased constant Wide_String := "Adatok";
    -- MAV: as Max_Speed (1.2.10.1)
    Hu_Maximum_Speed : aliased constant Wide_String :=
      "Maxim["E1"]lis sebess["E9"]g (km/h)";
@@ -897,6 +912,9 @@ package body DMI_Texts is
       Axle_Load_Category => Hu_Axle_Load_Category'Access,
       Airtight => Hu_Airtight'Access,
       Loading_Gauge => Hu_Loading_Gauge'Access,
+      Train_Type => Hu_Train_Type'Access,
+      Select_Type => Hu_Select_Type'Access,
+      Enter_Data => Hu_Enter_Data'Access,
       Maximum_Speed => Hu_Maximum_Speed'Access,
       VBC_Code_Before => Hu_VBC_Code_Before'Access,
       VBC_Code_After => Hu_VBC_Code_After'Access,

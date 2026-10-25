@@ -21,4 +21,8 @@ package DMI_Test_Data_Entry is
 
    procedure Scenario_Train_Data_Request;
 
+   --  DMI 11.3.9.6: the type of Train Data entry (MSG_ONBOARD train bits
+   --  6 and 7) and the pre-configured train types (MSG_TRAIN_TYPES)
+   procedure Scenario_Train_Types;
+
 end DMI_Test_Data_Entry;

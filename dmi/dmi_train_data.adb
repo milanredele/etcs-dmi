@@ -2,7 +2,9 @@
 --  Train data window(s) implementation (DMI 11.3.9, 11.4.1).
 
 pragma Ada_2012;
+with DMI_Conditions;
 with DMI_Texts;
+with DMI_Train_Types;
 
 package body DMI_Train_Data is
 
@@ -253,34 +255,45 @@ package body DMI_Train_Data is
       end case;
    end Stored_Text;
 
+   --  The codes of chapter 7 as the positions of the choices of Tables
+   --  41 and 42 and of the airtight keys (0 when no choice has them)
+   procedure Positions_Of (CD, Other, Axle, Airtight, Gauge : Natural;
+                           Cat, Axle_Pos, Air_Pos, Gauge_Pos : out Natural)
+   is
+   begin
+      Cat := 0;
+      for I in 1 .. Max_Cat loop
+         if Categories (I).CD = CD and then Categories (I).Other = Other then
+            Cat := I;
+            exit;
+         end if;
+      end loop;
+      Axle_Pos := 0;
+      for I in 1 .. Max_Axle loop
+         if Axle_Loads (I).Value = Axle then
+            Axle_Pos := I;
+            exit;
+         end if;
+      end loop;
+      Gauge_Pos := 0;
+      for I in 1 .. Max_Gauge loop
+         if Gauges (I).Value = Gauge then
+            Gauge_Pos := I;
+            exit;
+         end if;
+      end loop;
+      Air_Pos := (case Airtight is
+                     when 0      => No_Choice,
+                     when 1      => Yes_Choice,
+                     when others => 0);
+   end Positions_Of;
+
    procedure Take_Onboard (CD, Other, Axle, Airtight, Gauge : Natural) is
       use DMI_Driver_Data;
    begin
-      Onboard_Category := 0;
-      for I in 1 .. Max_Cat loop
-         if Categories (I).CD = CD and then Categories (I).Other = Other then
-            Onboard_Category := I;
-            exit;
-         end if;
-      end loop;
-      Onboard_Axle_Load := 0;
-      for I in 1 .. Max_Axle loop
-         if Axle_Loads (I).Value = Axle then
-            Onboard_Axle_Load := I;
-            exit;
-         end if;
-      end loop;
-      Onboard_Gauge := 0;
-      for I in 1 .. Max_Gauge loop
-         if Gauges (I).Value = Gauge then
-            Onboard_Gauge := I;
-            exit;
-         end if;
-      end loop;
-      Onboard_Airtight := (case Airtight is
-                              when 0      => No_Choice,
-                              when 1      => Yes_Choice,
-                              when others => 0);
+      Positions_Of (CD, Other, Axle, Airtight, Gauge,
+                    Onboard_Category, Onboard_Axle_Load, Onboard_Airtight,
+                    Onboard_Gauge);
    end Take_Onboard;
 
    function Onboard_Text (Item : Item_T)
@@ -301,13 +314,23 @@ package body DMI_Train_Data is
       end case;
    end Onboard_Text;
 
+   --  11.3.9.6 a): the train type stored by the fixed entry (0: none, the
+   --  Train Data were entered item by item); its codes are sent as they
+   --  are, a combination no choice of Table 41 has included
+   Stored_Type : Natural := 0;
+
+   function Type_Of return DMI_Train_Types.Train_Type_T is
+     (DMI_Train_Types.Get (Positive'Max (Stored_Type, 1)));
+
    function Category_CD return Natural is
-     (if DMI_Driver_Data.Train_Category in 1 .. Max_Cat
+     (if Stored_Type > 0 then Type_Of.CD
+      elsif DMI_Driver_Data.Train_Category in 1 .. Max_Cat
       then Categories (DMI_Driver_Data.Train_Category).CD
       else Unknown_Value);
 
    function Category_Other return Natural is
-     (if DMI_Driver_Data.Train_Category in 1 .. Max_Cat
+     (if Stored_Type > 0 then Type_Of.Other
+      elsif DMI_Driver_Data.Train_Category in 1 .. Max_Cat
       then Categories (DMI_Driver_Data.Train_Category).Other
       else 0);
 
@@ -331,6 +354,62 @@ package body DMI_Train_Data is
    ---------------------------------------------------------------------
    --  Process
    ---------------------------------------------------------------------
+
+   --  11.3.9.7.1: the layout lastly used (switchable entry)
+   Last_Layout : Layout_T := Flexible_Layout;
+
+   function Layout return Layout_T is
+     (case DMI_Conditions.Train_Entry is
+         when DMI_Conditions.Entry_Fixed      => Fixed_Layout,
+         when DMI_Conditions.Entry_Switchable => Last_Layout,
+         when others                          => Flexible_Layout);
+
+   function Switchable return Boolean is
+     (DMI_Conditions."=" (DMI_Conditions.Train_Entry,
+                          DMI_Conditions.Entry_Switchable));
+
+   function Windows_Shown return Window_Index_T is
+     (if Layout = Fixed_Layout then 1 else Window_Count);
+
+   procedure Reset_Layout is
+   begin
+      Last_Layout := Flexible_Layout;
+      Stored_Type := 0;
+   end Reset_Layout;
+
+   --  The name of the train type Index (Length 0 outside the list)
+   function Type_Text (Index : Natural) return DMI_Driver_Data.Text_Value_T
+   is
+      T : constant DMI_Train_Types.Train_Type_T :=
+        DMI_Train_Types.Get (Positive'Max (Index, 1));
+   begin
+      if Index = 0 then
+         return (others => <>);
+      end if;
+      return Text_Of (T.Name (1 .. T.Name_Length));
+   end Type_Text;
+
+   function Stored_Type_Text return DMI_Driver_Data.Text_Value_T is
+     (if DMI_Driver_Data.Train_Data_Entered then Type_Text (Stored_Type)
+      else (others => <>));
+
+   --  Table 39: the dedicated keyboard of the train types, their names
+   function Type_Choices return Choice_Set_T is
+      Result : Choice_Set_T := No_Choices;
+   begin
+      for I in 1 .. DMI_Train_Types.Count loop
+         declare
+            T : constant DMI_Train_Types.Train_Type_T :=
+              DMI_Train_Types.Get (I);
+         begin
+            Add_Choice (Result, T.Name (1 .. T.Name_Length));
+         end;
+      end loop;
+      return Result;
+   end Type_Choices;
+
+   --  The 'Train type' input field of the fixed layout
+   Type_Work : Working_T;
 
    function Stored_Choice (Item : Item_T) return Natural is
      (if not DMI_Driver_Data.Train_Data_Entered then 0
@@ -358,6 +437,10 @@ package body DMI_Train_Data is
                       Has      => Stored_Text (I).Length > 0,
                       Accepted => False);
       end loop;
+      Type_Work := (Value    => Stored_Type_Text,
+                    Choice   => Stored_Type,
+                    Has      => Stored_Type_Text.Length > 0,
+                    Accepted => False);
    end Start_Process;
 
    procedure End_Process is
@@ -367,7 +450,15 @@ package body DMI_Train_Data is
       for I in Item_T loop
          Work (I) := (others => <>);
       end loop;
+      Type_Work := (others => <>);
    end End_Process;
+
+   procedure Switch_Layout is
+   begin
+      Last_Layout := (if Layout = Fixed_Layout then Flexible_Layout
+                      else Fixed_Layout);
+      Window := 1;
+   end Switch_Layout;
 
    procedure Restart_At_First is
    begin
@@ -383,6 +474,16 @@ package body DMI_Train_Data is
 
    procedure Capture (Index : Window_Index_T) is
    begin
+      if Layout = Fixed_Layout then
+         Type_Work :=
+           (if DMI_Data_Entry.Has_Value (1)
+            then (Value    => DMI_Data_Entry.Value (1),
+                  Choice   => DMI_Data_Entry.Choice_Number (1),
+                  Has      => True,
+                  Accepted => DMI_Data_Entry.Accepted (1))
+            else (others => <>));
+         return;
+      end if;
       for I in Item_T loop
          if Slot (I).On_Window = Index then
             declare
@@ -409,6 +510,25 @@ package body DMI_Train_Data is
 
    procedure Store is
    begin
+      if Layout = Fixed_Layout then
+         --  11.3.9.6 a): the train type stands for all the Train Data
+         Stored_Type := Type_Work.Choice;
+         declare
+            T : constant DMI_Train_Types.Train_Type_T := Type_Of;
+         begin
+            DMI_Driver_Data.Train_Length := T.Length_M;
+            DMI_Driver_Data.Brake_Pct := T.Brake_Pct;
+            DMI_Driver_Data.Max_Speed := T.Max_Speed;
+            Positions_Of (T.CD, T.Other, T.Axle, T.Airtight, T.Gauge,
+                          DMI_Driver_Data.Train_Category,
+                          DMI_Driver_Data.Axle_Load,
+                          DMI_Driver_Data.Airtight,
+                          DMI_Driver_Data.Loading_Gauge);
+         end;
+         DMI_Driver_Data.Train_Data_Entered := True;
+         return;
+      end if;
+      Stored_Type := 0;
       DMI_Driver_Data.Train_Length := To_Number (Work (I_Length).Value);
       DMI_Driver_Data.Brake_Pct := To_Number (Work (I_Brake).Value);
       DMI_Driver_Data.Max_Speed := To_Number (Work (I_Max_Speed).Value);
@@ -524,6 +644,22 @@ package body DMI_Train_Data is
                         return DMI_Data_Entry.Window_Def_T is
       Result : Window_Def_T;
    begin
+      if Layout = Fixed_Layout then
+         --  11.3.9.6 a), Figure 123: the single input field 'Train type'
+         --  with the dedicated keyboard of Table 39, echoed by itself
+         Result.Layout := Total_Grid;
+         Result.Title := Window_Title (TX.Text (TX.Train_Data));
+         Result.Field_Count := 1;
+         --  Figure 123: the input field keeps its label 'Train type'
+         Result.Labelled := True;
+         Result.Fields (1) :=
+           Field (TX.Text (TX.Train_Type), Max_Choice_Label,
+                  Keyboard => Dedicated,
+                  Proposed => Type_Work.Value,
+                  Choices  => Type_Choices,
+                  Proposed_Choice => Type_Work.Choice);
+         return Result;
+      end if;
       --  11.3.9.1: a window on the total grid array with echo texts and
       --  the question 'Train data entry complete?'; 11.3.9.2 / 11.3.9.3:
       --  the title with the sequence number of the window
@@ -558,7 +694,15 @@ package body DMI_Train_Data is
         Field (TX.Text (TX.Validate), Max_Choice_Label, Keyboard => Yes_No,
                Proposed => Yes_No_Value (Yes_Choice),
                Proposed_Choice => Yes_Choice);
-      Fill_Echo (Result);
+      if Layout = Fixed_Layout then
+         --  11.4.1.3: the echo text of the one input field
+         Result.Echo_Count := 1;
+         Result.Echo (1) :=
+           Echo (TX.Text (TX.Train_Type), Type_Work.Value,
+                 Type_Work.Accepted, Group => False);
+      else
+         Fill_Echo (Result);
+      end if;
       return Result;
    end Validation_Def;
 

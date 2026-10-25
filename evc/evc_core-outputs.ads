@@ -126,8 +126,10 @@ is
    --  the speed not above the limit for triggering the override (5.8,
    --  Update_Position), the non-leading and passive shunting inputs
    --  (4.4.15, 4.4.20), the "BTM alarm reaction inhibition" (5.22.4.1)
+   --  and the type of Train Data entry (SUBSET-034 2.6.1.1, DMI 11.3.9.6)
    function Train_Bits return Bits_T
      with Global => (Standstill, Below_Override, TIU_Now,
+                     TIU_Known_Now, TIU_Value_Now,
                      EVC_Procedures.State);
 
    --  The national bits of MSG_ONBOARD: the room for a VBC and a VBC
@@ -152,7 +154,7 @@ is
    --  @req 5.11.2.2 S140
    procedure Send_Onboard
      with Global => (Input  => (Current_Mode, Standstill, Below_Override,
-                                 TIU_Now,
+                                 TIU_Now, TIU_Known_Now, TIU_Value_Now,
                                 EVC_Procedures.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Position.State,
@@ -201,6 +203,13 @@ is
                                 EVC_Radio.State),
                      In_Out => (Stored_Sent, Values_Sent,
                                 EVC_Outbox.Queue));
+
+   --  MSG_TRAIN_TYPES: the pre-configured train types of the fixed Train
+   --  Data entry (DMI 11.3.9.6 a, Table 39), EVC_Config's, once after
+   --  the start
+   --  @req 3.18.3.2
+   procedure Send_Train_Types
+     with Global => (In_Out => (Types_Sent, EVC_Outbox.Queue));
 
    --  MSG_SYSTEM_VERSION: the operated system version X.Y (3.17.2.1.1)
    --  for the DMI's System version window (DMI 11.5.2), sent at the
@@ -323,7 +332,7 @@ is
                                 Status_BMM_Sent, Status_SM_Sent,
                                 Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
-                                Contact_Sent, Version_Sent,
+                                Contact_Sent, Version_Sent, Types_Sent,
                                 Stored_Sent, Values_Sent,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio.State, EVC_Radio.Queue,

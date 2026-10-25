@@ -25,6 +25,7 @@ with DMI_Status;
 with DMI_System_Status;
 with DMI_System_Version;
 with DMI_Text_Messages;
+with DMI_Train_Types;
 with DMI_Texts;
 with DMI_Train_Data;
 with DMI_VBC;
@@ -649,6 +650,8 @@ package body DMI_Core is
    procedure Initialise is
    begin
       Has_Failed := False;
+      DMI_Train_Types.Reset;
+      DMI_Train_Data.Reset_Layout;
       Reset_State;
       EVC_Heard := False;
       Link_Lost := False;
@@ -1019,6 +1022,12 @@ package body DMI_Core is
       DMI_Conditions.Passive_Shunting   := Bit (Train, 3);
       DMI_Conditions.BMM_Inhibit_Active := Bit (Train, 4);
       DMI_Conditions.Position_Status_Valid := Bit (Train, 5);
+      DMI_Conditions.Train_Entry :=
+        (case Train / 64 is
+            when 1      => DMI_Conditions.Entry_Fixed,
+            when 2      => DMI_Conditions.Entry_Flexible,
+            when 3      => DMI_Conditions.Entry_Switchable,
+            when others => DMI_Conditions.Entry_Unknown);
 
       DMI_Conditions.NV_Driver_ID_Running := Bit (National, 0);
       DMI_Conditions.NV_Adhesion          := Bit (National, 1);
@@ -1616,6 +1625,60 @@ package body DMI_Core is
       end case;
    end Apply_Desk_Input;
 
+   --  MSG_TRAIN_TYPES: the pre-configured train types of the fixed Train
+   --  Data entry (dmi_protocol.ads). The whole message is checked before
+   --  anything is taken: a count above the limit, a name length of 0 or
+   --  above the limit, or a length that is not exactly what the count and
+   --  the names describe drop the message.
+   procedure Apply_Train_Types (Payload : Stream_Element_Array) is
+      use DMI_Train_Types;
+      Offset : Stream_Element_Offset := Payload'First;
+      Count  : Natural;
+      List   : Type_List_T;
+   begin
+      if Payload'Length < 1
+        or else Payload'Length > Train_Types_Max_Length
+      then
+         return;
+      end if;
+      Count := Natural (Get_U8 (Payload, Offset));
+      if Count > Max_Types then
+         return;
+      end if;
+      for I in 1 .. Count loop
+         if Offset > Payload'Last then
+            return;
+         end if;
+         declare
+            Len : constant Natural := Natural (Get_U8 (Payload, Offset));
+         begin
+            if Len = 0 or else Len > Max_Name
+              or else Payload'Last - Offset + 1
+                        < Stream_Element_Offset (Len + Stored_Train_Length)
+            then
+               return;
+            end if;
+            List (I).Name_Length := Len;
+            for C in 1 .. Len loop
+               List (I).Name (C) :=
+                 Wide_Character'Val (Natural (Get_U8 (Payload, Offset)));
+            end loop;
+            List (I).Length_M  := Natural (Get_U16 (Payload, Offset));
+            List (I).Brake_Pct := Natural (Get_U16 (Payload, Offset));
+            List (I).Max_Speed := Natural (Get_U16 (Payload, Offset));
+            List (I).CD        := Natural (Get_U8 (Payload, Offset));
+            List (I).Other     := Natural (Get_U16 (Payload, Offset));
+            List (I).Axle      := Natural (Get_U8 (Payload, Offset));
+            List (I).Airtight  := Natural (Get_U8 (Payload, Offset));
+            List (I).Gauge     := Natural (Get_U8 (Payload, Offset));
+         end;
+      end loop;
+      if Offset /= Payload'Last + 1 then
+         return;  -- bytes beyond the described list
+      end if;
+      Set_List (Count, List);
+   end Apply_Train_Types;
+
    --  MSG_STORED_VALUES: the Driver ID, the train running number and,
    --  in the long form, the Train Data and the GSM-R network ID stored
    --  on-board (SUBSET-026 3.18.6.1) become the values the Data view
@@ -1740,7 +1803,7 @@ package body DMI_Core is
                    | MSG_PLANNING | MSG_ONBOARD | MSG_ATO
                    | MSG_SYSTEM_STATUS | MSG_RADIO_NETWORKS
                    | MSG_SYSTEM_VERSION | MSG_VBC_LIST | MSG_RBC_CONTACT
-                   | MSG_STORED_VALUES
+                   | MSG_STORED_VALUES | MSG_TRAIN_TYPES
       then
          Note_EVC_Message;
       end if;
@@ -1812,6 +1875,8 @@ package body DMI_Core is
             then
                Apply_Stored_Values (Payload);
             end if;
+         when MSG_TRAIN_TYPES =>
+            Apply_Train_Types (Payload);
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state

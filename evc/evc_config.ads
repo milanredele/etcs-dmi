@@ -212,6 +212,52 @@ is
 
    Default_Fixed_Train : constant Fixed_Train_T := (others => <>);
 
+   --  A pre-configured train type of the fixed Train Data entry (DMI
+   --  11.3.9.6 a: "a combination of all train data", the key of the
+   --  dedicated keyboard of Table 39): its name (DMI 11.3.9.8.2 leaves
+   --  the naming outside the specification) and the items of the
+   --  driver's entry (DMI Table 40) in the codes of MSG_DRIVER_DATA kind
+   --  2; the braking model, the special brakes, the traction cut-off
+   --  time and the traction systems are those of Fixed_Train_T.
+   Train_Types_Max     : constant := 8;
+   Train_Type_Name_Max : constant := 16;
+   type Train_Type_T is record
+      Name             : String (1 .. Train_Type_Name_Max) := (others => ' ');
+      Name_Length      : Natural range 1 .. Train_Type_Name_Max := 1;
+      Length_M         : Natural range 1 .. 4_095 := 20;
+      Brake_Percentage : Natural range 10 .. 250 := 100;
+      Max_Speed_Kmh    : Natural range 0 .. 600 := 80;
+      Cant_Deficiency  : NC_CDTRAIN_T := 0;
+      Other            : NC_TRAIN_T := 0;
+      Axle_Load        : M_AXLELOADCAT_T := 0;
+      Airtight         : M_AIRTIGHT_T := 0;
+      Loading_Gauge    : M_LOADINGGAUGE_T := 1;
+   end record;
+   type Train_Type_List_T is array (1 .. Train_Types_Max) of Train_Type_T;
+
+   --  The train types of the installation (3.18.3.2.1: the Train Data
+   --  may come from pre-configured values). Decision: two, until a
+   --  format version of the image carries them: "Locomotive", the
+   --  shunting locomotive of the Supervised Manoeuvre defaults above
+   --  (20 m, the engine's length, 100 %, 80 km/h, no category, axle
+   --  load A, gauge G1, not airtight) and "Passenger", a passenger train
+   --  of 200 m (PASS 1: NC_CDTRAIN 0, the passenger bit of NC_TRAIN),
+   --  135 %, 160 km/h, axle load A, gauge G1, not airtight.
+   Default_Train_Type_Count : constant := 2;
+   --  @req 3.18.3.2
+   Default_Train_Types : constant Train_Type_List_T :=
+     (1      => (Name        => "Locomotive      ",
+                 Name_Length => 10,
+                 others      => <>),
+      2      => (Name             => "Passenger       ",
+                 Name_Length      => 9,
+                 Length_M         => 200,
+                 Brake_Percentage => 135,
+                 Max_Speed_Kmh    => 160,
+                 Other            => 4,
+                 others           => <>),
+      others => (others => <>));
+
    --  the radio of the vehicle (3.5.2.4: "at least
    --  two" communication sessions through GSM-R; decision 2 of
    --  doc/EVC-PLAN.md §13: two are the default, one the degraded case

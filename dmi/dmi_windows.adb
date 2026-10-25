@@ -413,6 +413,20 @@ package body DMI_Windows is
      (Sequence_Active and then Depth > 0
       and then Stack (Depth) = W_Driver_ID);
 
+   -- 11.3.9.7.2: the Train data window of the switchable entry presents
+   -- the enabled 'switch' button, the one extra button of that window;
+   -- 11.3.9.7.5 a): 60 x 50 cells at (246,400), the bottom right corner
+   -- of the D/F/G area
+   Switch_Area : constant Area_T := (Origin + (246, 400), 60, 50);
+
+   function Switch_Shown return Boolean is
+     (Depth > 0 and then Stack (Depth) = W_Train_Data
+      and then DMI_Train_Data.Switchable);
+
+   -- The extra buttons of the window on top
+   function Extras return Natural is
+     (if In_Step_S1 then Extra_Count elsif Switch_Shown then 1 else 0);
+
    -- 11.3.3.7 a: 'TRN' at (142,400), 11.3.3.6 a: 'settings' at (224,400),
    -- both 82 x 50 cells inside the D/F/G area
    function Extra_Area (Which : Positive) return Area_T is
@@ -432,8 +446,7 @@ package body DMI_Windows is
       case Kind_Of (Stack (Depth)) is
          when Menu                    => return Max_Menu;
          when Data_Entry | Validation =>
-            return DMI_Data_Entry.Button_Count
-              + (if In_Step_S1 then Extra_Count else 0);
+            return DMI_Data_Entry.Button_Count + Extras;
          when View                    => return DMI_Data_View.Button_Count;
          -- Figure 135: [Close] only
          when Info                    => return 0;
@@ -443,7 +456,8 @@ package body DMI_Windows is
    -- The index of the extra Driver ID button, 0 when Index is one of the
    -- data entry engine's own
    function Extra_Index (Index : Positive) return Natural is
-     (if In_Step_S1 and then Index > DMI_Data_Entry.Button_Count
+     (if Extras > 0 and then Index > DMI_Data_Entry.Button_Count
+         and then Index <= DMI_Data_Entry.Button_Count + Extras
       then Index - DMI_Data_Entry.Button_Count else 0);
 
    function Button_Area (Index : Positive) return Display.Area_T is
@@ -452,7 +466,8 @@ package body DMI_Windows is
          when Menu => return Menu_Button_Area (Index);
          when Data_Entry | Validation =>
             if Extra_Index (Index) > 0 then
-               return Extra_Area (Extra_Index (Index));
+               return (if Switch_Shown then Switch_Area
+                       else Extra_Area (Extra_Index (Index)));
             end if;
             return DMI_Data_Entry.Button_Area (Index);
          when View => return DMI_Data_View.Button_Area (Index);
@@ -1758,6 +1773,14 @@ package body DMI_Windows is
          when Menu =>
             Menu_Pressed (Index);
          when Data_Entry | Validation =>
+            if Extra_Index (Index) > 0 and then Switch_Shown then
+               -- 11.3.9.7.3: the other layout, the values entered so far
+               -- kept by the process
+               DMI_Train_Data.Capture (DMI_Train_Data.Current_Window);
+               DMI_Train_Data.Switch_Layout;
+               DMI_Data_Entry.Open (Entry_Def (W_Train_Data));
+               return;
+            end if;
             if Extra_Index (Index) > 0 then
                -- Table 49 S1: the settings button leads to S1-1, the
                -- train running number button to S1-2; the Driver ID
@@ -1843,7 +1866,8 @@ package body DMI_Windows is
    procedure Draw_Labelled_Button (The_Area : Area_T;
                                    Label    : Wide_String;
                                    Enabled  : Boolean;
-                                   Pressed  : Boolean) is
+                                   Pressed  : Boolean;
+                                   Switch   : Boolean := False) is
       Room : constant Natural := The_Area.Width - 6;
       Cut  : Natural := 0;
 
@@ -1855,12 +1879,18 @@ package body DMI_Windows is
             Pen_Y => The_Area.Position.Y + The_Area.Height / 2 + Offset,
             The_String => Text,
             The_Size => 12,
-            The_Color => (if Enabled then General_Parameters.GREY
+            The_Color => (if Switch then General_Parameters.BLACK
+                          elsif Enabled then General_Parameters.GREY
                           else General_Parameters.DARK_GREY),
             The_Alignment => Draw.Center);
       end Line;
    begin
-      if not Pressed then
+      if Switch then
+         -- 11.3.9.7.5: a black label on medium grey, the border of an
+         -- input field (5.1.1.1.4)
+         Screen.Fill_Area (The_Area, General_Parameters.MEDIUM_GREY);
+         Draw.Draw_Input_Field_Frame (The_Area);
+      elsif not Pressed then
          Draw.Draw_Button_Frame (The_Area);
       end if;
       if Draw.String_Width (Label, 12) <= Room then
@@ -2013,6 +2043,17 @@ package body DMI_Windows is
          when Data_Entry | Validation =>
             if In_Step_S1 then
                Draw_Driver_ID_Extras;
+            elsif Switch_Shown then
+               -- 11.3.9.7.4: 'Select type' on the flexible layout,
+               -- 'Enter data' on the fixed one
+               Draw_Labelled_Button
+                 (Switch_Area,
+                  TX.Text (if DMI_Train_Data."=" (DMI_Train_Data.Layout,
+                                                  DMI_Train_Data.Fixed_Layout)
+                           then TX.Enter_Data else TX.Select_Type),
+                  Enabled => True,
+                  Pressed => Pressed (DMI_Data_Entry.Button_Count + 1),
+                  Switch  => True);
             end if;
       end case;
    end Render;

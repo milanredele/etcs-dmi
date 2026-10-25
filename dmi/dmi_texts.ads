@@ -87,6 +87,9 @@ is
       Train_Running_Nr, RBC_ID, RBC_Phone_Number, SR_Speed, SR_Distance,
       VBC_Code, Validate, Train_Category, Train_Length, Brake_Percentage,
       Max_Speed, Axle_Load_Category, Airtight, Loading_Gauge,
+      --  11.3.9.6 a): the input field of the fixed entry and the data
+      --  view's item 3 (Table 44); 11.3.9.7.4: the 'switch' button
+      Train_Type, Select_Type, Enter_Data,
 
       -- Data view items (Tables 45, 46) that are no input field label;
       -- 'VBC #n set code' is VBC_Code_Before, n, VBC_Code_After

@@ -12194,3 +12194,52 @@ set, packet 79's keeper), B2000 (the DMI's fixed Train Data window,
 Table 44, with its protocol field), B018's families (S1531c721, the
 repositioning information); B1840's question stays with the user; then
 NL.
+
+### The fixed Train Data entry: the type of entry and the pre-configured train types on the protocol, the fixed and switchable layouts, the driver's train type as the Train Data (e6/fixed-entry) (2026-10-25)
+
+- The type of entry: MSG_ONBOARD train bits 6 and 7 from TIU signal 16
+  (`EVC_Core.Outputs.Train_Bits`, `EVC_DMI_Port.Train_Entry_*`): 0 not
+  known (no input yet), 1 fixed, 2 flexible, 3 switchable. Decision,
+  narrowing the brief (which had 0 fixed, 3 not known): 0 is "not known",
+  read as flexible, so that an EVC that never sets the bits (EVC_Mock,
+  the goldens' frames) keeps the flexible entry; no MSG_ONBOARD byte of
+  any golden changed. `DMI_Conditions.Train_Entry`.
+- MSG_TRAIN_TYPES 16#12# (EVC to DMI): count u8 (0 .. Train_Types_Max 8),
+  per type name_len u8 (1 .. 16) and Latin-1 bytes, then the 12 bytes of
+  MSG_DRIVER_DATA kind 2 (length u16 m, brake percentage u16, max speed
+  u16 km/h, NC_CDTRAIN u8, NC_TRAIN u16, M_AXLELOADCAT u8, M_AIRTIGHT u8,
+  M_LOADINGGAUGE u8; decision: the codes the DMI already maps, not the
+  brief's u8 fields). A message of another length than its count and
+  names describe is ignored as a whole. Sent once after the power-up
+  (`EVC_Core.Outputs.Send_Train_Types`, `EVC_Core.Types_Sent`, a new
+  state of the parent); no DMI restart trigger exists (B2080).
+  `EVC_DMI_Port.Train_Types_Frame`. The types: `EVC_Config.Default_Train_Types`
+  (decision: "Locomotive", the SM defaults with 20 m; "Passenger", 200
+  m, 135 %, 160 km/h, PASS 1, axle load A, G1, not airtight; not in the
+  image, B2081). The DMI: `DMI_Train_Types` (new unit), `DMI_Core.Apply_Train_Types`;
+  `dmi_fuzz` offers the message; `evc_fuzz` unchanged (an output only).
+- The layouts: `DMI_Train_Data.Layout` (fixed when the entry is fixed,
+  the layout lastly used when switchable, 11.3.9.7.1, kept while the DMI
+  runs, `Reset_Layout` at its start), the fixed window: one labelled
+  input field 'Train type' with the dedicated keyboard of the names
+  (Table 39, Figure 123), its validation echoing the type; the stored
+  type stands for all the Train Data (`Store`: the type's codes sent as
+  they are by `Category_CD` / `Category_Other`). `DMI_Windows`: the
+  'switch' button (11.3.9.7.2 to .5 a: 60 x 50 at (246,400), medium grey,
+  black label, an input field's border; 'Select type' / 'Enter data',
+  `Draw_Labelled_Button` with `Switch`), an extra button like the Driver
+  ID window's. DMI_Texts: Train_Type, Select_Type, Enter_Data in En, De,
+  Hu (an edit outside the package's units). DMI clauses built: 11.3.9.6
+  a) and c), 11.3.9.7.1 to 11.3.9.7.5 a), 11.3.9.8.1.
+- Scenarios: `EVC_Test_Core.Scenario_Power_Up` (MSG_TRAIN_TYPES decoded),
+  `Scenario_Onboard_Entry_Type`; `DMI_Test_Data_Entry.Scenario_Train_Types`
+  (the message, malformed ones, the bits, the fixed entry stored, the
+  switch, the layout retained). Goldens: four new DMI ones
+  (`train_data_fixed`, `_fixed_validation`, `train_data_switch_flexible`,
+  `_switch_fixed`, looked at against Figures 123 to 125); fourteen
+  on-board goldens re-recorded (one MSG_TRAIN_TYPES frame in cycle 1;
+  valid_inputs: a JRU record 31 one Take later, the take buffer full).
+  Matrix: row 3.18.3.2 names `EVC_Config.Default_Train_Types` (3.18.3.2.1
+  is not a row). Runner: 0 regressions.
+- Left (B2000, narrowed): the driver's type to the on-board and the data
+  view item 3 (Table 44); B2001 (the bench's TIU panel).

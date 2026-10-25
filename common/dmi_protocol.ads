@@ -170,6 +170,11 @@ package DMI_Protocol is
    --         4.10, 5.4.3.2 D2), referred to an LRBG or not: a position
    --         on an unlinked group or on the SOLR is valid too (data
    --         bit5 is the position referred to an LRBG)
+   --    bits6-7 the type of Train Data entry the train interface
+   --         selects (DMI 11.3.9.6, SUBSET-034 2.6.1.1): 0 not known
+   --         (no input received yet), read as flexible, 1 fixed, 2
+   --         flexible, 3 switchable; 0 so that an EVC that does not
+   --         know the input keeps the flexible entry
    --  national u8: national values and on-board storage
    --    bit0 modification of Driver ID while running is allowed,
    --    bit1 modification of adhesion factor by driver is allowed,
@@ -324,6 +329,25 @@ package DMI_Protocol is
    Stored_Values_Length : constant :=
      Stored_Values_Short_Length + 1 + Stored_Train_Length
      + 1 + Stored_Text_Max;
+
+   MSG_TRAIN_TYPES : constant Msg_Type_T := 16#12#;
+   --  The pre-configured train types of the fixed Train Data entry (DMI
+   --  11.3.9.6 a, 11.3.9.8, Table 39; SUBSET-026 3.18.3.2.1), the keys
+   --  of the dedicated keyboard of the 'Train type' field, each with
+   --  the Train Data it stands for (the validation window and the data
+   --  view show them). The EVC sends it once after its start:
+   --    count u8 (0 .. Train_Types_Max), then per type:
+   --    name_len u8 (1 .. Train_Type_Name_Max), Latin-1 bytes,
+   --    the 12 bytes of MSG_DRIVER_DATA kind 2 after its kind byte
+   --      (length u16 m, brake percentage u16, max speed u16 km/h,
+   --      NC_CDTRAIN u8, NC_TRAIN u16, M_AXLELOADCAT u8, M_AIRTIGHT u8,
+   --      M_LOADINGGAUGE u8).
+   --  The length of the message must be exactly what the count and the
+   --  name lengths describe; any other message is ignored as a whole.
+   Train_Types_Max     : constant := 8;
+   Train_Type_Name_Max : constant := 16;
+   Train_Types_Max_Length : constant :=
+     1 + Train_Types_Max * (1 + Train_Type_Name_Max + Stored_Train_Length);
 
    MSG_ATO : constant Msg_Type_T := 16#0B#;
    --  The information of the ERTMS/ATO on-board (DMI 8.5) as the EVC
