@@ -13048,3 +13048,61 @@ runner's tolerance), B2204 with B2120 (the hello and the markers);
 B783's Reversing part; B841's three scenarios; B1960's traces and B2160,
 B2200, B2205 (runner); B2203 (the protocol comments); then B781, B1401,
 the decisions B1060, B1063, B1340.
+
+### The review's on-board findings: the unknown LRBG reported as 16777215, the acceptance in Post Trip by level, the linking reaction of 3130237_01 (e6/review-fixes) (2026-10-25)
+
+Three items of the blind review, each checked at the source first; three
+done (two fixes with their scenarios, one trace closed without a change).
+
+1. B2140 with B2206, the unknown LRBG. The claim held: `EVC_Position.Report_With`
+   gave NID_C 0 with NID_BG 16383 (NID_LRBG 16383) without an LRBG, where
+   NID_LRBG reserves 16777215 "Unknown" (7.5.1.90). Two corrections to the
+   lines: NID_BG is 7.5.1.85 (values 0 to 16382, 16383 "Identity is unknown
+   (only to be used for Linking information)"; 7.5.1.86 is NID_C), and
+   `Position_Report_2` had the same defect for NID_LRBG and for NID_PRVLRBG
+   (7.5.1.94, reserved 16777215 too). Now both reports give NID_C 1023 with
+   NID_BG 16383 (`Unknown_Reported` in the body of `EVC_Position`).
+   `S076_Run.Header_Unknown` counts an NID unknown only at 16777215 (the
+   tolerance of 16383 removed). The corpus: 23 occurrences of
+   NID_LRBG=16777215 in sv30, three of them expectations on our message
+   157 (3180600_01 step 77, 5040300_04 step 83, 5040500_05 step 144),
+   all after the steps those sequences are blocked at (62, 52, 17): the
+   full runner moved nothing. Scenarios: `Scenario_LRBG_Unknown_Accepted`
+   checks NID_C and NID_BG, `position_single_balise` NID_PRVLRBG. Rows
+   3.6.2.2.2.1 and 3.4.2.3.3.3 noted.
+2. B2202, Post Trip by level. Footnote [1] of Table 4.8.4 (PDF page 76 of
+   SUBSET-026-4): "for level 2: only if following the reception of the
+   information "Recognition of Exit from TR mode" with a more recent time
+   stamp; for level 1: rejected". The line's path was wrong: message 6 in
+   level 1 is rejected by 4.8.3 (From RBC: R in levels 0, NTC and 1), so
+   `Trip_Exit_Known` is never set in level 1; the state is reached only by
+   a level change in PT after a message 6 in level 2 (the row "Level
+   Transition Order" is A [1] [5] in PT; the flag is reset on a mode change
+   only), and then message 45 or packet 45 (A in every level by 4.8.3)
+   would pass. `EVC_Radio_Acceptance.In_PT` now rejects in level 1
+   (decision: a context without a valid level is judged by message 6
+   alone, because `EVC_Sessions.Network.Take_Radio_Order` builds its
+   context of packet 45 without the level: B2220). Scenario
+   `Scenario_PT_Acceptance_Level` (`EVC_Test_Authority`): the ten rows A
+   [1] of the third filter by level, message 45 accepted in level 2 after
+   message 6 and rejected once the level is 1 in PT.
+   `Scenario_Network_Radio_Order` (`EVC_Test_Network`, outside this
+   package's units) gives its PT check level 2. Row 4.8.4.2 Table-footnote
+   [1] noted, `@req` on `In_PT`.
+3. B2201, the linking reaction of 3130237_01 SV30. Traced with
+   `S076_Run.Next_Group_Reached` off and the events of `EVC_Position` printed
+   per cycle (scratch edits, not committed): Q_LINKREACTION is the 2-bit
+   binary 10, No Reaction (7.5.1.117), on every link of BG1d's packet 5;
+   the window of BG3 (890 m, 10 m) passes during the waits of steps 57 and
+   58 and gives one Missed_Group BG3 with a Linking_Reaction of value 2
+   (No Reaction), cause "not detected" (3.16.2.3.1 b)), and no other
+   reaction; BG3d read at 952 m gives no event. The service brake of step
+   60's window (which runs to BG4d at 1390 m) is the target's: at 1399 m
+   status Intervention, 40 km/h against an SBI of 45 km/h, the target 30
+   km/h 121 m ahead under the earlier EOA of BG1d. B2041's remark was
+   wrong; no code change, 0 movements.
+
+Backlog: B2140, B2206, B2202, B2201 closed; B2220 new (the level in the
+context of `EVC_Sessions.Network.Take_Radio_Order`). Proofs: `evc_position`
+and `evc_radio_acceptance`, no unproved check. Runner: 1160 / 1078 / 952,
+0 regressions, 0 improvements.
