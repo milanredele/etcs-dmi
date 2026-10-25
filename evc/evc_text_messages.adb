@@ -802,4 +802,19 @@ is
       end loop;
    end Mode_Changed;
 
+   procedure Delete_Beyond (X : Dist_T) is
+   begin
+      for I in Messages'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
+         if Messages (I).Used
+           and then Messages (I).Has_Start_X
+           and then Along (Messages (I).Sense, Messages (I).Start_X)
+                    > Along (Messages (I).Sense, X)
+         then
+            Remove (I);
+         end if;
+      end loop;
+   end Delete_Beyond;
+
 end EVC_Text_Messages;

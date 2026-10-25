@@ -190,4 +190,15 @@ is
    procedure Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => State);
 
+   --  A shortening of the stored information (A.3.4.1.2): the stored
+   --  location based texts whose start location lies beyond the frame
+   --  position X (the new SvL, [8], or the max safe front end, [13]) in
+   --  their own direction, deleted (removed from the DMI when shown);
+   --  every other text unchanged, its end location included. The texts
+   --  taken in the cycle and not yet stored by Evaluate are the new
+   --  information and are kept
+   --  @req A.3.4.1.3 Table-footnote [8], A.3.4.1.3 Table-footnote [13]
+   procedure Delete_Beyond (X : Dist_T)
+     with Global => (In_Out => State);
+
 end EVC_Text_Messages;

@@ -50,6 +50,9 @@ package EVC_Test_Authority is
    procedure Scenario_Buffer_Three_Sets;
    procedure Scenario_Own_Units_Stored;
    procedure Scenario_Released_Linking;
+   --  A.3.4.1.3 [8]: a text starting beyond the new SvL deleted by a
+   --  shortened MA, one starting before it kept
+   procedure Scenario_Text_Shortening;
 
    procedure Scenario_Start_After_Ack;
 

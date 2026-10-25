@@ -381,6 +381,7 @@ is
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 Events, Event_N))
    is
    begin
@@ -410,6 +411,8 @@ is
            (T, O.Delete_X, O.Delete_To, O.Delete_Before);
          EVC_Track_Conditions.Delete_Beyond
            (T, O.Delete_X, O.Delete_To, O.Delete_Before);
+         --  [8], [13]: the location based texts beyond the same location
+         EVC_Text_Messages.Delete_Beyond (O.Delete_X);
       end if;
    end Apply;
 
@@ -907,6 +910,7 @@ is
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 Events, Event_N))
    is
       O : EVC_Movement_Authority.Outcome_T;
@@ -997,6 +1001,7 @@ is
           Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_LS_Display.State,
                                 Events, Event_N))
    is
@@ -1313,6 +1318,7 @@ is
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
@@ -1373,6 +1379,7 @@ is
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
@@ -1669,6 +1676,7 @@ is
           Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
@@ -1774,6 +1782,7 @@ is
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
@@ -1908,6 +1917,7 @@ is
                      In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 Events, Event_N, Stop_Q)),
           Pre => I <= EVC_Radio_Info.Count
    is
@@ -2007,6 +2017,7 @@ is
           Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
@@ -2990,6 +3001,7 @@ is
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 Events, Event_N))
    is
       O : EVC_Movement_Authority.Outcome_T;
@@ -3051,6 +3063,7 @@ is
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 Events, Event_N))
    is
       O : EVC_Movement_Authority.Outcome_T;
@@ -3091,6 +3104,7 @@ is
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 Events, Event_N))
    is
       use type EVC_Modes.Mode_T;
@@ -3128,6 +3142,7 @@ is
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 Events, Event_N))
    is
    begin
@@ -3370,6 +3385,7 @@ is
             (In_Out => (EVC_Track_Description.State,
                         EVC_Movement_Authority.State,
                         EVC_Track_Conditions.State,
+                        EVC_Text_Messages.State,
                         EVC_National_Values.State,
                         EVC_Levels.State, EVC_Sessions.State,
                         EVC_LS_Display.State,

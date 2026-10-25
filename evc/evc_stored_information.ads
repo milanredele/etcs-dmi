@@ -79,6 +79,7 @@ with EVC_Radio_Info;
 with EVC_Sessions;
 with EVC_Supervision_Input;  use EVC_Supervision_Input;
 with EVC_Track_Conditions;
+with EVC_Text_Messages;
 with EVC_Track_Description;
 with EVC_Train_Data;
 with Interfaces;             use Interfaces;
@@ -393,6 +394,7 @@ is
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
@@ -442,6 +444,7 @@ is
      with Global => (In_Out => (State, EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State),
@@ -493,6 +496,7 @@ is
      with Global => (In_Out => (State, EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State),
@@ -511,7 +515,8 @@ is
    procedure Train_Data_Shortening (Changed : Boolean)
      with Global => (In_Out => (State, EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
-                                EVC_Track_Conditions.State),
+                                EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State),
                      Input  => (EVC_Origins.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State));
 

@@ -1885,6 +1885,72 @@ package body EVC_Test_Authority is
              & "the level 2 transition (4.8.5.5)");
    end Scenario_Own_Units_Stored;
 
+   --  Message 24 referring to the group NID_BG with a fixed text from
+   --  D metres beyond the group on, 1000 m long (packet 74), its only
+   --  start sub-condition the location
+   function Text_At_Message (NID_BG, D : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P74.Packet_T;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 2;
+      P.Q_SCALE := 1;
+      P.Q_TEXT := 1;
+      P.D_TEXTDISPLAY := ETCS_Variables.D_TEXTDISPLAY_T (D);
+      P.L_TEXTDISPLAY := 1000;
+      P.T_TEXTDISPLAY := 1023;
+      P.M_MODETEXTDISPLAY := 15;
+      P.M_LEVELTEXTDISPLAY := 4;
+      P.M_MODETEXTDISPLAY_2 := 15;
+      P.M_LEVELTEXTDISPLAY_2 := 4;
+      P.Q_TEXTCONFIRM := 0;
+      ETCS_Track_Packets.P74.Encode (P, W, OK);
+      Check (OK, "texts shortened: packet 74 encoded");
+      return Message_Bytes (W);
+   end Text_At_Message;
+
+   --  A.3.4.1.3 [8], situation b) of A.3.4.1.2: the MA of the RBC
+   --  to 800 m shortened to 400 m, the train at 120 m. Of the two texts
+   --  stored before (from 300 m and from 700 m, the group at 100 m), the
+   --  one starting beyond the new SvL is deleted, the other kept: shown
+   --  at 300 m, and alone at 750 m once the MA is extended again
+   procedure Scenario_Text_Shortening is
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400)), Stamp));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 200));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 600));
+      Run_X (12_000);
+      Check (SI.Current.MA.EOA = 80_000
+             and then EVC_Text_Messages.Displayed = 0,
+             "texts shortened: the MA to 800 m, two texts stored, none "
+             & "shown yet");
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((200, 100)), Stamp));
+      Stand_X (100);
+      Check (SI.Current.MA.EOA = 40_000,
+             "texts shortened: the MA shortened to 400 m");
+      Run_X (35_000);
+      Check (EVC_Text_Messages.Displayed = 1,
+             "texts shortened: the text from 300 m, before the new SvL, "
+             & "kept and shown (A.3.4.1.3 [8])");
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400)), Stamp));
+      Stand_X (100);
+      Run_X (75_000);
+      Check (SI.Current.MA.EOA = 80_000
+             and then EVC_Text_Messages.Displayed = 1,
+             "texts shortened: the text from 700 m, beyond the new SvL, "
+             & "deleted by the shortening: not shown at 750 m (A.3.4.1.3 "
+             & "[8])");
+   end Scenario_Text_Shortening;
+
    --  Message 24 referred to the group Ref of country 123, its packet 5
    --  linking the group Id at D_LINK metres (accuracy 10 m, reaction R)
    function Linking_Message (Ref, Id, D_LINK : Natural;
