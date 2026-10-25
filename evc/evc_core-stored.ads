@@ -82,7 +82,7 @@ is
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 EVC_Procedures.State, SDM_Result,
                                 EVC_Radio_Info.State,
-                                EVC_Driver_Requests.State),
+                                EVC_Driver_Requests.State, DMI_Restarted),
                      In_Out => (SDM_Work, EVC_Stored_Information.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Origins.State,

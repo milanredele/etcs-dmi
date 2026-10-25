@@ -970,11 +970,16 @@ package body DMI_Test_Data_Entry is
       Check (Text (DMI_Train_Data.Onboard_Type_Text) = "Locomotive",
              "fixed entry: the on-board's type in force, MSG_STORED_VALUES "
              & "train_type 1 (Table 44 item 3)");
-      Send_Raw (16#11#, (1 .. 34 => 0, 35 => 1, 36 => 20, 37 => 0,
+      --  the long form before the train type (a byte short): read as
+      --  type 0, its values taken (dmi_protocol.ads, the rule of both
+      --  directions, MSG_DRIVER_DATA kind 2 the same)
+      Send_Raw (16#11#, (1 .. 34 => 0, 35 => 1, 36 => 30, 37 => 0,
                          38 => 100, 39 => 0, 40 => 80, 41 => 0,
                          42 .. 46 => 0, 47 => 1, 48 .. 64 => 0));
-      Check (Text (DMI_Train_Data.Onboard_Type_Text) = "Locomotive",
-             "fixed entry: MSG_STORED_VALUES a byte short is ignored");
+      Check (Text (DMI_Train_Data.Onboard_Type_Text) = ""
+             and then DMI_Driver_Data.Onboard_Length = 30,
+             "fixed entry: MSG_STORED_VALUES a byte short is read as "
+             & "type 0, its Train Data taken");
       DMI_Windows.Close_Top;
 
       --  11.3.9.6 c), 11.3.9.7: the switchable entry, flexible first,

@@ -322,8 +322,15 @@ package DMI_Protocol is
    --      for the data view's item 3 (DMI Table 44).
    --  Fixed length Stored_Values_Length; the short form of
    --  Stored_Values_Short_Length bytes (the Driver ID and the train
-   --  running number alone) is read too. A message of any other length
-   --  or a length above Stored_Text_Max drops the message as a whole.
+   --  running number alone) is read too, and so is the long form before
+   --  the train type, Stored_Values_Typeless_Length bytes, as type 0.
+   --  Decision, the rule of both directions (MSG_DRIVER_DATA kind 2 the
+   --  same): a form one byte short is the form before the train type and
+   --  reads as type 0 ("entered item by item"), because what it carries
+   --  is complete without the type and the type 0 is true of every sender
+   --  that knows no types; an older on-board's values are thus shown like
+   --  an older DMI's data are taken. A message of any other length or a
+   --  length above Stored_Text_Max drops the message as a whole.
    --  Once received, these values replace the ones entered on the DMI;
    --  before the first one the DMI shows its own entries (the Train Data
    --  and the network: before the first long form).
@@ -333,6 +340,8 @@ package DMI_Protocol is
    Stored_Values_Length : constant :=
      Stored_Values_Short_Length + 1 + Stored_Train_Length
      + 1 + Stored_Text_Max + 1;
+   --  the long form before the train type, read as type 0
+   Stored_Values_Typeless_Length : constant := Stored_Values_Length - 1;
 
    MSG_TRAIN_TYPES : constant Msg_Type_T := 16#12#;
    --  The pre-configured train types of the fixed Train Data entry (DMI
@@ -702,7 +711,12 @@ package DMI_Protocol is
    --                      its types or items that differ from the type's.
    --                  Driver_Data_Train_Length bytes; the short form of
    --                  Driver_Data_Train_Short_Length bytes, without the
-   --                  train type, is read as type 0
+   --                  train type, is read as type 0. Decision: the rule of
+   --                  MSG_STORED_VALUES, a form one byte short is the
+   --                  form before the train type; a DMI without the
+   --                  fixed layout (and the bench's scripted driver,
+   --                  Sim_Onboard_Env) entered the items one by one,
+   --                  which is what type 0 says, so its data are taken
    --   3 SR data    : speed u16, distance u16
    --   4 GSM-R network ID (DMI 11.3.4, SUBSET-026 3.18.4.3.6): len u8,
    --                  Latin-1 bytes.
@@ -779,9 +793,18 @@ package DMI_Protocol is
 
    MSG_DMI_HELLO : constant Msg_Type_T := 16#43#;
    --  The DMI (re)started: sent once by DMI_Core.Initialise, before any
-   --  other frame of the DMI, so that the on-board sends again what it
-   --  sends only once or at a change (MSG_TRAIN_TYPES, MSG_SYSTEM_VERSION,
-   --  MSG_STORED_VALUES, MSG_RBC_CONTACT) to a DMI that has lost them.
+   --  other frame of the DMI, so that the on-board sends again, in its
+   --  next cycle, what it sends only once or at a change and the DMI
+   --  shows until it changes: MSG_TRAIN_TYPES, MSG_SYSTEM_VERSION,
+   --  MSG_STORED_VALUES, MSG_RBC_CONTACT (when a contact is stored),
+   --  MSG_STATUS (once, with the position or "unknown"), MSG_TRACK_COND
+   --  and MSG_VBC_LIST (the lists as they are, empty included). Not sent
+   --  again: what the on-board sends every cycle (MSG_MODE_LEVEL,
+   --  MSG_ONBOARD, MSG_SPEED_STATE, MSG_STATUS while the position is
+   --  known), what the DMI asks for (MSG_RADIO_NETWORKS), and the starts
+   --  and ends of a display (MSG_SYSTEM_STATUS, MSG_TEXT,
+   --  MSG_TEXT_REMOVE): events, so a restarted DMI does not show again
+   --  the system status messages and texts displayed before its restart.
    --  No payload (Dmi_Hello_Length); a receiver ignores any other length.
    Dmi_Hello_Length : constant := 0;
 

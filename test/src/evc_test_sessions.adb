@@ -2048,6 +2048,86 @@ package body EVC_Test_Sessions is
              & "group reverse, got" & Img (First));
    end Scenario_Coordinate_Assignment;
 
+   --  4.4.18.1.7: the position reports in RV refer to the location of the
+   --  driving cab as before reversing: the estimated front end stays the
+   --  end of the active cab (3.6.1.3.4, the train orientation unchanged),
+   --  so as the train backs its distance to the LRBG decreases by the
+   --  distance run, Q_DIRLRBG and Q_DLRBG hold, and only the running
+   --  direction Q_DIRTRAIN turns (3.6.1.3: it is the running direction's)
+   procedure Scenario_Report_Reversing is
+      use type ETCS_Variables.Q_SCALE_T;
+      use type ETCS_Variables.Q_DIRLRBG_T;
+      use type ETCS_Variables.Q_DLRBG_T;
+      use type ETCS_Variables.Q_DIRTRAIN_T;
+      First, Prev : Natural;
+      Before, After : R0.Packet_T;
+      Got : Boolean;
+
+      --  Standing Ms: P the packet 0 of the last report (Got: one came)
+      procedure Stand_Report (Ms : Natural; P : out R0.Packet_T) is
+         M  : ETCS_Message.Message_T;
+         St : ETCS_Message.Status_T;
+         OK : Boolean;
+      begin
+         Got := False;
+         P := (others => <>);
+         for K in 1 .. Ms / 100 loop
+            Stand_X (100);
+            for N in 1 .. Radio_Outputs loop
+               if Is_Message (N, 136) then
+                  Decode_Radio_Message (N, M, St);
+                  if St = ETCS_Message.Accepted and then M.Count >= 1
+                    and then Natural (M.Index (1).NID) = 0
+                  then
+                     declare
+                        Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+                     begin
+                        ETCS_Message.Open_Packet (M, 1, Rd);
+                        R0.Decode (Rd, P, OK);
+                        Got := OK;
+                     end;
+                  end if;
+               end if;
+            end loop;
+         end loop;
+      end Stand_Report;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (With_Links (Group (20, 300),
+                             Link_To ((1 => 200), (1 => 30))));
+      Add_Group (Group (30, 500));
+      Run_X (15_000);
+      Establish (1);
+      Run_X (40_000);
+      --  a report every 2 s
+      Give_Radio_Message (1, Report_Parameters (20, 2, 2));
+      Run_Reports (70_000, First, Prev);
+      Stand_Report (3000, Before);
+      Check (Got and then Natural (EVC_Position.LRBG.Id.NID_BG) = 30
+             and then EVC_Core.Mode = EVC_Modes.M_FS,
+             "reversing report: packet 0 in FS on the linked group 30");
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_RV, EVC_Levels.Level);
+      --  20 m back, 1 m a cycle
+      Run_X (Train_Cm - 2000, Step_Cm => 100);
+      Stand_Report (3000, After);
+      Check (Got and then EVC_Core.Mode = EVC_Modes.M_RV
+             and then After.Q_SCALE = Before.Q_SCALE
+             and then Before.Q_SCALE <= 2
+             --  the decrease in cm (Q_SCALE 0, 1, 2: 10 cm, 1 m, 10 m)
+             and then (Integer (Before.D_LRBG) - Integer (After.D_LRBG))
+                        * 10 ** (Natural (Before.Q_SCALE) + 1)
+                        in 1_900 .. 2_100
+             and then After.Q_DIRLRBG = Before.Q_DIRLRBG
+             and then After.Q_DLRBG = Before.Q_DLRBG
+             and then After.Q_DIRTRAIN /= Before.Q_DIRTRAIN
+             and then After.Q_DIRTRAIN in 0 .. 1,
+             "4.4.18.1.7: in RV the report refers to the driving cab as "
+             & "before reversing, D_LRBG" & Before.D_LRBG'Image & " ->"
+             & After.D_LRBG'Image & ", Q_DIRTRAIN" & Before.Q_DIRTRAIN'Image
+             & " ->" & After.Q_DIRTRAIN'Image);
+   end Scenario_Report_Reversing;
+
    procedure Scenario_Session_Error_Report is
       Count, Error, Recorded : Natural := 0;
       T : Unsigned_64;

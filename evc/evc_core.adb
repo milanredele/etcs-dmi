@@ -80,7 +80,7 @@ package body EVC_Core
                                    Status_Radio_Sent,
                                    TC_Sent, Contact_Sent, Version_Sent,
                                    Types_Sent,
-                                   Stored_Sent, Values_Sent,
+                                   Stored_Sent, Values_Sent, DMI_Restarted,
                                    Config_Last, Config_Seen))
 is
 
@@ -172,11 +172,14 @@ is
       end if;
    end Count;
 
-   --  The fields of MSG_STATUS sent last: none yet (Start)
+   --  The fields of MSG_STATUS and the DMI messages sent last: none yet
+   --  (Start)
    procedure Reset_Status_Sent
      with Global => (Output => (Status_Rev_Sent, Status_Slip_Sent,
                                 Status_BMM_Sent, Status_SM_Sent,
-                                Status_Tunnel_Sent, Status_Radio_Sent))
+                                Status_Tunnel_Sent, Status_Radio_Sent,
+                                Contact_Sent, Version_Sent, Types_Sent,
+                                Stored_Sent, Values_Sent, DMI_Restarted))
    is
    begin
       Status_Rev_Sent := False;
@@ -185,6 +188,12 @@ is
       Status_SM_Sent := 0;
       Status_Tunnel_Sent := (others => <>);
       Status_Radio_Sent := 0;
+      Contact_Sent := EVC_Radio.No_Contact;
+      Version_Sent := 16#FF#;
+      Types_Sent := False;
+      Stored_Sent := False;
+      Values_Sent := (others => 0);
+      DMI_Restarted := False;
    end Reset_Status_Sent;
 
    --  The power-up of Initialise and Power_Up: everything cleared but the
@@ -266,11 +275,6 @@ is
       Ack_For_Protection := False;
       Reset_Status_Sent;
       TC_Sent := False;
-      Contact_Sent := EVC_Radio.No_Contact;
-      Version_Sent := 16#FF#;
-      Types_Sent := False;
-      Stored_Sent := False;
-      Values_Sent := (others => 0);
       EVC_JRU_Records.Reset;
       Config_Last := 0;
       Config_Seen := False;
@@ -390,13 +394,17 @@ is
             --  (EVC_Driver_Requests; the isolation, 4.6.3 condition [1],
             --  among them)
             EVC_Driver_Requests.Receive (Payload);
-            --  the DMI (re)started: what is sent once or at a change is
-            --  sent again in the next cycle
+            --  the DMI (re)started: what is sent once or at a change and
+            --  shown by the DMI until it changes is sent again in the next
+            --  cycle (the list is that of MSG_DMI_HELLO, dmi_protocol.ads)
             if Is_DMI_Hello (Payload) then
                Types_Sent := False;
                Stored_Sent := False;
                Version_Sent := 16#FF#;
                Contact_Sent := EVC_Radio.No_Contact;
+               --  MSG_STATUS once, with or without a position
+               Geo_Sent := True;
+               DMI_Restarted := True;
             end if;
             --  3.14.1.5: the release of a brake acknowledged
             if Is_Brake_Release_Ack (Payload) then
