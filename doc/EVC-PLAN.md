@@ -11868,3 +11868,17 @@ Runner only (test/src); no on-board code changed.
   Sa03cccdc did not move.
 - Runner: 1115 passed, 1076 failed, 999 blocked before; 1118, 1060,
   1012 after; 0 regressions.
+- B1881 done (added by the coordinator). `test/tools/evc_config.py`
+  learns the format version 2 of `EVC_Config`: the text form gains
+  `format = 2` with a `[train]` section (the braking model, the special
+  brakes the vehicle has) and, for a gamma train, `[gamma]` (the times,
+  the curves as lists of [speed cm/s, deceleration mm/s²], Kdry_rst,
+  Kwet_rst, Kn, the rotating mass) with the optional tables
+  `[gamma.normal_service]` and `[gamma.by_combination]`; the image is
+  written and read with the kernel's validation (`Decoded`, `Get_Gamma`:
+  the ranges, the curve counts, the speeds rising, the fields ending at
+  the CRC, a lambda train of 38 bytes). The two samples of
+  `EVC_Test_Config.Scenario_Config_Image_V2` (258 and 1248 bytes) give
+  the bytes of the kernel's `Encode_V2`, which `Decoded` accepts, and
+  decode back to the same text; the scenario's refusals are refused
+  alike. The version 1 image of ports/hosted/evc.cfg is unchanged.
