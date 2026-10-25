@@ -1362,4 +1362,48 @@ package body EVC_Test_Position is
    end Scenario_SL_Deletes_Invalid;
 
 
+   --  3.6.3.1.3.1: a group read in SH with the train moving against its
+   --  orientation (cab A, the train backing over the group 10 at 100 m)
+   --  is taken in its crossing direction, towards falling track
+   --  positions, the distances of its information in that sense; the
+   --  train's orientation unchanged. The same reading in FS is taken in
+   --  the train's orientation (3.6.3.1.3)
+   procedure Scenario_Crossing_Direction is
+      Got   : Pos.Taken_T;
+      Found : Boolean;
+
+      procedure Back_Over (Mode : EVC_Modes.Mode_T) is
+      begin
+         Start_Track;
+         Add_Group (Group (10, 100));
+         Run_To (15_000);
+         Stand;
+         EVC_Core.Set_Mode_For_Test (Mode, EVC_Modes.L1);
+         Found := False;
+         for I in 1 .. 12 loop
+            Step (-1_000);
+            if not Found and then Pos.Taken_Count > 0 then
+               Got := Pos.Taken (1);
+               Found := True;
+            end if;
+         end loop;
+      end Back_Over;
+   begin
+      Back_Over (EVC_Modes.M_SH);
+      Check (EVC_Core.Mode = EVC_Modes.M_SH
+             and then Found and then Got.Group.Id.NID_BG = 10
+             and then Got.T = EVC_Distances.Minus
+             and then Got.S = EVC_Distances.Minus
+             and then Pos.Orientation = EVC_Distances.Plus,
+             "crossing direction: a group read in SH backing against the "
+             & "orientation taken in its crossing direction (3.6.3.1.3.1)");
+      Back_Over (EVC_Modes.M_FS);
+      Check (Found and then Got.Group.Id.NID_BG = 10
+             and then Got.T = EVC_Distances.Plus
+             and then Got.S = EVC_Distances.Plus
+             and then Pos.Orientation = EVC_Distances.Plus,
+             "crossing direction: the same reading in FS taken in the "
+             & "train's orientation (3.6.3.1.3)");
+   end Scenario_Crossing_Direction;
+
 end EVC_Test_Position;

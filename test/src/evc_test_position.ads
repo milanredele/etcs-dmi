@@ -32,5 +32,7 @@ package EVC_Test_Position is
       procedure Scenario_Unauthorised_Direction_Groups;
       procedure Scenario_SOLR_Unlinked;
       procedure Scenario_SL_Deletes_Invalid;
+   --  3.6.3.1.3.1: a group read in SH against the orientation
+   procedure Scenario_Crossing_Direction;
 
 end EVC_Test_Position;
