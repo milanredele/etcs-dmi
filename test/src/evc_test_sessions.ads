@@ -58,6 +58,8 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_Reports;
    procedure Scenario_Report_Packet;
    procedure Scenario_Coordinate_Assignment;
+   --  4.4.18.1.7: the position report in RV
+   procedure Scenario_Report_Reversing;
    procedure Scenario_Session_Sleeping;
    --  3.12.3.5: message 158 at the driver's acknowledgement of a text
    --  message with a request to report it, to the RBC of the request

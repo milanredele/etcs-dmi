@@ -13048,3 +13048,68 @@ runner's tolerance), B2204 with B2120 (the hello and the markers);
 B783's Reversing part; B841's three scenarios; B1960's traces and B2160,
 B2200, B2205 (runner); B2203 (the protocol comments); then B781, B1401,
 the decisions B1060, B1063, B1340.
+
+### The hello's reach, the protocol's reasons, the position report in Reversing (e6/hello-reversing) (2026-10-25)
+
+**The hello's reach (B2204, B2120 done).** The DMI messages sent only
+once or at a change, sender by sender, with the decision for a restarted
+DMI: MSG_TRAIN_TYPES (`Send_Train_Types`), MSG_STORED_VALUES
+(`Send_Stored_Values`), MSG_SYSTEM_VERSION (`Send_System_Version`),
+MSG_RBC_CONTACT (`Send_RBC_Contact`, when a contact is stored): resent
+already (their markers reset by the hello); MSG_STATUS (`Send_Status`:
+every cycle while the position is known, else at a change of brake, TTI,
+radio, reversing, slippery rail, BMM, SM direction or tunnel): resent,
+the hello sets `Geo_Sent`, so the next cycle sends it once with the
+position or "unknown" whatever the `Status_*_Sent` markers hold;
+MSG_TRACK_COND (sent by `EVC_Core.Stored.Evaluate_Stored_Information`,
+not by Outputs) and MSG_VBC_LIST (`Send_VBC_List`): resent, the lists as
+they are, empty included, through a new `EVC_Core.DMI_Restarted` set by
+the hello, read by both and cleared by `Send_VBC_List` (its post).
+Not resent: MSG_MODE_LEVEL, MSG_ONBOARD, MSG_SPEED_STATE (every cycle),
+MSG_RADIO_NETWORKS (on the driver's request), the TIU outputs (`TIU_Sent`,
+`TIU_Reasons_Sent`, `TIU_RS_Sent`, `TC_Sent`: the TIU port; premise of
+the brief corrected, `TC_Sent` is the TIU track condition output of 5.20,
+not MSG_TRACK_COND), and the starts and ends of a display
+(MSG_SYSTEM_STATUS, MSG_TEXT, MSG_TEXT_REMOVE of `Send_Procedure_Messages`
+and the `Show_*` steps): events with no list of what is displayed, B2240
+opened. The comment of MSG_DMI_HELLO lists both. `Reset_Status_Sent` of
+`EVC_Core` takes the DMI markers' power-up reset (`Start` back under 100
+code lines). Scenario `EVC_Test_Core.Scenario_End_To_End`: part 3 checks
+MSG_STATUS, MSG_TRACK_COND, MSG_VBC_LIST and MSG_SYSTEM_VERSION after the
+hello and none of them in the next cycle; part 2 counts 21 frames (the
+hello before the first cycle brings the three). No golden moved (the
+picture `end_to_end_sb` unchanged). Proofs `evc_core`, `evc_core-outputs`,
+`evc_core-stored`.
+
+**The old lengths (B2203 done).** Decision: one rule for both directions,
+"a form one byte short is the form before the train type and reads as
+type 0": its content is complete without the type, and type 0 ("entered
+item by item") is true of every sender that knows no types. The DMI now
+reads the 64-byte MSG_STORED_VALUES (`Stored_Values_Typeless_Length`,
+`DMI_Core.Apply_Stored_Values`) as type 0, as the on-board reads the
+13-byte MSG_DRIVER_DATA kind 2. Chosen over refusing both: it needs no
+edit of `Sim_Onboard_Env` and of the dozen on-board scenarios sending the
+short kind 2. Both comments in common/dmi_protocol.ads give the reason.
+`DMI_Test_Data_Entry` (the fixed entry's data view): the byte-short form
+taken as type 0 with its Train Data (it was ignored);
+`EVC_Test_Train_Data.Scenario_Train_Type` checks the 13-byte kind 2 as
+type 0 already; `dmi_fuzz` draws the byte-short form already. No golden
+moved.
+
+**The position report in Reversing (B783 done).** 4.4.18.1.7 with
+3.6.1.3 and 3.6.1.3.4: the front end is the cab's end with regard to the
+train orientation, which RV does not change; the running direction does.
+Scenario `EVC_Test_Sessions.Scenario_Report_Reversing`: level 2 with a
+session, a report every 2 s, packet 0 on the linked group 30 in FS
+(D_LRBG 2030 at Q_SCALE 0, Q_DIRTRAIN 1); RV set by
+`EVC_Core.Set_Mode_For_Test`, 20 m back at 1 m a cycle: D_LRBG 1830,
+Q_DIRLRBG and Q_DLRBG unchanged, Q_DIRTRAIN 0. No defect
+(`EVC_Position.Position_Report` reports the estimated front end and
+`EVC_Odometry.Last_Direction`). The scenario enters RV by the test hook,
+not by packets 138 / 139 of an MA of the RBC; the entry itself is
+`EVC_Test_Procedures.Scenario_Reversing`'s (level 1). Row 4.4.18.1.7 done.
+
+Runner: 0 regressions, no sequence moved. Edits outside the named units:
+`EVC_Core.Stored` (the contract and the condition of MSG_TRACK_COND in
+`Evaluate_Stored_Information`), `test/src/evc_test.adb` (the call),
+`doc/TRACE-SUBSET-026.csv` (the row).
