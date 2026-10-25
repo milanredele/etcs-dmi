@@ -66,6 +66,17 @@ package S076_Bench is
    --  EVC_Config.Fixed_Train_T.Voltages) the on-board takes at the next
    --  Power_On; kept over Reset
    procedure Set_Voltages (Voltages : Natural);
+   --  The gamma train the on-board is installed with at the next
+   --  Power_On, from the workbook's sheet "Brake parameters (gamma)"
+   --  (an image of format version 2, EVC_Config.Encode_V2, offered with
+   --  EVC_Core.Configure in No Power); Sheet.Present False: the default
+   --  configuration, a lambda train; kept over Reset
+   procedure Set_Gamma (Sheet : S076_Sequences.Gamma_Sheet_T);
+   --  the on-board runs a gamma train (the image accepted)
+   function Gamma_Installed return Boolean;
+   --  the first field the image of the gamma sheet lacked at the last
+   --  Power_On (no image offered then), "" when none
+   function Gamma_Gap return String;
    --  Powered down: no cycle of the on-board until Power_On
    procedure Power_Off;
    function Powered return Boolean;

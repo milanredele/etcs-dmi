@@ -235,6 +235,8 @@ package body S076_Sequences is
    --  B290, B291: the factor sheet and option buttons of the open
    --  workbook
    WB_Cells  : Sheet_T;
+   --  The gamma sheet of the open workbook
+   WB_Gamma  : Gamma_Sheet_T;
    --  B200: in a packet 3 (its rows), and the speed (km/h) or length (m)
    --  step of the factor row that follows; Natural'Last skips the rows
    --  of the passenger set
@@ -444,6 +446,54 @@ package body S076_Sequences is
    --  "factors!B5"): the step tables (freight A5:B14, passenger sets a /
    --  interpolated / b D5:E14, D18:E27, D31:E40, Kr_int A32:B41) and
    --  A_NVP12 D44, A_NVP23 F44, Kt_int D47; labels are skipped
+   --  A cell of the sheet "Brake parameters (gamma)" (Ref
+   --  "(gamma)!J7"): a number of the columns H to K or T to W, an X of
+   --  the special brakes in B6:C8, the confidence level EBCL0 .. EBCL9
+   --  chosen; labels are skipped
+   procedure On_Gamma_Cell (Ref, Value : String) is
+      P    : constant Natural := Ada.Strings.Fixed.Index (Ref, "!");
+      Name : constant String := Ref (P + 1 .. Ref'Last);
+      OK1  : Boolean := False;
+      Row  : Natural := 0;
+      V    : constant Long_Float := Curve_Value (Value);
+   begin
+      if Name'Length = 5 and then Name (Name'First .. Name'First + 3) = "EBCL"
+        and then Name (Name'Last) in '0' .. '9'
+      then
+         if Value = "1" then
+            WB_Gamma.EBCL := Character'Pos (Name (Name'Last))
+                               - Character'Pos ('0');
+         end if;
+         return;
+      elsif Name'Length < 2 then
+         return;
+      end if;
+      Row := To_Nat (Name (Name'First + 1 .. Name'Last), OK1);
+      if not OK1 or else Row not in 1 .. Gamma_Rows then
+         return;
+      end if;
+      case Name (Name'First) is
+         when 'B' | 'C' =>
+            if Row in 6 .. 8 and then Value = "X" then
+               WB_Gamma.Brakes
+                 ((if Name (Name'First) = 'B' then 1 else 2), Row) := True;
+            end if;
+         when 'H' | 'J' | 'K' | 'T' | 'V' | 'W' =>
+            if V /= No_Value then
+               WB_Gamma.Present := True;
+               WB_Gamma.Cells
+                 ((if Name (Name'First) in 'H' .. 'K' then 1 else 2),
+                  (case Name (Name'First) is
+                      when 'H' | 'T' => Speed_Column,
+                      when 'J' | 'V' => Value_Column,
+                      when others => Time_Column),
+                  Row) := V;
+            end if;
+         when others =>
+            null;
+      end case;
+   end On_Gamma_Cell;
+
    procedure On_Factor_Cell (Ref, Value : String) is
       P   : constant Natural := Ada.Strings.Fixed.Index (Ref, "!");
       OK1 : Boolean := False;
@@ -890,6 +940,35 @@ package body S076_Sequences is
          WB_Flat := True;
          WB_Grades := (others => <>);
          WB_Cells := (others => <>);
+         WB_Gamma := (others => <>);
+      elsif K = "cell" and then L.Count >= 5 and then Word (L, 2) = "Brake"
+        and then Word (L, 3) = "parameters"
+        and then Word (L, 4)'Length > 8
+        and then Word (L, 4) (Word (L, 4)'First .. Word (L, 4)'First + 7)
+                 = "(gamma)!"
+      then
+         On_Gamma_Cell (Word (L, 4), Word (L, 5));
+      elsif K = "curves" and then L.Count >= 2
+        and then (if WB_Cells.Gamma = Unknown
+                  then Ada.Strings.Fixed.Index (Rest (L, 2), "Gamma") > 0
+                  else WB_Cells.Gamma = First)
+      then
+         --  a curve set of a Gamma train: the sequence keeps the gamma
+         --  sheet of the first
+         S.Gamma_Sets := S.Gamma_Sets + 1;
+         if not S.Gamma.Present then
+            S.Gamma := WB_Gamma;
+         end if;
+         On_Curve_Line (S, L);
+         if Curve_Set > 0 then
+            S.Curves (Curve_Set).Gamma_Other := WB_Gamma /= S.Gamma;
+         end if;
+      elsif K = "curves" then
+         S.Lambda_Sets := S.Lambda_Sets + 1;
+         On_Curve_Line (S, L);
+         if Curve_Set > 0 then
+            S.Curves (Curve_Set).Gamma_Other := False;
+         end if;
       elsif K = "cell" and then L.Count = 5 and then Word (L, 2) = "Integrated"
         and then Word (L, 3) = "correction"
       then
@@ -1063,6 +1142,10 @@ package body S076_Sequences is
       Loaded.Release_DP_Count := 0;
       Loaded.Release_OB := False;
       Loaded.Train_Count := 0;
+      Loaded.Gamma := (others => <>);
+      Loaded.Gamma_Sets := 0;
+      Loaded.Lambda_Sets := 0;
+      WB_Gamma := (others => <>);
       In_P3 := False;
       In_P11 := False;
       WB_Target := No_Value;
