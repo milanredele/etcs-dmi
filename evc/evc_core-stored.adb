@@ -320,12 +320,9 @@ is
       --  decision: a packet 79 stored for level 2 (4.8.3 [2]) is in the
       --  set of its general message in the transition buffer
       --  (EVC_Radio_Authority.Keep_Level_2_Part), taken from there at the
-      --  release; the position's own keeper is not used for the radio
-      if EVC_Acceptance."=" (V, EVC_Acceptance.Radio_Stored) then
-         EVC_Position.Take_Radio_Geo (EVC_Acceptance.Radio_Rejected);
-      else
-         EVC_Position.Take_Radio_Geo (V);
-      end if;
+      --  release; Stored takes nothing here
+      EVC_Position.Take_Radio_Geo
+        (Accepted => EVC_Acceptance."=" (V, EVC_Acceptance.Radio_Accepted));
    end Take_Radio_Geo;
 
    procedure Release_LS_Held is

@@ -71,9 +71,6 @@ package body EVC_Position
                                    Gamma,
                                    Accept_Linking,
                                    Accept_Geo,
-                                   Geo_Kept,
-                                   Geo_Kept_Valid,
-                                   Geo_Kept_Sense,
                                    Check_Linking,
                                    Crossed_Link,
                                    Crossed_Ms,
@@ -250,11 +247,6 @@ is
    Geo_Current        : Geo_Ref_T;
    Geo_Value          : Natural := 0;
    Geo_Valid          : Boolean := False;
-   --  4.8.3 [2], 4.8.5: the packet 79 of a radio
-   --  message kept for the level 2 transition
-   Geo_Kept           : ETCS_Track_Packets.P79.Packet_T;
-   Geo_Kept_Valid     : Boolean := False;
-   Geo_Kept_Sense     : Sense_T := Plus;
    Params_Stored      : Boolean := False;
    T_Cycloc_Ms        : Unsigned_64 := 0;   -- 0: not periodically
    D_Cycloc           : Length_T := 0;      -- 0: not periodically
@@ -1018,22 +1010,14 @@ is
       end if;
    end Take_Radio_Packet;
 
-   --  3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5.3 to 4.8.5.5
-   procedure Take_Radio_Geo (Verdict : EVC_Acceptance.Radio_Verdict_T)
-   is
-      use type EVC_Acceptance.Radio_Verdict_T;
+   --  3.6.6.4.1, 4.8.3, 4.8.4.2
+   procedure Take_Radio_Geo (Accepted : Boolean) is
       R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
       P  : ETCS_Track_Packets.P79.Packet_T;
       OK : Boolean;
    begin
-      if Verdict = EVC_Acceptance.Radio_Rejected then
-         Geo_Kept_Valid := False;                         -- 4.8.5.4 a)
+      if not Accepted then
          return;
-      end if;
-      if Verdict = EVC_Acceptance.Radio_Accepted and then Geo_Kept_Valid
-      then
-         Take_Radio_Packet (Geo_Kept, Geo_Kept_Sense);    -- 4.8.5.5
-         Geo_Kept_Valid := False;
       end if;
       for I in 1 .. EVC_Radio_Info.Count loop
          pragma Loop_Invariant (True);
@@ -1049,14 +1033,8 @@ is
                then
                   EVC_Radio_Info.Open_Packet (I, J, R);
                   ETCS_Track_Packets.P79.Decode (R, P, OK);
-                  if not OK then
-                     null;
-                  elsif Verdict = EVC_Acceptance.Radio_Accepted then
+                  if OK then
                      Take_Radio_Packet (P, Sl.S);
-                  else
-                     Geo_Kept := P;                       -- 4.8.5.3
-                     Geo_Kept_Sense := Sl.S;
-                     Geo_Kept_Valid := True;
                   end if;
                end if;
             end;
@@ -1869,9 +1847,6 @@ is
       Geo_Current := (others => <>);
       Geo_Value := 0;
       Geo_Valid := False;
-      Geo_Kept := (others => <>);
-      Geo_Kept_Valid := False;
-      Geo_Kept_Sense := Plus;
       Params_Stored := False;
       T_Cycloc_Ms := 0;
       D_Cycloc := 0;
