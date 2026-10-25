@@ -37,6 +37,9 @@ package EVC_Test_Authority is
    procedure Scenario_Conditional_Stop_Ends;
    procedure Scenario_SR_Authorisation;
    procedure Scenario_Trip_L2;
+   --  4.6.3 [11], 3.13.10.2.6 b): the level 2 trip for a group known by
+   --  the linking to be at the EOA, read in release speed monitoring
+   procedure Scenario_Linked_Group_At_EOA;
    procedure Scenario_Shunting_L2;
    procedure Scenario_Radio_Acceptance;
    procedure Scenario_Transition_Buffer;

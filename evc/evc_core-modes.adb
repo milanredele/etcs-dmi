@@ -115,6 +115,8 @@ is
             and then EVC_Odometry.Standstill
             and then EVC_Driver_Requests.SR_Data.Speed_Kmh in 5 .. 600,
           Override_Active => EVC_Procedures.Override_Active,
+          Release_Monitoring =>
+            SDM_Result.Monitoring in EVC_SDM.RSM,
           Shunting_Selected => EVC_Driver_Requests.Shunting_Selected,
           Standstill => EVC_Odometry.Standstill,
           Cab_Active => EVC_Train_Inputs.Desk_Open,

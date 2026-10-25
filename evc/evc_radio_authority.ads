@@ -199,6 +199,9 @@ is
       Train_Data_Unacked : Boolean := False;
       --  3.15.5.3: the driver acknowledged the track ahead free request
       TAF_Confirmed      : Boolean := False;
+      --  4.6.3 [11]: the speed and distance monitoring of the cycle is
+      --  the release speed monitoring (EVC_SDM.Result_T.Monitoring)
+      Release_Monitoring : Boolean := False;
    end record;
 
    --  @req 3.8.2.1.5, 5.11.2.2 D130, 5.11.2.2 S130
@@ -207,7 +210,8 @@ is
                      Input  => (EVC_Stored_Information.State,
                                 EVC_Position.State, EVC_Radio.State,
                                 EVC_Levels.State, EVC_Odometry.State,
-                                EVC_Movement_Authority.State)),
+                                EVC_Movement_Authority.State,
+                                EVC_Origins.State)),
           Post => EVC_Radio_Info.Count <= 1;
 
    --  3.8.2: the reasons of the MA request applicable (Q_MARQSTREASON,

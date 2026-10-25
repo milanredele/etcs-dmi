@@ -14,6 +14,8 @@ with ETCS_Train_Packets.P9;
 with ETCS_Variables;          use ETCS_Variables;
 with EVC_DMI_Port;
 with EVC_Distances;           use EVC_Distances;
+with EVC_Location;
+with EVC_Profiles;
 with EVC_Radio_Acceptance;
 with EVC_Radio_Authority.Buffer;
 with Interfaces;              use Interfaces;
@@ -1368,6 +1370,64 @@ is
       end if;
    end Evaluate_TAF;
 
+   --  4.6.3 [11], 3.13.10.2.6 b): a group of the cycle whose first
+   --  possible location is known by the linking to be in rear of the EOA
+   --  by less than the antenna to front end distance, at it or beyond
+   --  it. Both are measured from the group the EOA's location is
+   --  referred to (the reference of the MA, or the group it was
+   --  relocated to): the group's first possible location is its linking
+   --  distance from that group (none for the group itself) less its
+   --  location accuracy; the EOA is the estimated location of the MA's
+   --  (an LOA has none)
+   --  @req 3.13.10.2.6 b), 3.13.10.2.6 b) 1st bullet,
+   --  @req 3.13.10.2.6 b) 2nd bullet, 3.13.10.2.6 b) 3rd bullet
+   function Linked_Group_At_EOA return Boolean
+     with Global => (EVC_Position.State, EVC_Movement_Authority.State,
+                     EVC_Origins.State)
+   is
+      MA  : constant EVC_Movement_Authority.MA_T :=
+        EVC_Movement_Authority.MA;
+      S   : constant Sense_T := MA.Sense;
+      L   : constant EVC_Profiles.Location_T :=
+        EVC_Movement_Authority.EOA_Location (MA);
+      Ant : constant Dist_T :=
+        EVC_Position.Front_Offset (EVC_Position.Orientation);
+      R   : EVC_Location.Anchor_T;
+      EOA : Dist_T;
+   begin
+      if not EVC_Movement_Authority.MA_Present
+        or else EVC_Movement_Authority.Is_LOA (MA)
+        or else L.Origin = 0
+      then
+         return False;
+      end if;
+      R := EVC_Origins.Get (L.Origin).Est.Ref;
+      if not R.Valid then
+         return False;
+      end if;
+      --  the EOA from R, along the MA
+      EOA := Diff (Along (S, EVC_Profiles.Frame
+                             (EVC_Profiles.Origin_Table, L,
+                              EVC_Location.Estimated_Item)),
+                   Along (S, R.X));
+      for G in 1 .. EVC_Position.Taken_Count loop
+         pragma Loop_Invariant (True);
+         declare
+            A : constant EVC_Location.Anchor_T :=
+              EVC_Position.Taken (G).Group;
+            D : constant EVC_Position.Group_Distance_T :=
+              (if not A.Linked then (Known => False, D => 0)
+               elsif A.Id = R.Id then (Known => True, D => 0)
+               else EVC_Position.Linking_Distance (R.Id, A.Id));
+         begin
+            if D.Known and then Diff (D.D, A.Locacc) > Diff (EOA, Ant) then
+               return True;
+            end if;
+         end;
+      end loop;
+      return False;
+   end Linked_Group_At_EOA;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
@@ -1439,6 +1499,12 @@ is
          Override_Selected;
       end if;
       Held (C_36) := Group_Not_Listed (Ctx, Facts);
+      --  [11] (the override inhibits the trip, 5.8.3.6)
+      Held (C_11) := Facts.Release_Monitoring
+                     and then not Facts.Override_Active
+                     and then EVC_Levels.Valid
+                     and then EVC_Levels.Level = L2
+                     and then Linked_Group_At_EOA;
       --  [81]: the SM authorisation of the last messages, for one cycle
       Held (C_81) := SM_Auth.Taken;
       SM_Auth.Taken := False;
