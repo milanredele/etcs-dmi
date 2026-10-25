@@ -12546,3 +12546,49 @@ rest); B1960's rest (3131040_01, _73, the six status steps, the 60 SV21
 (runner); B840 (message 45 by radio, completing [10]); then the E5
 bookkeeping lines B781, B783, B787, B841 and the decisions B1060, B1063,
 B1340.
+
+### Message 45 by radio and Sleeping with the RBC: the co-ordinate system assigned by the RBC, the session at the entry to and exit from Sleeping without a driver's indication, the position report in Reversing (e6/message-45) (2026-10-25)
+
+**Message 45 (B840 done).** Taken where the radio path hands a message
+to its unit: `EVC_Radio_Authority.Take_Message` puts an accepted
+message 45 (NID_LRBG, Q_ORIENTATION 1 nominal, 0 reverse) into
+`EVC_Radio_Info.Assignment` (the last of the cycle, emptied with the
+table by Empty, Keep_Granted and Clear), and
+`EVC_Position.Take_Radio_Assignment`, called from
+`EVC_Core.Stored.Take_Radio_Geo` (step 5c), applies it through
+`Assign_Coordinate_System`. The verdict of 4.8 at reception, in
+`EVC_Radio_Acceptance`: a new kind `Coordinate_Assignment`, A [10] in
+every level (4.8.3), in the modes of 4.8.4 as the PDF page 74 of
+chapter 4 reads it: [2] in SB, A in SM, SR, NL, UN, SN, [1] in PT, R in
+PS, SH, FS, AD, LS, OS, SL, TR, RV, NR in NP, SF, IS (a premise the
+brief did not state: FS rejects it). Decision: the orientation is
+written to the passages of the group kept (the memory of 3.6.2.2.2 c)
+and the LRBG takes it from there (`EVC_Position.Assigned`, read by the
+position reports, `Radio_Origin`, `Radio_Valid_For` and the group read
+again, 3.4.2.3.3.5); the LRBG record itself is unchanged, so the posts
+of the cycle's steps on `EVC_Position.LRBG` and the Tick post of
+3.6.4.1.2 hold untouched (writing the LRBG's orientation would have
+needed a change to the Tick post). Decision: a refusal (3.4.2.3.3.8) is
+not recorded, as no 4.8 rejection is. Scenario
+`EVC_Test_Sessions.Scenario_Coordinate_Assignment` (packet 1 after an
+unlinked single group, message 45 rejected in FS, accepted in SR, the
+next report packet 0 with the group reverse); the refusal of a group
+reported with different previous LRBGs stays the unit check of
+`Scenario_Single_Balise`. Rows 3.4.2.3.3.6, 3.4.2.3.3.7, 4.8.3.1.1
+Table-footnote [10] done. Runner: 4080403_01 SV22 and SV30 pass (they
+failed at step 96 under Seabc1f7c: the text of Q_DIR nominal is
+displayed once the messages 45 of its steps 84 and 93 gave the group
+its orientation).
+
+**Sleeping (B783 narrowed).** `EVC_Sessions.Mode_Changed` opened no
+session for a reported change out of SB (the start of mission's exits
+from SB are 3.5.3.4 a) and g)), so SB -> SL in level 2 opened none
+against 4.4.6.1.10 b); now the change into SL does (SL -> SB did
+already). `Take_Version` gives no "Trackside not compatible" in SL
+(4.4.6.1.13), 154 and the termination kept; the mode is a new state
+`Sleeping` of `EVC_Sessions` written by `Mode_Changed`. Scenario
+`EVC_Test_Sessions.Scenario_Session_Sleeping`. Rows 4.4.6.1.10 b),
+4.4.6.1.13 done; no sequence moved.
+
+Left: B783's Reversing part (a position report in RV, 4.4.18.1.7), not
+taken (the bound).
