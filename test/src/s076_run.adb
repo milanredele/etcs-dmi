@@ -7052,6 +7052,31 @@ package body S076_Run is
                     and then W (2) = "JRU"
                   then
                      J := Location_Judgement (St, J, Verbose, Tag => "");
+                  elsif J.Verdict = Passed and then Ref.Valid and then Verbose
+                  then
+                     --  a passed curve step: where our change of the
+                     --  limit's kind came against the workbook, in the
+                     --  trace only (the step stays passed)
+                     declare
+                        Unused : constant Judgement_T :=
+                          Curve_Judgement (Verbose);
+                     begin
+                        --  the latest first
+                        for K in 1 .. Natural'Min (B.Change_Count, 6) loop
+                           Put_Line ("        change " & B.Change_Kind_T'Image
+                                       (B.Change (K).Kind) & " at "
+                                     & Img (Integer
+                                         (B.Change (K).Track_Cm / 100))
+                                     & " m, "
+                                     & Img (B.Change (K).V_Est * 36 / 1000)
+                                     & " km/h, t"
+                                     & Natural'Image (B.Change (K).Time_Ms)
+                                     & " ms, EOA"
+                                     & Integer_64'Image
+                                         (B.Change (K).D_EOA / 100)
+                                     & " m from the estimated front end");
+                        end loop;
+                     end;
                   end if;
                   declare
                      C : Judgement_T := Columns (I);

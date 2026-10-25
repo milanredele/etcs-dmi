@@ -961,6 +961,14 @@ package body S076_Bench is
                 (Long_Float'Rounding
                    (Gamma_Sheet.T_Traction_Cut_Off * 1000.0));
          end if;
+         --  B2205: a train whose service brake the bench disables (the
+         --  lab's, kept at its speed to the EBI) with the installation's
+         --  detection of a failed service brake off (3.14.1.1 leaves it
+         --  to the implementation): the lab's on-board gave no EB of
+         --  3.14.1.2 in the 177 m from the SBI to the EBI (3131040_17)
+         if not Service_On then
+            C.Supervision.SB_Failure_Time_Ms := 60_000;
+         end if;
          EVC_Config.Encode_V2 (C, G, Img, Len);
          EVC_Core.Configure (Img (1 .. Len));
       elsif Gamma_Installed then
