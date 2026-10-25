@@ -12634,3 +12634,17 @@ Left at the bound: item 4, the traces of B1960 (3131040_01 step 56,
 3131040_73 step 64, the status steps of 3130700_03, 3131040_75, _77,
 3131050_17, _21, 4100103_17), not started; B2160 (3130237_01 SV21 /
 SV22 step 77) and B2161 (3131040_17 step 62) to trace.
+
+Resumed inside the budget, B2161 (3131040_17 SV30 step 62, TR expected
+at 1455 m): the sequence has no packet 3, so Q_NVEMRRLS is the default
+0 (A.3.2) and our EB of step 57 is released only at standstill
+(`EVC_SDM.Set_Commands`, r0 of Table 11); the train then runs on at
+10 km/h to the step's location. The release while moving that the first
+reading saw was not there. The trip of level 1 (4.6.3 condition [12],
+the min safe antenna past the EOA) is due at our EOA of 1500 m, the
+sequence's own packet 12 (BG2d at 500 m, L_ENDSECTION 1000 m); step 61
+places that passage at 1455 m, 45 m short of it (the workbook's EBI of
+172.96 m at 80 km/h from the EB step at 1265 m gives an EOA of about
+1438 m: the lab's locations run 45 to 60 m before the packet's). At
+step 62 ours is FS at 1484 m with the EOA 12 m ahead: triaged `s076`
+(S27eb0678, a line for this family). No code change.
