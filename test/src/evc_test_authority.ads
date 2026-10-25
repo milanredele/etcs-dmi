@@ -55,6 +55,9 @@ package EVC_Test_Authority is
    --  A.3.4.1.3 [8]: a text starting beyond the new SvL deleted by a
    --  shortened MA, one starting before it kept
    procedure Scenario_Text_Shortening;
+   --  A.3.5.1 3rd bullet: a text's start passed, the train rolled back
+   --  in rear of it and forward again: neither reverted nor shown twice
+   procedure Scenario_Text_Roll_Back;
 
    procedure Scenario_Start_After_Ack;
 

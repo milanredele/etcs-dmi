@@ -408,6 +408,7 @@ begin
    Scenario_Own_Units_Stored;
    Scenario_Released_Linking;
    Scenario_Text_Shortening;
+   Scenario_Text_Roll_Back;
 
    Scenario_Start_After_Ack;
    Scenario_TAF_Up_To_L2;
