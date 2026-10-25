@@ -1623,6 +1623,62 @@ package body EVC_Test_Authority is
              & "(4.8.5.5, 4.8.3 A [3])");
    end Scenario_PBD_By_Radio_Buffered;
 
+   --  4.8.5.1 to 4.8.5.6: general messages with packets on the rows R [2]
+   --  received in level 1 with level 2 announced are sets of information
+   --  of the transition buffer: three kept, the oldest replaced, nothing
+   --  used before the transition, released in the order received at it;
+   --  4.8.5.4 a): an order to another level deletes them
+   procedure Scenario_Buffer_Three_Sets is
+   begin
+      Start_L2_Announced;
+      Give_Radio_Message (1, Adhesion_Message (10, 1500));
+      Stand_X (100);
+      Give_Radio_Message (1, TC_Message (10, 1500));
+      Stand_X (100);
+      Give_Radio_Message (1, LX_Message (10, 1500));
+      Stand_X (100);
+      Check (RA.Buffered = 3 and then SI.Current.Adhesion.Count = 0
+             and then EVC_Track_Conditions.Conditions.Count = 0
+             and then not LX_Stored,
+             "three sets: three general messages with R [2] packets kept in "
+             & "the transition buffer, none used (4.8.5.1, 4.8.5.6)");
+      Give_Radio_Message (1, PBD_Message (10, 500));
+      Stand_X (100);
+      Check (RA.Buffered = 3 and then EVC_Track_Description.PBD.Count = 0,
+             "three sets: a fourth replaces the oldest (4.8.5.3)");
+      Run_X (45_000);
+      Check (EVC_Levels.Level = L2 and then RA.Buffered = 0,
+             "three sets: released at the level 2 transition (4.8.5.5)");
+      Check (SI.Current.Adhesion.Count = 0,
+             "three sets: the replaced one not taken (4.8.5.3)");
+      Check (EVC_Track_Conditions.Conditions.Count = 1,
+             "three sets: the track condition taken (4.8.5.5)");
+      Check (LX_Stored,
+             "three sets: the level crossing taken (4.8.5.5)");
+      Check (EVC_Track_Description.PBD.Count = 1,
+             "three sets: the permitted braking distance taken (4.8.5.5)");
+
+      Start_L2_Announced;
+      Give_Radio_Message (1, TC_Message (10, 1500));
+      Stand_X (100);
+      Check (RA.Buffered = 1, "three sets: one set kept (4.8.5.1)");
+      Add_Group (Group (11, 300));
+      declare
+         P : TP41.Packet_T := Order_L2 (2000);
+      begin
+         P.M_LEVELTR := ETCS_Variables.M_LEVELTR_Level_0;
+         Carry (Track_N, 0, P);
+      end;
+      Run_X (35_000);
+
+      Check (EVC_Levels.Announced
+             and then EVC_Levels.Announced_Level = L0
+             and then RA.Buffered = 0
+             and then EVC_Track_Conditions.Conditions.Count = 0,
+             "three sets: an order to level 0 replaces the one to level 2, "
+             & "the sets deleted (4.8.5.4 a)");
+   end Scenario_Buffer_Three_Sets;
+
    --  5.4.3.2 D15, S11, S20, S21: in SB, the driver's Start in level 2
    --  requests the MA once the RBC acknowledged the Train Data (3.18.3.4)
    procedure Scenario_Start_After_Ack is

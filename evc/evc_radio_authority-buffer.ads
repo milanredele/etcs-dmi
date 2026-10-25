@@ -75,11 +75,13 @@ is
 
    --  1. 4.8.5.1, 4.8.5.3: the message Data received on the session S,
    --  judged Stored, kept; the oldest one replaced when the buffer is full
-   --  Accepting: held from the Accepting RBC (4.8.2.1 c), 4.8.5.2)
+   --  Accepting: held from the Accepting RBC (4.8.2.1 c), 4.8.5.2);
+   --  Part: only the packets on the rows R [2] are the set (4.8.5.2.1)
    --  @req 4.8.5.3
    procedure Store (S         : EVC_Radio.Session_T;
                     Data      : EVC_Bytes.Byte_Array;
-                    Accepting : Boolean := False)
+                    Accepting : Boolean := False;
+                    Part      : Boolean := False)
      with Global => (In_Out => State),
           Pre  => EVC_Ports.Valid_RTM (Data),
           Post => Buffered >= 1;
@@ -87,6 +89,11 @@ is
    --  4.8.2.1 c) exception 2: the oldest message was held from the
    --  Accepting RBC
    function Oldest_Accepting return Boolean
+     with Global => State;
+
+   --  4.8.5.2.1: of the oldest message only the packets on the rows
+   --  R [2] are the set (the others were taken at the reception)
+   function Oldest_Part return Boolean
      with Global => State;
 
    --  1d. The oldest message released, into Data (Data'First .. Last),

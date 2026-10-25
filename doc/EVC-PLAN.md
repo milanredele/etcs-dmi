@@ -11839,3 +11839,35 @@ from the workbook, the Gamma curve steps judged) with B1881 and B1880;
 B1920 (the stored R [2] packets and the transition buffer) with B1921;
 B1940 (the RBC contact in the data view, protocol) with B1942; B1900,
 B1901, B1860 (runner); B018's families; then NL.
+### The stored radio information: the three sets of the transition buffer, the row applied to the packets of their own units, the Supervised Manoeuvre default train of a gamma installation (e6/radio-stored) (2026-10-25)
+
+**The three sets (B1920 done).** Premise checked: the buffer
+(`EVC_Radio_Authority.Buffer`) already kept three messages, the oldest
+replaced, deleted by 4.8.5.4 a) to c) and released at the transition;
+what it did not keep was a general message whose packets on the rows R
+[2] of Table 4.8.3 the first filter stores (`Packet_Filter` Stored):
+`EVC_Stored_Information.Take_Radio` took them at once. Now
+`EVC_Radio_Authority.Keep_Level_2_Part` keeps such a message 24 as a set
+(level 2 announced, or a level transition order in the message,
+4.8.1.3.1 step 1), `Take_Radio` no longer takes a Stored packet, and at
+the release (`Released_Part`, the slot's `EVC_Radio_Info.Slot_T.Level_2_Part`)
+only the packets on the rows R [2] are taken. Decision: the message is
+kept whole and the row applied again at the release (4.8.5.2.1: the set
+is the part neither accepted nor rejected at once); its other packets
+are taken at the reception. Decision: with an order in the message, step
+2 of 4.8.1.3.1 is the buffer's own: released in the same cycle when the
+order makes the level 2 (`Release_Transition_Buffer`), deleted at the
+next `Buffer.Update` when it is for another level (4.8.5.4 a). The
+special case of a message 24 with 51 or 52 kept whole and not taken
+(e5/buffer-radio) is folded into it: its other packets are now taken at
+once. `EVC_Radio_Info.Max_Messages` 2 -> 5: three released sets beside
+the cycle's two (the third released message was refused before, also
+for the messages 3 of `Scenario_Transition_Buffer`; 4.8 KB of static
+storage). Scenario `EVC_Test_Authority.Scenario_Buffer_Three_Sets`
+(adhesion, track condition, level crossing, then a PBD replacing the
+adhesion; none used before the transition; the three taken at it, the
+replaced one not; an order to level 0 by a balise group deletes a set).
+Edits outside the units: `EVC_Radio_Info` (the slot's flag, the
+constant), `EVC_Core.Inputs` (the caller of `To_Buffer` and
+`Read_Released_Messages`). Runner 1115 / 1076 / 999 before and after, 0
+regressions, no improvement.

@@ -242,6 +242,8 @@ is
       S         : RTM_Session_T;
       Last      : Natural;
       Accepting : Boolean;
+      Part      : Boolean;
+
       Ctx      : constant EVC_Stored_Information.Mode_Context_T :=
         (Mode        => Current_Mode,
          Cab_Active  => EVC_Train_Inputs.Desk_Open,
@@ -269,13 +271,16 @@ is
          pragma Loop_Invariant (True);
          exit when not EVC_Radio_Authority.Has_Released;
          Accepting := EVC_Radio_Authority.Released_Accepting;
+         Part := EVC_Radio_Authority.Released_Part;
          EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
          EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
-            --  4.8.2.1 c) exception 2: the Accepting RBC's
+            --  4.8.2.1 c) exception 2: the Accepting RBC's; 4.8.5.2.1 the
+            --  set of a general message
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
-                                              Accepting);
+                                              Accepting, Part);
+
             --  3.18.4.5.3: packet 140
             EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
