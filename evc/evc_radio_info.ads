@@ -24,6 +24,7 @@ with ETCS_Bits;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Packet_Index;
+with EVC_Balise_Groups;
 with EVC_Distances;     use EVC_Distances;
 with EVC_Origins;
 with EVC_Received;
@@ -99,6 +100,25 @@ is
      with Global => State,
           Pre => I <= Count and then P <= Packet_Count (I);
 
+   --  3.4.2.3.3.6: message 45, the assignment of a co-ordinate system to
+   --  the balise group Id, "nominal" or "reverse" (Q_ORIENTATION)
+   type Assignment_T is record
+      Valid   : Boolean := False;
+      Id      : EVC_Balise_Groups.Identity_T;
+      Nominal : Boolean := False;
+   end record;
+
+   --  The last message 45 the authority half accepted in the cycle
+   --  (decision: of two in one cycle the later one, the RBC's last
+   --  word); taken by the position after the groups (step 5c), none
+   --  after Empty, Keep_Granted or Clear
+   function Assignment return Assignment_T
+     with Global => State;
+
+   procedure Put_Assignment (A : Assignment_T)
+     with Global => (In_Out => State),
+          Post => Assignment = A and then Count = Count'Old;
+
    --  3.13.11.8, 3.8.2.2.1 a): T_MAR of the MA request parameters
    --  (packet 57) in ms, 0 when none is stored or it asks no request
    --  (the snapshot's Extra.T_MAR, built by the stored information)
@@ -131,12 +151,12 @@ is
    procedure Clear
      with Global => (Output => State),
           Post => Count = 0 and then Refused = 0 and then T_MAR_Ms = 0
-                  and then not MAR_Known;
+                  and then not MAR_Known and then not Assignment.Valid;
 
    --  The cycle's messages taken: the table empty
    procedure Empty
      with Global => (In_Out => State),
-          Post => Count = 0;
+          Post => Count = 0 and then not Assignment.Valid;
 
    --  3.8.6.1 b): the cycle's messages taken, the proposed shortened MA
    --  granted: the last message of it (Action Shortening) stays, alone,

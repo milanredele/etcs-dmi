@@ -57,6 +57,7 @@ is
       TAF_Request,          -- 34
       SM_Authorisation,     -- 4
       SM_Refused,           -- 5
+      Coordinate_Assignment, -- 45
       --  packet 45 of a message (not a message kind,
       --  so not in Info_Of: EVC_Sessions.Network filters it)
       Network_Order);
@@ -77,6 +78,7 @@ is
           when ETCS_Message_Catalogue.Track_M34 => TAF_Request,
           when ETCS_Message_Catalogue.Track_M4  => SM_Authorisation,
           when ETCS_Message_Catalogue.Track_M5  => SM_Refused,
+          when ETCS_Message_Catalogue.Track_M45 => Coordinate_Assignment,
           when others => Other);
 
    type Context_T is record
@@ -110,6 +112,10 @@ is
    is (if I = Other then Accepted
        --  the row "Radio Network transition order": A in every level
        elsif I = Network_Order then Accepted
+       --  the row "Assignment of Co-ordinate system": A [10] in every
+       --  level, the exception of [10] applied by
+       --  EVC_Position.Assign_Coordinate_System (3.4.2.3.3.8)
+       elsif I = Coordinate_Assignment then Accepted
        elsif C.Level_Valid and then C.Level = L2 then
          (if I in Movement_Authority | SR_Authorisation | Shorten_MA
                 | SH_Refused | SH_Authorised | TAF_Request
@@ -229,6 +235,14 @@ is
                  when M_SB => C.Cab_Active,                 -- [2]
                  when M_LS | M_SR | M_OS => True,
                  when M_PT => In_PT (C),
+                 when others => False),
+          --  4.8.4, the row "Assignment of Co-ordinate system": [2] in
+          --  SB; A in SM, SR, NL, UN, SN; [1] in PT; R or NR elsewhere
+          when Coordinate_Assignment =>
+             (case C.Mode is
+                 when M_SB => C.Cab_Active,                 -- [2]
+                 when M_SM | M_SR | M_NL | M_UN | M_SN => True,
+                 when M_PT => In_PT (C),                    -- [1]
                  when others => False),
           --  4.8.4, the row "Radio Network transition order": NR in NP,
           --  SF, IS; [2] in SB; [1] in PT; [13] (in an SM authorisation,

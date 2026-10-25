@@ -727,11 +727,45 @@ is
    --  (from the previous LRBG towards Id, 3.4.2.3.3.2). Refused (OK
    --  False) when Id was reported with different previous LRBGs
    --  (3.4.2.3.3.7, 3.4.2.3.3.8) or has no direction reference.
-   --  @req 3.4.2.3.3.6, 3.4.2.3.3.8
+   --  Decision: the orientation is written to the passages of the group
+   --  kept (the memory of 3.6.2.2.2 c), not to the LRBG itself, which
+   --  takes it from there (the position reports, the origins and the
+   --  directions of the radio information): the LRBG stays the one the
+   --  cycle's steps compare (3.6.4.1.2)
+   --  @req 3.4.2.3.3.6, 3.4.2.3.3.8, 4.8.3.1.1 Table-footnote [10]
    procedure Assign_Coordinate_System (Id      : Identity_T;
                                        Nominal : Boolean;
                                        OK      : out Boolean)
-     with Global => (In_Out => State);
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => Status = Status'Old and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old
+                  and then Active_Cab = Active_Cab'Old;
+
+   --  3.4.2.3.3.6: the assignment of a co-ordinate system the RBC sent in
+   --  the cycle (message 45, EVC_Radio_Info.Assignment, accepted by the
+   --  tables of 4.8 at its reception) applied; refused by
+   --  Assign_Coordinate_System (3.4.2.3.3.8, the exception of 4.8.3 [10]).
+   --  Decision: a refusal is not recorded, as a rejection of 4.8 is not:
+   --  the group keeps no co-ordinate system and the next position report
+   --  is again based on two balise groups (3.4.2.3.3.1)
+   procedure Take_Radio_Assignment
+     with Global => (In_Out   => State, Input => EVC_Radio_Info.State,
+                     Proof_In => EVC_Odometry.State),
+          Post => Status = Status'Old and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old
+                  and then Active_Cab = Active_Cab'Old;
 
    --  3.6.2.2.2 c), 3.6.4.2.3: the location reference of an
    --  information received by radio, the balise group Id named in the

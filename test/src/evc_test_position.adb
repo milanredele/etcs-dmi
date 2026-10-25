@@ -458,7 +458,9 @@ package body EVC_Test_Position is
              "single: directions against prev -> LRBG (3.4.2.3.3.2)");
       Check (Round_Trip (P), "single: packet 1 round trip");
       Pos.Assign_Coordinate_System ((123, 30), False, OK);
-      Check (OK and then Pos.LRBG.Orientation = EVC_Distances.Minus
+      --  the LRBG itself keeps "unknown": its orientation is the
+      --  group's, read from the passages kept
+      Check (OK and then Pos.LRBG.Orientation = EVC_Distances.Unknown
              and then Pos.Report_Kind = Pos.Report_P0
              and then Pos.Position_Report (M_SB, L1).Q_DIRLRBG = 0,
              "single: the RBC assigns reverse (3.4.2.3.3.6)");

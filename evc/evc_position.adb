@@ -284,6 +284,17 @@ is
    Passage_Ms  : Unsigned_64 := 0;
    Previous_Ms : Unsigned_64 := 0;
 
+   --  The latest passage of the group Id kept, 0 when none
+   function Latest (Id : Identity_T) return Natural
+     with Global => (Recent, Recent_Next),
+          Post   => Latest'Result <= Max_Recent;
+
+   --  The orientation of the group of A: its own, else the one the RBC
+   --  assigned to the passages of the group kept (3.4.2.3.3.6,
+   --  Assign_Coordinate_System)
+   function Assigned (A : Anchor_T) return Direction_T
+     with Global => (Recent, Recent_Next);
+
    --  Queries
 
    function Status return Status_T is (Pos_Status)
@@ -335,9 +346,9 @@ is
 
    --  3.4.2.3.3.1: the LRBG has no co-ordinate system
    function Report_Kind return Report_Kind_T is
-     (if LRBG_A.Valid and then LRBG_A.Orientation = Unknown
+     (if LRBG_A.Valid and then Assigned (LRBG_A) = Unknown
       then Report_P1 else Report_P0)
-     with Refined_Global => LRBG_A;
+     with Refined_Global => (LRBG_A, Recent, Recent_Next);
 
    function Front_Offset (S : Sense_T) return EVC_Config.Antenna_Offset_T
    is
@@ -587,7 +598,6 @@ is
    --  last match wins (3.6.1.3: the position in relation to a reference
    --  group is that of its last passage).
    function Latest (Id : Identity_T) return Natural
-     with Post => Latest'Result <= Max_Recent
    is
       Found : Natural range 0 .. Max_Recent := 0;
       I     : Recent_Index_T := Recent_Next;
@@ -602,6 +612,11 @@ is
       end loop;
       return Found;
    end Latest;
+
+   function Assigned (A : Anchor_T) return Direction_T is
+     (if A.Orientation /= Unknown or else Latest (A.Id) = 0
+      then A.Orientation
+      else Recent (Latest (A.Id)).A.Orientation);
 
    --  3.6.2.2.2 a): A, LRBG compliant, was passed. After it the LRBG is
    --  the group just passed.
@@ -620,7 +635,7 @@ is
          --  the same group again (3.4.2.3.3.5): the LRBG and the
          --  previous LRBG stay, a co-ordinate system given before stays
          if New_A.Orientation = Unknown then
-            New_A.Orientation := LRBG_A.Orientation;
+            New_A.Orientation := Assigned (LRBG_A);
          end if;
          LRBG_A := New_A;
       else
@@ -2420,7 +2435,7 @@ is
          end if;
          A := Recent (Found).A;
       end if;
-      G := A.Orientation;
+      G := Assigned (A);
       if Shifted then
          --  7.5.1.17: D_REF along the nominal direction of the group
          if A.Orientation = Unknown then
@@ -2453,9 +2468,9 @@ is
       Found : Natural;
    begin
       if LRBG_A.Valid and then LRBG_A.Id = Id then
-         G := LRBG_A.Orientation;
+         G := Assigned (LRBG_A);
       elsif SOLR_A.Valid and then SOLR_A.Id = Id then
-         G := SOLR_A.Orientation;
+         G := Assigned (SOLR_A);
       else
          Found := Latest (Id);
          if Found /= 0 then
@@ -2501,14 +2516,20 @@ is
             Recent (I).A.Orientation := G;
          end if;
       end loop;
-      if LRBG_A.Valid and then LRBG_A.Id = Id then
-         LRBG_A.Orientation := G;
-      end if;
-      if SOLR_A.Valid and then SOLR_A.Id = Id then
-         SOLR_A.Orientation := G;
-      end if;
       OK := True;
    end Assign_Coordinate_System;
+
+   procedure Take_Radio_Assignment is
+      pragma Warnings
+        (GNATprove, Off, """OK"" is set by ""Assign_Coordinate_System""*",
+         Reason => "a refusal is not recorded (the decision of the spec)");
+      A  : constant EVC_Radio_Info.Assignment_T := EVC_Radio_Info.Assignment;
+      OK : Boolean;
+   begin
+      if A.Valid then
+         Assign_Coordinate_System (A.Id, A.Nominal, OK);
+      end if;
+   end Take_Radio_Assignment;
 
    procedure Keep (K : out Kept_Position_T)
    is
@@ -2795,7 +2816,7 @@ is
                          Term_Under : Length_T)
      return ETCS_Train_Packets.P0.Packet_T
      with Global => (LRBG_A, Orient, Orient_Known, Antenna_Offset,
-                     Manoeuvre, EVC_Odometry.State)
+                     Manoeuvre, Recent, Recent_Next, EVC_Odometry.State)
    is
       P : ETCS_Train_Packets.P0.Packet_T;
    begin
@@ -2818,7 +2839,7 @@ is
       else
          P.NID_C := LRBG_A.Id.NID_C;
          P.NID_BG := LRBG_A.Id.NID_BG;
-         Fill (LRBG_A.Orientation, Ahead, Term_Over, Term_Under,
+         Fill (Assigned (LRBG_A), Ahead, Term_Over, Term_Under,
                P.Q_SCALE, P.D_LRBG, P.Q_DIRLRBG, P.Q_DLRBG,
                P.L_DOUBTOVER, P.L_DOUBTUNDER, P.Q_DIRTRAIN);
       end if;

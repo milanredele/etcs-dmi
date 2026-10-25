@@ -1883,6 +1883,91 @@ package body EVC_Test_Sessions is
              & Img (First) & Img (Prev));
    end Scenario_Report_Packet;
 
+   --  Message 45 from the RBC: the co-ordinate system of the group NID_BG
+   --  of country 123, nominal (Q_ORIENTATION 1) or reverse (0)
+   function Coordinate_Assignment (NID_BG : Natural; Nominal : Boolean)
+                                   return Byte_Array is
+      W : Writer_T;
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      V (7) := (if Nominal then 1 else 0);
+      Start_Message (W, MCat.Track_M45, V);
+      return Message_Bytes (W);
+   end Coordinate_Assignment;
+
+   --  e6/message-45: message 45 by radio. 3.4.2.3.3.6: the RBC assigns
+   --  a co-ordinate system to an unlinked single group the on-board
+   --  reported in a packet 1 (3.4.2.3.3.1); the next report is a packet
+   --  0 with the directions against the group (3.4.2.3.3.2: the
+   --  reference from the previous LRBG towards it); 4.8.4 (the row
+   --  "Assignment of Co-ordinate system")
+   procedure Scenario_Coordinate_Assignment is
+      use type EVC_Position.Report_Kind_T;
+      use type ETCS_Variables.Q_DIRLRBG_T;
+      use type ETCS_Variables.NID_BG_T;
+      First, Prev : Natural;
+
+      --  Standing Ms: First the packet of the last report (999: none)
+      procedure Stand_Reports (Ms : Natural) is
+         M  : ETCS_Message.Message_T;
+         St : ETCS_Message.Status_T;
+      begin
+         First := 999;
+         for K in 1 .. Ms / 100 loop
+            Stand_X (100);
+            for N in 1 .. Radio_Outputs loop
+               if Is_Message (N, 136) then
+                  Decode_Radio_Message (N, M, St);
+                  if St = ETCS_Message.Accepted and then M.Count >= 1 then
+                     First := Natural (M.Index (1).NID);
+                  end if;
+               end if;
+            end loop;
+         end loop;
+      end Stand_Reports;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (With_Links (Group (20, 300),
+                             Link_To ((1 => 200), (1 => 30))));
+      Add_Group (Group (30, 500, 1));
+      Add_Group (Group (40, 700, 1));
+      Run_X (15_000);
+      Establish (1);
+      Run_X (40_000);
+      --  a report every 2 s
+      Give_Radio_Message (1, Report_Parameters (20, 2, 2));
+      Run_Reports (75_000, First, Prev);
+      Stand_Reports (3000);
+      Check (Natural (EVC_Position.LRBG.Id.NID_BG) = 40 and then First = 1
+             and then EVC_Core.Mode = EVC_Modes.M_FS,
+             "assignment: an unlinked single group in FS, packet 1 "
+             & "(3.4.2.3.3.1), got" & Img (First));
+      --  4.8.4: R in FS
+      Give_Radio_Message (1, Coordinate_Assignment (40, True));
+      Stand_Reports (3000);
+      Check (First = 1 and then EVC_Position.Report_Kind
+                                  = EVC_Position.Report_P1,
+             "assignment: rejected in FS (4.8.4.2 Table), packet 1, got"
+             & Img (First));
+      --  4.8.4: A in SR; reverse against the reference from 30 to 40
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Levels.Level);
+      Stand_X (500);
+      Give_Radio_Message (1, Coordinate_Assignment (40, False));
+      Stand_Reports (3000);
+      Check (First = 0 and then EVC_Position.Report_Kind
+                                  = EVC_Position.Report_P0
+             and then EVC_Position.Position_Report
+                        (EVC_Modes.M_SR, EVC_Levels.Level).Q_DIRLRBG = 0
+             and then EVC_Position.Position_Report
+                        (EVC_Modes.M_SR, EVC_Levels.Level).NID_BG = 40,
+             "assignment: accepted in SR (3.4.2.3.3.6), packet 0, the "
+             & "group reverse, got" & Img (First));
+   end Scenario_Coordinate_Assignment;
+
    procedure Scenario_Session_Error_Report is
       Count, Error, Recorded : Natural := 0;
       T : Unsigned_64;
