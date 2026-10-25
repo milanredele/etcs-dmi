@@ -13048,3 +13048,76 @@ runner's tolerance), B2204 with B2120 (the hello and the markers);
 B783's Reversing part; B841's three scenarios; B1960's traces and B2160,
 B2200, B2205 (runner); B2203 (the protocol comments); then B781, B1401,
 the decisions B1060, B1063, B1340.
+
+### The gamma families, third package: our EB against the EBI, the reach-point driven to the event, the twin difference of 3130237_01, the traces left (e5/gamma-families-3) (2026-10-25)
+
+**B2205, our EB against the workbook's EBI** (3131040_17 SV30 step 57).
+The runner's change list (`S076_Bench.Note_Changes`) held no EB of the
+SDM before 1265 m; the TIU's commands per cycle (a temporary print, not
+kept) showed our EB at 1154 m at 86 km/h, 108 m after our SB at
+1046 m, with the reasons Speed_Distance and Service_Brake_Failed (r3):
+the EB of 3.14.1.2 (`EVC_Brake_Commands.Step`: the train not
+decelerating by 0.1 m/s2 2 s past T_bs, the installation's default
+detection), 111 m before the workbook's EBI of 1265 m (234.79 m before
+the EOA of 1500 m at 85.5 km/h). The bench's train ignores our SB there
+(`EB_After_SB`); the lab's kept 85.5 km/h over the 177 m from the SBI
+to the EBI without an EB, so the lab's on-board detected no failed
+service brake there (3.14.1.1 leaves the detection to the
+implementation). **Decision** (`S076_Bench.Install_Train`): where the
+bench disables its service brake, the gamma train's image has the
+detection off (SB_Failure_Time_Ms 60 s). Our SDM's EB then comes at
+1240 m at 86 km/h, 240 m to the EOA against the workbook's 241 m at
+86 km/h: our EBI agrees within 1 m. The rule to judge a passed EB step
+by its location was declined after the corpus check: in SV30, 13
+sequences have an EB step after a comment naming the EBI, and only
+3131040_17's carries a limit reference the runner reads
+(`Note_Curve_Ref`). The trace now prints, for a passed curve step, where
+our change of the limit's kind came against the workbook, and the
+latest changes (`Run_Loaded`, verbose only). No movement.
+
+**B2200, the reach-point driven to the event.** Both readings hold at
+the source: step 61's 1455 m is 45 m in rear of the EOA of 1500 m
+(BG2d 500 m + L_ENDSECTION 1000 m), and the step is an event ("the
+train overpasses EoA/LoA with its minimum safe antenna"). Corpus SV30:
+5 sequences carry that comment at an `ODO reach-point
+min-safe-antenna` input. 4080424_01 (step 189) and 4080441_01
+(step 326) are blocked before it. 3131040_18 (step 61) and 4120100_05
+(step 105) are in TR at the step's location already, with no EOA shown,
+so the rule does nothing there. **Rule** (`S076_Run.Reach_EOA_Antenna`,
+in `ODO_Input`'s reach-point branch): the train runs on (`Drive_To`,
+without the arrival's stop) until the min safe antenna is past the EOA
+the on-board shows, at most 100 m beyond the step's location. In
+3131040_17 our trip comes at the EOA and the train is at 1519 m at
+10 km/h. Step 62 (TR) passes; step 70 ("NOT Acknowledge Trip", the
+train still moving at 1475 m) passes because the train still moves;
+step 72 stops it, and steps 73 to 90 pass. 3131040_17 SV21, SV22 and
+SV30 go from failed at 62 to passed (3 improvements, recorded). The
+s076 line of S27eb0678 for this family is kept with that note.
+
+**B2160, the twin difference of 3130237_01 SV21 / SV22 step 77**
+(Overspeed expected at 1792 m; ours Indication, permitted 80 km/h at
+70 km/h with the EOA 582 m ahead). Wrong premise: "the SV21 sequence
+takes the twin's whole gamma sheet". The file has curve sets of its own
+(no `curves-from`), so `Complete_Gamma` gives it its own sheet with the
+twin's two reaction times (`Twin_Times`). The telegrams are the twin's
+except M_VERSION (2.1 / 2.2 against 3.0). The sheets differ: Brake
+parameters (gamma) V7 to V19 are 0.4 against 0.8, J23 to J35 0.8
+against 0.5, and the special brake is in row 7 against row 6. The old
+tool computed both of its workbooks at a confidence of 99.9999999 %
+(National values B8), where the twin's use 50 % and 90 % from
+M_NVEBCL, so its rows a and b are the same. At 70 km/h its own
+Permitted is 493.07 m to the EOA against the twin's 598.44 m (the
+598 m of step 76's comment). The step's 1792 m is the twin's (EOA
+2390 m less 598 m); by its own workbook the limit lies at 1897 m, and
+ours is not passed at 1846 m either. Triaged `s076` (S5e648ecf, a line
+for this family). No code change.
+
+**Left at the bound: item 4, the traces of B1960.** One was started:
+3131040_01 SV30 step 56 (TSM Warning expected at 697 m). Ours is in
+ceiling speed monitoring with no target shown and the MA 846 m ahead.
+A service brake whose TIU reason word is 512 slows the train from 84
+to 73 km/h between 554 and 700 m. Where that reason is set is not
+traced. Not started: 3131040_73 step 64 and the status steps of
+3130700_03, 3131040_75, _77, 3131050_17, _21 and 4100103_17.
+
+Runner 1160 / 1078 / 952 -> 1163 / 1075 / 952, recorded.
