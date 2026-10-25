@@ -12082,3 +12082,115 @@ before); 4.8.5.6 and 4.8.5.7 unchanged (the sets are judged in level 2
 as new messages before the mode machine). Left: B1980 (a scenario for
 the linking of a released set; the position's unused keeper of packet
 79).
+
+### E5 integration after the fiftieth round, the eighteenth of E6 (2026-10-25)
+
+Merged: e6/rbc-contact-entry (B1940: `DMI_Data_View.Value_Of` shows the
+RBC ID and phone of the last MSG_RBC_CONTACT while the contact is valid,
+whatever the driver chose last; the trace of
+`EVC_Core.Outputs.Send_RBC_Contact` found no case of a stale contact, so
+no resend and no protocol change; `Scenario_Data_View_RBC_Contact`, two
+goldens reviewed; row 3.18.6.1 done; B1942: the train interface's type
+of Train Data entry (SUBSET-034 2.6.1.1) as TIU signal 16,
+`EVC_Ports.Train_Data_Entry_Type`, latched with the other TIU values,
+recorded as message 41 (SUBSET-027 4.2.4.41) at the first reading and at
+every change by `EVC_Core.Records.Record_Inputs_Radio_Data`,
+`Scenario_JRU_Entry_Type`, the fuzzer offering signal 16; B2000 the
+DMI's fixed and switchable entry windows, B2001 the bench's TIU panel;
+B1701: golden_review.py's jru_view mirrors `EVC_JRU_Messages.View` and a
+repeated record counts as added; fast-forwarded), e5/runner-gaps-2
+(B1860: a radio message with fewer bytes than its L_MESSAGE and a packet
+of the step's input line missing is blocked as S076-defect in
+`S076_Run.Radio_Input`, the brief's rule "fewer bits than 8 x L_MESSAGE"
+over-blocked 8040400_01, which sets L_MESSAGE 1023 on purpose, and
+8040100_01: 3131100_02 and _06, 4080500_01, 6060400_07 blocked earlier
+than they failed; B1900: an input step whose column check fails after a
+group whose packet 41 puts an NTC first is judged NTC, the brief's rule
+as written moved 54 announcements with D_LEVELTR above 0: 5100200_05
+blocked at 45 by NTC; B1901: a level symbol step whose comment says the
+level is already displayed is judged against the start column,
+4080425_04 passes to its end; B1881 added at 79 calls and done:
+test/tools/evc_config.py reads and writes the format version 2 (`format
+= 2`, `[train]`, `[gamma]`), byte for byte the kernel's `Encode_V2`
+images of `Scenario_Config_Image_V2`, refusing what `Decoded` refuses),
+e5/runner-gamma (B100 done: `S076_Sequences.Gamma_Sheet_T` reads the
+workbook's "Brake parameters (gamma)" sheet, the layout holding in all
+258 SV30 workbooks that carry it; `S076_Bench.Power_On` builds
+`Config_T` and `Gamma_T` from it, encodes with `Encode_V2` and offers
+the image with `EVC_Core.Configure` in No Power, then signals the
+special brakes of combination 1 active on the TIU and restores the radio
+and voltage test settings; after a gamma sequence the default
+configuration is loaded back; `S076_Run.No_Reference` returns R_Gamma
+only without an image or for a set of another sheet, `Tool_Margin` 0 and
+no lambda reference note for a gamma set; decisions in its subsection:
+combination 2 for its own set of brakes and combination 1 elsewhere, Kn
+none, M_rotating_nom 0, no normal service sets, the sheet's Kdry_rst for
+every M_NVEBCL, an incomplete sheet keeps the block with the field
+named; the 121 blocked Gamma steps judged: 16 sequences pass, 14 at a
+step never judged before fail there (12 at the same step, 2 earlier), 3
+blocked by the tool's target or placement, 4 went from passed to failed
+and were traced in a resumption at 130 calls: 3130234_03 and _06 the
+bench's (no special brake signalled active, so the on-board used
+combination 0's models: fixed), 3130237_01 step 74 and 4100103_24 step
+87 traced to the symptom (B1960); 60 SV21 and SV22 sequences stay
+blocked as Gamma, the old tool's sheets have no reaction times; the
+triage line `~[gamma train]` with 14 signatures), e6/radio-stored
+(B1920: the buffer already held three sets, replaced the oldest, deleted
+per 4.8.5.4 and released at the transition; what was missing was keeping
+a message 24 whose R [2] packets the first filter stores:
+`EVC_Radio_Authority.Keep_Level_2_Part` keeps it as a set when level 2
+is announced or the message carries an order (4.8.1.3.1 step 1),
+`EVC_Stored_Information.Take_Radio` takes no Stored packet and at the
+release (`Released_Part`) only the R [2] rows, the whole message kept
+and the row applied again; `EVC_Radio_Info.Max_Messages` 2 -> 5, a third
+message released in one cycle was refused; `Scenario_Buffer_Three_Sets`;
+B1921: texts 73 and 74 taken in level 2 only
+(`EVC_Text_Messages.Take_Radio (Accepted)`), the linking of a released
+set taken at the release (`Take_Radio_Linking (First)`), packet 79 kept
+by the transition buffer (`Own_Unit_Row`), the position's own keeper
+unused by the radio path (B1980); `Scenario_Own_Units_Stored`; B1880:
+`EVC_Train_Data.Start_Manoeuvre_Set` takes `EVC_Config.Gamma_Models` for
+a Gamma fixed train, checked in `Config_Gamma_Train`; rows 4.8.5.1,
+4.8.5.3, 4.8.5.4 a), 4.8.5.5, 4.8.1.3.1, 3.18.3.9 done).
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13440 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6160 B (8 B less: the TIU signal); wasm and both
+smokes 0 failures; the runner 1115 / 1076 / 999 -> 1130 / 1073 / 987, 0
+regressions against the merged baseline, no signature untriaged. The
+merge: one plan conflict on runner-gaps-2, backlog and plan conflicts on
+runner-gamma and radio-stored, none in code; baseline and triage
+auto-merged (two runner agents at different places of `S076_Run`) and
+verified by the chain (three runs, all green). The chain script was
+rewritten this round (the scratchpad's copy had gone): host build,
+runner then UPDATE=1, check, proof, cross and stack, wasm and smokes.
+
+Costs (doc/ROUNDS.csv): 32.0 USD, 13 of 13 items done (12 briefed, one
+added at 79 calls), 4 of 17 brief premises wrong, no agent over budget
+(126 calls of 145 on average); two resumptions inside the budgets, both
+converted (eighteen of eighteen). Lessons: three of the four wrong
+premises were rules stated too broadly in the brief (B1860's bits rule,
+B1900's NTC rule, "item 1 moves nothing"): a rule for the runner is
+checked against the sequences it would also catch before it is written
+(the agents did that and narrowed them); the fourth was a backlog line's
+reading of the buffer ("keeps only a message 24 with 51 or 52": it kept
+three sets, what it lacked was the R [2] message). The runner-gamma
+agent read its own first finding wrong (3130234_02 as the sequence's
+data; it was the bench's) and corrected it in the resumption: a
+passed-to-failed movement is traced before the baseline is re-recorded.
+The process change of this round: the stable method of a package agent
+is one file (briefs/e5/method.md) and the body of two agent types,
+opus-trim-build and opus-trim-trace; an edited or new definition loads
+only in a new session (measured with a marker), so this round still read
+the file; the round brief shrank to 4.2 kB from 12.6 kB.
+
+The matrix: clauses left 94 -> 93 (todo 2, partial 91); E6 done 218 ->
+219, partial 7 -> 6. Open items: doc/BACKLOG.csv (49 open after this
+round; 4 added, 11 closed). Next: B1960 (the gamma families: 3130237_01
+step 74, 4100103_24 step 87, the 14 signatures of `~[gamma train]`, and
+the 60 SV21 / SV22 sequences whose old-tool sheets lack the reaction
+times: the twin's sheet or a default), B1980 (the linking of a released
+set, packet 79's keeper), B2000 (the DMI's fixed Train Data window,
+Table 44, with its protocol field), B018's families (S1531c721, the
+repositioning information); B1840's question stays with the user; then
+NL.
