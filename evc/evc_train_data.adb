@@ -5,7 +5,8 @@ package body EVC_Train_Data
   with SPARK_Mode => On,
        Refined_State => (State => (Is_Valid, Current, Current_Categories,
                                    SCL_Available, SCL_Known, SCL,
-                                   SM_Set, SM_Data, SM_Categories))
+                                   SM_Set, SM_Data, SM_Categories,
+                                   Type_Index))
 is
 
    Is_Valid           : Boolean := False;
@@ -19,6 +20,10 @@ is
    SM_Set             : Boolean := False;
    SM_Data            : Train_Data_T := Default;
    SM_Categories      : Categories_T := Default_Categories;
+   Type_Index         : Type_Index_T := 0;
+
+   function Type_In_Force return Type_Index_T is (Type_Index)
+     with Refined_Global => Type_Index;
 
    function Consist_Available return Boolean is (SCL_Available)
      with Refined_Global => SCL_Available;
@@ -71,6 +76,7 @@ is
       SM_Set := False;
       SM_Data := Default;
       SM_Categories := Default_Categories;
+      Type_Index := 0;
    end Clear;
 
    --  decision: the safe consist length is "captured as part of valid
@@ -85,12 +91,14 @@ is
      with Refined_Global => (SM_Set, SM_Data, Current, Is_Valid,
                              SCL_Available, SCL);
 
-   procedure Set (D : Train_Data_T; C : Categories_T) is
+   procedure Set (D : Train_Data_T; C : Categories_T; T : Type_Index_T := 0)
+   is
    begin
       Is_Valid := True;
       Current := D;
       Current_Categories := C;
       SM_Set := False;
+      Type_Index := T;
    end Set;
 
    procedure Invalidate is
@@ -100,6 +108,7 @@ is
 
    procedure Start_Manoeuvre_Set (F : EVC_Config.Fixed_Train_T) is
    begin
+      Type_Index := 0;
       SM_Data :=
         (Length                => Consist_Length,
          Max_Speed             => F.SM_Max_Speed,

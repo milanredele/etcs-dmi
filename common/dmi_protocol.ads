@@ -315,7 +315,11 @@ package DMI_Protocol is
    --    network_len u8: 0 .. Stored_Text_Max (0: no network stored),
    --    network 16 bytes: the GSM-R network ID as the list of
    --      MSG_RADIO_NETWORKS names it (the digits of NID_MN), padded
-   --      with 0 bytes.
+   --      with 0 bytes,
+   --    train_type u8: the train type of MSG_TRAIN_TYPES the Train Data
+   --      above are (the driver chose it on the fixed layout, DMI
+   --      11.3.9.6 a), 0 none (entered item by item, or no Train Data);
+   --      for the data view's item 3 (DMI Table 44).
    --  Fixed length Stored_Values_Length; the short form of
    --  Stored_Values_Short_Length bytes (the Driver ID and the train
    --  running number alone) is read too. A message of any other length
@@ -328,7 +332,7 @@ package DMI_Protocol is
    Stored_Values_Short_Length : constant := 2 + 2 * Stored_Text_Max;
    Stored_Values_Length : constant :=
      Stored_Values_Short_Length + 1 + Stored_Train_Length
-     + 1 + Stored_Text_Max;
+     + 1 + Stored_Text_Max + 1;
 
    MSG_TRAIN_TYPES : constant Msg_Type_T := 16#12#;
    --  The pre-configured train types of the fixed Train Data entry (DMI
@@ -689,7 +693,16 @@ package DMI_Protocol is
    --                    airtight u8 (M_AIRTIGHT, 7.5.1.61), 16#FF# no
    --                      value,
    --                    loading gauge u8 (M_LOADINGGAUGE, 7.5.1.68),
-   --                      16#FF# no value
+   --                      16#FF# no value,
+   --                    train type u8: 0 the items were entered one by
+   --                      one (the flexible layout), 1 .. the count of
+   --                      MSG_TRAIN_TYPES the type chosen on the fixed
+   --                      layout (11.3.9.6 a), whose data the items
+   --                      above are; the on-board refuses an index above
+   --                      its types or items that differ from the type's.
+   --                  Driver_Data_Train_Length bytes; the short form of
+   --                  Driver_Data_Train_Short_Length bytes, without the
+   --                  train type, is read as type 0
    --   3 SR data    : speed u16, distance u16
    --   4 GSM-R network ID (DMI 11.3.4, SUBSET-026 3.18.4.3.6): len u8,
    --                  Latin-1 bytes.
@@ -743,7 +756,8 @@ package DMI_Protocol is
    --                  (SUBSET-026 A.3.4) and chooses the fixed text
    --                  messages with it (3.12.3.3.1, Q_TEXT 7.5.1.136).
    --                  Driver_Data_Language_Length bytes
-   Driver_Data_Train_Length : constant := 13;
+   Driver_Data_Train_Length : constant := 14;
+   Driver_Data_Train_Short_Length : constant := 13;
    Driver_Data_RBC_Length   : constant := 23;
    Driver_Data_Byte_Length  : constant := 2;
    Driver_Data_VBC_Length   : constant := 5;
@@ -762,6 +776,14 @@ package DMI_Protocol is
    --    entry u8: the catalogue entry number (SS_*)
    --  Status_Ended_Length bytes; a receiver ignores any other length
    Status_Ended_Length : constant := 1;
+
+   MSG_DMI_HELLO : constant Msg_Type_T := 16#43#;
+   --  The DMI (re)started: sent once by DMI_Core.Initialise, before any
+   --  other frame of the DMI, so that the on-board sends again what it
+   --  sends only once or at a change (MSG_TRAIN_TYPES, MSG_SYSTEM_VERSION,
+   --  MSG_STORED_VALUES, MSG_RBC_CONTACT) to a DMI that has lost them.
+   --  No payload (Dmi_Hello_Length); a receiver ignores any other length.
+   Dmi_Hello_Length : constant := 0;
 
    -- DMI -> UI
    MSG_FRAME : constant Msg_Type_T := 16#60#;

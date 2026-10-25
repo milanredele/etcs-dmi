@@ -235,7 +235,8 @@ is
                   end if;
                end if;
             when Train_Data =>
-               OK := N = 13;
+               --  the short form without the train type: index 0
+               OK := N in 13 | 14;
                if OK then
                   Latched.Train :=
                     (Length_M         => Get_U16 (Frame, P + 1),
@@ -245,7 +246,9 @@ is
                      Other_Categories => Get_U16 (Frame, P + 8),
                      Axle_Load        => Frame (P + 10),
                      Airtight         => Frame (P + 11),
-                     Loading_Gauge    => Frame (P + 12));
+                     Loading_Gauge    => Frame (P + 12),
+                     Type_Index       =>
+                       (if N = 14 then Frame (P + 13) else 0));
                end if;
             when SR_Data =>
                OK := N = 5;

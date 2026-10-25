@@ -12745,3 +12745,62 @@ places that passage at 1455 m, 45 m short of it (the workbook's EBI of
 1438 m: the lab's locations run 45 to 60 m before the packet's). At
 step 62 ours is FS at 1484 m with the EOA 12 m ahead: triaged `s076`
 (S27eb0678, a line for this family). No code change.
+### The fixed Train Data entry, second package: the driver's train type taken by the on-board, the type in force in the data view, the DMI's hello (e6/fixed-entry-2) (2026-10-25)
+
+- MSG_DRIVER_DATA kind 2: 14 bytes, the kind, the 12 bytes of the Train
+  Data, then train_type u8 (0 the items entered one by one, 1 .. the
+  count of MSG_TRAIN_TYPES the type chosen on the fixed layout).
+  Decision: the 13-byte form stays readable as type 0
+  (`Driver_Data_Train_Short_Length`), like the short form of
+  MSG_STORED_VALUES: `Sim_Onboard_Env` (the bench page's scripted
+  driver, not this package's) and a dozen on-board scenarios send it;
+  no golden moved by the length. The DMI sends the index
+  (`DMI_Train_Data.Stored_Type_Index`; the fixed entry's axle load,
+  airtight and gauge now the type's own codes, like its categories).
+  Premise of the brief corrected: the kind 2 bytes are decoded by
+  `EVC_Driver_Requests.Take_Data` (`Train_Entry_T.Type_Index`), not by
+  `EVC_Core.Inputs`; the data are taken in `EVC_Mission.Take_Data`.
+  Decision: `EVC_Mission.Type_Matches` refuses an index above
+  `EVC_Config.Default_Train_Type_Count` or items that differ from the
+  type's (DMI 11.3.9.6 a: the driver cannot change a value of the
+  type), by the path of every invalid entry (`Event_Refused` 2, the
+  Train Data unchanged). `EVC_Train_Data.Set` gains `T : Type_Index_T
+  := 0`, `Type_In_Force` (0 after `Clear`, `Start_Manoeuvre_Set`; kept
+  by `Invalidate` with the data). `@req 3.18.3.2` on both; matrix row
+  3.18.3.2 extended.
+- MSG_STORED_VALUES: 65 bytes, train_type u8 at the end (0 none);
+  `EVC_DMI_Port.Stored_Train_T.Type_Index`, filled by
+  `EVC_Core.Outputs.Send_Stored_Values` from `Type_In_Force` (a change
+  of the type alone resends the frame). The 64-byte form is no longer
+  read (the protocol's rule; no sender of it). The DMI:
+  `DMI_Train_Data.Take_Onboard (..., Type_Index)`, `Onboard_Type_Text`;
+  `DMI_Data_View` follows Table 44 for the fixed entry (11.5.1.4): item
+  3 'Train type' inserted, the rows numbered as the items of Tables 44
+  and 45; decision (`Type_Row`): item 3 is shown while the Train data
+  window offers its fixed layout or the stored data are a type's (the
+  on-board's once its long form came, else the DMI's own entry).
+- MSG_DMI_HELLO 16#43#, no payload (B2080): queued by
+  `DMI_Core.Initialise`, the DMI's first frame; `EVC_Core.Handle_Input`
+  at the DMI port (the parent, where the DMI frames are latched; the
+  brief named `EVC_Core.Inputs`) resets `Types_Sent`, `Stored_Sent`,
+  `Version_Sent` and `Contact_Sent`, so the next cycle sends
+  MSG_TRAIN_TYPES, MSG_STORED_VALUES, MSG_SYSTEM_VERSION and a stored
+  RBC contact again. The other change-driven messages are B2120.
+  `EVC_DMI_Port.Valid_Input_Frame` accepts it, `Is_DMI_Hello`.
+- Scenarios: `EVC_Test_Train_Data.Scenario_Train_Type` (type 2 in
+  force and in MSG_STORED_VALUES, the short form type 0, index 3 and
+  the passenger data named type 1 refused, type 1); `DMI_Test_Data_Entry`
+  (the index on the wire, 0 flexible and 2 fixed; the data view of the
+  fixed entry, golden `data_view_fixed`; the on-board's type 1 named
+  Locomotive, a 64-byte MSG_STORED_VALUES ignored; the hello the first
+  frame); `EVC_Test_Core.Scenario_End_To_End` (the hello before the
+  first cycle; part 3, the DMI restarted, the types and the stored
+  values reach it again); fourteen on-board goldens re-recorded
+  (MSG_STORED_VALUES a byte longer). Fuzzers: `evc_fuzz` the long kind
+  2 form with indices 0 .. 3 (from the drawn length, its random stream
+  unchanged) and the hello at the start of mission; `dmi_fuzz`
+  MSG_STORED_VALUES (short, long, the type beyond the types).
+- DMI clauses built: 11.5.1.4 (Table 44 item 3), 11.3.9.6 a) complete.
+  Runner: 0 regressions. Edits outside the named units:
+  `EVC_Driver_Requests` (the decoder), `EVC_Core.Handle_Input` (the
+  hello), `test/src/evc_test.adb` (the call), `doc/TRACE-SUBSET-026.csv`.

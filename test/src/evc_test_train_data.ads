@@ -31,4 +31,9 @@ package EVC_Test_Train_Data is
    --  (level 2 announced) taken when the buffer is released (4.8.5.5)
    procedure Scenario_Released_TRN;
 
+   --  DMI 11.3.9.6 a), SUBSET-026 3.18.3.2.1: the Train Data of a train
+   --  type (MSG_DRIVER_DATA kind 2 with the type's index) taken with the
+   --  type in force; an unknown index or data not the type's refused
+   procedure Scenario_Train_Type;
+
 end EVC_Test_Train_Data;

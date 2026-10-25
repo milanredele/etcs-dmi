@@ -96,11 +96,11 @@ procedure DMI_Fuzz is
    -- In-domain generators, one per message (see dmi_protocol.ads)
    ---------------------------------------------------------------------
 
-   EVC_Types : constant array (1 .. 15) of Msg_Type_T :=
+   EVC_Types : constant array (1 .. 16) of Msg_Type_T :=
      (MSG_SPEED_STATE, MSG_MODE_LEVEL, MSG_TEXT, MSG_TEXT_REMOVE,
       MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS, MSG_ONBOARD, MSG_ATO,
       MSG_SYSTEM_STATUS, MSG_RADIO_NETWORKS, MSG_SYSTEM_VERSION,
-      MSG_VBC_LIST, MSG_RBC_CONTACT, MSG_TRAIN_TYPES);
+      MSG_VBC_LIST, MSG_RBC_CONTACT, MSG_TRAIN_TYPES, MSG_STORED_VALUES);
 
    procedure Build_In_Domain (The_Type : Msg_Type_T) is
    begin
@@ -340,6 +340,32 @@ procedure DMI_Fuzz is
                Last := Last - 1;
             elsif Chance (5) then
                U8 (Pick (0, 255));
+            end if;
+         end;
+      elsif The_Type = MSG_STORED_VALUES then
+         --  the short or the long form, text lengths up to one beyond
+         --  16, train_valid 0 .. 2, any Train Data, a train type up to
+         --  beyond the types received; now and then a byte too few
+         declare
+            Long : constant Boolean := Chance (70);
+         begin
+            for Text in 1 .. (if Long then 3 else 2) loop
+               if Text = 3 then
+                  U8 (Pick (0, 2));
+                  for I in 1 .. Stored_Train_Length loop
+                     U8 (Pick (0, 255));
+                  end loop;
+               end if;
+               U8 (Pick (0, Stored_Text_Max + 1));
+               for I in 1 .. Stored_Text_Max loop
+                  U8 (Pick (32, 126));
+               end loop;
+            end loop;
+            if Long then
+               U8 (Pick (0, Train_Types_Max + 2));
+            end if;
+            if Chance (5) and then Last > 0 then
+               Last := Last - 1;
             end if;
          end;
       elsif The_Type = MSG_RBC_CONTACT then

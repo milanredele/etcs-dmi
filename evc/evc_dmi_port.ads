@@ -49,6 +49,8 @@ is
    --  The DMI ended a system status message by itself: entry u8
    MSG_STATUS_ENDED     : constant Byte := 16#42#;
    Status_Ended_Length  : constant := 1;
+   --  The DMI (re)started (common/dmi_protocol.ads): no payload
+   MSG_DMI_HELLO        : constant Byte := 16#43#;
 
    --  Driver actions (MSG_DRIVER_ACTION) the on-board uses
    Action_Ack     : constant Byte := 2;
@@ -71,7 +73,13 @@ is
                Frame'Length > Header_Length,
             when MSG_STATUS_ENDED =>
                Frame'Length = Header_Length + Status_Ended_Length,
+            when MSG_DMI_HELLO =>
+               Frame'Length = Header_Length,
             when others => False));
+
+   function Is_DMI_Hello (Frame : Byte_Array) return Boolean is
+     (Frame'Length = Header_Length
+      and then Frame (Frame'First) = MSG_DMI_HELLO);
 
    function Is_Driver_Action (Frame : Byte_Array) return Boolean is
      (Frame'Length > Header_Length
@@ -563,18 +571,22 @@ is
    --  stored on-board, for the DMI's data view (3.18.6.1):
    --  driver_id_len u8, 16 bytes, trn_len u8, 16 bytes, train_valid u8,
    --  the 12 bytes of the Train Data as MSG_DRIVER_DATA kind 2 carries
-   --  them, network_len u8, 16 bytes
+   --  them, network_len u8, 16 bytes, train_type u8 (the train type
+   --  the Train Data are, 0 none)
    MSG_STORED_VALUES    : constant Byte := 16#11#;
    Stored_Text_Max      : constant := 16;
    Stored_Train_Length  : constant := 12;
    Stored_Values_Length : constant :=
-     2 + 2 * Stored_Text_Max + 1 + Stored_Train_Length + 1 + Stored_Text_Max;
+     2 + 2 * Stored_Text_Max + 1 + Stored_Train_Length + 1 + Stored_Text_Max
+     + 1;
    type Stored_Text_T is array (1 .. Stored_Text_Max) of Byte;
    subtype Stored_Values_Frame_T is
      Byte_Array (1 .. Header_Length + Stored_Values_Length);
    --  The Train Data stored, in the codes of the DMI's entry (L_TRAIN m,
    --  %, V_MAXTRAIN km/h, NC_CDTRAIN, NC_TRAIN, M_AXLELOADCAT,
-   --  M_AIRTIGHT, M_LOADINGGAUGE); not Valid: none stored
+   --  M_AIRTIGHT, M_LOADINGGAUGE) and the train type they are (0 none,
+   --  1 .. the count of MSG_TRAIN_TYPES; not in MSG_TRAIN_TYPES); not
+   --  Valid: none stored
    type Stored_Train_T is record
       Valid         : Boolean := False;
       Length_M      : Unsigned_16 := 0;
@@ -585,6 +597,7 @@ is
       Axle_Load     : Byte := 16#FF#;
       Airtight      : Byte := 16#FF#;
       Gauge         : Byte := 16#FF#;
+      Type_Index    : Byte := 0;
    end record;
 
    --  @req 3.18.6.1

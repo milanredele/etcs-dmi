@@ -5,7 +5,9 @@ with Ada.Environment_Variables;
 with Ada.Streams;
 with DMI_Core;
 with DMI_Protocol;
+with DMI_Driver_Data;
 with DMI_Status;
+with DMI_Train_Types;
 with Display.Screen.Files;
 with Display.Screen;
 with EVC_Bytes;
@@ -171,7 +173,8 @@ package body EVC_Test_Core is
              and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 51) = 1,
              "power-up: MSG_TRAIN_TYPES, the two default train types "
              & "(DMI 11.3.9.6 a, 3.18.3.2.1)");
-      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 64
+      Check (DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 2) = 65
+             and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 70) = 0
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 6) = 0
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 23) = 0
              and then DMI_Byte (EVC_DMI_Port.MSG_STORED_VALUES, 40) = 0
@@ -679,6 +682,8 @@ package body EVC_Test_Core is
       DMI_Core.Initialise;
       EVC_Core.Initialise;
       EVC_Core.Handle_Input (TIU, (1, 1));
+      --  the DMI's first frame, MSG_DMI_HELLO, before the first cycle
+      Pump_To_EVC;
       for I in 1 .. 5 loop
          EVC_Core.Tick (100);
          Feed_DMI;
@@ -717,6 +722,23 @@ package body EVC_Test_Core is
          Ada.Directories.Create_Path (Golden_Dir);
          Display.Screen.Files.Dump (Golden_Dir & "end_to_end_sb.actual");
       end if;
+
+      --  3. the DMI restarted while the on-board runs: its hello makes
+      --  the on-board send again what it sends once or at a change (the
+      --  train types, the stored values, the system version)
+      DMI_Core.Initialise;
+      Check (DMI_Train_Types.Count = 0
+             and then not DMI_Driver_Data.Onboard_Values_Known,
+             "DMI restart: no train types, no stored values");
+      Pump_To_EVC;
+      Frames := 0;
+      EVC_Core.Tick (100);
+      Feed_DMI;
+      DMI_Core.Tick (100);
+      Check (DMI_Train_Types.Count = 2
+             and then DMI_Driver_Data.Onboard_Long_Known,
+             "DMI restart: MSG_TRAIN_TYPES and MSG_STORED_VALUES sent "
+             & "again after MSG_DMI_HELLO, frames" & Img (Frames));
    end Scenario_End_To_End;
 
 end EVC_Test_Core;

@@ -59,6 +59,10 @@ package DMI_Train_Data is
    --  fixed entry (Length 0: the Train Data were not entered by type)
    function Stored_Type_Text return DMI_Driver_Data.Text_Value_T;
 
+   --  The index of that train type in MSG_TRAIN_TYPES (0: none), sent
+   --  with the Train Data (MSG_DRIVER_DATA kind 2)
+   function Stored_Type_Index return Natural;
+
    function In_Progress return Boolean;
    function Current_Window return Window_Index_T;
 
@@ -97,8 +101,14 @@ package DMI_Train_Data is
    --  SUBSET-026 3.18.6.1: the on-board's Train Data in the codes of
    --  chapter 7 (MSG_STORED_VALUES) become the positions of the four
    --  choices in the lists of Tables 41 and 42 and of the airtight keys
-   --  (DMI_Driver_Data.Onboard_*; 0 when no choice has these codes)
-   procedure Take_Onboard (CD, Other, Axle, Airtight, Gauge : Natural);
+   --  (DMI_Driver_Data.Onboard_*; 0 when no choice has these codes),
+   --  and the train type they are (0 none)
+   procedure Take_Onboard (CD, Other, Axle, Airtight, Gauge : Natural;
+                           Type_Index : Natural := 0);
+
+   --  Table 44 item 3: the name of the train type of the on-board's
+   --  Train Data (Length 0: none, or the type not in the list)
+   function Onboard_Type_Text return DMI_Driver_Data.Text_Value_T;
 
    --  The on-board's stored value of an item as text (Length 0: none)
    function Onboard_Text (Item : Item_T)

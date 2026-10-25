@@ -364,7 +364,7 @@ package body DMI_Test_Windows is
              "MSG_STORED_VALUES with a length above 16 is dropped");
       -- the long form: the Train Data in the codes of the entry and the
       -- GSM-R network ID; a train_valid above 1 drops the message
-      Send_Raw (16#11#, (1 => 8, 2 .. 34 => 0, 35 => 2, 36 .. 64 => 0));
+      Send_Raw (16#11#, (1 => 8, 2 .. 34 => 0, 35 => 2, 36 .. 65 => 0));
       Check (not DMI_Driver_Data.Onboard_Long_Known,
              "MSG_STORED_VALUES with train_valid 2 is dropped");
       Send_Raw (16#11#, (1 => 8, 2 => 49, 3 => 50, 4 => 51, 5 => 52,
@@ -375,7 +375,7 @@ package body DMI_Test_Windows is
                          40 => 160, 41 => 0, 42 => 2, 43 => 4, 44 => 0,
                          45 => 0, 46 => 1, 47 => 1,
                          48 => 6, 49 => 49, 50 => 50, 51 => 51, 52 => 52,
-                         53 => 53, 54 => 54, 55 .. 64 => 0));
+                         53 => 53, 54 => 54, 55 .. 65 => 0));
       Check (DMI_Driver_Data.Onboard_Long_Known
              and then DMI_Driver_Data.Onboard_Train_Valid
              and then DMI_Driver_Data.Onboard_Length = 200

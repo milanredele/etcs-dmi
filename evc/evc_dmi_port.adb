@@ -393,6 +393,9 @@ is
          pragma Loop_Invariant (Frame (1) = MSG_STORED_VALUES);
          Frame (Net_At + I) := Net (I);
       end loop;
+      if Train.Valid then
+         Frame (Net_At + 1 + Stored_Text_Max) := Train.Type_Index;
+      end if;
    end Stored_Values_Frame;
 
    procedure Train_Types_Frame (Count : Natural;

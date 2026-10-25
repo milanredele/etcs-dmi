@@ -272,6 +272,7 @@ begin
    EVC_Test_Train_Data.Scenario_RBC_TRN;
    EVC_Test_Train_Data.Scenario_Engine_Length;
    EVC_Test_Train_Data.Scenario_Released_TRN;
+   EVC_Test_Train_Data.Scenario_Train_Type;
    Scenario_Driver_Level_Table;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_0_Ack_In_SH;

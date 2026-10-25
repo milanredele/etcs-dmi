@@ -213,6 +213,18 @@ is
       or else A.Loading_Gauge /= B.Loading_Gauge
       or else A.Voltages /= B.Voltages);
 
+   --  The values of an entry are those of the train type T
+   function Same_As_Type (E : Train_Entry_T;
+                          T : EVC_Config.Train_Type_T) return Boolean is
+     (Natural (E.Length_M) = T.Length_M
+      and then Natural (E.Brake_Percentage) = T.Brake_Percentage
+      and then Natural (E.Max_Speed_Kmh) = T.Max_Speed_Kmh
+      and then Natural (E.Cant_Deficiency) = Natural (T.Cant_Deficiency)
+      and then Natural (E.Other_Categories) = Natural (T.Other)
+      and then Natural (E.Axle_Load) = Natural (T.Axle_Load)
+      and then Natural (E.Airtight) = Natural (T.Airtight)
+      and then Natural (E.Loading_Gauge) = Natural (T.Loading_Gauge));
+
    --  The Train Data of an entry with the fixed ones of the installation
    --  (OK False: an item out of its range)
    --  @req 3.18.3.2, 3.18.3.2 a), 3.18.3.2 b), 3.18.3.2 b) 2nd bullet
@@ -501,6 +513,18 @@ is
       end if;
    end Take_National_SR;
 
+   --  DMI 11.3.9.6 a): the Train Data of an entry by train type are the
+   --  type's own (decision: an index above the installation's types or
+   --  data that differ from the type's are refused as an invalid entry);
+   --  True for an entry item by item (index 0)
+   --  @req 3.18.3.2
+   function Type_Matches (E : Train_Entry_T) return Boolean is
+     (E.Type_Index = 0
+      or else (Natural (E.Type_Index) <= EVC_Config.Default_Train_Type_Count
+               and then Same_As_Type
+                 (E, EVC_Config.Default_Train_Types
+                       (Natural (E.Type_Index)))));
+
    --  4.7.2, DMI Table 33 #3: the Train Data entered at standstill;
    --  4.4.11.1.5: the SR speed limit and distance entered at standstill
    --  in SR
@@ -524,6 +548,7 @@ is
             E  : constant Train_Entry_T := EVC_Driver_Requests.Train_Data;
          begin
             Train_Data_Of (E, EVC_Config.Current.Train, D, Cs, OK);
+            OK := OK and then Type_Matches (E);
             --  3.18.3.5 b): not with a safe consist length in front of
             --  the engine
             if OK and then C.Standstill
@@ -533,7 +558,7 @@ is
             then
                Cat_N := Train_Known
                  and then Categories_Differ (EVC_Train_Data.Categories, Cs);
-               EVC_Train_Data.Set (D, Cs);
+               EVC_Train_Data.Set (D, Cs, Natural (E.Type_Index));
                Train_Known := True;
                TD_Now := True;
                Put_Event (Event_Train_Data,

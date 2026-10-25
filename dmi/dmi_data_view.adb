@@ -62,8 +62,9 @@ package body DMI_Data_View is
                   Label : TX.Text_ID) return Item_T is
      ((Page, Topic, Label));
 
-   -- Table 45. Item 3 "Train type" belongs to the fixed train data
-   -- entry of Table 44 only. Item 14 "RBC phone number" is displayed
+   -- Tables 44 and 45 (11.5.1.4). Item 3 "Train type" belongs to the
+   -- fixed train data entry of Table 44 only (Type_Row). Item 14 "RBC
+   -- phone number" is displayed
    -- only when the Radio Network type stored on-board is GSM-R or
    -- FRMCS+GSM-R while GSM-R is installed on-board (11.5.1.6.1, the
    -- condition of DMI_Conditions.RBC_Phone_Field). Items 15.. are one
@@ -71,9 +72,10 @@ package body DMI_Data_View is
    -- in the rows after the fixed items (Row_Count). The Page of an item
    -- is the window Table 45 gives it; the VBC items start on window 2
    -- and continue on the windows 3 .. n when window 2 is full ("2..n").
-   Items : constant array (1 .. 13) of Item_T :=
+   Items : constant array (1 .. 14) of Item_T :=
      (Item (1, T_Driver_ID,  TX.Driver_ID),            -- 1
       Item (1, T_TRN,        TX.Train_Running_Number), -- 2
+      Item (1, T_Train_Data, TX.Train_Type),           -- 3
       Item (1, T_Train_Data, TX.Train_Category),       -- 4
       Item (1, T_Train_Data, TX.Train_Length),         -- 5
       Item (1, T_Train_Data, TX.Brake_Percentage),     -- 6
@@ -86,12 +88,26 @@ package body DMI_Data_View is
       Item (2, T_Radio_Data, TX.RBC_ID),               -- 13
       Item (2, T_Radio_Data, TX.RBC_Phone_Number));    -- 14
 
-   Phone_Item : constant := 13;  -- the index of item 14 above
+   Type_Item  : constant := 3;   -- the index of item 3 above
+   Phone_Item : constant := 14;  -- the index of item 14 above
 
-   -- The rows on offer: the fixed items (item 14 only under its
-   -- condition), then one per VBC of the last MSG_VBC_LIST
+   -- 11.5.1.4: Table 44, the fixed train data entry, while the Train
+   -- data window offers its fixed layout or the Train Data stored are
+   -- those of a train type (decision: the switchable entry follows the
+   -- layout lastly used, 11.3.9.7.1, and the data of a type keep their
+   -- item 3 whatever the layout is now)
+   function Type_Row return Boolean is
+     (DMI_Train_Data."=" (DMI_Train_Data.Layout,
+                          DMI_Train_Data.Fixed_Layout)
+      or else (if DMI_Driver_Data.Onboard_Long_Known
+               then DMI_Train_Data.Onboard_Type_Text.Length > 0
+               else DMI_Train_Data.Stored_Type_Text.Length > 0));
+
+   -- The rows on offer: the fixed items (item 3 and item 14 only under
+   -- their conditions), then one per VBC of the last MSG_VBC_LIST
    function Row_Present (Row : Positive) return Boolean is
-     (Row /= Phone_Item or else DMI_Conditions.RBC_Phone_Field);
+     ((Row /= Phone_Item or else DMI_Conditions.RBC_Phone_Field)
+      and then (Row /= Type_Item or else Type_Row));
 
    function VBC_Count return Natural is
      (if DMI_VBC.Known then DMI_VBC.Count else 0);
@@ -169,9 +185,8 @@ package body DMI_Data_View is
    end Choice_Value;
 
    -- The data the DMI holds. Index is the position in Items above (or
-   -- a VBC row after them), not the item number of
-   -- Table 45: 4, 5 and 6 are the length, the brake percentage and the
-   -- maximum speed (items 5, 6 and 7 of the table).
+   -- a VBC row after them), which is the item number of Tables 44 and
+   -- 45 for the fixed items.
    --
    -- 10.5.1.4: the data part displays the value only when its status is
    -- valid. The status of the data stored on-board is the on-board's
@@ -181,21 +196,21 @@ package body DMI_Data_View is
    -- what the driver entered on this DMI, so both are needed: the EVC's
    -- "valid" and a value the DMI has.
    --
-   -- Items: 3 is the train category, 4, 5 and 6 are the length, the
-   -- brake percentage and the maximum speed, 7, 8 and 9 the axle load
-   -- category, the airtight and the loading gauge; 10 to 13 the radio
-   -- data info (items 11 to 14 of Table 45):
-   -- - 10 the Radio Network type stored on-board, which MSG_ONBOARD
+   -- Items: 3 the train type (Table 44), 4 the train category, 5, 6 and
+   -- 7 the length, the brake percentage and the maximum speed, 8, 9 and
+   -- 10 the axle load category, the airtight and the loading gauge; 11
+   -- to 14 the radio data info:
+   -- - 11 the Radio Network type stored on-board, which MSG_ONBOARD
    --   reports with its value (bits 0-1 of the radio byte); not known:
    --   no value. A dedicated value (Table 43b), not grouped (5.1.5.2.2);
    --   the names of the radio systems, the same in every language.
-   -- - 11 the GSM-R network ID: the network the driver selected on this
+   -- - 12 the GSM-R network ID: the network the driver selected on this
    --   DMI from the list of the on-board (11.3.4), while the EVC reports
    --   a GSM-R Mobile Terminal registered to a network (implementation
    --   choice: the registration is the only status of the network ID
    --   the protocol carries, SUBSET-026 3.18.4.3). Chosen from a list
    --   (a dedicated keyboard), so not grouped (5.1.5.2.2).
-   -- - 12, 13 the RBC ID and phone number of the RBC contact information
+   -- - 13, 14 the RBC ID and phone number of the RBC contact information
    --   stored on-board (3.18.6.1), while it is valid (MSG_ONBOARD data
    --   bit 4). Decision: shown whatever the driver chose last. The
    --   on-board sends its stored contact at every change
@@ -224,19 +239,20 @@ package body DMI_Data_View is
         (DMI_Conditions.RBC_Contact_Valid
          and then DMI_Radio_Data.RBC_Entered);
 
-      -- 3.18.6.1: the Train Data the on-board stored (items 3 to 9)
+      -- 3.18.6.1: the Train Data the on-board stored (items 3 to 10)
       function Onboard_Train (Index : Positive) return Value_T is
         (if not DMI_Conditions.Train_Data_Valid
            or else not Onboard_Train_Valid
          then None
          else (case Index is
-                  when 4 => Num_Value (Onboard_Length),
-                  when 5 => Num_Value (Onboard_Brake_Pct),
-                  when 6 => Num_Value (Onboard_Max_Speed),
-                  when 3 => Choice_Value (Onboard_Text (I_Category)),
-                  when 7 => Choice_Value (Onboard_Text (I_Axle_Load)),
-                  when 8 => Choice_Value (Onboard_Text (I_Airtight)),
-                  when 9 => Choice_Value (Onboard_Text (I_Gauge)),
+                  when 3 => Choice_Value (Onboard_Type_Text),
+                  when 4 => Choice_Value (Onboard_Text (I_Category)),
+                  when 5 => Num_Value (Onboard_Length),
+                  when 6 => Num_Value (Onboard_Brake_Pct),
+                  when 7 => Num_Value (Onboard_Max_Speed),
+                  when 8 => Choice_Value (Onboard_Text (I_Axle_Load)),
+                  when 9 => Choice_Value (Onboard_Text (I_Airtight)),
+                  when 10 => Choice_Value (Onboard_Text (I_Gauge)),
                   when others => None));
    begin
       if Index > Items'Length then
@@ -246,7 +262,7 @@ package body DMI_Data_View is
       end if;
       -- the on-board's Train Data once it has sent them (the long form
       -- of MSG_STORED_VALUES), else the DMI's entries
-      if Index in 3 .. 9 and then Onboard_Long_Known then
+      if Index in 3 .. 10 and then Onboard_Long_Known then
          return Onboard_Train (Index);
       end if;
       case Index is
@@ -271,32 +287,36 @@ package body DMI_Data_View is
          when 3 =>
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
-                    then Choice_Value (Stored_Text (I_Category)) else None);
+                    then Choice_Value (Stored_Type_Text) else None);
          when 4 =>
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
-                    then Num_Value (Train_Length) else None);
+                    then Choice_Value (Stored_Text (I_Category)) else None);
          when 5 =>
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
-                    then Num_Value (Brake_Pct) else None);
+                    then Num_Value (Train_Length) else None);
          when 6 =>
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
-                    then Num_Value (Max_Speed) else None);
+                    then Num_Value (Brake_Pct) else None);
          when 7 =>
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
-                    then Choice_Value (Stored_Text (I_Axle_Load)) else None);
+                    then Num_Value (Max_Speed) else None);
          when 8 =>
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
-                    then Choice_Value (Stored_Text (I_Airtight)) else None);
+                    then Choice_Value (Stored_Text (I_Axle_Load)) else None);
          when 9 =>
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
-                    then Choice_Value (Stored_Text (I_Gauge)) else None);
+                    then Choice_Value (Stored_Text (I_Airtight)) else None);
          when 10 =>
+            return (if DMI_Conditions.Train_Data_Valid
+                      and then Train_Data_Entered
+                    then Choice_Value (Stored_Text (I_Gauge)) else None);
+         when 11 =>
             case DMI_Conditions.Radio_Type is
                when DMI_Conditions.FRMCS =>
                   return Radio_Type_Value ("FRMCS");
@@ -307,7 +327,7 @@ package body DMI_Data_View is
                when DMI_Conditions.Type_Unknown =>
                   return None;
             end case;
-         when 11 =>
+         when 12 =>
             -- 3.18.6.1: the network the on-board stored, once sent
             if Onboard_Long_Known then
                if DMI_Conditions.GSMR_Registered
@@ -335,10 +355,10 @@ package body DMI_Data_View is
                end;
             end if;
             return None;
-         when 12 =>
+         when 13 =>
             return (if RBC_Entered and then DMI_Radio_Data.RBC_ID.Length > 0
                     then Text_Value (DMI_Radio_Data.RBC_ID) else None);
-         when 13 =>
+         when 14 =>
             return (if RBC_Entered
                       and then DMI_Radio_Data.RBC_Phone.Length > 0
                     then Text_Value (DMI_Radio_Data.RBC_Phone) else None);
