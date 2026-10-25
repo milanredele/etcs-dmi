@@ -12241,5 +12241,10 @@ NL.
   valid_inputs: a JRU record 31 one Take later, the take buffer full).
   Matrix: row 3.18.3.2 names `EVC_Config.Default_Train_Types` (3.18.3.2.1
   is not a row). Runner: 0 regressions.
+- B2001 done: the bench page's TIU panel has a select 'Train data entry'
+  (not known / fixed / flexible / switchable); it calls a new export of
+  the glue, `onboard_set_train_data_entry` (`Onboard_Wasm`, the frame
+  (16, value) to `EVC_Core.Handle_Input`; not known sends nothing), as the
+  page has no raw TIU input. The wasm was not built in the package.
 - Left (B2000, narrowed): the driver's type to the on-board and the data
-  view item 3 (Table 44); B2001 (the bench's TIU panel).
+  view item 3 (Table 44).

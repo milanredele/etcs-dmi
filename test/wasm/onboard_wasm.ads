@@ -87,6 +87,12 @@ package Onboard_Wasm is
    procedure Set_Train_Configuration (Value : Integer_32)
      with Export, Convention => C,
           Link_Name => "onboard_set_train_configuration";
+   -- SUBSET-034 2.6.1.1: the type of train data entry, TIU signal 16
+   -- (0 fixed, 1 flexible, 2 switchable); any other value sends nothing
+   -- (the input stays not known until a value is given)
+   procedure Set_Train_Data_Entry (Value : Integer_32)
+     with Export, Convention => C,
+          Link_Name => "onboard_set_train_data_entry";
 
    -- One cycle of the on-board and its environment, Dt_Ms milliseconds
    procedure Step (Dt_Ms : Unsigned_32)

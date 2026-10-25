@@ -359,6 +359,14 @@
         <label><input type="checkbox" id="tiu_non_leading">Non leading permitted</label>
         <label title="TIU input 13 (5.17): bits 0-5 the configuration, bit 6 needs the driver's validation (64), bit 7 train category/axle load/traction/gauge (128)">Train configuration
           <input type="number" id="tiu_config" value="0" min="0" max="255"></label>
+        <label title="TIU input 16 (SUBSET-034 2.6.1.1, DMI 11.3.9.6): the type of train data entry; not known sends nothing">Train data entry:
+          <select id="tiu_entry_type">
+            <option value="-1" selected>not known</option>
+            <option value="0">fixed</option>
+            <option value="1">flexible</option>
+            <option value="2">switchable</option>
+          </select>
+        </label>
       </fieldset>
       <div class="row" title="the last records of the on-board's JRU port (Sim_JRU), newest first"><pre id="onboard_jru"></pre></div>
     </div>
@@ -1462,6 +1470,8 @@
             onboard.onboard_set_passive_shunting(checked('tiu_passive_shunting') ? 1 : 0);
             onboard.onboard_set_non_leading(checked('tiu_non_leading') ? 1 : 0);
             onboard.onboard_set_train_configuration(val('tiu_config') || 0);
+            if (onboard.onboard_set_train_data_entry)
+              onboard.onboard_set_train_data_entry(val('tiu_entry_type'));
           });
         }
         $('source').addEventListener('input', () => { if (manualMode()) $('controls').open = true; });
@@ -1473,7 +1483,8 @@
         $('demand').addEventListener('input', sendDesk);
         $('auto_drive').addEventListener('input', sendDesk);
         for (const id of ['tiu_cab', 'tiu_controller', 'tiu_sleeping',
-                          'tiu_passive_shunting', 'tiu_non_leading', 'tiu_config']) {
+                          'tiu_passive_shunting', 'tiu_non_leading', 'tiu_config',
+                          'tiu_entry_type']) {
           $(id).addEventListener('input', sendEnvironment);
         }
         $('reset').addEventListener('click', reset);

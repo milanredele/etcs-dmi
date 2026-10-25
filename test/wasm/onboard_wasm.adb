@@ -6,6 +6,7 @@ with DMI_Protocol; use DMI_Protocol;
 with EVC_Bytes;
 with EVC_Config;
 with EVC_Core;
+with EVC_Ports;
 with EVC_Track;
 with Sim_JRU;
 with Sim_Odometer;
@@ -98,6 +99,15 @@ package body Onboard_Wasm is
          Env.Set_Train_Configuration (Sim_Vehicle.Byte (Value));
       end if;
    end Set_Train_Configuration;
+
+   procedure Set_Train_Data_Entry (Value : Integer_32) is
+   begin
+      if Value in 0 .. 2 then
+         EVC_Core.Handle_Input
+           (EVC_Ports.TIU,
+            (16, EVC_Bytes.Byte (Value)));
+      end if;
+   end Set_Train_Data_Entry;
 
    function Configure (Length : Unsigned_32) return Integer_32 is
       N     : constant Natural :=
