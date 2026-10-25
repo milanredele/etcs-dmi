@@ -151,7 +151,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Balise group not in the list of expected balises in SH mode is passed
 case End of Override: Balise group not in the list of expected balises in SH mode is passed
 clause E4 partial 5.8.4.1 ; efs 5.8.4.1
-clause E4 partial 5.8.4.1 g) ; efs 5.8.4.1.g
+clause E4 done 5.8.4.1 g) ; efs 5.8.4.1.g
 step Setup - Trigger Override
 sub Setup
 init 0.0 SH
@@ -299,7 +299,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Balise group not in the list of expected balises in SR mode is passed
 case End of Override: Balise group not in the list of expected balises in SR mode is passed
 clause E4 partial 5.8.4.1 ; efs 5.8.4.1
-clause E4 partial 5.8.4.1 g) ; efs 5.8.4.1.g
+clause E4 done 5.8.4.1 g) ; efs 5.8.4.1.g
 step Setup - Trigger Override
 sub Setup
 init 0.0 SR
@@ -731,7 +731,7 @@ expect efs: Kernel.Override.OverrideSupervision.FormerEOA < BTM.AntennaDistance(
 sequence End of Override: MA is received from the RBC
 case End of Override: MA is received from the RBC
 clause E4 partial 5.8.4.1 ; efs 5.8.4.1
-clause E4 deferred 5.8.4.1 f) ; efs 5.8.4.1.f
+clause E4 done 5.8.4.1 f) ; efs 5.8.4.1.f
 step Setup - Trigger Override
 sub Setup
 init 0.0 FS

@@ -388,6 +388,8 @@ begin
    Scenario_Conditional_Stop_Ends;
    Scenario_SR_Authorisation;
    Scenario_Trip_L2;
+   Scenario_Linked_Group_At_EOA;
+   Scenario_Override_Ends_By_Radio;
    Scenario_Shunting_L2;
    EVC_Test_Shapes.Scenario_Radio_SH_List;
    Scenario_Radio_Acceptance;

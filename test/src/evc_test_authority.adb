@@ -1345,6 +1345,133 @@ package body EVC_Test_Authority is
              & "MA (5.11.2.2 E135, S140)");
    end Scenario_Trip_L2;
 
+   --  4.6.3 [11], 3.13.10.2.6 b) in level 2, FS: an MA of 500 m from the
+   --  group 10 (EOA at 600 m, a danger point 50 m beyond, release speed
+   --  30 km/h) with the linking of the RBC to a group 20 at 10 m
+   --  accuracy, found 9 m before its announced location. Read at 18 km/h
+   --  in release speed monitoring: 20 announced at 499 m (its first
+   --  possible location 11 m in rear of the EOA, more than the 3 m from
+   --  the antenna to the front end) does not trip; announced at 510 m
+   --  (its first possible location at the EOA) it trips. The relocation
+   --  on 20 makes its location accuracy the confidence interval, so the
+   --  min safe front end passes the EOA in the same cycle ([16] holds
+   --  too): the condition is checked in the cycle of the reading
+   procedure Scenario_Linked_Group_At_EOA is
+      function Linked_MA (D_20 : Natural) return Byte_Array is
+         W  : Writer_T;
+         V  : ETCS_Message.Value_Array := (others => 0);
+         OK : Boolean;
+         X  : T12.Packet_T := MA_Of ((1 => 500), 100);
+      begin
+         X.Q_DANGERPOINT := 1;
+         X.Has_D_DP := True;
+         X.D_DP := 50;
+         X.V_RELEASEDP := 6;
+         V (3) := Unsigned_64 (Stamp);
+         V (5) := 123;
+         V (6) := 10;
+         Start_Message (W, MCat.Track_M3, V);
+         T15.Encode (To_P15 (X), W, OK);
+         T21.Encode (Grad ((1 => (0, 0))), W, OK);
+         T27.Encode (SSP ((1 => (0, 100, False))), W, OK);
+         Put (W, Link_To ((1 => D_20), (1 => 20), 10, 2));
+         Check (OK, "linked group at the EOA: message encoded");
+         return Message_Bytes (W);
+      end Linked_MA;
+
+      procedure Run (D_20, At_M : Natural; Trips : Boolean; Name : String)
+      is
+         Saved  : constant Unsigned_16 := Speed_Cms;
+         Seen   : Boolean := False;
+         In_RSM : Boolean := False;
+      begin
+         Start_L2;
+         Add_Group (Group (20, 100 + Integer_64 (At_M)));
+         Run_X (15_000);
+         Give_Radio_Message (1, Linked_MA (D_20));
+         Stand_X (200);
+         Speed_Cms := 500;
+         while Train_Cm < 10_000 + 100 * Integer_64 (At_M) + 500
+           and then EVC_Core.Mode /= M_TR
+         loop
+            Step_X (100);
+            if EVC_Position.Taken_Count > 0
+              and then EVC_Position.Taken (1).Group.Id.NID_BG in 20
+            then
+               Seen := RA.Group_At_EOA_In_RSM;
+               In_RSM := EVC_Core.Supervision.Monitoring in EVC_SDM.RSM;
+            end if;
+         end loop;
+         Speed_Cms := Saved;
+         Check (In_RSM, "linked group at the EOA, " & Name
+                & ": read in release speed monitoring");
+         Check (Seen = Trips and then (EVC_Core.Mode = M_TR) = Trips,
+                "linked group at the EOA, " & Name
+                & (if Trips then ": the level 2 trip (4.6.3 [11], "
+                   & "3.13.10.2.6 b)"
+                   else ": no trip (3.13.10.2.6 b)"));
+      end Run;
+   begin
+      Run (499, 491, False, "11 m in rear");
+      Run (510, 501, True, "at the EOA");
+   end Scenario_Linked_Group_At_EOA;
+
+   --  5.8.4.1 f), g) in level 2. f): in FS with an MA, the override
+   --  selected at standstill (SR), then an MA of the RBC ends it. g): in
+   --  SR with the list of packet 63 (group 20), the override selected
+   --  at standstill: group 20 passed, it stays active; group 30, not in
+   --  the list, ends it, with no trip ([36] is not met while it is active)
+   procedure Scenario_Override_Ends_By_Radio is
+      procedure Select_Override is
+      begin
+         --  the driver's request 6, Override (EVC_Driver_Requests)
+         Input (DMI, (16#40#, 3, 0, 0, 0, 6, 0, 0));
+         Stand_X (200);
+      end Select_Override;
+      --  the train running number (5.8.2.1 c)
+      procedure Enter_TRN is
+      begin
+         Input (DMI, (16#41#, 6, 0, 0, 0, 1, 4, 49, 50, 51, 52));
+         Stand_X (100);
+      end Enter_TRN;
+   begin
+      Start_L2;
+      Enter_TRN;
+      Run_X (15_000);
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((1 => 500)), Stamp));
+      Stand_X (200);
+      Select_Override;
+      Check (EVC_Procedures.Override_Active,
+             "override, level 2: selected at standstill with an MA");
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((1 => 600)), Stamp));
+      Stand_X (200);
+      Check (not EVC_Procedures.Override_Active,
+             "override, level 2: ended by an MA of the RBC (5.8.4.1 f)");
+
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 200));
+      Add_Group (Group (30, 280));
+      Establish;
+      Enter_TRN;
+      Run_X (15_000);
+      Give_Radio_Message
+        (1, SR_Message (10, 32767, With_63 => True, List => (1 => 20)));
+      Stand_X (200);
+      Select_Override;
+      Check (EVC_Procedures.Override_Active,
+             "override, SR list: selected at standstill");
+      Run_X (25_000);
+      Check (EVC_Procedures.Override_Active,
+             "override, SR list: a listed group passed, still active");
+      Run_X (30_000);
+      Check (not EVC_Procedures.Override_Active
+             and then EVC_Core.Mode = M_SR,
+             "override, SR list: a group not in the list passed ends it, "
+             & "no trip (5.8.4.1 g)");
+   end Scenario_Override_Ends_By_Radio;
+
    --  The driver selects Shunting (MSG_DRIVER_ACTION 7)
    procedure Select_Shunting is
    begin

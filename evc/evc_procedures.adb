@@ -893,7 +893,8 @@ is
      with Global => (Former_S, Former_X);
 
    --  @req 3.6.7.1 c), 3.6.7.1 f), 5.8.1.9, 5.8.3.1.1, 5.8.3.9, 5.8.4.1 a)
-   --  @req 5.8.4.1 b), 5.8.4.1 c), 5.8.4.1 d), 5.8.4.1 e), 5.8.4.1 h)
+   --  @req 5.8.4.1 b), 5.8.4.1 c), 5.8.4.1 d), 5.8.4.1 e), 5.8.4.1 f)
+   --  @req 5.8.4.1 g), 5.8.4.1 h)
    procedure Override_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (Orientation_Now, EVC_Driver_Requests.State,
                                 Now_Flags),
@@ -992,7 +993,9 @@ is
                End_Override (4);                               -- d)
             elsif Now_Flags.Proceed then
                End_Override (5);                               -- e)
-            elsif Now_Flags.SH_Unlisted then
+            elsif C.Radio_MA_L2 then
+               End_Override (6);                               -- f)
+            elsif Now_Flags.SH_Unlisted or else C.SR_Unlisted then
                End_Override (7);                               -- g)
             elsif Ovr_In_SR and then C.SR_Distance_Passed then
                End_Override (8);                               -- h)
