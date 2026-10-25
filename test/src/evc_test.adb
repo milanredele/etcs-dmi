@@ -391,6 +391,7 @@ begin
    Scenario_Transition_Buffer;
    Scenario_PBD_By_Radio_Buffered;
    Scenario_Buffer_Three_Sets;
+   Scenario_Own_Units_Stored;
 
    Scenario_Start_After_Ack;
    Scenario_TAF_Up_To_L2;

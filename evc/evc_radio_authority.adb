@@ -335,8 +335,18 @@ is
           in ETCS_Catalogue.Track_P41 | ETCS_Catalogue.Track_P46)
      with Global => EVC_Received.Store;
 
+   --  4.8.3, From RBC: R [2] outside level 2, A in level 2, for the
+   --  packets a general message hands to their own units: linking (5,
+   --  EVC_Position.Take_Radio_Linking), plain and fixed text (73, 74,
+   --  EVC_Text_Messages.Take_Radio), geographical position (79,
+   --  EVC_Position.Take_Radio_Geo)
+   function Own_Unit_Row (P : ETCS_Catalogue.Packet_Kind_T) return Boolean
+   is (P in ETCS_Catalogue.Track_P5 | ETCS_Catalogue.Track_P73
+          | ETCS_Catalogue.Track_P74 | ETCS_Catalogue.Track_P79);
+
    --  4.8.3 [2] for the packets of the last message, a general message:
-   --  one of them stored by the first filter of its row
+   --  one of them stored by the first filter of its row (Level_2_Row, or
+   --  a row of the units' own packets)
    function Holds_Level_2_Part return Boolean is
      (EVC_Received.Last_Kind = ETCS_Message_Catalogue.Track_M24
       and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
@@ -344,7 +354,12 @@ is
                     (EVC_Received.Last_Packet_Kind (I),
                      Buffer.Context.Level_Valid, Buffer.Context.Level,
                      Buffer.Context.L2_Announced, Order_In_Last)
-                  = EVC_Radio_Acceptance.Stored))
+                  = EVC_Radio_Acceptance.Stored
+                  or else (Own_Unit_Row (EVC_Received.Last_Packet_Kind (I))
+                           and then not (Buffer.Context.Level_Valid
+                                         and then Buffer.Context.Level = L2)
+                           and then (Buffer.Context.L2_Announced
+                                     or else Order_In_Last))))
      with Global => (Buffer.State, EVC_Received.Store);
 
    function To_Buffer return Boolean is

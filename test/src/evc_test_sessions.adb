@@ -1624,6 +1624,9 @@ package body EVC_Test_Sessions is
       N  : Natural;
    begin
       Start_X;
+      --  4.8.3: a text from the RBC is accepted in level 2 (R [2] in
+      --  the other levels)
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
       Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
       Run_X (15_000);
       Establish (1);

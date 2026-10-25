@@ -11871,3 +11871,27 @@ Edits outside the units: `EVC_Radio_Info` (the slot's flag, the
 constant), `EVC_Core.Inputs` (the caller of `To_Buffer` and
 `Read_Released_Messages`). Runner 1115 / 1076 / 999 before and after, 0
 regressions, no improvement.
+
+**The row applied to the packets of their own units (B1921 done).** The
+rows Linking, Plain Text, Fixed Text and Geographical Position From
+RBC read R [2] in levels 0, NTC and 1 and A in level 2. The texts (73,
+74) were taken in every level: `EVC_Text_Messages.Take_Radio` has an
+`Accepted` parameter, the cycle's call gives level 2, the release's
+True. The linking was already taken in level 2 only, but the linking of
+a released set was lost (`Take_Radio_Linking` runs before the release
+and the cycle empties the table): `EVC_Position.Take_Radio_Linking`
+takes a `First` and the release calls it for the released messages.
+Decision for packet 79: the transition buffer is its keeper; a packet
+79 stored for level 2 is in the set of its message
+(`EVC_Radio_Authority.Own_Unit_Row` makes a message 24 with 5, 73, 74 or
+79 a set), so `EVC_Core.Stored.Take_Radio_Geo` hands the position
+Rejected for Stored and the position's own keeper is no longer used by
+the radio (B1980). `EVC_Test_Sessions.Scenario_Text_Ack_Report` now runs
+in level 2 (its texts by radio in level 1 are rejected). Scenario
+`EVC_Test_Authority.Scenario_Own_Units_Stored` (a fixed text and a
+packet 79 in level 1: rejected; with level 2 announced: kept, taken at
+the transition); `EVC_Test_Position.Scenario_Geo_By_Radio` passes
+unchanged through the buffer. The linking of a released set has no
+scenario (B1980). The row 4.8.3.1.1 Table had a stray eleventh column
+(a comma outside the quotes), folded into its note. Runner 1115 / 1076
+/ 999, 0 regressions (47 steps more failed after a first failure).

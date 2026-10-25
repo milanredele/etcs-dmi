@@ -98,8 +98,12 @@ is
       Last  : Natural;
    begin
       --  3.12.3: the text messages of the radio messages, while
-      --  the origins of their LRBG are kept
-      EVC_Text_Messages.Take_Radio;
+      --  the origins of their LRBG are kept; 4.8.3: R [2] outside
+      --  level 2 (a set of the transition buffer when level 2 is
+      --  announced, taken at the release)
+      EVC_Text_Messages.Take_Radio
+        (Accepted => Acceptance_Context.Level_Valid
+                     and then Acceptance_Context.Level = L2);
       --  3.18.4.6.2.1: the driver's adhesion choice
       EVC_Stored_Information.Take_Driver_Adhesion;
       --  the mode profile of the mode in use is no temporary
@@ -285,6 +289,11 @@ is
             EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
+      --  4.8.5.5: the linking and the texts of the released sets, taken
+      --  in level 2
+      EVC_Position.Take_Radio_Linking
+        (EVC_Acceptance.Third_Filter (EVC_Acceptance.Linking,
+                                      Acceptance_Context), First);
       EVC_Text_Messages.Take_Radio (First);
       EVC_Stored_Information.Evaluate_Released
         (First, Unsigned_64 (Clock_Ms), Ctx);
@@ -299,15 +308,24 @@ is
    end Take_Radio_Linking;
 
    procedure Take_Radio_Geo is
+      V : constant EVC_Acceptance.Radio_Verdict_T :=
+        EVC_Acceptance.Radio_Geo_Verdict
+          (Acceptance_Context,
+           L2_Announced => EVC_Levels.Announced
+                           and then EVC_Levels.Announced_Level = L2,
+           --  4.8.5.4 c)
+           Session_Up   => (for some S in EVC_Radio.Session_T =>
+                              EVC_Radio.Established (S)));
    begin
-      EVC_Position.Take_Radio_Geo
-        (EVC_Acceptance.Radio_Geo_Verdict
-           (Acceptance_Context,
-            L2_Announced => EVC_Levels.Announced
-                            and then EVC_Levels.Announced_Level = L2,
-            --  4.8.5.4 c)
-            Session_Up   => (for some S in EVC_Radio.Session_T =>
-                               EVC_Radio.Established (S))));
+      --  decision: a packet 79 stored for level 2 (4.8.3 [2]) is in the
+      --  set of its general message in the transition buffer
+      --  (EVC_Radio_Authority.Keep_Level_2_Part), taken from there at the
+      --  release; the position's own keeper is not used for the radio
+      if EVC_Acceptance."=" (V, EVC_Acceptance.Radio_Stored) then
+         EVC_Position.Take_Radio_Geo (EVC_Acceptance.Radio_Rejected);
+      else
+         EVC_Position.Take_Radio_Geo (V);
+      end if;
    end Take_Radio_Geo;
 
    procedure Release_LS_Held is

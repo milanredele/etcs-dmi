@@ -29,6 +29,10 @@ with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Track_Description;
 with EVC_Track_Conditions;
+with EVC_Text_Messages;
+with EVC_Position;
+with ETCS_Track_Packets.P74;
+with ETCS_Track_Packets.P79;
 with EVC_Movement_Authority;
 with EVC_Sessions;
 with EVC_Test_Support;       use EVC_Test_Support;
@@ -1678,6 +1682,79 @@ package body EVC_Test_Authority is
              "three sets: an order to level 0 replaces the one to level 2, "
              & "the sets deleted (4.8.5.4 a)");
    end Scenario_Buffer_Three_Sets;
+
+   --  Message 24 referring to the group NID_BG with a fixed text from the
+   --  group on, 1000 m long (packet 74), and a geographical position of
+   --  the group (packet 79, 42 km)
+   function Text_Geo_Message (NID_BG : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P74.Packet_T;
+      G  : ETCS_Track_Packets.P79.Packet_T;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 2;
+      P.Q_SCALE := 1;
+      P.Q_TEXT := 1;
+      P.L_TEXTDISPLAY := 1000;
+      P.T_TEXTDISPLAY := 1023;
+      P.M_MODETEXTDISPLAY := 15;
+      P.M_LEVELTEXTDISPLAY := 4;
+      P.M_MODETEXTDISPLAY_2 := 15;
+      P.M_LEVELTEXTDISPLAY_2 := 4;
+      P.Q_TEXTCONFIRM := 0;
+      ETCS_Track_Packets.P74.Encode (P, W, OK);
+      Check (OK, "own units: packet 74 encoded");
+      G.Q_DIR := 1;
+      G.Q_SCALE := 1;
+      G.Q_NEWCOUNTRY := 1;
+      G.Has_NID_C := True;
+      G.NID_C := 123;
+      G.NID_BG := ETCS_Variables.NID_BG_T (NID_BG);
+      G.D_POSOFF := 0;
+      G.Q_MPOSITION := 1;
+      G.M_POSITION := 42_000;
+      ETCS_Track_Packets.P79.Encode (G, W, OK);
+      Check (OK, "own units: packet 79 encoded");
+      return Message_Bytes (W);
+   end Text_Geo_Message;
+
+   --  4.8.3, From RBC: R [2] outside level 2 for the packets a general
+   --  message hands to their own units (here a fixed text and a
+   --  geographical position): rejected in level 1, kept with the message
+   --  in the transition buffer when level 2 is announced and taken at
+   --  the transition (4.8.5.5)
+   procedure Scenario_Own_Units_Stored is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Add_Group (Group (10, 100));
+      Establish;
+      Run_X (15_000);
+      Give_Radio_Message (1, Text_Geo_Message (10));
+      Stand_X (200);
+      Check (RA.Buffered = 0 and then EVC_Text_Messages.Displayed = 0
+             and then not EVC_Position.Geo_Known,
+             "own units: a text and a geographical position by radio "
+             & "rejected in level 1 without level 2 announced (4.8.3 R [2])");
+      Start_L2_Announced;
+      Give_Radio_Message (1, Text_Geo_Message (10));
+      Stand_X (200);
+      Check (RA.Buffered = 1 and then EVC_Text_Messages.Displayed = 0
+             and then not EVC_Position.Geo_Known,
+             "own units: kept with their message in the transition buffer, "
+             & "not used (4.8.3 [2], 4.8.5.1, 4.8.5.6)");
+      Run_X (45_000);
+      Check (EVC_Levels.Level = L2 and then RA.Buffered = 0
+             and then EVC_Text_Messages.Displayed = 1
+             and then EVC_Position.Geo_Known,
+             "own units: the text and the geographical position taken at "
+             & "the level 2 transition (4.8.5.5)");
+   end Scenario_Own_Units_Stored;
 
    --  5.4.3.2 D15, S11, S20, S21: in SB, the driver's Start in level 2
    --  requests the MA once the RBC acknowledged the Train Data (3.18.3.4)

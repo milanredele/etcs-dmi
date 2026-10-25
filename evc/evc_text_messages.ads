@@ -161,8 +161,13 @@ is
    --  3.12.3: the text messages (packets 73, 74) of the radio
    --  messages of the cycle (EVC_Radio_Info, called before the authority
    --  half empties it), referred to the LRBG of their message; stored by
-   --  the next Evaluate; from the message First of the table on
-   procedure Take_Radio (First : Positive := 1)
+   --  the next Evaluate; from the message First of the table on.
+   --  Accepted: 4.8.3, Plain and Fixed Text Information From RBC, A in
+   --  level 2, R [2] in the other levels (a general message so stored
+   --  is a set of the transition buffer, its texts taken at the release:
+   --  EVC_Radio_Authority.Keep_Level_2_Part); not Accepted, none taken
+   --  @req 4.8.3.1.1 Table
+   procedure Take_Radio (First : Positive := 1; Accepted : Boolean := True)
      with Global => (In_Out => State,
                      Input  => (EVC_Radio_Info.State, EVC_Origins.State));
 
