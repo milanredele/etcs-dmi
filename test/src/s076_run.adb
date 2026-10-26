@@ -5369,7 +5369,7 @@ package body S076_Run is
       Sequence : String (1 .. 10);
       Step     : Positive;
    end record;
-   Linking_Data_Cases : constant array (1 .. 11) of Linking_Case_T :=
+   Linking_Data_Cases : constant array (1 .. 12) of Linking_Case_T :=
      (("3131040_13", 56),
       ("3131040_27", 55),
       ("3131040_31", 55),
@@ -5379,6 +5379,7 @@ package body S076_Run is
       ("3131040_38", 56),
       ("3131040_50", 56),
       ("3130234_10", 50),
+      ("3131050_17", 55),
       ("3131040_78", 56),
       ("3131040_77", 56));
 
@@ -5409,6 +5410,9 @@ package body S076_Run is
          when 9 =>
            "linking: BG1d links BG2 at 250 m; BG2d at 300, its MA"
            & " rejected (3.4.4.4.3.2)",
+         when 10 =>
+           "linking: BG1d links BG2 at 400 m, BG3 at 502; the group at 502"
+           & " is NID_BG 2 again, its MA rejected (3.4.4.4.2, 3.4.4.4.3.2)",
          when others =>
            "the text: V_TRAIN > V_EMA, the comment and the Indication"
            & " expected: below V_EMA (3.13.10.4.15)");
