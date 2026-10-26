@@ -13529,3 +13529,30 @@ B2240 (the events after a DMI restart: a decision), B1960's rest
 other bullets; B1401, B1641 (protocol); the decisions B1060, B1063,
 B1340; the review again with the readings first and three traces at
 most.
+
+### The Train Data brake of 3131040_01 traced, a mode profile and a track condition over a reverse movement (e6/td-brake) (2026-10-26)
+
+**B2260, the service brake of 3131040_01 SV30 between steps 53 and 54**
+(FS level 1, ceiling speed monitoring, 84 to 73 km/h by 700 m, TIU
+reason 512). Wrong premise: the review's candidate, the Train Data
+changed in motion. The JRU records of the window (`DEBUG=1`, steps 51
+to 54) name the procedure: event 6 (`EVC_Position` Missed_Group) for
+352/2 and then 352/3, each with event 4 (Linking_Reaction)
+Q_LINKREACTION 2, cause 2 (3.16.2.3.1 b), No Reaction), then event 4
+with Q_LINKREACTION 1, cause 5 (`Cause_Double_Missed`, 3.16.2.7.1.1:
+no balise detected from the start of the expectation window of BG2 to
+the end of BG3's), event 23 kind 6 (the procedures' brake, SB 1) and
+event 20 byte 2 18 (SBC with reason bit 9); no event 23 kind 11 (the
+Train Data procedure did not run). BG1d's packet 5 (telegram bits:
+D_LINK 450 at bit 282, NID_BG 2, D_LINK 100, NID_BG 3, Q_LOCACC 10 m)
+announces BG2 at 500 m and BG3 at 600 m; the sequence gives neither. A
+scratch copy with that first D_LINK set to 4450 in the telegram's bits
+(BG2 at 4500 m, BG3 at 4600 m) runs without a brake, 84 km/h at
+701 m; the review's scratch run with the same move, which kept the
+brake, was not reproduced. The reaction is the clause's: no defect. The
+lab's train kept 86.7 km/h from 550 to 710 m (the chart
+speedprofile), so the lab's on-board read a balise in those windows:
+the bench passes no group the sequence does not list, B2340 (runner,
+for the runner's package; no edit in test/src/s076_*). The triage line
+of S8722745e (the step's own location, s076) is the curve package's
+and stays. No movement.
