@@ -13556,3 +13556,25 @@ the bench passes no group the sequence does not list, B2340 (runner,
 for the runner's package; no edit in test/src/s076_*). The triage line
 of S8722745e (the step's own location, s076) is the curve package's
 and stays. No movement.
+
+**A.3.5.1 4th bullet, a mode profile over a reverse movement** (a
+defect found and fixed). `EVC_Test_Profiles.
+Scenario_Mode_Profile_Roll_Back`: an OS profile from 400 to 600 m
+(group 10 at 100 m, Q_MAMODE 1, L_ACKMAMODE 100 m), the train at
+18 km/h, 50 cm a cycle. The acknowledgement is asked in the rectangle
+(5.9.3.2) and again at the entry to OS when the max safe front end
+reaches the start (4.6.3 [40], 5.9.3.7: two requests, by design), the
+driver acknowledges; a roll back 1.5 m in rear of the start and forward
+again: OS kept, no transition, no request. At the end, FS (4.6.3 [75]);
+a roll back 1.5 m in rear of the end resumed OS and the forward
+movement gave FS a second time: `EVC_Procedures.Profiles_Step` judged
+the overlap (max safe front end past the start, min safe front end not
+past the end) afresh in every cycle. Fixed: `EVC_Procedures.
+Note_Passed` keeps, per slot of the mode profiles, the beginning reached
+and the end passed for the profile with the same start and end
+locations (a new profile in the slot starts afresh), so the overlap
+holds from the beginning reached to the end passed whatever the train
+does after. Proof of `evc_procedures` (298 checks, none unproved);
+runner 0 regressions, 0 improvements. Left of the bullet: a relocation
+on a group that becomes the SOLR in rear of the location, and an LS
+profile (the same code path); B781 narrowed.
