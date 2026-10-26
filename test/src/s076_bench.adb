@@ -149,6 +149,14 @@ package body S076_Bench is
    --  silent in all)
    Registering : array (1 .. RTM_Max_Sessions) of Boolean :=
      (others => False);
+   --  The FRMCS on-board, where installed, reports itself connected and
+   --  not registered to the FRMCS Radio Network in the first cycle after
+   --  each power-up (3.5.6.1.3, the RTM port's event 8), never
+   --  registered: the laboratory had no FRMCS simulator (the sequences'
+   --  "without FRMCS simulator available in laboratory"), and its timer
+   --  steps of A.3.1 count from that detection with no
+   --  SA-REGISTRATION.Indication (3050600_06 step 57, 5040300_23 to 25)
+   FRMCS_Due : Boolean := False;
    T_By_Nid  : By_Nid_T := (others => (others => -1));
 
    procedure Clear_Radio is
@@ -1006,6 +1014,7 @@ package body S076_Bench is
       DMI_Core.Initialise;
       Is_Powered := True;
       Was_Powered := True;
+      FRMCS_Due := Radio_Systems not in EVC_Config.GSMR_Only;
       --  the special brakes of a gamma train active (their status
       --  counts, 3.13.5.2): the combination in use is the train's, or
       --  combination 2 of the sheet where a track condition inhibits one
@@ -1198,6 +1207,12 @@ package body S076_Bench is
                         Byte (RTM_Event_T'Pos (Registered) + 1)));
             end if;
          end loop;
+         if FRMCS_Due then
+            FRMCS_Due := False;
+            EVC_Core.Handle_Input
+              (RTM, (RTM_Tag_Event, 1,
+                     Byte (RTM_Event_T'Pos (FRMCS_Not_Registered) + 1)));
+         end if;
          EVC_Core.Tick (Cycle_Ms + Jump_Ms);
          Jump_Ms := 0;
          Take_Outputs;

@@ -13529,3 +13529,54 @@ B2240 (the events after a DMI restart: a decision), B1960's rest
 other bullets; B1401, B1641 (protocol); the decisions B1060, B1063,
 B1340; the review again with the readings first and three traces at
 most.
+
+### The FRMCS registration event and the driver informed of the safe consist length unavailable (e6/protocol-decisions) (2026-10-26)
+
+**The FRMCS registration (B1641).** 3.5.6.1.3: "As soon as it is
+powered-up, the FRMCS on-board equipment reports continuously to the
+ETCS on-board equipment whether it is registered or not to the FRMCS
+radio network". The RTM port carries it as two events of the 3 byte
+frame, 7 registered and 8 not registered (`EVC_Ports.RTM_Event_T`
+`FRMCS_Registered`, `FRMCS_Not_Registered`, the format at the end of
+`EVC_Ports`); the session byte must be 1 or 2 like every event and is
+not read, the FRMCS on-board being one for the train (3.5.6.1.2). The
+first report since the power-up of the ETCS on-board is the FRMCS
+on-board "detected to be connected", the start of the 40 s of A.3.1
+(page 218, "Time from when the FRMCS on-board equipment has been
+detected to be connected ... registration is considered as failed").
+`EVC_Sessions.Take_Event` passes both to `EVC_Sessions.Network.Take_FRMCS`
+before the session check; `FRMCS_Registered` is the latest report with
+FRMCS installed (decision 2 of e5/registration replaced). The wait of
+5.4.3.2 S4 (`EVC_Sessions.Network.Supervise_Wait`): FRMCS the only
+system for the stored type (FRMCS, or FRMCS+GSM-R with FRMCS alone
+installed) ends at the registration (E61) or 40 s after the detection
+(E71); both systems end when both are registered (E62; either once the
+driver elected one radio system) or 40 s after the latest GSM-R order
+(E72); the GSM-R case unchanged (E6 / E7). A42 shows entry 33 "FRMCS
+network registration failed" for FRMCS and entry 34 for GSM-R, each
+for the system not registered (`Evaluate`'s new `FRMCS_Failed`,
+`EVC_Sessions.Apply_Network`). The SUBSET-076 bench reports event 8 in
+the first cycle after each power-up where FRMCS is installed and never
+event 7: the sequences' laboratory had no FRMCS simulator ("for the
+time being, without FRMCS simulator available in laboratory", the
+comments of feature 5040300), and their timer steps of A.3.1 say
+"SA-REGISTRATION.Indication has not been received".
+`EVC_Test_Network.Scenario_Network_FRMCS`: FRMCS alone, the wait at S4,
+entry 33 between 39 and 41 s after the detection, not entry 34, then
+event 7 on session byte 2 makes the set-up allowed (3.5.6.7 a)) and
+sets the MSG_ONBOARD radio bit 4; both systems, the GSM-R mobile
+registered and FRMCS not: still waiting at 38 s (E62, 3.5.6.7 b)), then
+entry 33 alone (E72), then event 7 makes it ready; GSM-R alone: an
+FRMCS report does not count. `EVC_Test_Radio`'s refused event moved
+from code 7 to 9. Rows: 3.5.6.7, a), b), 5.4.3.2 A42 noted, 5.4.3.2 S4
+partial -> done.
+
+The runner: 1163 / 1075 / 952 before and after, no step moved. The
+four FRMCS sequences (3050600_06, 5040300_23 / 24 / 25, every sequence
+whose steps name the FRMCS failure) stop where they did: 3050600_06 at
+step 57, the timer step, blocked as radio by `S076_Run` before the
+entry; 5040300_23 to 25 run with GSM-R alone (`S076_Run` installs both
+systems for feature 3050600 only). Both are `S076_Run`'s, not this
+package's units: B2380. B762 narrowed: 5040300_25's first part (a
+session at step 55 after a packet 45 of type FRMCS+GSM-R) cannot hold
+with both systems and FRMCS never registered (3.5.6.7 b)), not traced.

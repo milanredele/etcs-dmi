@@ -626,6 +626,14 @@ is
       St : constant R.Session_State_T := R.Info (S).State;
    begin
       Count (Events);
+      if Event in EVC_Ports.FRMCS_Registered | EVC_Ports.FRMCS_Not_Registered
+      then
+         --  3.5.6.1.3: of the FRMCS on-board, whatever the session byte
+         Network.Take_FRMCS
+           (Registered => Event in EVC_Ports.FRMCS_Registered,
+            Now        => Now_Ms);
+         return;
+      end if;
       if not R.Usable (S) then
          return;
       end if;
@@ -675,6 +683,8 @@ is
             --  3.5.6, 5.4.3.2 A29 / A42: the driver informed
             Network.Take_Event (S, Registered => False);
             Show (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+         when EVC_Ports.FRMCS_Registered | EVC_Ports.FRMCS_Not_Registered =>
+            null;   -- taken above
       end case;
    end Take_Event;
 
@@ -1305,9 +1315,13 @@ is
                      Input  => (EVC_Config.State, EVC_Driver_Requests.State,
                                 Mission.State))
    is
-      Stop, Failed : Boolean;
+      Stop, Failed, FRMCS_Failed : Boolean;
    begin
-      Network.Evaluate (Now, Mission.Opening, Stop, Failed);
+      Network.Evaluate (Now, Mission.Opening, Stop, Failed, FRMCS_Failed);
+      if FRMCS_Failed then
+         --  5.4.3.2 A42: the FRMCS network registration failed
+         Show (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+      end if;
       if Failed then
          Show (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
       end if;

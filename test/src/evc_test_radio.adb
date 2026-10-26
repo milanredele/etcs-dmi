@@ -65,7 +65,7 @@ package body EVC_Test_Radio is
       Give_Radio_Message (2, M24);
       Bad := EVC_Core.Rejected (RTM);
       Give_Radio_Event (3, Connection_Lost);   -- no session 3
-      Input (RTM, (RTM_Tag_Event, 1, 7));      -- no event 7
+      Input (RTM, (RTM_Tag_Event, 1, 9));      -- no event 9
       Give_Radio_Message (0, M24);             -- no session 0
       Input (RTM, (RTM_Tag_Request, 1, 2));    -- a request is an output
       Check (EVC_Core.Rejected (RTM) = Bad + 4

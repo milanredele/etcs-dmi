@@ -20,6 +20,12 @@ package EVC_Test_Network is
    --  driver's network restarts it
    procedure Scenario_Network_S4_Timeout;
 
+   --  3.5.6.1.3, 3.5.6.7 a) b), 5.4.3.2 S4 E61 / E62 / E71 / E72 -> A42:
+   --  the FRMCS on-board's report on the RTM port (events 7, 8), the
+   --  wait of S4 and its time from the FRMCS detection, "FRMCS network
+   --  registration failed"
+   procedure Scenario_Network_FRMCS;
+
    --  e5/registration-3: packet 45 by radio (message 24) filtered by
    --  4.8.3 / 4.8.4 (EVC_Radio_Acceptance), 4.8.4 [1], [2], [13]
    procedure Scenario_Network_Radio_Order;
