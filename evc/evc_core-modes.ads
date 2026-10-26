@@ -98,7 +98,7 @@ is
    --  conditions of 4.6.3 they own
    --  @req 4.4.11.1.6.5
    procedure Run_Procedures
-     with Global => (Input  => (EVC_Radio.State,
+     with Global => (Input  => (EVC_Radio.State, EVC_Sessions.State,
                                 Current_Mode, TIU_Value_Now, TIU_Known_Now,
                                 Odometer_Now, Brake_Ack_Now,
                                 Ack_For_Protection, Clock_Ms,

@@ -116,6 +116,10 @@ is
       --  the RBC's answer awaited or a mode proposed (5.4.3.2 S21 to
       --  S25): Override is offered in Stand By only at S10 and S20
       SoM_Started      : Boolean := False;
+      --  5.4.5.3 a), 5.4.3.2 S11: the Train Data sent to the RBC and its
+      --  acknowledgement awaited (EVC_Sessions.Train_Data_Awaited): in
+      --  Stand By not S10 nor S20
+      TD_Ack_Awaited   : Boolean := False;
       --  the speed the override is compared with (5.8.2.1 a): the
       --  estimated speed, the train speed of the speed monitoring and of
       --  the driver's indication (3.13.10.2.1)

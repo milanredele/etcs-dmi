@@ -331,6 +331,7 @@ begin
    Scenario_Session_Order_Rows;
    Scenario_SoM_L2_Mode_Proposal_LS;
    Scenario_SoM_L2_Override;
+   Scenario_SoM_L2_Override_Before_S10;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;

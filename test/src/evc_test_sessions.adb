@@ -1263,6 +1263,84 @@ package body EVC_Test_Sessions is
              "SoM L2 override: SB kept at S21");
    end Scenario_SoM_L2_Override;
 
+   --  5.4.5.3 a): "only at S10 and S20 and if the conditions defined in
+   --  5.8.2.1 for Stand By are fulfilled, to select "Override"". A level
+   --  2 start of mission: not taken at S1 (no driver ID), at S4 (the
+   --  session being established, no Train Data: 5.8.2.1 c)), at S11
+   --  (Train Data and train running number valid, the acknowledgement of
+   --  the RBC awaited), taken at S20; after the End of Mission (the desk
+   --  closed in SR, SB: 5.5.2.1.1) the Train Data and the train running
+   --  number are to be revalidated (4.10), not taken at S1 again
+   procedure Scenario_SoM_L2_Override_Before_S10 is
+      N  : Natural;
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+
+      procedure Try (Where : String; Taken : Boolean) is
+      begin
+         Send (Action (6));
+         Check (EVC_Procedures.Override_Active = Taken
+                and then (EVC_Core.Mode = EVC_Modes.M_SR) = Taken,
+                "override before S10: " & Where
+                & (if Taken then " taken" else " not taken")
+                & " (5.4.5.3 a), 5.8.2.1 c))");
+      end Try;
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Add_Group (Group (10, 20));
+      Run_X (5_000, 100);
+      Stand;
+      Try ("at S1, the driver ID not entered", False);
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
+      Check (R.Being_Established (1),
+             "override before S10: S4, the session being established");
+      Try ("at S4", False);
+      Establish (1);
+      Stand;
+      Send (Train_Entry);
+      N := Output_Of (129);
+      if N > 0 then
+         Decode_Radio_Message (N, M, St);
+      end if;
+      Send (Text_Entry (1, "5678"));
+      Check (N > 0 and then not R.Train_Data_Acknowledged
+             and then EVC_Train_Data.Valid
+             and then EVC_Mission."=" (EVC_Mission.TRN_Status,
+                                       EVC_Mission.Valid),
+             "override before S10: S11, the Train Data and the train "
+             & "running number valid, the acknowledgement awaited");
+      Try ("at S11", False);
+      --  message 8 with the T_TRAIN of the Train Data (8.7.4 field 6)
+      Give_Radio_Message (1, Msg (MCat.Track_M8, Now_T, 0, 7, M.Values (3)));
+      Stand;
+      Stand;
+      Check (R.Train_Data_Acknowledged,
+             "override before S10: S20, the Train Data acknowledged");
+      Try ("at S20", True);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand;
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_SB
+             and then not EVC_Train_Data.Valid
+             and then EVC_Mission."/=" (EVC_Mission.TRN_Status,
+                                        EVC_Mission.Valid),
+             "override before S10: the End of Mission in SB, the Train "
+             & "Data and the train running number to be revalidated "
+             & "(4.10)");
+      --  the override selected at S20 above stays active over SB (none of
+      --  5.8.4.1 a) to i)): the selection not taken is SB kept
+      Send (Action (6));
+      Check (EVC_Core.Mode = EVC_Modes.M_SB,
+             "override before S10: at S1 after the End of Mission not "
+             & "taken (5.4.5.3 a), 5.8.2.1 c))");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_SoM_L2_Override_Before_S10;
+
    --  5.4.3.2 S21, E27 -> S25, E33 with a Shunting profile (packet 80
    --  M_MAMODE 1) at the train's position: Shunting proposed, the
    --  acknowledgement gives SH (4.6.3 [50])
