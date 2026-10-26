@@ -13581,6 +13581,9 @@ package's units: B2380. B762 narrowed: 5040300_25's first part (a
 session at step 55 after a packet 45 of type FRMCS+GSM-R) cannot hold
 with both systems and FRMCS never registered (3.5.6.7 b)), not traced.
 
+**The safe consist length unavailable (B1401).** Not taken: left at the
+bound of the package (98 calls of 130 after the papers), open as it was.
+
 ### Three decisions: the VBC validity clock, the VBC capacity, the local time (e6/protocol-decisions) (2026-10-26)
 
 Three papers for the user, no code. Each gives the clauses as printed,
