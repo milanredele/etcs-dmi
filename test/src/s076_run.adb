@@ -5369,7 +5369,7 @@ package body S076_Run is
       Sequence : String (1 .. 10);
       Step     : Positive;
    end record;
-   Linking_Data_Cases : constant array (1 .. 10) of Linking_Case_T :=
+   Linking_Data_Cases : constant array (1 .. 11) of Linking_Case_T :=
      (("3131040_13", 56),
       ("3131040_27", 55),
       ("3131040_31", 55),
@@ -5379,7 +5379,8 @@ package body S076_Run is
       ("3131040_38", 56),
       ("3131040_50", 56),
       ("3130234_10", 50),
-      ("3131040_78", 56));
+      ("3131040_78", 56),
+      ("3131040_77", 56));
 
    --  what the data of case I say against the track or the clause
    function Linking_Why (I : Positive) return String is
