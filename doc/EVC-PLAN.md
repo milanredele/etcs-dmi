@@ -13884,3 +13884,113 @@ Runner 1163 / 1075 / 952 -> 1163 / 1069 / 958, recorded: the six
 regressions are the two blocks (3131040_77, 3131050_17, three versions
 each). Edits outside the package's named units: `S076_Run.Linking_Data_Cases`
 and `Linking_Why` (the S076-defect table), not `Curve_Judgement`.
+
+### Review of the fifty-fourth round: eight verdicts re-derived blind (e5/review-54) (2026-10-26)
+
+Each verdict below was written from the clause, the data and the trace
+before the author's record was read. All eight items were taken.
+
+1. Table 4.8.4 footnote [1] (PDF page 76). Mine: in PT a message needs
+   level 2 and the Recognition of Exit from TR with a more recent time
+   stamp; level 1 rejects; PT is used in levels 1 and 2 only
+   (4.4.14.2.1), so a context whose level is not valid satisfies neither
+   branch and is rejected (the case does not arise in PT). `EVC_Radio_
+   Acceptance.In_PT` (Trip_Exit_Known, a valid level 2) matches; the
+   builders of the radio `Context_T` (`EVC_Radio_Authority` from
+   `EVC_Levels`, `EVC_Sessions.Network.Accepts` and `Take_Radio_Order`
+   from the parameters that `EVC_Sessions` fills with `EVC_Levels.Valid`
+   and `EVC_Levels.Level`) all pass the level. Author (e6/acceptance-
+   level): the same, `Take_Radio_Order` was the one that left the level
+   out and now takes it. Agree.
+2. The override before S10. Mine: 5.4.5.3 a) allows it at S10 and S20
+   only, with 5.8.2.1 for SB (level 2, validated Train Data and train
+   running number); 4.10 gives TBR for both on entering SB, so a first
+   S10 (before S12) refuses by c), an S10 reached again after S12 (D11
+   without a session, A32, A40, D8 / D9, E15) and S20 allow. DMI Table 34
+   #1 does not know the S-state and enables the button in SB with the
+   data valid, also at S11 and S21 to S25: the on-board refuses there.
+   `EVC_Procedures.Override_Allowed` refuses S21 to S25 (`SoM_Started`)
+   and S11 (`TD_Ack_Awaited`). Author: the same, the S11 defect fixed,
+   the DMI's enabling a decision (B2320). Agree; one point undecided: the
+   author's "refused at S1 to S4 by 5.8.2.1 c)" holds on the first pass;
+   a return from S20 by 5.4.5.3 e) or j) (the level or the Radio data
+   re-entered, S2 / S3, then S4 and A31) keeps the Train Data validated at
+   S12 (no new entry into SB), and nothing in `Override_Allowed` refuses
+   S4 or A31 then (S2, S3 and S12 are entry windows, no button
+   reachable): B2402.
+3. The FRMCS registration at S4. Mine: FRMCS alone ends at E61 (A31) or
+   40 s (A.3.1) after the FRMCS on-board was detected as connected (E71,
+   A42); both systems end at E62 or 40 s after the latest GSM-R order
+   (E72), the FRMCS detection does not time that case; for a port that
+   reports only registered / not registered the first report after the
+   power-up is the detection, and an S4 reached later than 40 s after it
+   fails at once. `EVC_Sessions.Network.Take_FRMCS` and `Supervise_Wait`
+   and the bench (event 8 in the first cycle after each power-up, never
+   registered) do exactly that. Agree. A remark, no line: a port that
+   never reports leaves the FRMCS-alone wait without an end (no
+   detection, no E71); literal, the port's contract has to report at
+   connection.
+4. Three decisions. (a) The VBC validity: mine, the end in UTC judged
+   when UTC is known, the powered clock as a lower bound that may end it
+   too; the author's (b), the same. Agree. (b) The capacity: mine,
+   separate rooms of at least 20 for the driver's covers and at least 10
+   for trackside's, from SUBSET-040 4.5.1.2 ("at least 20 VBCs set by the
+   driver") and 4.3.2.1 w) (10 memorised from trackside, its remark: not
+   including the driver's 20); the author's (a), one store of 16, since
+   SUBSET-026 3.15.9 names no number. Disagree: the paper did not read
+   SUBSET-040, whose minima a shared 16 does not meet; DMI 11.2.4.5.1 #5
+   (Set VBC enabled while "the maximum on-board storage capacity of VBC
+   set by driver is not reached, see [4] 4.5.1.2") counts the driver's
+   covers apart: B2400. (c) The local time: mine and the author's, the
+   offset from the port that gives the UTC. Agree.
+5. A.3.5.1 4th and 7th bullets. Mine: after a roll-back behind a mode
+   profile's end and forward again FS does not come a second time; the OS
+   acknowledgement is shown in the rectangle (5.9.3.2) and again at the
+   entry when not given (5.9.3.7), never again after a roll-back; behind a
+   track condition's start (5.18.2.3) the announcement is not shown again.
+   `EVC_Procedures.Note_Passed` latches the beginning and the end per slot;
+   `Scenario_Mode_Profile_Roll_Back` expects exactly that;
+   `Scenario_Track_Condition_Roll_Back` expects it too but is not called,
+   `EVC_Track_Conditions.Evaluate` judges the phases against the position
+   in every cycle. Author (e6/td-brake): the mode profile defect found
+   and fixed, the track condition defect open (B2341). Agree.
+6. 3131040_01 SV30, the brake between 550 and 700 m. Mine: BG1d's packet
+   5 links BG2 at 500 m and BG3 at 600 m (D_LINK 450, 100, Q_LOCACC 10 m,
+   both Q_LINKREACTION 2, no reaction); the file holds BG1d's telegrams
+   only. The window's JRU: event 6 for NID_BG 2 and 3, event 4 (2, 2, 1),
+   (2, 2, 2) then (1, 5, 2), cause 5 = 3.16.2.7.1.1 (no balise from the
+   start of BG2's window to the end of BG3's: the service brake whatever
+   Q_LINKREACTION), event 20 byte 18 (SB, reason 512). The on-board is
+   right; the fault is the sequence's data: two linked groups announced
+   and never given, the speed chart flat at 86.7 km/h from 550 to 710 m.
+   Author (B2260, B2340): the same mechanism and clause, the fault put on
+   the bench ("passes no group the sequence does not list"). Disagree on
+   the attribution only: there is no telegram of BG2 or BG3 to pass;
+   synthesising groups the file announces is a runner decision, not a
+   defect of the bench: B2401.
+7. 3130700_03 SV30 step 62. Mine: step 61's comment raises
+   T_BRAKE_EMERGENCY by 1 s in the workbook to stand for 3.11.11.6's T41
+   (`EVC_PBD.T_41`, 1 s), so K52 3.5 s is the train's 2.5 s plus T41; the
+   bench installs K52 for combination 1 (no packet 68: the one in use) and
+   `EVC_PBD.Holds` adds T41 again. Hand computation (A_safe 1 x 0.8 x 0.8
+   = 0.64 m/s2, the workbook's EBD 385.8 m at 80 km/h; from 5 to 425 m):
+   T41 + T_be 4.5 s gives V_PBD + dV_ebi + V_delta0 at most 73.7 km/h,
+   V_PBD 60; 3.5 s gives 75.8 km/h, V_PBD 65 = V5. Author (Sb82bca11,
+   model, B2360): the same numbers and the double count. Agree; a note for
+   the runner's fix: the sheet's other curves are computed with 3.5 s, so
+   a changed time applies to the PBD only.
+8. 3131040_73 SV30 step 64. Mine: BG2d's packet 12 gives an LoA 1000 m
+   beyond 150 m at V_EMA 40 km/h, its packet 27 one element of 70 km/h,
+   no MRSP decrease; Table 16 needs [3] (the MRDT removed) or [6] for CSM,
+   3.13.8.2.3 removes MRSP element targets only, an LoA stays a target
+   until passed (a trip in level 1, 3.13.10.2.7) and the train stops at
+   1140 m short of it: CSM cannot come at 1088 m. Ours TSM Indication with
+   the 40 km/h target at 0 m from 1088 m (3.13.10.4.7). Author
+   (Sd388e03a, s076): the same. Agree.
+
+Counts: 9 verdicts agreed (1, 2, 3, 4a, 4c, 5, 7, 8, and 6 on the
+clause), 2 disagreed (4b the VBC capacity, 6 the attribution), 1
+undecided (2, S4 / A31 after a return from S20); three backlog lines
+(B2400 to B2402). The review took about 95 tool calls of 130 to the
+bound, the most on items 6 to 8 (three traces and the hand computation,
+about 35).
