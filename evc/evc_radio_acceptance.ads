@@ -180,12 +180,12 @@ is
    --  the reception of the information "Recognition of Exit from TR
    --  mode" with a more recent time stamp; for level 1: rejected"
    --  (message 6: Trip_Exit_Known, its time stamp judged by EVC_Sessions)
-   --  decision: a context without a valid level is judged by message 6
-   --  alone
+   --  decision: a context whose level is not valid cannot satisfy "for
+   --  level 2" and is rejected (every caller passes the level of
+   --  EVC_Levels)
    --  @req 4.8.4.2 Table-footnote [1]
    function In_PT (C : Context_T) return Boolean is
-     (C.Trip_Exit_Known
-      and then not (C.Level_Valid and then C.Level = L1));
+     (C.Trip_Exit_Known and then C.Level_Valid and then C.Level = L2);
 
    --  4.8.4, the third filter in the mode of C
    --  @req 4.8.4.2 Table

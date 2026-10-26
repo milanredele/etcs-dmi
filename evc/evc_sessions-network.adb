@@ -196,8 +196,10 @@ is
      with Global => Trip_Stamp;
 
    procedure Take_Radio_Order
-     (Kind       : ETCS_Message_Catalogue.Message_Kind_T;
-      Cab_Active : Boolean)
+     (Kind        : ETCS_Message_Catalogue.Message_Kind_T;
+      Cab_Active  : Boolean;
+      Level_Valid : Boolean;
+      Level       : Level_T)
    is
       use type ETCS_Message_Catalogue.Message_Kind_T;
       use type EVC_Radio_Acceptance.Verdict_T;
@@ -208,8 +210,9 @@ is
       P  : ETCS_Track_Packets.P45.Packet_T;
       OK : Boolean;
       C  : constant EVC_Radio_Acceptance.Context_T :=
-        (Mode => Mode_Now, Cab_Active => Cab_Active,
-         Trip_Exit_Known => Exit_Seen, others => <>);
+        (Mode => Mode_Now, Level_Valid => Level_Valid, Level => Level,
+         Cab_Active => Cab_Active, Trip_Exit_Known => Exit_Seen,
+         others => <>);
    begin
       --  4.8.4 [1]: the recognition of the exit from TR, accepted in PT
       --  only (EVC_Radio_Acceptance, Trip_Exit)

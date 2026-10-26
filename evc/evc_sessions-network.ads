@@ -67,13 +67,16 @@ is
    --  The radio message of Kind just received (EVC_Received) from the
    --  supervising RBC, or the handing over one: its packets 45 when 4.8
    --  accepts them (4.8.3, 4.8.4, the row "Radio Network transition
-   --  order", EVC_Radio_Acceptance; Cab_Active for [2]); message 6 for
-   --  4.8.4 [1] in PT, its recognition given to the authority half
+   --  order", EVC_Radio_Acceptance; Cab_Active for [2], the level Level
+   --  when Level_Valid for 4.8.3 and [1]); message 6 for 4.8.4 [1] in
+   --  PT, its recognition given to the authority half
    --  (EVC_Radio.Trip_Exit_Recognised)
    --  @req 4.8.4.2 Table-footnote [13]
    procedure Take_Radio_Order
-     (Kind       : ETCS_Message_Catalogue.Message_Kind_T;
-      Cab_Active : Boolean)
+     (Kind        : ETCS_Message_Catalogue.Message_Kind_T;
+      Cab_Active  : Boolean;
+      Level_Valid : Boolean;
+      Level       : Level_T)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => (EVC_Received.Store, EVC_Position.State)),
           Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old

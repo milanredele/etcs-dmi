@@ -13529,3 +13529,25 @@ B2240 (the events after a DMI restart: a decision), B1960's rest
 other bullets; B1401, B1641 (protocol); the decisions B1060, B1063,
 B1340; the review again with the readings first and three traces at
 most.
+
+### The level in every acceptance context, the override before S10, the events after a DMI restart (e6/acceptance-level) (2026-10-26)
+
+B2220 with B2300, the level in every acceptance context: of the three
+builders of an `EVC_Radio_Acceptance.Context_T` (`--refs Context_T`
+lists four types of that name; the radio one is built in
+`EVC_Sessions.Network.Take_Radio_Order`, `EVC_Sessions.Network.Accepts`
+and `EVC_Radio_Authority.Buffer.Update`, the authority's messages
+judged on the buffer's context), only `Take_Radio_Order` left the level
+out (the claim was right). It now takes `Level_Valid` and `Level` from
+its caller `EVC_Sessions.Take_Message` (`EVC_Levels.Valid`,
+`EVC_Levels.Level`, the shape of `Accepts`), and
+`EVC_Radio_Acceptance.In_PT` requires `Trip_Exit_Known` with a valid
+level 2: the decision of round 53 (a context without a valid level
+judged by message 6 alone) is withdrawn, the reviewer's reading taken
+(B2300: "for level 2" cannot be satisfied by a level not valid; PT is
+used in levels 1 and 2 only, 4.4.14.2.1, so level 0 and NTC do not
+arise). `Scenario_PT_Acceptance_Level` extended: message 24 with packet
+45 after a message 6, the network NID_MN 123456 taken in PT in level 2,
+654321 not taken in level 1; with the old context and `In_PT` the level
+1 check fails. Runner 1163 / 1075 / 952, 0 movements. Row 4.8.4.2
+Table-footnote [1] noted.

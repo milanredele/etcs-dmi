@@ -908,8 +908,7 @@ is
             --  the request nor ends its wait
             if Kind in Track_M4 | Track_M5
               and then Network.Accepts
-                         (Kind,
-                          EVC_Position.Active_Cab /= EVC_Position.No_Cab,
+                         (Kind, EVC_Position.Active_Cab /= EVC_Position.No_Cab,
                           EVC_Levels.Valid, EVC_Levels.Level)
             then
                declare
@@ -936,7 +935,8 @@ is
             --  packet 45 filtered by 4.8 (and message
             --  6 noted for 4.8.4 [1])
             Network.Take_Radio_Order
-              (Kind, EVC_Position.Active_Cab /= EVC_Position.No_Cab);
+              (Kind, EVC_Position.Active_Cab /= EVC_Position.No_Cab,
+               EVC_Levels.Valid, EVC_Levels.Level);
             if R.Supervising = R.Session_Ref_T (S) then
                Take_Radio_Transition;
             end if;

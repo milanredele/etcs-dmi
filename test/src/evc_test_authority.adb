@@ -1,4 +1,5 @@
 with ETCS_Track_Packets.P140;
+with ETCS_Track_Packets.P45;
 --  ETCS on-board (EVC)
 --  Phase E5, the authority by radio half (see the specification).
 
@@ -1411,10 +1412,35 @@ package body EVC_Test_Authority is
    --  "Assignment of Co-ordinate system", A in every level by 4.8.3, A
    --  [1] in PT) after a message 6: accepted in level 2, rejected once
    --  the level is 1 in PT; the filter alone for the other rows A [1]
-   --  of PT
+   --  of PT. Packet 45 of message 24 (the row "Radio Network transition
+   --  order", A [1] [13] in PT) the same: its context carries the level
+   --  (EVC_Sessions.Network.Take_Radio_Order), the network ordered taken
+   --  in level 2, not in level 1
    procedure Scenario_PT_Acceptance_Level is
       package Acc renames EVC_Radio_Acceptance;
+      use type ETCS_Variables.NID_MN_T;
       R0 : Natural;
+
+      --  message 24 with packet 45: the GSM-R network MN, both directions
+      function Network_Order (MN : ETCS_Variables.NID_MN_T)
+                              return Byte_Array is
+         W  : Writer_T;
+         V  : ETCS_Message.Value_Array := (others => 0);
+         OK : Boolean;
+         P  : ETCS_Track_Packets.P45.Packet_T;
+      begin
+         V (3) := Unsigned_64 (Stamp);
+         V (5) := 123;
+         V (6) := 10;
+         Start_Message (W, MCat.Track_M24, V);
+         P.Q_DIR := 2;
+         P.Q_NETWORKTYPE := 1;
+         P.Has_NID_MN := True;
+         P.NID_MN := MN;
+         ETCS_Track_Packets.P45.Encode (P, W, OK);
+         Check (OK, "post trip by level: packet 45 encoded");
+         return Message_Bytes (W);
+      end Network_Order;
 
       procedure Enter_PT (Level : Level_T) is
       begin
@@ -1458,6 +1484,12 @@ package body EVC_Test_Authority is
              and then RA.Messages_Rejected = R0,
              "post trip, level 2: message 45 after message 6 accepted "
              & "(4.8.4 [1])");
+      Give_Radio_Message (1, Network_Order (16#123456#));
+      Stand_X (200);
+      Check (EVC_Radio.Network.Known
+             and then EVC_Radio.Network.NID_MN = 16#123456#,
+             "post trip, level 2: the radio network order of message 24 "
+             & "after message 6 taken (4.8.4 [1])");
 
       --  the level 1 in PT after it (message 6 itself is R in level 1,
       --  4.8.3, so only a level change in PT after it leads there: the
@@ -1473,6 +1505,11 @@ package body EVC_Test_Authority is
              and then RA.Messages_Rejected = R0 + 1,
              "post trip, level 1: message 45 after message 6 rejected "
              & "(4.8.4 [1])");
+      Give_Radio_Message (1, Network_Order (16#654321#));
+      Stand_X (200);
+      Check (EVC_Radio.Network.NID_MN = 16#123456#,
+             "post trip, level 1: the radio network order of message 24 "
+             & "after message 6 not taken (4.8.4 [1])");
    end Scenario_PT_Acceptance_Level;
 
    --  4.6.3 [11], 3.13.10.2.6 b) in level 2, FS: an MA of 500 m from the
