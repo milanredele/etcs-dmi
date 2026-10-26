@@ -221,6 +221,103 @@ package body EVC_Test_Network is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_S4_Timeout;
 
+   procedure Scenario_Network_FRMCS is
+      use type EVC_Core.Time_Ms_T;
+      Start : EVC_Core.Time_Ms_T;
+      Shown, GSMR_Shown : Boolean := False;
+
+      --  stand until entry 33 is shown or 3 s have passed
+      procedure Await_FRMCS_Failure is
+      begin
+         Shown := False;
+         GSMR_Shown := False;
+         for I in 1 .. 30 loop
+            Stand;
+            Shown := Status_Shown (EVC_DMI_Port.SS_FRMCS_Registration_Failed,
+                                   0);
+            GSMR_Shown := GSMR_Shown
+              or else Status_Shown
+                        (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+            exit when Shown;
+         end loop;
+      end Await_FRMCS_Failure;
+   begin
+      --  FRMCS the only radio system, the type FRMCS (5.4.3.2 S4 1st)
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, Systems => EVC_Config.FRMCS_Only,
+          Default_Type => EVC_Config.FRMCS, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Give_Radio_Event (1, FRMCS_Not_Registered);
+      Start := EVC_Core.Time_Ms;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry);
+      Check (Waiting = 1 and then not EVC_Sessions.Network_Ready,
+             "FRMCS alone: reported connected, not registered: the start "
+             & "of mission waits at S4 (5.4.3.2 S4, 3.5.6.7 a))");
+      while EVC_Core.Time_Ms - Start < 38_000 loop
+         Stand;
+      end loop;
+      Check (Waiting = 1
+             and then not Status_Shown
+                            (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0),
+             "FRMCS alone: still waiting before the time of A.3.1");
+      Await_FRMCS_Failure;
+      Check (Shown and then not GSMR_Shown and then Waiting = 0
+             and then EVC_Core.Time_Ms - Start in 39_000 .. 41_000,
+             "S4 E71 -> A42: 40 s after the FRMCS on-board was detected "
+             & "connected (A.3.1), FRMCS network registration failed, "
+             & "entry 33, not the GSM-R one; the wait ended");
+      Give_Radio_Event (2, FRMCS_Registered);
+      Stand;
+      Check (EVC_Sessions.Network_Ready
+             and then not EVC_Sessions.Registration_Timed_Out
+             and then EVC_Sessions.Radio_Bits / 16 mod 2 = 1,
+             "FRMCS alone: event 7 on any session byte, registered: the "
+             & "set-up allowed (3.5.6.7 a)), MSG_ONBOARD radio bit 4");
+      --  both systems, the type FRMCS+GSM-R (5.4.3.2 S4 2nd): the GSM-R
+      --  mobile registered (Auto_Register), FRMCS not
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000,
+          Systems => EVC_Config.Both_Systems,
+          Default_Type => EVC_Config.FRMCS_GSMR,
+          Default_MN => 16#262FFF#));
+      EVC_Test_Modes.Start_E4;
+      Give_Radio_Event (1, FRMCS_Not_Registered);
+      Start := EVC_Core.Time_Ms;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry);
+      while EVC_Core.Time_Ms - Start < 38_000 loop
+         Stand;
+      end loop;
+      Check (Waiting = 1 and then not EVC_Sessions.Network_Ready
+             and then EVC_Sessions.Radio_Bits / 32 mod 2 = 1,
+             "both systems: the GSM-R mobile registered, FRMCS not: S4 "
+             & "still waits for both (E62), 3.5.6.7 b) holds the set-up");
+      Await_FRMCS_Failure;
+      Check (Shown and then not GSMR_Shown and then Waiting = 0,
+             "S4 E72 -> A42: 40 s after the GSM-R order, the failed "
+             & "registration is FRMCS's alone, entry 33");
+      Give_Radio_Event (1, FRMCS_Registered);
+      Stand;
+      Check (EVC_Sessions.Network_Ready,
+             "both systems: both registered, the set-up allowed "
+             & "(3.5.6.7 b))");
+      --  GSM-R alone: the FRMCS reports are not judged
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000,
+          Systems => EVC_Config.GSMR_Only,
+          Default_Type => EVC_Config.FRMCS_GSMR,
+          Default_MN => 16#262FFF#));
+      EVC_Test_Modes.Start_E4;
+      Give_Radio_Event (1, FRMCS_Registered);
+      Stand;
+      Check (EVC_Sessions.Radio_Bits / 16 mod 2 = 0,
+             "GSM-R alone: an FRMCS report does not count (3.5.6.7 d))");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_FRMCS;
+
    --  Message 24, or K, (T_TRAIN now) with packet 45: GSM-R, network MN
    function M24_With_45
      (MN : ETCS_Variables.NID_MN_T;

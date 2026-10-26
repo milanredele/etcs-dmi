@@ -352,7 +352,9 @@ is
       Connection_Released,    -- 3
       Set_Up_Failed,          -- 4
       Registered,             -- 5
-      Registration_Failed);   -- 6
+      Registration_Failed,    -- 6
+      FRMCS_Registered,       -- 7
+      FRMCS_Not_Registered);  -- 8
 
    type RTM_Request_T is
      (Request_Set_Up,         -- 1
@@ -785,7 +787,14 @@ is
    --       release the on-board requested is done), 4 setting it up
    --       failed (3.5.3.7 a: "immediately ... repeated"), 5 the mobile
    --       of the session is registered to the radio network ordered, 6
-   --       the registration failed.
+   --       the registration failed; 7 the FRMCS on-board is registered
+   --       to the FRMCS Radio Network, 8 it is not (3.5.6.1.3: the FRMCS
+   --       on-board reports either continuously from its power-up; its
+   --       first report since the power-up of the ETCS on-board is its
+   --       detection as connected, the start of the time of 5.4.3.2 S4
+   --       E71). The FRMCS on-board is one for the train (3.5.6.1.2):
+   --       events 7 and 8 name no session, their session byte (1 .. 2)
+   --       is not read.
    --    RTM_Tag_Event u8, session u8, 1, NID_C u16, NID_RBC u16, 7 bytes:
    --       the safe radio connection is set up with the RBC of that
    --       identity, as EURORADIO reports it (3.18.4.3.4: stored when the

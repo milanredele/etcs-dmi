@@ -56,6 +56,14 @@ is
    procedure Take_Event (S : EVC_Radio.Session_T; Registered : Boolean)
      with Global => (In_Out => (State, EVC_Radio.State));
 
+   --  The port's event 7 (Registered True) or 8 at Now: the FRMCS
+   --  on-board's report of its registration to the FRMCS Radio Network
+   --  (3.5.6.1.3), judged only where FRMCS is installed; the first one
+   --  since the power-up is its detection as connected, from which the
+   --  time of 5.4.3.2 S4 E71 counts
+   procedure Take_FRMCS (Registered : Boolean; Now : EVC_Radio.Time_Ms_T)
+     with Global => (In_Out => State);
+
    --  3.5.6.1 c), 3.5.6.5: a Radio Network transition order (packet 45:
    --  Q_NETWORKTYPE, NID_MN when the type is 1 or 2), applied by the
    --  next Evaluate (the last one of a cycle wins)
@@ -119,10 +127,11 @@ is
    --  data (3.18.4.3.6). Stop: terminate the sessions and abort the
    --  attempts (3.18.4.3.6.1); Failed: show "GSM-R network
    --  registration failed" (5.4.3.2 A29; A42 at the end of the time
-   --  of 5.4.3.2 S4 while the start of mission waits at S4, In_SoM)
+   --  of 5.4.3.2 S4 while the start of mission waits at S4, In_SoM);
+   --  FRMCS_Failed: show "FRMCS network registration failed" (A42)
    procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
                        In_SoM : Boolean;
-                       Stop, Failed : out Boolean)
+                       Stop, Failed, FRMCS_Failed : out Boolean)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => (EVC_Config.State,
                                 EVC_Driver_Requests.State));

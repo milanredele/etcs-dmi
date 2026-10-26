@@ -15,7 +15,9 @@ package body EVC_Sessions.Network
                                    Awaiting, Ordered, Ord_Type, Ord_MN,
                                    List_Now, Def_MN, Order_At, Watching,
                                    Timed_Out, Mode_Now, Exit_Seen,
-                                   Trip_Stamp, Trip_Pending))
+                                   Trip_Stamp, Trip_Pending, FRMCS_Reg,
+                                   FRMCS_Seen, FRMCS_At, FRMCS_Watch,
+                                   FRMCS_Out))
 is
 
    package R renames EVC_Radio;
@@ -61,6 +63,15 @@ is
    --  only with a more recent time stamp
    Trip_Stamp   : ETCS_Variables.T_TRAIN_T := 0;
    Trip_Pending : Boolean := False;
+   --  3.5.6.1.3: the FRMCS on-board's latest report, whether it reported
+   --  since the power-up and when first (its detection as connected,
+   --  5.4.3.2 S4 E71), the wait for it watched, the time of A.3.1
+   --  elapsed without its registration
+   FRMCS_Reg    : Boolean := False;
+   FRMCS_Seen   : Boolean := False;
+   FRMCS_At     : R.Time_Ms_T := 0;
+   FRMCS_Watch  : Boolean := False;
+   FRMCS_Out    : Boolean := False;
 
    --  5.4.3.2 S4, its time out: SUBSET-026 A.3.1 (page 218), "Time from
    --  the latest Radio Network registration order to a Mobile Terminal
@@ -87,6 +98,11 @@ is
       Exit_Seen := False;
       Trip_Stamp := 0;
       Trip_Pending := False;
+      FRMCS_Reg := False;
+      FRMCS_Seen := False;
+      FRMCS_At := 0;
+      FRMCS_Watch := False;
+      FRMCS_Out := False;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -94,8 +110,11 @@ is
      (for some S in R.Session_T => Reg (S))
      with Global => Reg;
 
-   --  decision (2): not reported by the port yet
-   function FRMCS_Registered return Boolean is (False);
+   --  the FRMCS on-board registered to the FRMCS Radio Network, by its
+   --  latest report (the port's events 7 and 8), FRMCS installed
+   function FRMCS_Registered return Boolean is
+     (FRMCS_Reg and then Systems /= EVC_Config.GSMR_Only)
+     with Global => (FRMCS_Reg, Systems);
 
    function GSMR_Installed return Boolean is
      (Systems /= EVC_Config.FRMCS_Only)
@@ -152,6 +171,21 @@ is
       Awaiting := False;
       Publish (R.Network);
    end Take_Event;
+
+   procedure Take_FRMCS (Registered : Boolean; Now : EVC_Radio.Time_Ms_T) is
+   begin
+      if not FRMCS_Seen then
+         FRMCS_Seen := True;
+         FRMCS_At := Now;
+         FRMCS_Watch := True;
+      end if;
+      if Registered then
+         --  E61: the wait ends, the failure of A42 is over
+         FRMCS_Watch := False;
+         FRMCS_Out := False;
+      end if;
+      FRMCS_Reg := Registered;
+   end Take_FRMCS;
 
    --  3.5.6.1 c), 3.5.6.5: the type stored; the GSM-R network ordered
    --  to the mobiles not registered to it (decision 4: Produce waits for
@@ -398,40 +432,74 @@ is
    --  failed", entry 34), then D9 -> S10 (decision: the on-board ends
    --  the wait of S4, MSG_ONBOARD waiting 1, and the set-up request
    --  stays due under 3.5.6.7; the driver's new network is A43's
-   --  restart, the next order watched again). FRMCS is never
-   --  registered (decision 2), E71 / E72 are not watched. S4 is a step
-   --  of the start of mission (In_SoM): outside it the watch goes on
-   --  silently, so that a start of mission reaching S4 after the time
-   --  fails at once (the time counts from the latest order)
+   --  restart, the next order watched again). FRMCS the only system
+   --  for the stored type: its registration ends the watch (E61), the
+   --  time since its detection as connected elapsed without it (E71):
+   --  A42, "FRMCS network registration failed" (FRMCS_Failed, entry
+   --  33). Both systems: both registered end the watch (E62; either,
+   --  once the driver elected the mission with one radio system), the
+   --  time since the latest GSM-R order elapsed (E72): A42 for each
+   --  system not registered. S4 is a step of the start of mission
+   --  (In_SoM): outside it the watch goes on silently, so that a start
+   --  of mission reaching S4 after the time fails at once (the time
+   --  counts from the latest order, or from the FRMCS detection)
    --  @req 5.4.3.2 A42, 5.4.3.2 S4
-   procedure Supervise_Wait (Now    : R.Time_Ms_T;
-                             In_SoM : Boolean;
-                             Failed : in out Boolean)
-     with Global => (In_Out => (Watching, Timed_Out),
-                     Input  => (Order_At, Reg))
+   procedure Supervise_Wait (Now          : R.Time_Ms_T;
+                             In_SoM       : Boolean;
+                             Failed       : in out Boolean;
+                             FRMCS_Failed : in out Boolean)
+     with Global => (In_Out => (Watching, Timed_Out, FRMCS_Watch,
+                                FRMCS_Out),
+                     Input  => (Order_At, Reg, FRMCS_Reg, FRMCS_At,
+                                Systems, One_Radio, R.State))
    is
+      T     : constant EVC_Config.Network_Type_T := R.Network.Net_Type;
+      Alone : constant Boolean :=
+        Systems /= EVC_Config.GSMR_Only
+        and then (T = EVC_Config.FRMCS
+                  or else (T = EVC_Config.FRMCS_GSMR
+                           and then Systems = EVC_Config.FRMCS_Only));
+      Both  : constant Boolean :=
+        T = EVC_Config.FRMCS_GSMR
+        and then Systems = EVC_Config.Both_Systems;
    begin
+      if Alone then
+         if FRMCS_Watch and then In_SoM and then Now >= FRMCS_At
+           and then Now - FRMCS_At >= Registration_Time_Ms
+         then
+            FRMCS_Watch := False;
+            FRMCS_Out := True;
+            FRMCS_Failed := True;
+         end if;
+         return;
+      end if;
       if not Watching then
          return;
       end if;
-      if GSMR_Registered then
+      if (if not Both then GSMR_Registered
+          elsif One_Radio then GSMR_Registered or else FRMCS_Registered
+          else GSMR_Registered and then FRMCS_Registered)
+      then
          Watching := False;
       elsif In_SoM and then Now >= Order_At
         and then Now - Order_At >= Registration_Time_Ms
       then
          Watching := False;
          Timed_Out := True;
-         Failed := True;
+         Failed := Failed or else not GSMR_Registered;
+         FRMCS_Failed := FRMCS_Failed
+           or else (Both and then not FRMCS_Registered);
       end if;
    end Supervise_Wait;
 
    procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
                        In_SoM : Boolean;
-                       Stop, Failed : out Boolean)
+                       Stop, Failed, FRMCS_Failed : out Boolean)
    is
    begin
       Stop := False;
       Failed := False;
+      FRMCS_Failed := False;
       if Trip_Pending then
          Trip_Stamp := R.T_Train_At (Now);
          Trip_Pending := False;
@@ -445,7 +513,7 @@ is
          Apply_Order (Ord_Type, Ord_MN);
       end if;
       Driver_Entries (Stop, Failed);
-      Supervise_Wait (Now, In_SoM, Failed);
+      Supervise_Wait (Now, In_SoM, Failed, FRMCS_Failed);
    end Evaluate;
 
    --  3.5.6.5 b) c), 3.5.6.6: a mobile whose session is not Idle waits
@@ -486,11 +554,11 @@ is
                  (if One_Radio
                   then FRMCS_Registered or else GSMR
                   else FRMCS_Registered and then GSMR)))
-     with Global => (Systems, One_Radio);
+     with Global => (Systems, One_Radio, FRMCS_Reg);
 
    function Ready return Boolean is
      (Ready_For (R.Network.Net_Type, GSMR_Registered))
-     with Refined_Global => (Reg, Systems, One_Radio, R.State);
+     with Refined_Global => (Reg, Systems, One_Radio, FRMCS_Reg, R.State);
 
    --  decision: registered to the ordered GSM-R network when a mobile is
    --  registered, no registration of it is due and the network stored
@@ -504,7 +572,7 @@ is
          (for some S in R.Session_T => Reg (S) and then not Due (S))
          and then R.Network.NID_MN = Ord_MN))
      with Refined_Global => (Ordered, Ord_Type, Ord_MN, Reg, Due, Systems,
-                             One_Radio, R.State);
+                             One_Radio, FRMCS_Reg, R.State);
 
    function Radio_Bits return Natural is
      (EVC_Config.Network_Type_T'Pos (R.Network.Net_Type) + 1
@@ -512,13 +580,14 @@ is
       + (if FRMCS_Registered then 16 else 0)
       + (if GSMR_Registered then 32 else 0)
       + (if One_Radio then 64 else 0))
-     with Refined_Global => (Reg, Systems, One_Radio, R.State);
+     with Refined_Global => (Reg, Systems, One_Radio, FRMCS_Reg, R.State);
 
    function Selection_Awaited return Boolean is (Awaiting)
      with Refined_Global => Awaiting;
 
-   function Registration_Timed_Out return Boolean is (Timed_Out)
-     with Refined_Global => Timed_Out;
+   function Registration_Timed_Out return Boolean is
+     (Timed_Out or else FRMCS_Out)
+     with Refined_Global => (Timed_Out, FRMCS_Out);
 
    function List_Due return Boolean is (List_Now)
      with Refined_Global => List_Now;

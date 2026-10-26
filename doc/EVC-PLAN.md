@@ -13529,3 +13529,154 @@ B2240 (the events after a DMI restart: a decision), B1960's rest
 other bullets; B1401, B1641 (protocol); the decisions B1060, B1063,
 B1340; the review again with the readings first and three traces at
 most.
+
+### The FRMCS registration event and the driver informed of the safe consist length unavailable (e6/protocol-decisions) (2026-10-26)
+
+**The FRMCS registration (B1641).** 3.5.6.1.3: "As soon as it is
+powered-up, the FRMCS on-board equipment reports continuously to the
+ETCS on-board equipment whether it is registered or not to the FRMCS
+radio network". The RTM port carries it as two events of the 3 byte
+frame, 7 registered and 8 not registered (`EVC_Ports.RTM_Event_T`
+`FRMCS_Registered`, `FRMCS_Not_Registered`, the format at the end of
+`EVC_Ports`); the session byte must be 1 or 2 like every event and is
+not read, the FRMCS on-board being one for the train (3.5.6.1.2). The
+first report since the power-up of the ETCS on-board is the FRMCS
+on-board "detected to be connected", the start of the 40 s of A.3.1
+(page 218, "Time from when the FRMCS on-board equipment has been
+detected to be connected ... registration is considered as failed").
+`EVC_Sessions.Take_Event` passes both to `EVC_Sessions.Network.Take_FRMCS`
+before the session check; `FRMCS_Registered` is the latest report with
+FRMCS installed (decision 2 of e5/registration replaced). The wait of
+5.4.3.2 S4 (`EVC_Sessions.Network.Supervise_Wait`): FRMCS the only
+system for the stored type (FRMCS, or FRMCS+GSM-R with FRMCS alone
+installed) ends at the registration (E61) or 40 s after the detection
+(E71); both systems end when both are registered (E62; either once the
+driver elected one radio system) or 40 s after the latest GSM-R order
+(E72); the GSM-R case unchanged (E6 / E7). A42 shows entry 33 "FRMCS
+network registration failed" for FRMCS and entry 34 for GSM-R, each
+for the system not registered (`Evaluate`'s new `FRMCS_Failed`,
+`EVC_Sessions.Apply_Network`). The SUBSET-076 bench reports event 8 in
+the first cycle after each power-up where FRMCS is installed and never
+event 7: the sequences' laboratory had no FRMCS simulator ("for the
+time being, without FRMCS simulator available in laboratory", the
+comments of feature 5040300), and their timer steps of A.3.1 say
+"SA-REGISTRATION.Indication has not been received".
+`EVC_Test_Network.Scenario_Network_FRMCS`: FRMCS alone, the wait at S4,
+entry 33 between 39 and 41 s after the detection, not entry 34, then
+event 7 on session byte 2 makes the set-up allowed (3.5.6.7 a)) and
+sets the MSG_ONBOARD radio bit 4; both systems, the GSM-R mobile
+registered and FRMCS not: still waiting at 38 s (E62, 3.5.6.7 b)), then
+entry 33 alone (E72), then event 7 makes it ready; GSM-R alone: an
+FRMCS report does not count. `EVC_Test_Radio`'s refused event moved
+from code 7 to 9. Rows: 3.5.6.7, a), b), 5.4.3.2 A42 noted, 5.4.3.2 S4
+partial -> done.
+
+The runner: 1163 / 1075 / 952 before and after, no step moved. The
+four FRMCS sequences (3050600_06, 5040300_23 / 24 / 25, every sequence
+whose steps name the FRMCS failure) stop where they did: 3050600_06 at
+step 57, the timer step, blocked as radio by `S076_Run` before the
+entry; 5040300_23 to 25 run with GSM-R alone (`S076_Run` installs both
+systems for feature 3050600 only). Both are `S076_Run`'s, not this
+package's units: B2380. B762 narrowed: 5040300_25's first part (a
+session at step 55 after a packet 45 of type FRMCS+GSM-R) cannot hold
+with both systems and FRMCS never registered (3.5.6.7 b)), not traced.
+
+**The safe consist length unavailable (B1401).** Not taken: left at the
+bound of the package (98 calls of 130 after the papers), open as it was.
+
+### Three decisions: the VBC validity clock, the VBC capacity, the local time (e6/protocol-decisions) (2026-10-26)
+
+Three papers for the user, no code. Each gives the clauses as printed,
+what the code does, the options with the units they touch and their
+effect on the proofs and the image formats, and one recommendation.
+
+**1. The clock of a VBC's validity period (B1060).** 3.15.9.1 b): a
+VBC is defined by its marker and country "b) Its validity period";
+3.15.9.5: retained over No Power and "shall remain applicable when
+powered on again. It shall be deleted when: a) it is ordered by
+trackside, or b) its validity period has elapsed, or c) it is removed
+by the driver (during Start of Mission), or d) a mismatch ..."; 3.15.9.6:
+"The validity period shall start at the time the balise group message
+is received or shall start at the time the VBC is entered by the
+driver." T_VBC is 8 bits of 24 hours, up to 255 days
+(7.5.1.154.1). The code: `EVC_VBC.Cover_T`
+holds `Left`, the period left in ms; `EVC_VBC.Expire (Now_Ms)` takes the
+time since its last call off every cover; `EVC_VBC.Keep` / `Restore`
+carry the covers over No Power in `EVC_Retained.Kept_T.VBC` (a memory
+of the host, no byte image yet), so the time without power is not
+counted. `EVC_Core.Set_UTC` gives the UTC at the on-board time 0
+(seconds since 2000), used today by the juridical records only.
+Options: (a) as now: a cover outlives its calendar end by every hour
+the train stood without power, a cover of one day set before a
+weekend's stabling is applied on Monday; no cost. (b) the end in UTC:
+`Cover_T` gains the end (UTC seconds, `Unsigned_32`: 255 days of T_VBC
+are 22 million s, no overflow before 2135) when UTC is known at the
+set, `Expire` deletes a cover whose end is past once UTC is known,
+the time left kept as now for a cover set without UTC and as the
+judgement while UTC is unknown after a power-up; units `EVC_VBC`
+(Set, Expire, Cover_T, the proof of two comparisons), `EVC_Core` (the
+UTC passed to Set and Expire), `EVC_Retained` unchanged in shape (the
+record grows by 16 x 5 bytes in memory); a scenario over a power cycle;
+no image format (EVC_Retained has none). (c) a real-time clock of the
+target (E8): it is what (b) reads through `Set_UTC`, not a separate
+design. Recommendation: (b). "Its validity period has elapsed" is
+calendar time: a period of days given by trackside for a work site
+does not stop when the train is switched off; the UTC already reaches
+the core, and the fallback keeps today's behaviour where it is
+unknown.
+
+**2. The capacity of the VBC store (B1063).** The clauses printed
+(3.15.9.1 to 3.15.9.6) state no number of covers and no source
+priority. The code: one store of `EVC_VBC.VBC_Max` (16, the DMI's
+list length `DMI_Protocol.VBC_List_Max`) for the driver's and
+trackside's covers; a new identity when it is full is ignored, the
+DMI's Set VBC disabled (national bit 2, `EVC_VBC.Full`); the same
+identity replaces its cover (3.15.9.4) whatever the fill. Options: (a)
+as now; (b) separate rooms, 16 for the driver's covers (the DMI list)
+and N for trackside's: `EVC_VBC` (a source per cover, two counts), the
+DMI list of the driver's only or of both (the protocol's list length
+fixed at 16: a protocol change if both are listed), `EVC_Retained`
+grows; the limit moves, it does not go away; (c) a trackside order
+when full replaces the oldest cover: `EVC_VBC.Set` (the cover with the
+least time left); no format change. Recommendation: (a). 3.15.9.5's
+list of deletions is closed ("It shall be deleted when: a) ... d)"):
+(c) deletes a cover for none of its four reasons, and (b) only moves
+the limit; a store limit is a capacity of the implementation, and 16
+covers at once is beyond the use the clauses describe (works and
+commissioning areas). What stays to do with (a): the store's capacity
+named in the installation documentation, the ignored trackside order
+recorded (a backlog item if the user wants it).
+
+**3. The local time (B1340).** 3.18.5.1: "Each ERTMS/ETCS on-board
+equipment shall be able to provide the date (day, month, year) and
+time (hour, minute, second) in Universal Time Co-ordinated (UTC) and
+Local Time."; 3.18.5.2: "The local time shall be presented to the
+driver, while the UTC shall be used for the juridical data."; SUBSET-027
+4.2.3.3 DATE (YEAR 7 bits, 127 "year unknown"; MONTH, DAY) and 4.2.3.4
+"TIME ... in Universal Time Co-ordinated (UTC)" (HOUR, MINUTES, SECONDS,
+TTS). The code: `EVC_Core.Set_UTC` (the port's UTC at time 0) feeds
+the juridical DATE and TIME (`EVC_Outbox.Build_JRU`, "unknown" without
+it); the driver is shown the on-board clock since time 0 (the seconds
+of MSG_STATUS and of the text messages). Options: (a) an installation
+value of `EVC_Config`, the offset of the local time to UTC in signed
+minutes: the image's format version 3 (a field of 2 bytes, the decoder
+and encoder, the proof of the image's validity, the bench's and the
+runner's images), and the summer time either a second value with no
+rule to switch it or wrong half of the year; (b) the offset given by
+the port with the UTC (`Set_UTC` extended, or a `Set_Local_Offset`
+beside it): the clock source of the host (the train's clock, a GNSS
+receiver, the target's real-time clock) knows the time zone and its
+summer time, the core adds the offset to `UTC_Seconds + Clock_Ms /
+1000` for MSG_STATUS and the text messages once both are known and
+keeps the clock since time 0 otherwise; units `EVC_Core` (the entry and
+two fields), `EVC_Core.Outputs` (the seconds sent), the hosts that call
+`Set_UTC` (`Sim_Onboard_Env`, `S076_Bench`, ports/hosted); no image
+format, nothing to prove beyond the range of the sum; (c) as now, not
+3.18.5.1 / 3.18.5.2. Recommendation: (b). The local time depends on
+the date and the region (the summer time twice a year, a train crossing
+a time zone border), which an installation constant cannot follow and
+the core has no clause to compute; the port that already gives the UTC
+is the one that knows it.
+
+The three backlog lines stay open with this paper's reference: the user
+decides.
