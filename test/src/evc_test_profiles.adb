@@ -23,6 +23,7 @@ with EVC_National_Values;
 with EVC_Origins;
 with EVC_Ports;
 with EVC_Position;
+with EVC_Procedures;
 with EVC_Profiles;
 with EVC_SDM;
 with EVC_Stored_Information;
@@ -1156,6 +1157,269 @@ package body EVC_Test_Profiles is
              "initial states resumed from D_TRACKINIT: ASP, route "
              & "suitability, track conditions (3.7.3.2 b, c, d)");
    end Scenario_Other_Profiles;
+
+   --  A.3.5.1 4th bullet: an On Sight mode profile from 400 to 600 m (the
+   --  group 10 at 100 m, Q_MAMODE 1, its acknowledgement area 100 m)
+   --  entered at its start without an earlier acknowledgement (4.6.3
+   --  [40]), then acknowledged; the train rolls back 1.5 m, in rear of
+   --  the start (within D_NVROLL), and comes forward again; FS at its end
+   --  (4.6.3 [75]), the train rolls back 1.5 m in rear of the end and
+   --  comes forward again: no transition reverted, none executed twice,
+   --  no second acknowledgement asked
+   procedure Scenario_Mode_Profile_Roll_Back is
+      MP       : T80.Packet_T;
+      Saved    : constant Unsigned_16 := Speed_Cms;
+      Requests : Natural := 0;
+      Changes  : Natural := 0;
+      Last     : Mode_T;
+      X        : Integer_64;
+
+      --  50 cm a cycle, the acknowledgements asked and the mode changes
+      --  of the cycles counted
+      procedure Step_Counted (Forward : Boolean) is
+      begin
+         Step_X (if Forward then 50 else -50);
+         for I in 1 .. EVC_Procedures.Event_Count loop
+            if EVC_Procedures.Event (I).Kind
+                 = EVC_Procedures.Event_Ack_Request
+            then
+               Requests := Requests + 1;
+            end if;
+         end loop;
+         if EVC_Core.Mode /= Last then
+            Changes := Changes + 1;
+            Last := EVC_Core.Mode;
+         end if;
+      end Step_Counted;
+
+      procedure Go_To (To : Integer_64) is
+      begin
+         while Train_Cm /= To loop
+            Step_Counted (To > Train_Cm);
+         end loop;
+      end Go_To;
+   begin
+      Start_X;
+      Speed_Cms := 500;
+      Add_Group (Group (10, 100));
+      MP.Q_DIR := 1;
+      MP.Q_SCALE := 1;
+      MP.D_MAMODE := 300;
+      MP.M_MAMODE := 0;
+      MP.V_MAMODE := 127;
+      MP.L_MAMODE := 200;
+      MP.L_ACKMAMODE := 100;
+      MP.Q_MAMODE := 1;
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((1 => 3000)));
+      Carry (1, 1, MP);
+      Run_X (20_000);
+      Last := EVC_Core.Mode;
+      Check (Last = M_FS and then not EVC_Procedures.Ack_Requested,
+             "mode profile roll back: FS before the acknowledgement area");
+      while EVC_Core.Mode = M_FS and then Train_Cm < 45_000 loop
+         Step_Counted (True);
+      end loop;
+      X := Train_Cm;
+      --  asked in the rectangle (5.9.3.2), then at the entry to OS
+      --  (5.9.3.7)
+      Check (EVC_Core.Mode = M_OS and then EVC_Procedures.Ack_Requested
+             and then Requests = 2 and then Changes = 1,
+             "mode profile roll back: OS at the start, the acknowledgement "
+             & "asked in the rectangle and at the entry (4.6.3 [40], 5.9.3.2, "
+             & "5.9.3.7), at" & X'Image & ", got" & Requests'Image
+             & Changes'Image);
+      Input (DMI, (16#40#, 5, 0, 0, 0, 2, 1, 0, 0, 0));
+      Step_Counted (True);
+      X := Train_Cm;
+      Requests := 0;
+      Changes := 0;
+      Check (EVC_Core.Mode = M_OS and then not EVC_Procedures.Ack_Requested,
+             "mode profile roll back: OS acknowledged");
+      Go_To (X - 200);
+      Check (EVC_Core.Mode = M_OS and then Requests = 0 and then Changes = 0
+             and then not EVC_Procedures.Ack_Requested,
+             "mode profile roll back: 1.5 m in rear of the start, OS kept, "
+             & "not reverted (A.3.5.1 4th bullet), got "
+             & EVC_Core.Mode'Image & Requests'Image & Changes'Image);
+      Go_To (X + 500);
+      Check (EVC_Core.Mode = M_OS and then Requests = 0 and then Changes = 0
+             and then not EVC_Procedures.Ack_Requested,
+             "mode profile roll back: forward over the start again, no "
+             & "second transition, no second acknowledgement asked "
+             & "(A.3.5.1 4th bullet), got" & Requests'Image & Changes'Image);
+      while EVC_Core.Mode = M_OS and then Train_Cm < 90_000 loop
+         Step_Counted (True);
+      end loop;
+      X := Train_Cm;
+      Check (EVC_Core.Mode = M_FS and then Changes = 1,
+             "mode profile roll back: FS at the end (4.6.3 [75]), at"
+             & X'Image);
+      Requests := 0;
+      Changes := 0;
+      Go_To (X - 150);
+      Check (EVC_Core.Mode = M_FS and then Requests = 0 and then Changes = 0,
+             "mode profile roll back: 1.5 m in rear of the end, FS kept, "
+             & "OS not resumed (A.3.5.1 4th bullet), got "
+             & EVC_Core.Mode'Image & Requests'Image & Changes'Image);
+      Go_To (X + 500);
+      Check (EVC_Core.Mode = M_FS and then Requests = 0 and then Changes = 0,
+             "mode profile roll back: forward over the end again, no second "
+             & "transition (A.3.5.1 4th bullet), got"
+             & Requests'Image & Changes'Image);
+      Speed_Cms := Saved;
+   end Scenario_Mode_Profile_Roll_Back;
+
+   --  Not called yet (B2341): EVC_Track_Conditions.Evaluate and External
+   --  judge the phases against the train's position in every cycle, so the
+   --  three checks of the roll back fail until the phases are kept.
+   --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
+   --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls
+   --  back 1.5 m in rear of the location where "Lowered pantograph" is
+   --  shown (5.18.2.3), of the one where "Raise pantograph" is shown
+   --  (5.18.2.5) and of the one where the remaining distance to the start
+   --  stops being generated to the train interface (5.20.2.4), and comes
+   --  forward again each time: no indication reverted nor shown again, no
+   --  record of the track condition again, the distance not generated
+   --  again
+   procedure Scenario_Track_Condition_Roll_Back is
+      None  : constant Integer_64 := Integer_64 (EVC_Ports.TIU_TC_None);
+      Saved : constant Unsigned_16 := Speed_Cms;
+      Seen  : array (0 .. 15) of Natural := (others => 0);
+      Held  : Boolean := True;
+      Bad   : Integer_64 := 0;
+      X     : Integer_64;
+
+      --  The remaining distance to the start of the pantograph item of
+      --  the cycle's TIU track condition output (-1: no such item)
+      function To_Start return Integer_64 is
+         R : Integer_64 := -1;
+      begin
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = TIU
+              and then Byte_At (I, 1) = Natural (EVC_Ports.TIU_TC_Tag)
+            then
+               R := -1;
+               for K in 0 .. Byte_At (I, 3) - 1 loop
+                  if Byte_At (I, 4 + 12 * K) = 1 then
+                     R := 0;
+                     for B in reverse 0 .. 3 loop
+                        R := R * 256 + Integer_64 (Byte_At (I, 6 + 12 * K + B));
+                     end loop;
+                  end if;
+               end loop;
+            end if;
+         end loop;
+         return R;
+      end To_Start;
+
+      procedure Track is
+         P : T68.Packet_T;
+      begin
+         Start_X;
+         Add_Group (Group (10, 100));
+         P.Q_DIR := 1;
+         P.Q_SCALE := 1;
+         P.Q_TRACKINIT := 0;
+         P.Has_D_TRACKCOND := True;
+         P.D_TRACKCOND := 1000;
+         P.L_TRACKCOND := 200;
+         P.M_TRACKCOND := 3;         -- powerless section, lower pantograph
+         P.N_ITER := 0;
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 0, P);
+         Carry (1, 1, MA_Of ((1 => 3000)));
+         Run_X (100_000);
+      end Track;
+
+      procedure Keep_Records is
+      begin
+         for K in Seen'Range loop
+            Seen (K) := JRU_TCs (K);
+         end loop;
+      end Keep_Records;
+
+      function Same_Records return Boolean is
+        (for all K in Seen'Range => Seen (K) = JRU_TCs (K));
+
+      --  50 cm a cycle to To; in every cycle the symbol Kept shown (0:
+      --  none), the
+      --  symbol Gone not, the distance to the start not generated when
+      --  Distance_Gone (Held)
+      procedure Go_To (To : Integer_64; Kept, Gone : Natural;
+                       Distance_Gone : Boolean := False) is
+      begin
+         while Train_Cm /= To loop
+            Step_X (if To > Train_Cm then 50 else -50);
+            Held := Held and then (Kept = 0 or else TC_Shows (Kept))
+              and then not TC_Shows (Gone)
+              and then (not Distance_Gone or else To_Start = None);
+            if not Held and then Bad = 0 then
+               Bad := Train_Cm;
+            end if;
+         end loop;
+      end Go_To;
+   begin
+      Speed_Cms := 500;
+      Track;
+      Check (TC_Shows (3), "track condition roll back: announced (5.18.2.2)");
+      while not TC_Shows (1) and then Train_Cm < 115_000 loop
+         Step_X (50);
+      end loop;
+      X := Train_Cm;
+      Check (TC_Shows (1) and then not TC_Shows (3),
+             "track condition roll back: lowered pantograph at the start "
+             & "(5.18.2.3), at" & X'Image);
+      Keep_Records;
+      Go_To (X - 150, Kept => 1, Gone => 3);
+      Go_To (X + 500, Kept => 1, Gone => 3);
+      Check (Held and then Same_Records,
+             "track condition roll back: 1.5 m in rear of the start and "
+             & "forward again, the announcement not shown again, no record "
+             & "(A.3.5.1 7th bullet), got" & Held'Image
+             & Same_Records'Image & Bad'Image);
+      Held := True;
+      Bad := 0;
+      while not TC_Shows (5) and then Train_Cm < 135_000 loop
+         Step_X (50);
+      end loop;
+      X := Train_Cm;
+      Check (TC_Shows (5) and then not TC_Shows (1),
+             "track condition roll back: raise pantograph at the end "
+             & "(5.18.2.5), at" & X'Image);
+      Keep_Records;
+      Go_To (X - 150, Kept => 5, Gone => 1);
+      Go_To (X + 500, Kept => 5, Gone => 1);
+      Check (Held and then Same_Records,
+             "track condition roll back: 1.5 m in rear of the end and "
+             & "forward again, the lowered pantograph not shown again, no "
+             & "record (A.3.5.1 7th bullet), got" & Held'Image
+             & Same_Records'Image & Bad'Image);
+      Held := True;
+      Bad := 0;
+
+      --  the train interface: the distance to the start ends with the
+      --  min safe rear end at the start
+      Track;
+      while To_Start /= None and then Train_Cm < 160_000 loop
+         Step_X (50);
+      end loop;
+      X := Train_Cm;
+      Check (To_Start = None,
+             "track condition roll back: the distance to the start no "
+             & "longer generated (5.20.2.4), at" & X'Image);
+      Keep_Records;
+      Go_To (X - 150, Kept => 0, Gone => 3, Distance_Gone => True);
+      Go_To (X + 500, Kept => 0, Gone => 3, Distance_Gone => True);
+      Check (Held and then Same_Records,
+             "track condition roll back: 1.5 m in rear of the rear end's "
+             & "location and forward again, the distance to the start not "
+             & "generated again, no record (A.3.5.1 7th bullet), got" & Held'Image
+             & Same_Records'Image & Bad'Image);
+      Speed_Cms := Saved;
+   end Scenario_Track_Condition_Roll_Back;
 
    --  3.12.2.3, 3.12.2.3.1, 3.12.2.4, 3.13.1.5: the route suitability
    --  data compared with the Train Data; the closest unsuitable

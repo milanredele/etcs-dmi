@@ -13726,3 +13726,79 @@ noted. Runner 1163 / 1075 / 952, 0 movements.
 B2240, the events after a DMI restart, is left: the bound (120 of 160
 calls) was reached after B2280; the brief's premises for it are not
 checked yet.
+### The Train Data brake of 3131040_01 traced, a mode profile and a track condition over a reverse movement (e6/td-brake) (2026-10-26)
+
+**B2260, the service brake of 3131040_01 SV30 between steps 53 and 54**
+(FS level 1, ceiling speed monitoring, 84 to 73 km/h by 700 m, TIU
+reason 512). Wrong premise: the review's candidate, the Train Data
+changed in motion. The JRU records of the window (`DEBUG=1`, steps 51
+to 54) name the procedure: event 6 (`EVC_Position` Missed_Group) for
+352/2 and then 352/3, each with event 4 (Linking_Reaction)
+Q_LINKREACTION 2, cause 2 (3.16.2.3.1 b), No Reaction), then event 4
+with Q_LINKREACTION 1, cause 5 (`Cause_Double_Missed`, 3.16.2.7.1.1:
+no balise detected from the start of the expectation window of BG2 to
+the end of BG3's), event 23 kind 6 (the procedures' brake, SB 1) and
+event 20 byte 2 18 (SBC with reason bit 9); no event 23 kind 11 (the
+Train Data procedure did not run). BG1d's packet 5 (telegram bits:
+D_LINK 450 at bit 282, NID_BG 2, D_LINK 100, NID_BG 3, Q_LOCACC 10 m)
+announces BG2 at 500 m and BG3 at 600 m; the sequence gives neither. A
+scratch copy with that first D_LINK set to 4450 in the telegram's bits
+(BG2 at 4500 m, BG3 at 4600 m) runs without a brake, 84 km/h at
+701 m; the review's scratch run with the same move, which kept the
+brake, was not reproduced. The reaction is the clause's: no defect. The
+lab's train kept 86.7 km/h from 550 to 710 m (the chart
+speedprofile), so the lab's on-board read a balise in those windows:
+the bench passes no group the sequence does not list, B2340 (runner,
+for the runner's package; no edit in test/src/s076_*). The triage line
+of S8722745e (the step's own location, s076) is the curve package's
+and stays. No movement.
+
+**A.3.5.1 4th bullet, a mode profile over a reverse movement** (a
+defect found and fixed). `EVC_Test_Profiles.
+Scenario_Mode_Profile_Roll_Back`: an OS profile from 400 to 600 m
+(group 10 at 100 m, Q_MAMODE 1, L_ACKMAMODE 100 m), the train at
+18 km/h, 50 cm a cycle. The acknowledgement is asked in the rectangle
+(5.9.3.2) and again at the entry to OS when the max safe front end
+reaches the start (4.6.3 [40], 5.9.3.7: two requests, by design), the
+driver acknowledges; a roll back 1.5 m in rear of the start and forward
+again: OS kept, no transition, no request. At the end, FS (4.6.3 [75]);
+a roll back 1.5 m in rear of the end resumed OS and the forward
+movement gave FS a second time: `EVC_Procedures.Profiles_Step` judged
+the overlap (max safe front end past the start, min safe front end not
+past the end) afresh in every cycle. Fixed: `EVC_Procedures.
+Note_Passed` keeps, per slot of the mode profiles, the beginning reached
+and the end passed for the profile with the same start and end
+locations (a new profile in the slot starts afresh), so the overlap
+holds from the beginning reached to the end passed whatever the train
+does after. Proof of `evc_procedures` (298 checks, none unproved);
+runner 0 regressions, 0 improvements. Left of the bullet: a relocation
+on a group that becomes the SOLR in rear of the location, and an LS
+profile (the same code path); B781 narrowed.
+
+**A.3.5.1 7th bullet, a track condition over a reverse movement** (a
+defect found, not fixed: B2341). `EVC_Test_Profiles.
+Scenario_Track_Condition_Roll_Back`: a powerless section with the
+pantograph to be lowered from 1100 to 1300 m (group 10 at 100 m), the
+train at 18 km/h, 50 cm a cycle, a roll back of 1.5 m and forward 5 m
+at three locations. In rear of the start (TC01 shown when the max safe
+front end reaches it, 5.18.2.3) the announcement TC03 came back (first
+in the cycle at 1065 m, antenna); in rear of the end (TC05, 5.18.2.5)
+TC01 came back (at 1333.5 m); in rear of the location where the
+remaining distance to the start stops being generated to the train
+interface (5.20.2.4, the min safe rear end) it was generated again;
+each time the records 45 of the condition were written again.
+`EVC_Track_Conditions.Evaluate` and `External` judge every phase
+against the train's position in each cycle (`Max_F < D` for the
+announcement, `Min_F < Fin` for the active symbol, `Has_Start => Min_R
+< D`). The fix needs phase flags in `Stored_T`, set once and used by
+both for every kind but the non stopping area and the big metal masses
+(the bullet's exceptions), within the size rule (Evaluate at 146 of its
+148 known lines, External at 131 of 131): it did not fit before the
+bound. The scenario is in the package, not called from `evc_test.adb`
+until the fix (its heading says so). Runner unchanged by this item (no
+code change in evc/).
+
+Left at the bound: B2341 (the fix and the call of the scenario). Edits
+outside the units of the brief: none in evc/ beyond `EVC_Procedures`
+(`Profiles_Step`, the new `Note_Passed`, `Clear` and the refined
+state), named.

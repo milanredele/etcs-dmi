@@ -28,7 +28,7 @@ package body EVC_Procedures
                     Former_S,
                     Former_Passed, Ack_On, Ack_M, Ack_After, Ack_Since,
                     Ack_SB, Ack_V, Acked_Now, Acked_M, Profile_Info,
-                    Use_V, PT_Start, PT_Sense, PT_Over, PT_SB,
+                    Profiles_Passed, Use_V, PT_Start, PT_Sense, PT_Over, PT_SB,
                     Stop_On_Desk, SH_List_Known, SH_List_N, SH_List,
                     Now_Flags, Rev, Rev_Possible, RV_Over,
                     RV_EB, BMM_On, BMM_From, BTM_Failure, Link_SB, Consist_SB,
@@ -185,6 +185,21 @@ is
       Any        : Boolean := False;
    end record;
    Profile_Info : Profile_Info_T;
+
+   --  The mode profile of a slot of EVC_Movement_Authority whose beginning
+   --  the max safe front end has reached, or whose end the min safe front
+   --  end has passed, kept with the locations it was seen with: a reverse
+   --  movement or a relocation in rear of the location neither reverts
+   --  the transition nor executes it again (A.3.5.1 4th bullet)
+   type Profile_Passed_T is record
+      Start, Finish : Location_T := (others => <>);
+      Reached       : Boolean := False;
+      Ended         : Boolean := False;
+   end record;
+   type Profiles_Passed_T is
+     array (1 .. EVC_Movement_Authority.Max_Mode_Profiles)
+     of Profile_Passed_T;
+   Profiles_Passed : Profiles_Passed_T := (others => (others => <>));
 
    --  3.11.7.1.1: the V_MAMODE of the mode profile the mode in use was
    --  entered with (127: the national value)
@@ -417,6 +432,7 @@ is
       Acked_Now := False;
       Acked_M := M_OS;
       Profile_Info := (others => <>);
+      Profiles_Passed := (others => (others => <>));
       Use_V := 127;
       PT_Start := 0;
       PT_Sense := Plus;
@@ -1037,12 +1053,42 @@ is
    --  @req 5.7.4.2, 5.9.1.1, 5.9.2.1, 5.9.3.2, 5.9.3.2 a), 5.9.3.2 b)
    --  @req 5.9.3.2 c), 5.9.5.1, 5.9.5.2, 5.11.2.2 S150 b), 5.11.2.2 S170
    --  @req 5.19.5.1, 5.19.5.2
+   --  The beginning and the end of the mode profile of slot I reached now
+   --  or before, while the slot holds the same profile (Profiles_Passed,
+   --  A.3.5.1 4th bullet); Overlap: the beginning reached and the end not
+   --  passed (a shunting area has no end, 3.12.4.2)
+   --  @req A.3.5.1 4th bullet
+   procedure Note_Passed (I : Positive; Reached_Now, Ended_Now : Boolean;
+                          Overlap : out Boolean)
+     with Global => (Input  => EVC_Movement_Authority.State,
+                     In_Out => Profiles_Passed),
+          Pre    => I <= EVC_Movement_Authority.Max_Mode_Profiles
+   is
+      Start  : constant Location_T :=
+        EVC_Movement_Authority.Mode_Profile (I).Start;
+      Finish : constant Location_T :=
+        EVC_Movement_Authority.Mode_Profile (I).Finish;
+      Same   : constant Boolean :=
+        Profiles_Passed (I).Start = Start
+        and then Profiles_Passed (I).Finish = Finish;
+      Reached : constant Boolean :=
+        Reached_Now or else (Same and then Profiles_Passed (I).Reached);
+      Ended   : constant Boolean :=
+        not EVC_Movement_Authority.Mode_Profile (I).Open
+        and then (Ended_Now or else (Same and then Profiles_Passed (I).Ended));
+   begin
+      Profiles_Passed (I) :=
+        (Start => Start, Finish => Finish, Reached => Reached, Ended => Ended);
+      Overlap := Reached and then not Ended;
+   end Note_Passed;
+
    procedure Profiles_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (EVC_Movement_Authority.State,
                                 EVC_Origins.State),
                      Output => Profile_Info,
                      In_Out => (Ack_On, Ack_M, Ack_After,
-                                Ack_Since, Ack_V, Events, Event_N))
+                                Ack_Since, Ack_V, Events, Event_N,
+                                Profiles_Passed))
    is
       --  the mode profiles and the MA are read in place, not copied
       function P (I : Positive) return EVC_Movement_Authority.Mode_Profile_T
@@ -1069,14 +1115,14 @@ is
                     A (Sn, Frame (T, P (I).Finish, Estimated_Item));
                   Ak : constant Dist_T :=
                     A (Sn, Frame (T, P (I).Ack_Start, Estimated_Item));
-                  --  3.12.4.5, 3.12.4.6: the beginning against the max
-                  --  safe front end, the end against the min safe front
-                  --  end; a shunting area has no end (3.12.4.2)
-                  Overlap : constant Boolean :=
-                    Mx >= St and then (P (I).Open or else Mn < Fi);
                   In_Ack  : constant Boolean := Est > Ak and then Est < St;
                   M       : constant Mode_T := Mode_Of (P (I).Mode);
+                  Overlap : Boolean;
                begin
+                  --  3.12.4.5, 3.12.4.6: the beginning against the max
+                  --  safe front end, the end against the min safe front
+                  --  end
+                  Note_Passed (I, Mx >= St, Mn >= Fi, Overlap);
                   if Overlap then
                      Info.Any := True;
                      if St > Best then
@@ -1115,6 +1161,8 @@ is
                      Record_Event (Event_Ack_Request, Mode_T'Pos (M), 0);
                   end if;
                end;
+            else
+               Profiles_Passed (I) := (others => <>);
             end if;
          end loop;
          --  5.7.4.1, 5.9.5.1, 5.19.5.1: in SB or PT in level 2, an area
