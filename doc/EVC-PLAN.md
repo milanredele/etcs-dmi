@@ -13578,3 +13578,31 @@ does after. Proof of `evc_procedures` (298 checks, none unproved);
 runner 0 regressions, 0 improvements. Left of the bullet: a relocation
 on a group that becomes the SOLR in rear of the location, and an LS
 profile (the same code path); B781 narrowed.
+
+**A.3.5.1 7th bullet, a track condition over a reverse movement** (a
+defect found, not fixed: B2341). `EVC_Test_Profiles.
+Scenario_Track_Condition_Roll_Back`: a powerless section with the
+pantograph to be lowered from 1100 to 1300 m (group 10 at 100 m), the
+train at 18 km/h, 50 cm a cycle, a roll back of 1.5 m and forward 5 m
+at three locations. In rear of the start (TC01 shown when the max safe
+front end reaches it, 5.18.2.3) the announcement TC03 came back (first
+in the cycle at 1065 m, antenna); in rear of the end (TC05, 5.18.2.5)
+TC01 came back (at 1333.5 m); in rear of the location where the
+remaining distance to the start stops being generated to the train
+interface (5.20.2.4, the min safe rear end) it was generated again;
+each time the records 45 of the condition were written again.
+`EVC_Track_Conditions.Evaluate` and `External` judge every phase
+against the train's position in each cycle (`Max_F < D` for the
+announcement, `Min_F < Fin` for the active symbol, `Has_Start => Min_R
+< D`). The fix needs phase flags in `Stored_T`, set once and used by
+both for every kind but the non stopping area and the big metal masses
+(the bullet's exceptions), within the size rule (Evaluate at 146 of its
+148 known lines, External at 131 of 131): it did not fit before the
+bound. The scenario is in the package, not called from `evc_test.adb`
+until the fix (its heading says so). Runner unchanged by this item (no
+code change in evc/).
+
+Left at the bound: B2341 (the fix and the call of the scenario). Edits
+outside the units of the brief: none in evc/ beyond `EVC_Procedures`
+(`Profiles_Step`, the new `Note_Passed`, `Clear` and the refined
+state), named.

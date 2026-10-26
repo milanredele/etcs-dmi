@@ -1271,6 +1271,156 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Mode_Profile_Roll_Back;
 
+   --  Not called yet (B2341): EVC_Track_Conditions.Evaluate and External
+   --  judge the phases against the train's position in every cycle, so the
+   --  three checks of the roll back fail until the phases are kept.
+   --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
+   --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls
+   --  back 1.5 m in rear of the location where "Lowered pantograph" is
+   --  shown (5.18.2.3), of the one where "Raise pantograph" is shown
+   --  (5.18.2.5) and of the one where the remaining distance to the start
+   --  stops being generated to the train interface (5.20.2.4), and comes
+   --  forward again each time: no indication reverted nor shown again, no
+   --  record of the track condition again, the distance not generated
+   --  again
+   procedure Scenario_Track_Condition_Roll_Back is
+      None  : constant Integer_64 := Integer_64 (EVC_Ports.TIU_TC_None);
+      Saved : constant Unsigned_16 := Speed_Cms;
+      Seen  : array (0 .. 15) of Natural := (others => 0);
+      Held  : Boolean := True;
+      Bad   : Integer_64 := 0;
+      X     : Integer_64;
+
+      --  The remaining distance to the start of the pantograph item of
+      --  the cycle's TIU track condition output (-1: no such item)
+      function To_Start return Integer_64 is
+         R : Integer_64 := -1;
+      begin
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = TIU
+              and then Byte_At (I, 1) = Natural (EVC_Ports.TIU_TC_Tag)
+            then
+               R := -1;
+               for K in 0 .. Byte_At (I, 3) - 1 loop
+                  if Byte_At (I, 4 + 12 * K) = 1 then
+                     R := 0;
+                     for B in reverse 0 .. 3 loop
+                        R := R * 256 + Integer_64 (Byte_At (I, 6 + 12 * K + B));
+                     end loop;
+                  end if;
+               end loop;
+            end if;
+         end loop;
+         return R;
+      end To_Start;
+
+      procedure Track is
+         P : T68.Packet_T;
+      begin
+         Start_X;
+         Add_Group (Group (10, 100));
+         P.Q_DIR := 1;
+         P.Q_SCALE := 1;
+         P.Q_TRACKINIT := 0;
+         P.Has_D_TRACKCOND := True;
+         P.D_TRACKCOND := 1000;
+         P.L_TRACKCOND := 200;
+         P.M_TRACKCOND := 3;         -- powerless section, lower pantograph
+         P.N_ITER := 0;
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 0, P);
+         Carry (1, 1, MA_Of ((1 => 3000)));
+         Run_X (100_000);
+      end Track;
+
+      procedure Keep_Records is
+      begin
+         for K in Seen'Range loop
+            Seen (K) := JRU_TCs (K);
+         end loop;
+      end Keep_Records;
+
+      function Same_Records return Boolean is
+        (for all K in Seen'Range => Seen (K) = JRU_TCs (K));
+
+      --  50 cm a cycle to To; in every cycle the symbol Kept shown (0:
+      --  none), the
+      --  symbol Gone not, the distance to the start not generated when
+      --  Distance_Gone (Held)
+      procedure Go_To (To : Integer_64; Kept, Gone : Natural;
+                       Distance_Gone : Boolean := False) is
+      begin
+         while Train_Cm /= To loop
+            Step_X (if To > Train_Cm then 50 else -50);
+            Held := Held and then (Kept = 0 or else TC_Shows (Kept))
+              and then not TC_Shows (Gone)
+              and then (not Distance_Gone or else To_Start = None);
+            if not Held and then Bad = 0 then
+               Bad := Train_Cm;
+            end if;
+         end loop;
+      end Go_To;
+   begin
+      Speed_Cms := 500;
+      Track;
+      Check (TC_Shows (3), "track condition roll back: announced (5.18.2.2)");
+      while not TC_Shows (1) and then Train_Cm < 115_000 loop
+         Step_X (50);
+      end loop;
+      X := Train_Cm;
+      Check (TC_Shows (1) and then not TC_Shows (3),
+             "track condition roll back: lowered pantograph at the start "
+             & "(5.18.2.3), at" & X'Image);
+      Keep_Records;
+      Go_To (X - 150, Kept => 1, Gone => 3);
+      Go_To (X + 500, Kept => 1, Gone => 3);
+      Check (Held and then Same_Records,
+             "track condition roll back: 1.5 m in rear of the start and "
+             & "forward again, the announcement not shown again, no record "
+             & "(A.3.5.1 7th bullet), got" & Held'Image
+             & Same_Records'Image & Bad'Image);
+      Held := True;
+      Bad := 0;
+      while not TC_Shows (5) and then Train_Cm < 135_000 loop
+         Step_X (50);
+      end loop;
+      X := Train_Cm;
+      Check (TC_Shows (5) and then not TC_Shows (1),
+             "track condition roll back: raise pantograph at the end "
+             & "(5.18.2.5), at" & X'Image);
+      Keep_Records;
+      Go_To (X - 150, Kept => 5, Gone => 1);
+      Go_To (X + 500, Kept => 5, Gone => 1);
+      Check (Held and then Same_Records,
+             "track condition roll back: 1.5 m in rear of the end and "
+             & "forward again, the lowered pantograph not shown again, no "
+             & "record (A.3.5.1 7th bullet), got" & Held'Image
+             & Same_Records'Image & Bad'Image);
+      Held := True;
+      Bad := 0;
+
+      --  the train interface: the distance to the start ends with the
+      --  min safe rear end at the start
+      Track;
+      while To_Start /= None and then Train_Cm < 160_000 loop
+         Step_X (50);
+      end loop;
+      X := Train_Cm;
+      Check (To_Start = None,
+             "track condition roll back: the distance to the start no "
+             & "longer generated (5.20.2.4), at" & X'Image);
+      Keep_Records;
+      Go_To (X - 150, Kept => 0, Gone => 3, Distance_Gone => True);
+      Go_To (X + 500, Kept => 0, Gone => 3, Distance_Gone => True);
+      Check (Held and then Same_Records,
+             "track condition roll back: 1.5 m in rear of the rear end's "
+             & "location and forward again, the distance to the start not "
+             & "generated again, no record (A.3.5.1 7th bullet), got" & Held'Image
+             & Same_Records'Image & Bad'Image);
+      Speed_Cms := Saved;
+   end Scenario_Track_Condition_Roll_Back;
+
    --  3.12.2.3, 3.12.2.3.1, 3.12.2.4, 3.13.1.5: the route suitability
    --  data compared with the Train Data; the closest unsuitable
    --  location the temporary EOA and SvL; a change of the Train Data
