@@ -13802,3 +13802,85 @@ Left at the bound: B2341 (the fix and the call of the scenario). Edits
 outside the units of the brief: none in evc/ beyond `EVC_Procedures`
 (`Profiles_Step`, the new `Note_Passed`, `Clear` and the refined
 state), named.
+### The gamma families, fourth package: the traces left (e5/gamma-families-4) (2026-10-26)
+
+Six of the seven traces of B1960 done, each with its triage line or
+block; the numbers are in the lines.
+
+**3131040_73 SV30 step 64** (CSM Normal expected at 1088 m; ours at
+1129 m at 34 km/h, the sequence's chart speed, with the 40 km/h target
+still shown at 0 m). The target is BG2d's LoA (150 m, L_ENDSECTION
+1000 m, V_EMA 8: 40 km/h at 1150 m); its packet 27 has one element of
+70 km/h where step 45's text announces V_STATIC <Vmin> at D_STATIC <D1>.
+An LoA is not removed from the supervised targets when the max safe
+front end passes it (3.13.8.2.3 removes an MRSP element; Table 16 [3]),
+and passing it trips in level 1 (3.13.10.2.7), so no CSM can come before
+the power-off at 1140 m; step 62's 1088 m is 62 m in rear of 1150 m
+anyway (its comment asks for the distance to be updated). The workbook
+has no row below the target speed: nothing to interpolate. Triaged
+`s076` (Sd388e03a). The curve reference named in the signature is step
+60's, kept for the steps at the same location (`S076_Run.Note_Curve_Ref`).
+
+**3130700_03 SV30 step 62** (CSM Normal with V5 expected; ours Warning
+at 65 km/h with V_PBD 60). BG2d's packet 52: D_PBD 425 m by the
+emergency brake, gradient 0. Step 61's comment: V5 65 km/h by the ERA
+tool with T_BRAKE_EMERGENCY increased by one second for 3.11.11.6; the
+gamma sheet has 3.5 s in combination 1 against 2.5 s in combination 2
+(the lambda twins of the family 2.5 / 2.5). The hand computation of
+3.11.11.6 (A_safe 0.64 m/s2, antenna 5 m, T41 1 s, T_traction 0.5 s,
+dV_ebi 7.5, f41) gives V_PBD 63.4, rounded 60, with the image's 3.5 s
+(ours, `EVC_PBD.Holds` adds T41 to T_be) and 65.4, rounded 65, with
+2.5 s; the workbook's own EBI rows give 72.9 km/h at 420 m, 65.4. T41 is
+counted twice: triaged `model` (Sb82bca11) with B2360 (the image's time
+less 1 s where the comment says so; in S076_Run's call of `Set_Gamma`,
+outside this package's units). 3130700_01, _05 and _07 pass their V5
+steps at 59 km/h.
+
+**3131040_75 SV30 step 54** (TSM Warning expected at 673 m; ours
+Indication at 732 m after an SB). Two causes, two lines of Sfb2423ac:
+`s076`, step 49's comment places the Permitted limit, 148 m before the
+LoA of 850 m, at 152 m from the LRBG of 500 m where 350 - 148 gives
+202 m: steps 49 to 54 lie 50 m in rear of their workbook (Permitted
+702 m, Warning 723 m at 38 km/h); ours entered Overspeed at 686 m with
+the max safe front end 148 m before the LoA, the workbook's 147.85 m.
+`model`, the runner's speed for V_TRAIN>=<V_EMA+dVwarning(V_EMA)> is the
+middle of the shown warning and SBI speeds (45 / 45, so 44 km/h at
+690 m in one step), past the workbook's SBI at 44 km/h (145.79 m, the
+max safe front end at 144 m): our SB intervention agrees with the
+workbook; the text's 24 km/h already holds at the chart's 37.8 (B2361).
+
+**3131040_77 step 56** (all three versions): the text "V_TRAIN > <V_EMA>"
+where the comment says the speed falls below V_EMA for the Indication
+of step 58 and the chart is at 13.8 km/h by 840 m, the defect of
+3131040_78 step 56: blocked as S076-defect beside it
+(`S076_Run.Linking_Data_Cases`, the only two sequences of the corpus
+with that input). Failed 58 -> blocked 56 in SV21, SV22, SV30.
+
+**3131050_17 step 55** (all three versions): BG1d (50 m) links BG2 at
+400 m and BG3 at 502 m (D_LINK 350, 102); the telegram at 502 m is
+NID_BG 2 again with the shortened MA (L_ENDSECTION 114 m, the EOA
+616 m). Ours does not take it: the EOA stays at 820 m (303 m ahead at
+513 m), so the RSM intervention of steps 59 to 62 cannot follow. Blocked
+as S076-defect (3.4.4.4.2, 3.4.4.4.3.2), a new case of
+`S076_Run.Linking_Data_Cases`. Failed 60 -> blocked 55 in the three
+versions.
+
+**Left at the bound**: 3131050_21 SV30 step 82 (RSM Indication expected
+at 653 m with the release speed calculated on board; ours 23 km/h, an
+SB then an EB at 672 m with the train at 24 km/h; step 81's comment
+gives 28 km/h by workbook 21b and the RSM start 47 m before the EOA of
+700 m for 25 km/h by 21a; the hand computation of 3.13.9.4.8 for the
+SvL at 900 m and the restriction between not done), in B1960.
+
+Resumed inside the budget, **4100103_17 step 83** (all three versions):
+JRU 20 M_SDMTYPE 2 expected at 650 m, release speed monitoring by
+SUBSET-027 4.2.4.20, where the step's own comment reads 2 as Target
+speed monitoring and steps 81 and 82 describe the Indication when
+braking to a target after the slippery rail. Ours at 685 m is TSM
+Indication with the EOA (BG3d 200 m, L_ENDSECTION 700 m: 900 m) 211 m
+ahead, what the comments describe: triaged `s076` (S0c6ec83e).
+
+Runner 1163 / 1075 / 952 -> 1163 / 1069 / 958, recorded: the six
+regressions are the two blocks (3131040_77, 3131050_17, three versions
+each). Edits outside the package's named units: `S076_Run.Linking_Data_Cases`
+and `Linking_Why` (the S076-defect table), not `Curve_Judgement`.
