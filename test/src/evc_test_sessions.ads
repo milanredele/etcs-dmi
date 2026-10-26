@@ -54,6 +54,7 @@ package EVC_Test_Sessions is
    --  5.4.5.3 a), 5.8.2.1: Override at S20 of the level 2 start of
    --  mission, not at S21
    procedure Scenario_SoM_L2_Override;
+   procedure Scenario_SoM_L2_Override_Before_S10;
    procedure Scenario_Session_SoM_Failures;
    procedure Scenario_Session_EoM;
 

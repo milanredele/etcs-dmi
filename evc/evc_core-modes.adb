@@ -168,6 +168,7 @@ is
          TRN_Valid         => EVC_Mission.TRN_Status = EVC_Mission.Valid,
          SoM_Started       => EVC_Mission.Waiting_For_RBC
                               or else EVC_Mission.Proposed,
+         TD_Ack_Awaited    => EVC_Sessions.Train_Data_Awaited,
          Speed_Est         =>
            EVC_Supervision_Input.Speed_Cms_T
              (Natural'Min (Natural (Odometer_Now.V_Est),

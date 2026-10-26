@@ -13680,3 +13680,49 @@ is the one that knows it.
 
 The three backlog lines stay open with this paper's reference: the user
 decides.
+### The level in every acceptance context, the override before S10, the events after a DMI restart (e6/acceptance-level) (2026-10-26)
+
+B2220 with B2300, the level in every acceptance context: of the three
+builders of an `EVC_Radio_Acceptance.Context_T` (`--refs Context_T`
+lists four types of that name; the radio one is built in
+`EVC_Sessions.Network.Take_Radio_Order`, `EVC_Sessions.Network.Accepts`
+and `EVC_Radio_Authority.Buffer.Update`, the authority's messages
+judged on the buffer's context), only `Take_Radio_Order` left the level
+out (the claim was right). It now takes `Level_Valid` and `Level` from
+its caller `EVC_Sessions.Take_Message` (`EVC_Levels.Valid`,
+`EVC_Levels.Level`, the shape of `Accepts`), and
+`EVC_Radio_Acceptance.In_PT` requires `Trip_Exit_Known` with a valid
+level 2: the decision of round 53 (a context without a valid level
+judged by message 6 alone) is withdrawn, the reviewer's reading taken
+(B2300: "for level 2" cannot be satisfied by a level not valid; PT is
+used in levels 1 and 2 only, 4.4.14.2.1, so level 0 and NTC do not
+arise). `Scenario_PT_Acceptance_Level` extended: message 24 with packet
+45 after a message 6, the network NID_MN 123456 taken in PT in level 2,
+654321 not taken in level 1; with the old context and `In_PT` the level
+1 check fails. Runner 1163 / 1075 / 952, 0 movements. Row 4.8.4.2
+Table-footnote [1] noted.
+
+B2280, the override before S10: the claim's doubt was half right.
+After an End of Mission the Train Data and the train running number are
+not kept valid: 5.5.3.1.1 refers to 4.10, whose Table gives TBR for both
+on entering SB, and `EVC_Mission.Mode_Entered` invalidates them (the
+brief's "5.5.2 the following shall be kept" does not exist), so
+5.8.2.1 c) refuses at S1 to S4. The defect was at S11: the Train Data
+validated and sent, the RBC's acknowledgement awaited, the train running
+number entered: `EVC_Procedures.Override_Allowed` took the override
+there (shown by the scenario before the fix). `Context_T.TD_Ack_Awaited`
+(`EVC_Sessions.Train_Data_Awaited`, set in `EVC_Core.Modes`) now refuses
+it in SB. `Scenario_SoM_L2_Override_Before_S10` (EVC_Test_Sessions): not
+taken at S1, S4, S11, taken at S20, the End of Mission by the desk
+closed in SR, then not taken at S1 (the override selected at S20 stays
+active over SB: none of 5.8.4.1 a) to i)). The DMI: `DMI_Conditions.
+Override_EOA` follows DMI Table 34 #1 (SB with the Driver ID, Train
+Data, train running number and level 2 valid), so it enables the button
+at S11 and S21 to S25 where the on-board refuses (read in the code, not
+run): B2320, a decision. `EVC_Core.Modes.Run_Procedures` reads `EVC_Sessions.State` for it
+(its Global; the parent proves unchanged otherwise). Row 5.4.5.3 a)
+noted. Runner 1163 / 1075 / 952, 0 movements.
+
+B2240, the events after a DMI restart, is left: the bound (120 of 160
+calls) was reached after B2280; the brief's premises for it are not
+checked yet.
