@@ -13532,7 +13532,7 @@ most.
 
 ### The gamma families, fourth package: the traces left (e5/gamma-families-4) (2026-10-26)
 
-Five of the seven traces of B1960 done, each with its triage line or
+Six of the seven traces of B1960 done, each with its triage line or
 block; the numbers are in the lines.
 
 **3131040_73 SV30 step 64** (CSM Normal expected at 1088 m; ours at
@@ -13598,8 +13598,15 @@ at 653 m with the release speed calculated on board; ours 23 km/h, an
 SB then an EB at 672 m with the train at 24 km/h; step 81's comment
 gives 28 km/h by workbook 21b and the RSM start 47 m before the EOA of
 700 m for 25 km/h by 21a; the hand computation of 3.13.9.4.8 for the
-SvL at 900 m and the restriction between not done) and 4100103_17
-step 83, not started: both in B1960.
+SvL at 900 m and the restriction between not done), in B1960.
+
+Resumed inside the budget, **4100103_17 step 83** (all three versions):
+JRU 20 M_SDMTYPE 2 expected at 650 m, release speed monitoring by
+SUBSET-027 4.2.4.20, where the step's own comment reads 2 as Target
+speed monitoring and steps 81 and 82 describe the Indication when
+braking to a target after the slippery rail. Ours at 685 m is TSM
+Indication with the EOA (BG3d 200 m, L_ENDSECTION 700 m: 900 m) 211 m
+ahead, what the comments describe: triaged `s076` (S0c6ec83e).
 
 Runner 1163 / 1075 / 952 -> 1163 / 1069 / 958, recorded: the six
 regressions are the two blocks (3131040_77, 3131050_17, three versions
