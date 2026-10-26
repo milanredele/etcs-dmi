@@ -13994,3 +13994,125 @@ undecided (2, S4 / A31 after a return from S20); three backlog lines
 (B2400 to B2402). The review took about 95 tool calls of 130 to the
 bound, the most on items 6 to 8 (three traces and the hand computation,
 about 35).
+
+### E5 integration after the fifty-fourth round, the twenty-second of E6 (2026-10-26)
+
+Merged: e5/rbc-estimate (doc/RBC-ESTIMATE.md: an RBC in this
+repository's style about 32k lines of kernel Ada and 25k of harness, 49
+rounds (29 to 75), 1700 USD (1000 to 2600), 3 weeks at the observed
+pace, about half of what the on-board has cost, although SUBSET-026
+gives the RBC 17 % of the on-board's behavioural rows: the RBC's own
+core (the MA from routes, the track database, many trains, the
+interlocking link) is outside SUBSET-026 and carries the uncertainty;
+the three facts that would narrow it: the interlocking interface's
+shape, the safety case's scope, whether an operator HMI and the KMC are
+in scope), e6/protocol-decisions (B1641: FRMCS events 7 and 8 on the RTM
+port, `EVC_Sessions.Network.Take_FRMCS` replaces the constant, the S4
+wait ends at E61 / E62 / E71 / E72 per Table 49 with the 40 s of A.3.1
+from the first report, A42 shows entries 33 and 34 per system; the bench
+reports not registered after every power-up, the laboratory had no FRMCS
+simulator; `Scenario_Network_FRMCS`; 5.4.3.2 S4 done; the FRMCS
+sequences need `S076_Run` (B2380); the three decision papers in their
+subsection: B1060 the end of a cover in UTC with the powered-time
+fallback, B1063 one store of 16, B1340 the offset from the port with the
+UTC; B1401 left at the bound), e6/acceptance-level (B2220 / B2300: the
+three builders of the radio acceptance context pass the level, `In_PT`
+requires a valid level 2 (round 53's decision withdrawn),
+`Scenario_PT_Acceptance_Level` with packet 45 of message 24; B2280: 4.10
+gives TBR on entering SB so S1 to S4 were refused already, the defect
+was at S11, the Train Data sent and the acknowledgement awaited:
+`Context_T.TD_Ack_Awaited` from `EVC_Sessions.Train_Data_Awaited`,
+`Scenario_SoM_L2_Override_Before_S10`; the DMI enables its Override
+button at S11 and S21 to S25 by Table 34 #1 where the on-board refuses
+(B2320, a decision); B2240 left at the bound), e6/td-brake (B2260: the
+brake of 3131040_01 is the linking reaction of 3.16.2.7.1.1, two linked
+groups missed (JRU events 4 and 6, cause 5), not the Train Data
+procedure the review had left as the candidate: the sequence links BG2
+and BG3 from BG1d and never gives them; a scratch run with D_LINK moved
+4 km away shows no brake; B2340 (runner) for the bench; A.3.5.1 4th
+bullet: FS came a second time at a mode profile's end after a roll-back
+of 1.5 m, fixed by `EVC_Procedures.Note_Passed` remembering the
+beginning reached and the end passed per profile slot,
+`Scenario_Mode_Profile_Roll_Back`; 7th bullet:
+`Scenario_Track_Condition_Roll_Back` shows the announcement, the start
+and the TIU distance generated again after a roll-back
+(`EVC_Track_Conditions.Evaluate` and `External` judge every phase
+against the position each cycle), the fix left under the size rule
+(B2341), the scenario committed uncalled), and e5/gamma-families-4 (six
+of seven traces: 3131040_73 step 64 s076, the target is an LoA that
+stays supervised until passed (Table 16 [3], 3.13.8.2.3), no CSM before
+the power-off; 3130700_03 step 62 model, the sheet's T_brake_emergency
+of 3.5 s already includes the 1 s T41 that `EVC_PBD.Holds` adds again,
+V_PBD 60 against the sequence's 65 (B2360); 3131040_75 step 54 s076 (the
+steps 50 m in rear of their own workbook) and model (the runner's speed
+band past the SBI, B2361); 3131040_77 and 3131050_17 blocked as
+S076-defect (the text against the chart; a telegram with NID_BG 2 at
+BG3's location), six regressions explained; 4100103_17 step 83 s076,
+M_SDMTYPE 2 is RSM by SUBSET-027 4.2.4.20 where the comment means TSM;
+3131050_21 step 82 left in B1960), and e5/review-54 (the third blind
+review, see below).
+
+The review (e5/review-54, 99 calls, 5.6 USD): eight items, all reached
+(the readings first, three traces, the sequence files copied in one
+command); ten verdicts, 9 agreed, 2 disagreed, 1 undecided. Disagreed:
+the VBC capacity (B2400): SUBSET-040 4.5.1.2 asks at least 20 driver-set
+covers and 4.3.2.1 w) at least 10 trackside covers on top, which one
+store of 16 meets neither: the paper's recommendation to keep it is
+overturned, the user chooses between separate stores and a documented
+deviation; the attribution of 3131040_01's brake (B2401): the file holds
+no telegram for BG2 or BG3, so the bench has nothing to pass, the
+sequence's data rather than the bench, and inventing telegrams would be
+a decision. Undecided (B2402): the override at S4 or A31 reached again
+from S20 by 5.4.5.3 e) or j) with the Train Data validated at S12 kept
+valid: a scenario to write. The review also confirmed by hand the double
+T41 of 3130700_03 and the LoA reading of 3131040_73. Three rounds of
+reviews: 25 items, 23 agreed, 5 disagreed, 1 undecided; 11 lines, of
+which 4 became fixes (B2140 / B2206, B2202, B2220 / B2300, B2201 closed)
+and one of the reviewer's own candidates (the Train Data procedure for
+3131040_01) was wrong when traced: a review remark is a claim like any
+other; 16.7 USD for the three. It stays.
+
+Verification of the merged tree: `test/check.sh` ok; the full proof
+13553 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6160 B; wasm and both smokes 0 failures; the
+runner 1163 / 1075 / 952 -> 1163 / 1069 / 958 (the two S076-defect
+blocks), 0 regressions against the merged baseline, no signature
+untriaged. The merge: the estimate and the review fast-forwarded;
+backlog and plan conflicts on acceptance-level, td-brake and
+gamma-families-4, none in code (`EVC_Procedures` edited by two agents at
+different places, auto-merged); protocol-decisions merged clean; three
+chain runs, all green. The reviewer's branch had to be recovered from a
+dangling commit after its worktree branch was deleted before the named
+branch existed: the merge step now creates the named branch first.
+
+Costs (doc/ROUNDS.csv): 43.2 USD with the review and the estimate (35.2
+for the four packages, 2.5 the estimate, 5.6 the review), 13 of 17 items
+done (the estimate counted), 5 of 14 brief premises wrong in the
+packages and 3 of 3 in the estimate's brief (the matrix holds on-board
+rows only; 3.8.2 is the MA request; ROUNDS.csv covers every round since
+2026-09-27), no agent over budget, no resumption (the four agents
+stopped at the bound with 26 to 36 calls left, each one item short of
+its budget: the items of this round were 40 calls each, three of them a
+budget of 160). The new agent types opus-trim-build and opus-trim-trace
+ran this round with the method in their prompt: the first request's
+prefix 24k tokens against 21k, no brief read for the method, no
+difference in the reading ratio (17 to 22 outline runs against 15 to 26
+source greps). Lessons: the gamma and review agents read the sibling
+checkout directly 20 to 30 times per run since round 52 (the twin
+comparisons, the sheets), each read outside the project asking the
+user's permission in auto mode; the reviewer of this round copied its
+three files in one command; the sibling as an additional directory of
+the project's permissions is proposed to the user. A reviewer's
+candidate cause is a claim: the brief of td-brake stated it as the
+item's premise and it was wrong.
+
+The matrix: clauses left 75 -> 74 (todo 2, partial 72); E6 done 219,
+partial 6 unchanged (the row was E5's: 5.4.3.2 S4). Open items:
+doc/BACKLOG.csv (46 open after this round; 9 added of which 3 by the
+review, 5 closed). Next: B2240 (the events after a DMI restart), B2341
+(the track conditions over a roll-back, a helper under the size rule),
+B2402 (the override from S20 back), B1401 (the consist text); B2320 and
+B2400 and B2401 are the user's decisions with B1060, B1063, B1340;
+B2360, B2361, B2340, B2380 and B1960's last trace (runner); then B781's
+remaining bullets, B2380's FRMCS sequences; the review again (eight
+items, readings first).
