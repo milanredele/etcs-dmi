@@ -15571,3 +15571,100 @@ Backlog: B2601, B2621, B786 done; B2380 narrowed; B2680 (dmi), B2681
 (onboard) new. Edits outside the named units: the accessor
 `EVC_Sessions.SoM_Awaiting_Registration` (item 1). Commits: B2601 with
 B2621, B786, packet 64's Q_DIR.
+### The runner's speed at a plateau of the chart, a comment read to its end, the one-radio-system step (e5/runner-speed) (2026-10-27)
+
+**B2600, the speed at a plateau of the chart: built.** 3130700_03 SV30
+traced on master: step 62 Overspeed (JRU 21 status 2, V_PERM 65) at 283
+m, the train at 1806 cm/s. The chart's calibration is right: the
+speedprofile's 65.4 km/h at 200 m is `Calibrated` 65.01 km/h (zero 0.2,
+scale 0.997; the "mrsp" plateaus fit their multiples of 5 within 0.06
+km/h); the cause is the conversion: `Kmh_To_Cms` rounds 65.01 km/h to
+1806 cm/s, while the on-board takes a speed of the language as the floor
+of K x 1250 / 9 (`EVC_Profiles` for V_STATIC, `EVC_PBD.Restrict` for
+V_PBD): 65 km/h is 1805 cm/s, and 3.13.10.3.3 t2 (V_est > V_MRSP) gives
+Overspeed for 1806. The corpus (SV30, a scratch print at the end of
+every step): 1224 steps of 107 sequences end with the chart within 0.5
+km/h of our permitted speed; at 368 steps of 36 sequences the train is
+above it in cm/s (the rounding, or a drawing 0.1 km/h over); 7 sequences
+fail first at such a step, 2 by the speed (3130700_03 step 62;
+3130700_06 step 92, the chart's 10.1 km/h on V5 10, 281 cm/s against
+277), the 5 others for causes that are not the speed (3070300_12 step 87
+the level symbol, 4080454_01 step 125 a track condition, 5070300_04 step
+75 the RTM's Q_DESK, 5160000_01 step 55 the LX symbol, 9990400_41 step
+39 the mode). Decision in `S076_Run.Chart_Cms`: a chart speed within
+0.5 km/h (the calibration's own band) of a multiple of 5 km/h is driven
+at most at that multiple's cm/s as the on-board takes it, never raised
+to it. A first try that snapped both ways raised 3131030_17's chart
+(154.92 km/h at 1450 m, rising) to 4305 cm/s, above our V_warning 4304,
+and failed its step 68 (3131030_17 to _19, the three versions): the cap
+only lowers. The full runner 1169 / 1058 / 963 -> 1178 / 1051 / 961, 0
+regressions: 3130700_03 and 3130700_06 (S8727c744) and 3131040_59
+(S1fd323b5, its chart drawn at 102.5 for the ceiling 100) pass in the
+three versions. Triage: S8727c744's model line and S1fd323b5 marked
+fixed (S8727c744 stays at 3130700_04 step 65, its s076 line); B2600
+done.
+
+**3131050_22 step 85, not judged since the comment is read to its end:
+the rule is right.** Step 85's own comment (798 characters) names no
+workbook; the set comes from step 48's comment (876 characters), which
+names the two workbooks of the release speed at the trip location, "EBI
+(SvL)=-141m and V=32km/h (Subset-076-6- 3_3131050_22a_v400.xlsm)
+EBI(MRSP);59 m V=22km/h (Subset-076-6- 3_3131050_22b_v400xlsm)", at
+characters 630 and 689 without white space, beyond the 400 read before.
+`S076_Run.Named_Set` takes the first set named (22a), `Unnamed_Set`
+gives it to the curve steps that name no limit, and `No_Reference`
+finds its factor sheet against the national values in force: Kt_int 1
+(Integrated correction factors!D47) against the track's M_NVKTINT 1.1.
+All three workbooks of the sequence (22a, 22b, 22c) have Kt_int 1, so
+whichever set step 85 means (its V_RELEASE "given by the EBI supervision
+limit related to a target between the Trip location ... and the SvL",
+the MRSP target of 22b), the workbook was computed with other correction
+factors than the sequence's: not judged with that reason is the step's
+due, and its earlier verdict (failed, after the first failure) judged
+it against the wrong factors. No phrase is matched: the rule reads a
+workbook's name, and in SV30 37 comments of 20 sequences name a
+workbook of their own sequence beyond 400 characters (the corpus count
+by script); the widening moved only this step. The first failure at
+step 78 (Seb6766c6, model: ours trips at 1257 m before BG22d) is
+unchanged. No code, no triage change.
+
+**3050600_06 step 60, the mission with one radio system: driven.**
+Step 60 "The driver selects the 'Mission with one radio system'"
+(comment: the driver selects "Yes") follows entry 33 FRMCS network
+registration failed (step 58) with both systems installed: 5.4.3.2 S5
+(the driver asked whether to perform the mission with only one radio
+system), the DMI's window of 11.3.16 with its 'No' / 'Yes' keyboard
+(Table 49 S5), which ours opens. `S076_Run.DMI_Input` blocked every
+radio dialogue step as radio; it now enters the choice in that window
+(keys 7 'No' and 8 'Yes' as `DMI_Test_Settings` presses them, 'Yes'
+unless the comment quotes "No": the 6 such steps of SV30, in 3050600_06
+(two), 5040300_23, 5040300_25, 5100200_12 and 4100103_15, all say
+"Yes"). Ours: 'Yes' without valid RBC contact information goes to the
+Radio data window (Table 49 S5 E3), and step 61 (JRU 11 M_DRIVERACTIONS
+00110110 = 54, SUBSET-027 4.2.4.11 "Perform mission with only one radio
+system" selected) passes, as do steps 63 to 72 (the desk closed and
+opened again in SB, the Driver ID revalidated, the Main window). The
+sequence fails at step 73 now (S7e2edbdf): the hour glass of S4 is
+expected after the desk re-opening, then the A.3.1 time again (step
+75), entry 33 (76, 77) and the S5 window again with its value deleted
+(78, 79); ours shows the Main window without the hour glass and never
+opens S5 again (step 80: top W_MAIN). Read in the source, not traced by
+a run: `EVC_Sessions.Network` clears its One_Radio only at power-up
+(`Clear`), and its D7 condition takes One_Radio with a registered radio
+as fulfilled; 4.10.1.3 deletes "Mission performed with only one radio
+system" on entering NP, SB or SH, and whether a desk closure and opening
+in SB counts as that is left to the on-board's item (B2700, onboard,
+with the S4 time: E72 counts from the latest GSM-R order, 25.0 s, and
+3.5.6.1 orders none at a desk opening). The other five sequences with
+the step stop before it (unchanged). The full runner 1178 / 1051 / 961
+-> 1178 / 1052 / 960, 0 regressions, 3050600_06 SV30 blocked 60 ->
+failed 73; steps 209989 -> 210005 passed, 12602 -> 12610 failed. A new
+`onboard` line of S7e2edbdf for 3050600_06; B2380 done (the runner's
+part of the FRMCS sequences), B2700 new.
+
+Edits outside the named units: none (`S076_Run.DMI_Input` at the one
+radio system step is the radio step's vocabulary of the brief; the
+chart's cap is `S076_Run.Chart_Cms`, next to `Kmh_To_Cms`, the
+calibration `S076_Sequences.Calibrated` unchanged). Commits: B2600 with
+the chart's plateau, the trace of 3131050_22 step 85, the one radio
+system step.
