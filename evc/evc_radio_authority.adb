@@ -25,7 +25,8 @@ package body EVC_Radio_Authority
        Refined_State => (State => (Messages, Rejected_N, TD_Acked, Held,
                                    Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
-                                   Params, Inhibition, Reasons, Request_Due,
+                                   Params, Params_Level, Params_Seen,
+                                   Inhibition, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
                                    TAF_Request, TAF_Group,
                                    SR_Authorised, Requests, Start_Reason,
@@ -69,6 +70,11 @@ is
       T_CYCRQST     : T_CYCRQST_T := T_CYCRQST_No_Repetition;
    end record;
    Params          : Params_T := (others => <>);
+
+   --  4.9.1.3: the level of the latest valid level seen (packet 57 is
+   --  taken in every level, so the entry to level 1 is a change of it)
+   Params_Level    : Level_T := L0;
+   Params_Seen     : Boolean := False;
 
    --  3.11.5.12, 3.11.5.13: the inhibition of revocable TSRs from balises
    --  in level 2 (packet 64) stored, and the session of the RBC that
@@ -470,6 +476,8 @@ is
       Cycles := 0;
       Radio_MAs := 0;
       Params := (others => <>);
+      Params_Level := L0;
+      Params_Seen := False;
       Inhibition := (others => <>);
       Reasons := 0;
       Request_Due := False;
@@ -593,12 +601,32 @@ is
       EVC_Radio_Info.Put_Last (Sl);
    end Take_Stored_Information;
 
+   --  4.9.1.3: entering level 1 deletes the MA request parameters; the
+   --  valid level Level compared with the latest one seen, so that
+   --  parameters taken once level 1 is entered are kept
+   --  @req 4.9.1.3
+   procedure Note_Level (Valid : Boolean; Level : Level_T)
+     with Global => (In_Out => (Params, Params_Level, Params_Seen))
+   is
+   begin
+      if Valid then
+         if Params_Seen and then Params_Level /= L1 and then Level = L1
+         then
+            Params := (others => <>);
+         end if;
+         Params_Level := Level;
+         Params_Seen := True;
+      end if;
+   end Note_Level;
+
    --  3.8.2.1.2, 3.8.2.1.4: packet 57 of the last message, the new MA
    --  request parameters (taken whatever its Q_DIR: they concern the
-   --  train, not a direction)
+   --  train, not a direction); C, the message's context: a level 1
+   --  entered before the message is judged first (Note_Level)
    --  @req 3.8.2.1.4
-   procedure Take_Parameters
-     with Global => (Input => EVC_Received.Store, In_Out => Params)
+   procedure Take_Parameters (C : EVC_Radio_Acceptance.Context_T)
+     with Global => (Input  => EVC_Received.Store,
+                     In_Out => (Params, Params_Level, Params_Seen))
    is
       pragma Warnings
         (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
@@ -607,6 +635,7 @@ is
       P  : ETCS_Track_Packets.P57.Packet_T;
       OK : Boolean;
    begin
+      Note_Level (C.Level_Valid, C.Level);
       for I in 1 .. EVC_Received.Last_Packet_Count loop
          pragma Loop_Invariant (True);
          if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P57
@@ -1005,7 +1034,7 @@ is
          end if;
          return;
       end if;
-      Take_Parameters;
+      Take_Parameters (C);
       Take_Inhibition (S, C);
       if Kind = ETCS_Message_Catalogue.Track_M6 then
          --  5.11.2.2 S120, E125: in PT (4.8.4: rejected in other modes),
@@ -1572,6 +1601,7 @@ is
       then
          Request_Due := True;
       end if;
+      Note_Level (EVC_Levels.Valid, EVC_Levels.Level);
       --  3.13.11.8: T_MAR for the snapshot of the next cycle
       EVC_Radio_Info.Set_T_MAR
         (if Params.Known
@@ -1654,6 +1684,10 @@ is
       then
          Emergency.Stops := (others => No_Stop);
          Stop_Received := False;
+      end if;
+      --  4.10.1.3, the row MA Request Parameters: deleted entering NP
+      if To = M_NP then
+         Params := (others => <>);
       end if;
    end Mode_Changed;
 

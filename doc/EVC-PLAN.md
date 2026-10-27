@@ -15454,3 +15454,22 @@ narrowed (left: 3050600_06 step 60's input, 5040300_23 step 82,
 Edits outside the named units: `EVC_Sessions.SoM_Awaiting_Registration`
 (one accessor of the parent's body, the hour glass of the new wait; no
 contract changed).
+
+**B786, the MA request parameters on entering level 1: built.** 4.9.1.3
+(PDF page 80): "In case of entering level 1, MA Request Parameters,
+Position Report Parameters and Track Ahead Free Request shall be
+deleted"; the 4.10.1.3 table's row "MA Request Parameters": D entering NP,
+U in the other modes. What consist-entry wrote held at the source:
+`Take_Parameters` set `Params` with no deletion but `Clear`, and
+`Evaluate` mirrors it to `EVC_Radio_Info.Set_T_MAR` / `Set_MAR_Known`;
+packet 57 is taken in every level, so the entry is a change of level.
+Built in `EVC_Radio_Authority`: `Note_Level` (the shape of
+`EVC_Sessions.Reports.Evaluate` for the position report parameters: a
+valid level other than the latest seen, now 1) deletes `Params`; it runs
+with the message's context before its packet 57 is taken (a packet 57
+received once level 1 is entered is kept) and in each `Evaluate`; entering
+NP deletes them in `Mode_Changed`. `Scenario_MA_Request` (T_MAR 20 s
+taken in level 2, MAR_Known false and T_MAR 0 on entering level 1, still
+deleted back in level 2). Proof of `evc_radio_authority` clean; the
+runner unchanged (1169 / 1058 / 963, 0 regressions). Row 4.9.1.3 partial
+-> done; B786 done.
