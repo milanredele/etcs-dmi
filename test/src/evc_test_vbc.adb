@@ -109,6 +109,7 @@ package body EVC_Test_VBC is
 
    procedure Scenario_VBC_Rooms is
       use type V.Origin_T;
+      I : Natural;
    begin
       EVC_Test_Modes.Start_E4;
       V.Clear;
@@ -145,6 +146,12 @@ package body EVC_Test_VBC is
       Check (Onboard_Field (5) mod 16 / 4 = 2,
              "vbc: MSG_ONBOARD no room for the driver, VBCs stored "
              & "(national bits 2, 3)");
+      I := Find_DMI (EVC_DMI_Port.MSG_VBC_LIST);
+      --  the last of the store: NID_VBCMK 20, NID_C 100 (DMI 11.3.12.5)
+      Check (I > 0 and then Byte_At (I, 6) = V.VBC_Max
+             and then Byte_At (I, 7 + 4 * (V.VBC_Max - 1))
+                        = Natural ((20 + 100 * 64) mod 256),
+             "vbc: MSG_VBC_LIST with the 30 covers of both rooms");
       EVC_Core.Power_Up;
       Check (V.Count = V.VBC_Max
              and then V.Count_Of (V.Driver) = V.Driver_Max

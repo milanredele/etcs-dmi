@@ -385,6 +385,32 @@ package body DMI_Test_VBC is
       Send_Raw (16#0F#, (1 => 0, 2 => 0));
       Send_Raw (16#0F#, (1 .. 0 => 0));
       Check (DMI_VBC.Count = 16, "malformed MSG_VBC_LIST is ignored");
+      -- the on-board's whole store, 20 covers set by the driver and 10
+      -- ordered by trackside (SUBSET-040 4.5.1.2, 4.3.2.1 w)): 30 rows
+      -- "VBC #n set code" over the windows of Table 45's "2..n"
+      declare
+         Codes : Code_Array (1 .. DMI_Protocol.VBC_List_Max);
+         Over  : Byte_Array (1 .. 1 + 4 * (DMI_Protocol.VBC_List_Max + 1)) :=
+           (others => 0);
+      begin
+         for I in Codes'Range loop
+            Codes (I) := 100 * I + I;
+         end loop;
+         Send_VBC_List (Codes);
+         Step;
+         Check (DMI_VBC.Count = 30 and then DMI_VBC.Codes (30) = 3030
+                and then DMI_Data_View.Title = "Data view (3/4)",
+                "30 VBCs listed: four windows");
+         Press_Next;
+         Check_Frame ("vbc_data_view_p4_30");
+         Check (DMI_Data_View.Title = "Data view (4/4)"
+                and then not DMI_Windows.Button_Enabled
+                               (DMI_Data_View.Next_Button),
+                "the 30th VBC on the last window");
+         Over (1) := DMI_Protocol.VBC_List_Max + 1;
+         Send_Raw (16#0F#, Over);
+         Check (DMI_VBC.Count = 30, "a list of 31 VBCs is ignored");
+      end;
       -- the list shrinks while window 3 is displayed: the last window
       Send_VBC_List ((1 => 71951));
       Step;

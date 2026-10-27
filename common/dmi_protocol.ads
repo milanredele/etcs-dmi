@@ -549,7 +549,9 @@ package DMI_Protocol is
    --  The Virtual Balise Covers stored on-board (SUBSET-026 3.15.9), for
    --  the topic "VBCs stored on-board" of the Data view window (DMI
    --  Table 45, 11.5.1.6: "VBC #n set code"):
-   --    count u8 (0 .. VBC_List_Max), then per VBC:
+   --    count u8 (0 .. VBC_List_Max: the on-board's store, 20 covers set
+   --      by the driver and 10 ordered by trackside, SUBSET-040 4.5.1.2
+   --      and 4.3.2.1 w)), then per VBC:
    --    code u32: its VBC set code as DMI 11.3.12.5 composes it, NID_VBCMK
    --      in the 6 least significant bits, NID_C in the next 10 and
    --      T_VBC (7.5.1.154.1, 8 bits) above them: 0 .. VBC_Code_Max.
@@ -559,7 +561,7 @@ package DMI_Protocol is
    --  stored". The enabling conditions of Table 36 #5 / #6 still come
    --  from MSG_ONBOARD (national bits 2 and 3), which is where the
    --  on-board states its storage capacity.
-   VBC_List_Max    : constant := 16;
+   VBC_List_Max    : constant := 30;
    VBC_Code_Max    : constant := 16#FF_FFFF#;  -- 24 bits: 6 + 10 + 8
    VBC_Code_Length : constant := 4;
 

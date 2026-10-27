@@ -535,7 +535,9 @@ is
    --  u8, then per VBC its set code u32 (DMI 11.3.12.5: NID_VBCMK in the
    --  6 least significant bits, NID_C in the next 10, T_VBC above)
    MSG_VBC_LIST : constant Byte := 16#0F#;
-   VBC_List_Max : constant := 16;
+   --  the whole store, EVC_VBC.VBC_Max (20 set by the driver, 10 ordered
+   --  by trackside)
+   VBC_List_Max : constant := 30;
    type VBC_Codes_T is array (1 .. VBC_List_Max) of Unsigned_32;
 
    --  @req 3.18.6.1

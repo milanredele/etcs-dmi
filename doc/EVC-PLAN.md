@@ -15396,3 +15396,73 @@ trackside, apart), from the driver's seat: the driver can always set 20
 whatever trackside ordered. One array of 30 with the origin per cover,
 the DMI's full bit from the driver's count, the protocol's list 16 -> 30;
 the next round's.
+
+### The VBC store built to SUBSET-040: 20 covers set by the driver and 10 from trackside, the DMI's list of 30 (e6/vbc-capacity) (2026-10-27)
+
+B1063 built as the user decided it (B2400): the premises checked at the
+source first. SUBSET-040 4.5.1.2: "The ERTMS/ETCS on-board equipment
+shall be able to store at least 20 VBCs set by the driver" (reference
+SUBSET-026 3.15.9.2; justification: a cross-border cold movement); 4.3.2.1
+w): at most 10 packets 6 in one message, 10 memorised on-board, the
+remark "does not include the minimum number of VBCs set by driver" (rule
+4.5.1.2). SUBSET-026 3.15.9.5's deletions are a closed list (a) ordered
+by trackside, b) the period elapsed, c) removed by the driver, d) a
+country mismatch); 3.15.9.4: a VBC of a stored identity replaces the
+stored one with its period. DMI 11.2.4.5.1: Set VBC enabled while "the
+maximum on-board storage capacity of VBC set by driver is not reached,
+see [4] 4.5.1.2", Remove VBC while at least one is stored. DMI 11.3.13.4:
+the Remove VBC window is the entry of a code in one field, not a list;
+the list of covers stored is shown by the Data view (Table 45, "VBC #n
+set code", windows "2..n"). The code before: one store of 16
+(`EVC_VBC.VBC_Max`, the driver's and trackside's alike, a new identity
+ignored when full), `EVC_VBC.Set` called by both
+`EVC_Core.Inputs.Take_VBC_Requests` and
+`EVC_Stored_Information.Take_VBC_Orders`, the DMI's list of 16
+(`DMI_Protocol.VBC_List_Max`, and its copy `EVC_DMI_Port.VBC_List_Max`).
+
+1. The store (`EVC_VBC`): `Driver_Max` 20 and `Trackside_Max` 10 named
+   with their rules (`@req 3.15.9.2` and `@req 7.4.2.2.1`, the clauses
+   SUBSET-040 cites), `VBC_Max` their sum 30, an `Origin_T` (Driver,
+   Trackside) on each cover; `Set` is the driver's, `Order` packet 6's
+   (`EVC_Stored_Information.Take_VBC_Orders` calls it: a one-line edit
+   outside the units); a new identity is taken while the room of its
+   origin is not full, else ignored: no cover is deleted for it, since
+   none of the four deletions of 3.15.9.5 applies. `Full` (MSG_ONBOARD's
+   national bit 2, the DMI's Set VBC) counts the driver's covers alone,
+   `Count` both (the list). Decision: a VBC of a stored identity replaces
+   the stored one in the room it already takes, whoever gives it
+   (3.15.9.4): a VBC is its identity and its period (3.15.9.1 a), b)),
+   the room is the store's accounting, so the counts can never pass
+   their rooms; the other reading (the replacing VBC takes its giver's
+   room) would let trackside's count pass 10 when it replaces a driver's
+   cover, and the driver's 20 would no longer be guaranteed. The retained
+   layout: `EVC_Retained.Kept_T` keeps `EVC_VBC.Kept_T`, the 30 covers
+   with their origin; the store is a memory within one run of the host
+   (its header: no non-volatile image, no CRC yet), so no image of an
+   older layout exists to reject or convert. Until the protocol's list
+   grew, `EVC_Core.Outputs.Send_VBC_List` capped the list at
+   `VBC_List_Max` (a `Natural'Min` that stays, a no-op at 30 against 30).
+   Scenario `evc_test vbc_rooms`: 11 orders, 10 taken, the driver's room
+   untouched and Set VBC enabled; 21 driver's covers, 20 taken, the 21st
+   refused, bit 2 off; a trackside order taken with the driver's room
+   full; trackside's VBC of a driver's identity replaces it in the
+   driver's room; No Power and back with the 30 and their rooms;
+   `vbc_store`'s full check now at the driver's 20.
+2. The list: `DMI_Protocol.VBC_List_Max` and `EVC_DMI_Port.VBC_List_Max`
+   16 -> 30 (1 + 4 x 30 = 121 bytes of payload, within the on-board's
+   `Max_Frame_Length` 512: one message, no cap), the protocol's comment
+   names the two rooms. `DMI_Core.Apply_VBC_List` and `DMI_VBC` follow
+   the constant; `DMI_Data_View` places the 30 rows over windows 2 to 4
+   with its walk of Table 45's "2..n" (no code change). Scenarios:
+   `dmi_test` Scenario_VBC_Data_View lists 30 codes (four windows, the
+   30th on window 4 with [Next] disabled) and refuses a list of 31; the
+   new golden `vbc_data_view_p4_30` (no existing golden changed);
+   `evc_test vbc_rooms` receives MSG_VBC_LIST with the 30 covers.
+
+The rows: 3.15.9.2 (the driver's room), 3.15.9.4 (Set / Order, the room
+kept on replacement), 3.15.9.5 (the rooms kept over No Power, no deletion
+for a full room), 3.15.9.6 (Set / Order), 7.4.2.2.1 (trackside's room)
+noted; no status changed. Backlog: B1063 done; B2640 (a refused order
+leaves no trace; the capacities in the installation documentation of
+E8). B1060 (the validity clock) untouched. The runner: 0 regressions, no
+movement after either item (1169 / 1058 / 963).
