@@ -14718,3 +14718,56 @@ id changed with a session open, one trace: terminate and open), B1401
 with the count (4 sequences), with B2320, B2400, B1060, B1063, B1340;
 B781's 6th and 11th bullets and the relocations; the review again (eight
 items, readings first, no read of the backlog's tail).
+
+### Five sequences with a linked group never given, blocked as SUBSET-076 defects (e5/linking-defects) (2026-10-27)
+
+**The fact.** The user decided B2401 on 2026-10-27: the bench invents no
+balise group. The ERA documents in the sibling's archive (the PDF of
+each sequence) give balise group steps only for the groups the .scn
+gives; the group never given appears only as a link entry of a packet 5.
+So the sequences' data, not the converter, hold the defect; the
+on-board's reaction is the clause's (3.16.2.7.1.1 or 3.16.2.3.1 b)).
+Each sequence was traced with DEBUG on master (the JRU events 6 and 4 of
+the window), and blocked as S076-defect only where the reaction spoils a
+judged step that would hold without it (`S076_Run.Linking_Data_Cases`,
+`Linking_Why`; the table has no version field and none was needed: the
+blocks hold in every version the sequence exists in).
+
+- **3131040_01** (SV30 failed 56, SV21 / SV22 blocked 56 old-tool):
+  BG1d (50 m) links BG2 at 500 m and BG3 at 600 m (Q_LINKREACTION no
+  reaction, Q_LOCACC 10 m); event 6 for 352/2 in step 50's window, for
+  352/3 and event 4 cause 5 (the service brake of 3.16.2.7.1.1) in step
+  53's; 73 km/h at 697 m where the chart keeps 86.7. Steps 54 (ODO
+  input) and 55 (DMI shown) judge no speed; step 56 (TSM Warning at
+  697 m) is S8722745e, 200 m in rear of the workbook's Indication: a
+  scratch copy with BG1d's first D_LINK 4450 (no brake, 84 km/h at
+  701 m) fails it the same way, and step 57 (V_TRAIN<<V_STEP>) is a
+  runner block. The brake lands before step 56 but on no step judged
+  otherwise: no row, S8722745e rewritten.
+- **3130234_05** (SV21, SV22, SV30): BG1d links BG2 at 400 m (no
+  reaction) and NID_BG 0 at D_LINK 0 beyond it (trip, Q_LOCACC 0);
+  event 6 for NID_BG 0 and event 4 reaction 0 cause 2 in step 47's
+  window, TR at step 50 (813 m) where FS and the Indication display are
+  expected. Blocked at 50 (row 13).
+- **4080436_02, 4080444_02** (SV30 only): BG1d (100 m) links BG2 at
+  150 m (no reaction), BG3 at 200 m and BG4 at 300 m (trip; BG4d is
+  given at 250 m); event 6 for NID_BG 3 and the trip in step 62's
+  window, TR at step 63 where BG4d expects FS. Blocked at 63 (rows 14,
+  15).
+- **4080404_02** (SV21, SV22, SV30, failed 47 Sa8a3ba1a): the brief's
+  premise (NID_BG 3 never given) is not the cause. BG1d's second balise
+  carries its own packet 5 linking BG2 and BG4 at D_LINK 0 (the ERA
+  document's data too; BG2d is at 200 m, BG4d at 850 m): event 6 for
+  NID_BG 2 and NID_BG 4, event 4 cause 5, the service brake in step
+  43's window (9 km/h at 206 m, chart 29.4). Steps 44 and 45 judge no
+  speed; step 47 (the connect ordered by BG2d's packet 133 Q_RIU=1,
+  radio infill, E7) fails the same way in a scratch copy with those
+  D_LINK 150 and 650 (no brake, 29 km/h at 208 m): no row, the finding
+  appended to the E7 line of Sa8a3ba1a. Which of the two packets 5 the
+  on-board should keep is B2520 (onboard, not traced).
+
+**Counts.** Before: 1163 passed, 1070 failed, 957 blocked (3190
+sequences); after: 1163 / 1065 / 962, 0 regressions; the five
+improvements are 3130234_05 (three versions, failed 50 -> blocked 50)
+and 4080436_02, 4080444_02 (failed 63 -> blocked 63). B2340 and B2401
+done; B2260 untouched; B2520 new.
