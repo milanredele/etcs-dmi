@@ -52,7 +52,7 @@ package body EVC_Stored_Information
                                    Radio_SH_Ids, Timer_Deletion,
                                    Contact_Braking, Linking_Braking,
                                    Consist_Braking, Consist_Was,
-                                   Proposal,
+                                   Consist_Loss, Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
                                    Former_Length, Former_Behind,
@@ -143,6 +143,8 @@ is
    --  until the shortening at standstill; its availability last cycle
    Consist_Braking : Boolean := False;
    Consist_Was     : Boolean := False;
+   --  4.4.21.1.12: the safe consist length lost in this cycle's Evaluate
+   Consist_Loss    : Boolean := False;
    --  3.8.2.4: the information "track ahead free up
    --  to the level 2 transition location" accepted in the last Evaluate
    --  and the group it names (3.8.2.4.2); the country of the group
@@ -195,6 +197,9 @@ is
      with Refined_Global => PBD_Last;
    function Consist_Brake return Boolean is (Consist_Braking)
      with Refined_Global => Consist_Braking;
+
+   function Consist_Lost return Boolean is (Consist_Loss)
+     with Refined_Global => Consist_Loss;
    function MA_On_Board return Boolean is (MA_Board)
      with Refined_Global => MA_Board;
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
@@ -276,6 +281,7 @@ is
       Linking_Braking := False;
       Consist_Braking := False;
       Consist_Was := False;
+      Consist_Loss := False;
       TAF_L2_New := False;
       TAF_L2_Loc := (others => <>);
       Group_Country := 0;
@@ -3100,6 +3106,7 @@ is
                                  Train : Train_Frame_T;
                                  Mode  : EVC_Modes.Mode_T)
      with Global => (Input  => (EVC_Train_Data.State, EVC_Odometry.State),
+                     Output => Consist_Loss,
                      In_Out => (Consist_Braking, Consist_Was, Timer_Deletion,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -3117,6 +3124,7 @@ is
       O    : EVC_Movement_Authority.Outcome_T;
    begin
       Consist_Was := Now;
+      Consist_Loss := Lost;
       if Lost and then not EVC_Odometry.Standstill then
          Consist_Braking := True;
       elsif (Lost or else Consist_Braking) and then EVC_Odometry.Standstill
@@ -3136,6 +3144,7 @@ is
                                 Mode  : EVC_Modes.Mode_T)
      with Global => (Input  => (EVC_Sessions.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State),
+                     Output => Consist_Loss,
                      In_Out => (Contact_Braking, Linking_Braking,
                                 Consist_Braking, Consist_Was,
                                 Timer_Deletion,

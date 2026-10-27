@@ -129,8 +129,7 @@ is
 
    --  SUBSET-027 4.2.4.23 against the catalogue of the DMI's chapter 15
    --  (EVC_DMI_Port): the entries of one message (the brake and the trip
-   --  rows of a balise read error, ...) share its bit; bit 31 "Safe
-   --  consist length no longer available" has no entry of the on-board
+   --  rows of a balise read error, ...) share its bit
    function SS_Bit (Entry_Number : Byte) return Natural is
      (case Entry_Number is
          when 1 | 2   => 1,   -- Balise read error
@@ -163,6 +162,7 @@ is
          when 10      => 28,  -- SM refused
          when 11      => 29,  -- SM request failed
          when 8       => 30,  -- Entering SM
+         when 19      => 31,  -- Safe consist length no longer available
          when others  => 0);
 
    --  decision: the on-board sees the starts and the ends it sends

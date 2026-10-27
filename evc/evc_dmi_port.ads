@@ -439,6 +439,7 @@ is
    SS_Trackside_Not_Compatible_Trip : constant := 16;  -- [65]
    SS_Train_Data_Changed            : constant := 17;  -- 5.17.2.2 A1
    SS_Train_Data_Changed_Brake      : constant := 18;  -- 5.17.2.2 S2, S4
+   SS_Safe_Consist_Length           : constant := 19;  -- 4.4.21.1.12
    SS_Train_Rejected                : constant := 20;  -- 5.4.3.2 A40
    SS_Unauthorized_Passing          : constant := 21;  -- [12] [16] [18] [43]
    SS_No_MA_Level_Transition        : constant := 22;  -- [39], [67]
