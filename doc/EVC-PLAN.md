@@ -14849,3 +14849,29 @@ BG1 marked as linked, linking not yet checked). So no on-board line; the
 verdict appended to the E7 line of Sa8a3ba1a (step 47 still fails for
 BG2d's packet 133, radio infill); B2520 done. SV21 and SV22 carry the
 same two packets 5.
+
+**5040300_24 SV30 step 97, the Radio network type: the driver model
+filled, the on-board's cause left.** Step 96 presses "Radio network type"
+(the window opens) and step 97 expects the Main window with the hour
+glass of S4; ERA's document has no step between them either (test
+5040300.67, "Option: GSM-R + FMRCS"), and every other press of the
+corpus (15 in the three versions) is followed by a step expecting the
+window. 5.4.3.2 S3: the driver selecting FRMCS or FRMCS+GSM-R while
+FRMCS is installed and not registered is E4, to A41 and S4; step 102's
+comment names the type stored, FRMCS+GSM-R (the sequence's packet 45,
+Q_NETWORKTYPE 1; DMI Table 43b key 2). Decision in `S076_Run.DMI_Input`:
+a press of Radio network type that no step of the window follows stands
+for the whole entry, FRMCS+GSM-R entered. Ours then takes the type
+(`EVC_Sessions.Network.Driver_Entries`, the type unchanged) and shows
+the Radio data window again (S3): no hour glass at step 97, no JRU 21 bit
+42 at step 98, no entry 33 after the A.3.1 time at steps 100 and 101;
+step 102 (the Radio data window) passes now. Still failed at 97
+(S7e2edbdf, a new `onboard` line for 5040300_24, the model line
+completed); where the on-board loses E4 is not traced: B2601. The full
+runner 1163 / 1065 / 962, 0 regressions, steps 209955 -> 209956 passed
+(step 102), 12717 -> 12716 failed.
+
+Edits outside the named units: none (`S076_Run.DMI_Input` at the press
+of Radio network type is the radio network type step of the brief).
+Commits: B2360 with the comment field, B2520's trace, the radio network
+type step.
