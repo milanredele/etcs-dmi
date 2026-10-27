@@ -14116,3 +14116,22 @@ B2400 and B2401 are the user's decisions with B1060, B1063, B1340;
 B2360, B2361, B2340, B2380 and B1960's last trace (runner); then B781's
 remaining bullets, B2380's FRMCS sequences; the review again (eight
 items, readings first).
+
+### The gamma families, fifth package: the last trace, the speed input naming V_EMA, the raised T_brake_emergency (e5/runner-curves-5) (2026-10-27)
+
+**3131050_21 SV30 step 82** (RSM Indication, JRU 20 M_SDMTYPE 2
+M_SDMSUPSTAT 1, expected at 653 m with the release speed calculated on
+board; ours intervention, the EB at 672 m). BG2d (200 m): the EOA at
+700 m (L_ENDSECTION 500), the SvL at 900 m (D_DP 200, V_RELEASEDP 126),
+packet 27 60 km/h then 15 km/h from 800 m, gradient 0, level 2 from
+200 m (alpha 0 in 3.13.9.4.8.2). BG1d's packet 5 gives BG2d Q_LOCACC
+12 m where step 48's comment takes 0: d_tripEOA = 700 + 2 x 12 + 10 +
+10 % x 500 = 784 m, 16 m in rear of the restriction, where workbook
+21b's EBI gives 22.9 km/h (17.34 m at 23 km/h); the SvL's EBI (21a, 84 m
+beyond the EOA) about 38.5 km/h: 3.13.9.4.8 gives 23 km/h, ours 23 km/h.
+The comments' 25 km/h (step 48, 26 m by 21b) and 28 km/h (step 81) and
+the RSM start 47 m before the EOA (21a's SBI1 at 25 km/h, the step's
+653 m) come from Q_LOCACC 0; the train at 25 km/h is above our release
+speed: the service brake at 640 m in TSM, then RSM over the release
+speed and the EB. Triaged `s076` (S388a7b2a, the three versions). B1960
+closed: every trace of the line done.
