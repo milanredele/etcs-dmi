@@ -14167,3 +14167,29 @@ is the DMI's, no DMI reports it in the generic), nothing in the next
 cycle, and the acknowledgement on the restarted DMI releases the text's
 brake. Proofs `evc_core-outputs`, `evc_text_messages`,
 `evc_jru_records`. Runner 1163 / 1069 / 958, 0 movements.
+
+**The override from S20 back (B2402 done).** 5.4.5.3 a): "only at S10
+and S20". The claim held: from S20, j) (level 2: S3, then A31 or S4)
+and e) (S2, D3, S3 ...) leave the Train Data validated at S12 and the
+train running number valid (no entry into SB, so 4.10's TBR does not
+apply), and neither `SoM_Started` (`EVC_Mission.Waiting_For_RBC`,
+`Proposed`) nor `TD_Ack_Awaited` holds there. `EVC_Mission` has no
+step of the start of mission; `EVC_Sessions.Mission` has one
+(`Step_T`: Opening from A31 until D31, Decided with `Awaiting_Network`
+for S4 after D7) and exposes it (`EVC_Sessions.SoM_Opening`,
+`SoM_Awaiting_Registration`). Fix: `EVC_Procedures.Context_T.SoM_Opening`
+(both, built in `EVC_Core.Modes.Run_Procedures`), and
+`Override_Allowed` refuses the override in SB while it holds; S2 and
+S3 are the DMI's entry windows, which the on-board does not see until
+the entry. Scenario `EVC_Test_Sessions.Scenario_SoM_L2_Override_From_S20`
+(two sessions configured): the start of mission to S20 as in
+`Scenario_SoM_L2_Override_Before_S10`, the Radio data re-entered with
+RBC 301, the session being established (A31): the override taken
+before the fix (run with the refusal removed), refused now; the
+session opened, S10: taken. With one session configured the opening
+was judged failed in the next cycle (A32, S10: the override then
+allowed by a) at S10), the session to RBC 300 neither terminated nor
+the one to RBC 301 attempted: B2420, not traced. The DMI's EOA button
+(`DMI_Conditions.Override_EOA`, DMI Table 34 #1) is enabled at A31 and
+S4 as at S11 (read, not run): B2320 covers it. Row 5.4.5.3 a) noted.
+Proofs `evc_procedures`, `evc_core-modes` (the parent unchanged).

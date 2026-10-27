@@ -120,6 +120,11 @@ is
       --  acknowledgement awaited (EVC_Sessions.Train_Data_Awaited): in
       --  Stand By not S10 nor S20
       TD_Ack_Awaited   : Boolean := False;
+      --  5.4.5.3 a), 5.4.3.2 S4, A31, D31: the registration or the session
+      --  of the start of mission awaited (EVC_Sessions.SoM_Opening,
+      --  SoM_Awaiting_Registration), also after S20 left by 5.4.5.3 e) or
+      --  j) with the Train Data still valid: in Stand By not S10 nor S20
+      SoM_Opening      : Boolean := False;
       --  the speed the override is compared with (5.8.2.1 a): the
       --  estimated speed, the train speed of the speed monitoring and of
       --  the driver's indication (3.13.10.2.1)

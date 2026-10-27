@@ -55,6 +55,7 @@ package EVC_Test_Sessions is
    --  mission, not at S21
    procedure Scenario_SoM_L2_Override;
    procedure Scenario_SoM_L2_Override_Before_S10;
+   procedure Scenario_SoM_L2_Override_From_S20;
    procedure Scenario_Session_SoM_Failures;
    procedure Scenario_Session_EoM;
 

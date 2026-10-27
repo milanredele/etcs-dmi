@@ -333,6 +333,7 @@ begin
    Scenario_SoM_L2_Mode_Proposal_LS;
    Scenario_SoM_L2_Override;
    Scenario_SoM_L2_Override_Before_S10;
+   Scenario_SoM_L2_Override_From_S20;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;

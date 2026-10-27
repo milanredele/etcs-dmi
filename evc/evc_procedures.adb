@@ -888,7 +888,8 @@ is
                  or else (C.Mode = M_SB and then C.Level_Valid
                           and then C.Level = L2
                           and then not C.SoM_Started
-                         and then not C.TD_Ack_Awaited))
+                          and then not C.TD_Ack_Awaited
+                          and then not C.SoM_Opening))
        and then (C.Mode = M_SH
                  or else (C.Train_Data_Valid and then C.TRN_Valid)));
 
