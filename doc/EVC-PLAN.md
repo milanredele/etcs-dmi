@@ -14884,3 +14884,87 @@ Left of B781: the relocation for the 3rd, 9th, 11th and 12th bullets,
 the LS profile of the 4th, the 6th (handover). Edits outside the
 brief's units: none (all in `EVC_Test_Profiles`, `EVC_Test_Authority`,
 test/src/evc_test.adb and the files of record).
+### The runner's comment field and three traces: the raised T_brake_emergency, the two packets 5 of one group, the radio network type (e5/runner-comments) (2026-10-27)
+
+**B2360, the raised T_brake_emergency: built.** The corpus's "comment:"
+lines: SV30 43913, of which 2281 are longer than 400 characters, 1571
+than 512 (a `Text_T`), 66 than 800, none than 1000 (the longest 956, the
+same in SV21 / SV22); the longest "text:" line 422. `S076_Sequences`
+keeps a step's comment in its own `Comment_T` of `Max_Text` 1000
+characters (with its `Image`); the step text is a `Text_T` again, cut at
+`Max_Line` 512 instead of 400. The cost: about 250 kB more for the one
+sequence loaded at a time (`S076_Sequences.Loaded`, 512 steps), nothing
+else widened. `S076_Run` reads the words "we increase the
+T_BRAKE_EMERGENCY by one second" (case-insensitive) in any step's
+comment before `S076_Bench.Set_Gamma` (`T41_In_Sheet`), and `Build_Gamma`
+takes combination 1's T_brake_emergency 1 s (T41 of 3.11.11.6) less:
+K52 3.5 -> 2.5 s, combination 2's W52 2.5 s as it is. The words are in
+step 61 of 3130700_01 to _08 in the three versions; the flag acts on the
+gamma ones (_01, _03, _05, _07). 3111100_01 (other words, no workbook)
+and 3131040_71 (K52 3.5 s without the words) are untouched. 3130700_03
+SV30 step 62: V_PBD 65 now (V5 65 by step 61's comment; 60 before), and
+the step still fails, now as S8727c744: Overspeed (JRU 20 M_SDMSUPSTAT 2,
+V_PERM 65) at 283 m with the train at 65 km/h. The runner drives the
+speedprofile chart's 65.4 km/h from 200 to 800 m, 65.0 by the chart's
+calibration (zero 0.2, scale about 0.997), drawn on the MRSP chart's V5
+plateau, while step 58's comment says V_TRAIN=<below V5>; 3.13.10.3.3 t2
+gives Overspeed for V_est > V_MRSP. The train's speed is the runner's
+(`model`, B2600: the ODO speed input, outside this package's units, not
+tried). The review's note on item 7 of e5/review-54 (the sheet's other
+curves computed with 3.5 s) moved no step: the feature 3130700 counts are
+the same. The full runner 1163 / 1065 / 962 unchanged, 0 regressions;
+steps 209961 -> 209955 passed, 12726 -> 12717 failed, 4118 -> 4121 not
+judged: 3131050_22 step 85 (the three versions, after its first failure
+at step 78) is not judged now (workbook with other correction factors)
+since its comment's tail is read, and its 4 later steps are not run. The
+triage: Sb82bca11 closed in its note (no sequence carries it), a model
+line of S8727c744 for 3130700_03; B2360 done, B2600 new.
+
+**B2520, the two packets 5 of BG1d in 4080404_02: the sequence's data.**
+Traced at SV30 on master (DEBUG): JRU event 6 for NID_BG 2 and NID_BG 4,
+event 4 cause 5 (the service brake of 3.16.2.7.1.1) in step 43's window,
+9 km/h at 206 m where the speedprofile chart keeps 29.4 km/h from 80 to
+850 m. BG1d's two telegrams (M_DUP 00 and M_MCOUNT 0 in both, Q_LINK 1)
+each carry a packet 5 for Q_DIR nominal: the first links BG2 at 150 m
+(BG2d is at 200 m) and NID_BG 3 at 500 m beyond, the second BG2 at 0 m
+and BG4 at 0 m beyond (BG4d is at 850 m), Q_LOCACC 12 m, no reaction.
+8.4.1.4: a track-to-train message contains at most one instance of a
+packet type for the same direction; packet 5 is none of the exceptions
+8.4.1.4.1 to .9, and 8.4.1.6 (duplicated balises count once) does not
+apply with M_DUP 00. ERA's document (the archive's PDF) has the same two
+packets; its step 39 names packets 12, 21 and 27 only (feature 4060300,
+test case 44). The on-board: `EVC_Position.Take_Packets` keeps the last
+valid packet 5 in balise order ("The last valid one of each counts");
+3.16.1.1 makes a message not compliant with the specifications
+inconsistent, and 3.16.1.1.1 leaves every check beyond the spare values
+to the supplier; a rejection of BG1d would brake as well (3.16.2.4.4:
+BG1 marked as linked, linking not yet checked). So no on-board line; the
+verdict appended to the E7 line of Sa8a3ba1a (step 47 still fails for
+BG2d's packet 133, radio infill); B2520 done. SV21 and SV22 carry the
+same two packets 5.
+
+**5040300_24 SV30 step 97, the Radio network type: the driver model
+filled, the on-board's cause left.** Step 96 presses "Radio network type"
+(the window opens) and step 97 expects the Main window with the hour
+glass of S4; ERA's document has no step between them either (test
+5040300.67, "Option: GSM-R + FMRCS"), and every other press of the
+corpus (15 in the three versions) is followed by a step expecting the
+window. 5.4.3.2 S3: the driver selecting FRMCS or FRMCS+GSM-R while
+FRMCS is installed and not registered is E4, to A41 and S4; step 102's
+comment names the type stored, FRMCS+GSM-R (the sequence's packet 45,
+Q_NETWORKTYPE 1; DMI Table 43b key 2). Decision in `S076_Run.DMI_Input`:
+a press of Radio network type that no step of the window follows stands
+for the whole entry, FRMCS+GSM-R entered. Ours then takes the type
+(`EVC_Sessions.Network.Driver_Entries`, the type unchanged) and shows
+the Radio data window again (S3): no hour glass at step 97, no JRU 21 bit
+42 at step 98, no entry 33 after the A.3.1 time at steps 100 and 101;
+step 102 (the Radio data window) passes now. Still failed at 97
+(S7e2edbdf, a new `onboard` line for 5040300_24, the model line
+completed); where the on-board loses E4 is not traced: B2601. The full
+runner 1163 / 1065 / 962, 0 regressions, steps 209955 -> 209956 passed
+(step 102), 12717 -> 12716 failed.
+
+Edits outside the named units: none (`S076_Run.DMI_Input` at the press
+of Radio network type is the radio network type step of the brief).
+Commits: B2360 with the comment field, B2520's trace, the radio network
+type step.

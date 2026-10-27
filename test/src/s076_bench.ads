@@ -74,8 +74,12 @@ package S076_Bench is
    --  Power_On, from the workbook's sheet "Brake parameters (gamma)"
    --  (an image of format version 2, EVC_Config.Encode_V2, offered with
    --  EVC_Core.Configure in No Power); Sheet.Present False: the default
-   --  configuration, a lambda train; kept over Reset
-   procedure Set_Gamma (Sheet : S076_Sequences.Gamma_Sheet_T);
+   --  configuration, a lambda train; kept over Reset. T41_In_Sheet: the
+   --  sheet's T_brake_emergency of combination 1 is the train's raised
+   --  by T41 (1 s, 3.11.11.6) for the ERA tool, which has no T41, and
+   --  the on-board, which adds T41 itself, is given the time less 1 s
+   procedure Set_Gamma (Sheet        : S076_Sequences.Gamma_Sheet_T;
+                        T41_In_Sheet : Boolean := False);
    --  the on-board runs a gamma train (the image accepted)
    function Gamma_Installed return Boolean;
    --  the first field the image of the gamma sheet lacked at the last

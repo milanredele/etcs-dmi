@@ -40,6 +40,9 @@ package body S076_Bench is
    Voltages : Natural := EVC_Config.Default_Fixed_Train.Voltages;
    --  The gamma sheet of Set_Gamma and the field it lacked
    Gamma_Sheet : S076_Sequences.Gamma_Sheet_T;
+   Gamma_T41   : Boolean := False;
+   --  T41 of 3.11.11.6, ms (the on-board's EVC_PBD.T_41)
+   T41_Ms      : constant := 1_000;
    Gap         : String (1 .. 48) := (others => ' ');
    Gap_Length  : Natural := 0;
    Clock      : Unsigned_64 := 0;
@@ -789,9 +792,11 @@ package body S076_Bench is
       S076_Bench.Voltages := Natural'Min (Voltages, 2**16 - 1);
    end Set_Voltages;
 
-   procedure Set_Gamma (Sheet : S076_Sequences.Gamma_Sheet_T) is
+   procedure Set_Gamma (Sheet        : S076_Sequences.Gamma_Sheet_T;
+                        T41_In_Sheet : Boolean := False) is
    begin
       Gamma_Sheet := Sheet;
+      Gamma_T41 := T41_In_Sheet;
    end Set_Gamma;
 
    function Gamma_Installed return Boolean is
@@ -815,9 +820,11 @@ package body S076_Bench is
    --  workbooks' Train (main)!RotatingMassUnknown), no normal service
    --  sets (A_SB01, A_SB12); Kdry_rst and Kwet_rst of combination 1 (the
    --  image has one set), the sheet's Kdry_rst, for its own confidence
-   --  level, for every M_NVEBCL
-   procedure Build_Gamma (S : S076_Sequences.Gamma_Sheet_T;
-                          G : out EVC_Config.Gamma_T)
+   --  level, for every M_NVEBCL. Less_T41: combination 1's
+   --  T_brake_emergency taken 1 s (T41) less (Set_Gamma)
+   procedure Build_Gamma (S        : S076_Sequences.Gamma_Sheet_T;
+                          Less_T41 : Boolean;
+                          G        : out EVC_Config.Gamma_T)
    is
       package SQ renames S076_Sequences;
       package SIn renames EVC_Supervision_Input;
@@ -921,6 +928,9 @@ package body S076_Bench is
         Curve (1, SQ.Gamma_Normal_Row, "A_brake_normal_service", Unused);
       G.T_Brake_Emergency :=
         Ms (1, SQ.Gamma_T_Emergency_Row, "T_brake_emergency");
+      if Less_T41 and then G.T_Brake_Emergency >= T41_Ms then
+         G.T_Brake_Emergency := G.T_Brake_Emergency - T41_Ms;
+      end if;
       G.T_Brake_Service := Ms (1, SQ.Gamma_T_Service_Row, "T_brake_service");
       G.Extra.T_Brake_Emergency_React :=
         Ms (1, SQ.Gamma_T_Emergency_React_Row, "T_brake_emergency_react");
@@ -931,7 +941,8 @@ package body S076_Bench is
       for C in Comb_T loop
          Times_E (C) :=
            (Ms (C, SQ.Gamma_T_Emergency_React_Row, "T_brake_emergency_react"),
-            Ms (C, SQ.Gamma_T_Emergency_Row, "T_brake_emergency"));
+            (if C = 1 then G.T_Brake_Emergency
+             else Ms (C, SQ.Gamma_T_Emergency_Row, "T_brake_emergency")));
          Times_S (C) :=
            (Ms (C, SQ.Gamma_T_Service_React_Row, "T_brake_service_react"),
             Ms (C, SQ.Gamma_T_Service_Row, "T_brake_service"));
@@ -963,7 +974,7 @@ package body S076_Bench is
    begin
       Gap_Length := 0;
       if Gamma_Sheet.Present then
-         Build_Gamma (Gamma_Sheet, G);
+         Build_Gamma (Gamma_Sheet, Gamma_T41, G);
       end if;
       if Gamma_Sheet.Present and then Gap_Length = 0 then
          C.Train.Model := EVC_Supervision_Input.Gamma;

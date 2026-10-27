@@ -1751,8 +1751,39 @@ package body S076_Run is
          return Select_Network (St);
       elsif Same (Item, "Radio-network-type") and then Same (Verb, "press")
       then
-         --  DMI 11.3.15: 'Radio network type' of the Radio data window
-         return Press_Menu (W_Radio_Data, 5, "Radio network type");
+         --  DMI 11.3.15: 'Radio network type' of the Radio data window.
+         --  Decision: when the next step does not expect that window, the
+         --  press stands for the whole entry and the driver enters the
+         --  stored type again, FRMCS+GSM-R (Table 43b key 2; 5.4.3.2 S3:
+         --  with FRMCS installed and not registered, E4 -> A41 -> S4): the
+         --  one sequence of the corpus without the window's step,
+         --  5040300_24, expects the Main window with the hour glass at
+         --  step 97, and its step 102's comment names the type stored,
+         --  FRMCS+GSM-R (its packet 45, Q_NETWORKTYPE 1)
+         declare
+            J : constant Judgement_T :=
+              Press_Menu (W_Radio_Data, 5, "Radio network type");
+         begin
+            if J.Verdict = Passed and then Cur < Seq.Step_Count
+              and then not Has (Image (Seq.Steps (Cur + 1).Line),
+                                "Radio-network-type")
+            then
+               for I in 1 .. 10 loop
+                  exit when Top_Is (W_Radio_Network_Type);
+                  B.Cycle;
+               end loop;
+               if not Top_Is (W_Radio_Network_Type) then
+                  return Fail ("DMI Radio network type: the window is not "
+                               & "open, top is " & Top_Image);
+               end if;
+               Key (2);
+               Enter_Single;
+               B.Cycle;
+               return Pass ("DMI Radio network type FRMCS+GSM-R entered, "
+                            & "top " & Top_Image);
+            end if;
+            return J;
+         end;
       elsif Has (Item, "RBC") or else Has (Item, "Radio")
         or else Has (Item, "GSM-R")
       then
@@ -6888,7 +6919,21 @@ package body S076_Run is
             Both_From := Power_Up;
          end;
       end if;
-      B.Set_Gamma (Seq.Gamma);
+      --  A comment raising T_BRAKE_EMERGENCY by one second for 3.11.11.6
+      --  (step 61 of 3130700_01 to _08, the three versions; the gamma
+      --  sheet in _01, _03, _05, _07): the sheet's time holds T41
+      declare
+         T41 : Boolean := False;
+      begin
+         for I in 1 .. Seq.Step_Count loop
+            if Has (Up (Image (Seq.Steps (I).Comment)),
+                    "WE INCREASE THE T_BRAKE_EMERGENCY BY ONE SECOND")
+            then
+               T41 := True;
+            end if;
+         end loop;
+         B.Set_Gamma (Seq.Gamma, T41_In_Sheet => T41);
+      end;
       B.Set_Voltages (S076_Sequences.Engine_Voltages
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;

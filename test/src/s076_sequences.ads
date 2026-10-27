@@ -28,7 +28,7 @@ package S076_Sequences is
    Max_DMI       : constant := 48;
    Max_Points    : constant := 128;
    Max_Timers    : constant := 64;
-   Max_Text      : constant := 400;
+   Max_Text      : constant := 1000;
    Max_Line      : constant := 512;
    Max_Bytes     : constant := 104;  -- an 830 bit telegram
 
@@ -40,6 +40,16 @@ package S076_Sequences is
 
    function Image (T : Text_T) return String is (T.S (1 .. T.N));
    function To_Text (S : String) return Text_T;
+
+   --  A step's comment, bounded by Max_Text: the corpus's longest
+   --  "comment:" line has 956 characters (SV21, SV22, SV30), 1571 of
+   --  them in SV30 are longer than a Text_T
+   type Comment_T is record
+      S : String (1 .. Max_Text) := (others => ' ');
+      N : Natural := 0;
+   end record;
+
+   function Image (T : Comment_T) return String is (T.S (1 .. T.N));
 
    type IO_T is (Input, Output, Unknown);
 
@@ -60,8 +70,8 @@ package S076_Sequences is
       --  the "input ..." / "expect ..." line, verbatim; N = 0 when the
       --  step's text matched no classifier of the sibling
       Line        : Text_T;
-      Text        : Text_T;     -- "text:" (cut to Max_Text)
-      Comment     : Text_T;     -- "comment:" (cut to Max_Text)
+      Text        : Text_T;     -- "text:" (cut to Max_Line)
+      Comment     : Comment_T;  -- "comment:" (cut to Max_Text)
       Line_No     : Natural := 0;
       --  the test case of the step, the last "case <feature> <n>" line
       --  before it (0 0 before the first)
