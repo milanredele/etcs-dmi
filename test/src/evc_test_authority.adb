@@ -2053,9 +2053,10 @@ package body EVC_Test_Authority is
    end Scenario_Own_Units_Stored;
 
    --  Message 24 referring to the group NID_BG with a fixed text from
-   --  D metres beyond the group on, 1000 m long (packet 74), its only
+   --  D metres beyond the group on, L metres long (packet 74), its only
    --  start sub-condition the location
-   function Text_At_Message (NID_BG, D : Natural) return Byte_Array is
+   function Text_At_Message (NID_BG, D : Natural; L : Natural := 1000)
+                             return Byte_Array is
       W  : Writer_T;
       V  : ETCS_Message.Value_Array := (others => 0);
       OK : Boolean;
@@ -2069,7 +2070,7 @@ package body EVC_Test_Authority is
       P.Q_SCALE := 1;
       P.Q_TEXT := 1;
       P.D_TEXTDISPLAY := ETCS_Variables.D_TEXTDISPLAY_T (D);
-      P.L_TEXTDISPLAY := 1000;
+      P.L_TEXTDISPLAY := ETCS_Variables.L_TEXTDISPLAY_T (L);
       P.T_TEXTDISPLAY := 1023;
       P.M_MODETEXTDISPLAY := 15;
       P.M_LEVELTEXTDISPLAY := 4;
@@ -2161,6 +2162,51 @@ package body EVC_Test_Authority is
              & "second time, no record of the texts (A.3.5.1 3rd bullet), "
              & "got" & M'Image);
    end Scenario_Text_Roll_Back;
+
+   --  The text from 300 to 400 m (the group 10 at 100 m) ended when the
+   --  train's estimated front end passes its end (3.12.3.4.3, location);
+   --  the train then rolls back 1.5 m, in rear of the end, and comes
+   --  forward over it again
+   procedure Scenario_Text_Stop_Roll_Back is
+      M : Natural := 0;
+      X : Integer_64;
+      --  50 cm a cycle to To, the texts' records and the cycles with a
+      --  text shown counted
+      procedure Go_To (To : Integer_64) is
+      begin
+         while Train_Cm /= To loop
+            Run_X ((if To > Train_Cm then Train_Cm + 50 else Train_Cm - 50),
+                   50);
+            M := M + EVC_Text_Messages.Event_Count
+              + EVC_Text_Messages.Displayed;
+         end loop;
+      end Go_To;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400)), Stamp));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 200, L => 100));
+      Stand_X (100);
+      Run_X (31_000);
+      Check (EVC_Text_Messages.Displayed = 1,
+             "text stop roll back: shown after its start");
+      while EVC_Text_Messages.Displayed = 1 and then Train_Cm < 42_000 loop
+         Run_X (Train_Cm + 50, 50);
+      end loop;
+      X := Train_Cm;
+      Check (EVC_Text_Messages.Displayed = 0 and then X > 39_000,
+             "text stop roll back: ended at its end, at" & X'Image);
+      Go_To (X - 150);
+      Check (EVC_Text_Messages.Displayed = 0
+             and then EVC_Core.Mode = EVC_Modes.M_FS and then M = 0,
+             "text stop roll back: 1.5 m in rear of its end, not shown again "
+             & "(A.3.5.1 3rd bullet), got " & EVC_Core.Mode'Image & M'Image);
+      Go_To (X + 500);
+      Check (EVC_Text_Messages.Displayed = 0 and then M = 0,
+             "text stop roll back: forward over the end again, not shown, "
+             & "no record of the texts (A.3.5.1 3rd bullet), got" & M'Image);
+   end Scenario_Text_Stop_Roll_Back;
 
    --  Message 24 referred to the group Ref of country 123, its packet 5
    --  linking the group Id at D_LINK metres (accuracy 10 m, reaction R)

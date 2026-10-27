@@ -14861,3 +14861,26 @@ the group 20 is read the max safe front end is 4.44 m in rear of the
 start; driven on to 420 m: TC01 shown in every cycle, the announcement
 (TC03) not again, no record 45 again. Matrix: A.3.5.1 noted for the
 relocation of both bullets. No code change in evc/.
+
+**A.3.5.1 3rd bullet, the stop of a text over a reverse movement** (no
+defect: kept by construction). Wrong premise in the brief's clause:
+3.12.3.4.3.1 is the one-or-all rule of the sub-conditions; the end by
+location is 3.12.3.4.3, and 3.12.3.4.5 (once displayed and ended, the
+start not evaluated again) with 3.12.3.4.3.1.2 (a fulfilled
+sub-condition no longer evaluated) say it. At the source,
+`EVC_Text_Messages.End_Condition` is called only while the text is
+started and not ended, sets `Loc_Done` once the estimated front end
+passes the end location and never clears it, and `EVC_Text_Messages.
+Evaluate` removes an ended text (unless its acknowledgement is still
+awaited, 3.12.3.4.7.1); a roll back finds no text to show.
+`EVC_Test_Authority.Scenario_Text_Stop_Roll_Back`, the sibling of
+`Scenario_Text_Roll_Back` (its builder `Text_At_Message` given the
+length as a defaulted parameter): level 2, an MA to 800 m, a fixed text
+from 300 to 400 m of the group 10, shown, ended past 400 m; a roll back
+1.5 m in rear of the end and forward 5 m: no cycle with a text shown,
+no record of the texts, FS. No code change in evc/.
+
+Left of B781: the relocation for the 3rd, 9th, 11th and 12th bullets,
+the LS profile of the 4th, the 6th (handover). Edits outside the
+brief's units: none (all in `EVC_Test_Profiles`, `EVC_Test_Authority`,
+test/src/evc_test.adb and the files of record).

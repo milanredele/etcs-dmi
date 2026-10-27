@@ -61,6 +61,10 @@ package EVC_Test_Authority is
    --  in rear of it and forward again: neither reverted nor shown twice
    procedure Scenario_Text_Roll_Back;
 
+   --  A.3.5.1 3rd bullet: a text ended at its end location, the train
+   --  rolled back in rear of it and forward again: not shown again
+   procedure Scenario_Text_Stop_Roll_Back;
+
    procedure Scenario_Start_After_Ack;
 
    --  B081, 3.8.2.4: the MA request on "track ahead free up to the level
