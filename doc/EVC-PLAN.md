@@ -15389,3 +15389,10 @@ are judged from the driver's point of view (a button that does nothing is
 wrong). A build item now: the on-board tells the DMI whether the
 override is selectable (a bit of MSG_ONBOARD), the DMI's condition reads
 it; the next round's.
+
+B2400 / B1063 decided by the user on 2026-10-27: the VBC store is built
+to SUBSET-040 (4.5.1.2: 20 covers set by the driver; 4.3.2.1 w): 10 from
+trackside, apart), from the driver's seat: the driver can always set 20
+whatever trackside ordered. One array of 30 with the origin per cover,
+the DMI's full bit from the driver's count, the protocol's list 16 -> 30;
+the next round's.
