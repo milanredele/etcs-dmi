@@ -14826,3 +14826,26 @@ at step 78) is not judged now (workbook with other correction factors)
 since its comment's tail is read, and its 4 later steps are not run. The
 triage: Sb82bca11 closed in its note (no sequence carries it), a model
 line of S8727c744 for 3130700_03; B2360 done, B2600 new.
+
+**B2520, the two packets 5 of BG1d in 4080404_02: the sequence's data.**
+Traced at SV30 on master (DEBUG): JRU event 6 for NID_BG 2 and NID_BG 4,
+event 4 cause 5 (the service brake of 3.16.2.7.1.1) in step 43's window,
+9 km/h at 206 m where the speedprofile chart keeps 29.4 km/h from 80 to
+850 m. BG1d's two telegrams (M_DUP 00 and M_MCOUNT 0 in both, Q_LINK 1)
+each carry a packet 5 for Q_DIR nominal: the first links BG2 at 150 m
+(BG2d is at 200 m) and NID_BG 3 at 500 m beyond, the second BG2 at 0 m
+and BG4 at 0 m beyond (BG4d is at 850 m), Q_LOCACC 12 m, no reaction.
+8.4.1.4: a track-to-train message contains at most one instance of a
+packet type for the same direction; packet 5 is none of the exceptions
+8.4.1.4.1 to .9, and 8.4.1.6 (duplicated balises count once) does not
+apply with M_DUP 00. ERA's document (the archive's PDF) has the same two
+packets; its step 39 names packets 12, 21 and 27 only (feature 4060300,
+test case 44). The on-board: `EVC_Position.Take_Packets` keeps the last
+valid packet 5 in balise order ("The last valid one of each counts");
+3.16.1.1 makes a message not compliant with the specifications
+inconsistent, and 3.16.1.1.1 leaves every check beyond the spare values
+to the supplier; a rejection of BG1d would brake as well (3.16.2.4.4:
+BG1 marked as linked, linking not yet checked). So no on-board line; the
+verdict appended to the E7 line of Sa8a3ba1a (step 47 still fails for
+BG2d's packet 133, radio infill); B2520 done. SV21 and SV22 carry the
+same two packets 5.
