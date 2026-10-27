@@ -15857,3 +15857,118 @@ B2720 (item 3's gap), B2721 (item 8's clause). Brief premises wrong:
 none. Remarks without a line: the S20 state named S10 in
 `Scenario_Override_Selectable` and its golden. The review took about 90
 tool calls of 130.
+
+### E5 integration after the fifty-seventh round, the twenty-fifth of E6 (2026-10-27)
+
+Merged: e6/vbc-capacity (B1063 built to SUBSET-040 by the user's
+decision: `EVC_VBC.VBC_Max` 30 with an `Origin_T` per cover,
+`Driver_Max` 20 (4.5.1.2) and `Trackside_Max` 10 (4.3.2.1 w)) kept
+apart, a new identity ignored when its origin's room is full (3.15.9.5's
+deletions are exhaustive), a cover with a stored identity replacing the
+old one in the room it already takes (3.15.9.4), `Full` (the DMI's
+national bit 2) from the driver's count alone, `EVC_VBC.Order` for
+packet 6 (both origins called `Set` before), `EVC_Retained` grown, the
+DMI's list 16 -> 30 in both `DMI_Protocol.VBC_List_Max` and
+`EVC_DMI_Port.VBC_List_Max` (121 bytes, one frame), the Remove VBC
+window a code field (11.3.13.4) and the list in the Data view's pages 2
+to 4 with no DMI code change, `vbc_rooms` scenario, one new golden
+judged as intended by the blind description; B2640: a refused trackside
+order leaves no record), e6/override-bit (B2320 built by the user's
+decision: MSG_ONBOARD national bit 4 "override selectable" from
+`EVC_Procedures.Override_Selectable`, `Override_Allowed` each cycle
+with the speed term, `DMI_Conditions.Override_EOA` returns the bit alone
+and `Override_Speed_OK` is gone (every term of Table 34 #1 is the
+on-board's data), the mock and the DMI test model set the bit; the
+goldens `override_eoa_s11` disabled and `override_eoa_s10` enabled
+judged as intended by the blind description, the S21 golden found by
+that description to show the Main window: the DMI closes every window
+and shows Main with the hour glass while an answer is awaited (DMI
+Table 50 S7, 11.7.3.3, [close] disabled by 11.7.3.2), so the driver
+cannot reach the button at all; the check was vacuous and was made
+real on a resumption (23 calls), the golden renamed
+`override_s21_main_waiting`; the on-board's bit checked over the start
+of mission in three scenarios; the desk scenario's terminating and
+being-established cases, no defect; `Consist_Step`'s heading left at
+the bound (B2660)), e6/network-type (B2601 / B2621: the reviewer's
+cause held, `Type_Wait` in `EVC_Sessions.Network.Driver_Entries` for a
+type naming FRMCS with FRMCS installed and not registered at S3,
+`Supervise_Wait` ends it at the A.3.1 time from the FRMCS detection with
+entry 33, then D8 -> S3 (B2601's "then S4" wrong), the hour glass by
+`SoM_Awaiting_Registration`, `Scenario_Network_Type_At_S3`, 5.4.3.2 A41
+and D8 done; 5040300_24 failed 97 -> 102: the DMI stays on the Main
+window where DMI Table 49 D10 returns to the Radio data window (B2680,
+dmi); B786: `EVC_Radio_Authority.Note_Level` deletes the MA request
+parameters on entering level 1 and `Mode_Changed` on NP, 4.9.1.3 done;
+packet 64 judged by its Q_DIR through `EVC_Position.Radio_Valid_For`
+as the packets 42, 45 and 131 of the sessions; packets 57 and 63 still
+taken whatever their Q_DIR (B2681, a decision); the agent passed its
+bound at 134 counting Bash calls only), and e5/runner-speed (B2600: the
+cause the km/h to cm/s conversion, the on-board floors 65 km/h to 1805
+cm/s and the runner rounded the calibrated 65.01 to 1806, Overspeed by
+3.13.10.3.3 t2; `S076_Run.Chart_Cms` drives a chart speed within 0.5
+km/h of a multiple of 5 at most at the on-board's cm/s of that
+multiple, never raised (a first version raising it put 3131030_17's
+154.92 km/h at 4305 above our V_warning 4304: 9 regressions, reverted);
+3130700_03, 3130700_06 and 3131040_59 pass in three versions;
+3131050_22 step 85 rightly not judged, step 48's comment names
+workbook 22a past 400 characters and its Kt_int 1 differs from the
+track's 1.1; 3050600_06 step 60 driven, the one-radio-system window
+(5.4.3.2 S5, DMI 11.3.16, key 8 for Yes), blocked 60 -> failed 73 (the
+choice lost over a desk closure in SB: B2700); B2380 done), and
+e5/review-57 (the sixth blind review, below).
+
+The review (e5/review-57, 91 calls, 4.4 USD): eight items, all reached,
+fully blind; nine verdicts, 7 agreed, 0 disagreed, 1 undecided (B2720:
+the S3 type wait counts the 40 s from the FRMCS on-board's first report,
+so an installed FRMCS that never reports keeps the hour glass at S3
+forever; a decision and a scenario). It settled B2700 with a clause the
+author had not cited (B2721): A.3.4.1.2 column k deletes the one radio
+system choice at a desk closure during the start of mission, and the
+desk-closure block of `EVC_Core.Modes` deletes the other column-k data
+but not this one. Two remarks: the golden `override_eoa_s10` is really
+S20 (S10 has no session open); its call on B2681 is to judge packets 57
+and 63 by Q_DIR like 64. Six rounds of reviews: 52 items, 48 agreed, 6
+disagreed, 3 undecided; 16 lines, of which 6 became fixes (B2621 this
+round); 32.1 USD.
+
+Verification of the merged tree: one chain run, all green: `test/check.sh`
+ok; the full proof 13665 checks, none unproved, margin 47726 steps;
+cross build and stack 32768 B budget, margin 6160 B; wasm and both
+smokes 0 failures (the bench golden re-recorded for the new bit); the
+runner 1169 / 1058 / 963 -> 1178 / 1052 / 960 (nine passed by the
+plateau rule, 5040300_24 and 3050600_06 further), 0 regressions against
+the merged baseline, no signature untriaged. The merge: vbc-capacity and
+the review fast-forwarded; backlog and plan conflicts on the other
+three, one in test/s076/triage.csv (two agents on the same signatures,
+resolved three-way by signature), none in code (the mock's MSG_ONBOARD
+line edited by two agents at different statements, auto-merged). The
+goldens: two golden reviews with the blind description by a Haiku agent
+at the merge; it caught the vacuous S21 check that the author's own look
+at the picture had passed.
+
+Costs (doc/ROUNDS.csv): 32.3 USD with the review (27.9 for the four
+packages, 4.4 the review), 10 of 11 package items done (the heading left
+at a bound; the bound passed by one agent counting Bash calls only: the
+tally counts every tool call), 6 of 34 brief premises wrong (both
+origins through `Set`, the second list constant, "som=3", the DMI row,
+"then S4", the chart's calibration as the cause), no agent over budget,
+one resumption inside budget (the S21 check). Lessons: the blind
+description of a golden is worth its cost when the author judges from
+the picture alone (the S21 frame showed a different window and the check
+passed anyway); a scenario's check that passes before the fix is
+suspect (the agent did not run it before); the user's two decisions of
+this round came as build items with their shape, and both held at the
+source.
+
+The matrix: clauses left 75 -> 73 (todo 2, partial 71): 5.4.3.2 A41 and
+D8, 4.9.1.3 done; the rows 3.15.9.2 / .4 / .5 / .6, 7.4.2.2.1, 5.8.2.1,
+3.6.3.1.3 noted. Open items: doc/BACKLOG.csv (39 open after this round;
+7 added of which 2 by the review, 7 closed). Next: B2721 with B2700 (the
+one-radio choice at a desk closure, A.3.4.1.2 k)), B2720 (the S3 wait
+without an FRMCS report: a decision), B2680 (the DMI's D10 to the Radio
+data window: a DMI item), B2681 (packets 57 / 63 by Q_DIR: a decision,
+the reviewer's call to judge them), B2660 (the heading), B2560 (the
+inhibition at the RBC/RBC border), B2640; B789's rest, B788; B781's 6th
+bullet and the relocations; B1060 and B1340 are the user's decisions
+(papers written); the review again (eight items, readings first, no
+backlog read).
