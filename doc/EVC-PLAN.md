@@ -15429,3 +15429,27 @@ regressions: 3130700_03 and 3130700_06 (S8727c744) and 3131040_59
 three versions. Triage: S8727c744's model line and S1fd323b5 marked
 fixed (S8727c744 stays at 3130700_04 step 65, its s076 line); B2600
 done.
+
+**3131050_22 step 85, not judged since the comment is read to its end:
+the rule is right.** Step 85's own comment (798 characters) names no
+workbook; the set comes from step 48's comment (876 characters), which
+names the two workbooks of the release speed at the trip location, "EBI
+(SvL)=-141m and V=32km/h (Subset-076-6- 3_3131050_22a_v400.xlsm)
+EBI(MRSP);59 m V=22km/h (Subset-076-6- 3_3131050_22b_v400xlsm)", at
+characters 630 and 689 without white space, beyond the 400 read before.
+`S076_Run.Named_Set` takes the first set named (22a), `Unnamed_Set`
+gives it to the curve steps that name no limit, and `No_Reference`
+finds its factor sheet against the national values in force: Kt_int 1
+(Integrated correction factors!D47) against the track's M_NVKTINT 1.1.
+All three workbooks of the sequence (22a, 22b, 22c) have Kt_int 1, so
+whichever set step 85 means (its V_RELEASE "given by the EBI supervision
+limit related to a target between the Trip location ... and the SvL",
+the MRSP target of 22b), the workbook was computed with other correction
+factors than the sequence's: not judged with that reason is the step's
+due, and its earlier verdict (failed, after the first failure) judged
+it against the wrong factors. No phrase is matched: the rule reads a
+workbook's name, and in SV30 37 comments of 20 sequences name a
+workbook of their own sequence beyond 400 characters (the corpus count
+by script); the widening moved only this step. The first failure at
+step 78 (Seb6766c6, model: ours trips at 1257 m before BG22d) is
+unchanged. No code, no triage change.
