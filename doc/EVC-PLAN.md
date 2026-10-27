@@ -14135,3 +14135,25 @@ the RSM start 47 m before the EOA (21a's SBI1 at 25 km/h, the step's
 speed: the service brake at 640 m in TSM, then RSM over the release
 speed and the EB. Triaged `s076` (S388a7b2a, the three versions). B1960
 closed: every trace of the line done.
+
+**B2361, the speed increase naming V_EMA.** `S076_Run.ODO_Input` took
+the middle of the shown warning and SBI speeds for
+V_TRAIN>=<V_EMA+dVwarning(V_EMA)> (44 km/h, both the ceiling's 45),
+past the target's SBI, where the chart's 37.8 km/h already satisfies the
+text (V_EMA 20 + 4 = 24 km/h; t7 of Table 8 names that speed band, the
+position condition d_W follows). Now a speed increase whose text names
+V_EMA keeps the chart's speed when it exceeds V_EMA (the target speed
+shown) + dV_warning / dV_sbi / dV_ebi of A.3.1 (4, 5.5, 7.5 km/h up to
+110 km/h), else the limit shown as before. The corpus (8 inputs in SV30,
+the same in SV21 / SV22): 3131040_75, _76 step 52 (dV_warning: 37.8 km/h
+against 24) and _79, _80 step 53 (dV_ebi: 34.4, 39.8 km/h against 27.5)
+keep the chart; _77, _78 step 49 (dV_sbi: 22.1, 19 km/h against 25.5)
+and step 56 (V_EMA, the chart under 20) do not. No sequence moved: _75
+and _76 still fail at step 54, now for their data alone (`s076`:
+S3276e893, the steps 50 m in rear of the workbook's Warning at 723 m and
+the chart falling from 705 m, 33.6 km/h there; Sfb2423ac, now _76, the
+steps 35 m in rear, the Warning at 1092 m, the chart 24.4 km/h there);
+the model line of Sfb2423ac and the _76 note of ~[workbook train]
+withdrawn. The runner 1163 / 1069 / 958 unchanged; 9 steps after the
+first failure moved to failed (the traction cut-off steps of _75 and _76
+that follow the Warning).
