@@ -15143,3 +15143,115 @@ at 800 m; ours now keeps the permitted speed 150 km/h at 900 m (step 94
 the service brake recorded by JRU 4 failed step 109 (S00c71576, no
 triage line of its own; gone from the baseline). Baseline re-recorded.
 Backlog: B1401 and B785 done, B786 open, B2560 new.
+
+### Review of the fifty-sixth round: eight verdicts re-derived blind (e5/review-56) (2026-10-27)
+
+Each verdict below was written from the clause, the data and the trace
+before the author's record (the four subsections above, the backlog,
+the triage) was read. All eight items were taken.
+
+1. The S4 wait. Mine: Table 49 reaches S4 from D7 only (level 2 at D3,
+   the registration of D7's bullets not complete) and leaves it by E6 /
+   E61 / E62 to A31 or, 40 s by the two rows of A.3.1, to A42: GSM-R type
+   or GSM-R alone (E7) and both systems with FRMCS+GSM-R (E72) from the
+   latest GSM-R registration order, FRMCS type or FRMCS alone (E71) from
+   the FRMCS on-board's detection as connected; E62 needs both
+   registered. A31 / D31 are not states of the wait; ours opening at
+   once with a known contact (decision 1) is S4 seen from outside, since
+   3.5.6.7 requests no safe connection while unregistered. `Apply_
+   Network`'s In_S4 = `Opening or else Awaiting_Registration`, and
+   `Supervise_Wait`'s origins (FRMCS_At, Order_At) match. Author
+   (e6/sessions-som, B2480): the same. Agree.
+2. RBC 301 at S20 with one session. Mine: 5.4.5.3 j) -> S3 -> E5 -> A31;
+   3.5.3.5.2 terminates 300 (156, 3.5.5.2's release) then establishes
+   301, the order forced by the single session; D31 judges an attempted
+   opening only (A32's causes are 3.5.3.7's failed connection or the
+   version), so A31 waits for the queued opening: `Judge_Opening` with
+   `Queued` / `Queued_RBC` matches. Author: the same. Agree. The second
+   question: after A33 Table 49 goes to S10 directly (S11, the wait for
+   the Train Data acknowledgement, lies on the S12 -> D15 path only), and
+   5.4.5.3 a) at S10 asks for 5.8.2.1 only (speed, SB in level 2,
+   validated Train Data and train running number: validated by the
+   driver). So the override may be selected at S10 with the Train Data
+   of the SoM position report not yet acknowledged.
+   `EVC_Procedures.Override_Allowed` refuses on `TD_Ack_Awaited`, which
+   `EVC_Sessions.Mission.Send_Report` sets at A33 (`Await_TD`). Author:
+   the override waits for that acknowledgement "(`Train_Data_Awaited`,
+   4.8.3 [3])", the scenario acknowledges it first. 4.8.3 [3] rejects
+   information from the RBC (an MA and the like) while the Train Data
+   are not acknowledged; it does not govern the driver's selection.
+   Disagree on this part: B2620.
+3. The session at desk opening. Mine: 5.4.1.4 terminates every session
+   established with no termination ongoing, in any mode and level (the
+   case served: the session kept in Sleeping, 4.4.6.1.10, then SB and S0);
+   a terminating one is left to its end; one being established is not
+   named (3.5.3.8 a) is the desk closing), so left by the letter.
+   `Apply_Desk` on the edge closed -> open, Established only. Author: the
+   same, the being-established case left as well. Agree; the scenario
+   does not check the terminating case its heading names (a remark).
+4. The safe consist length. Mine: 4.4.21.1.12 informs the driver and
+   brakes only when moving; Table 68 ends the entry at the later of 30 s
+   and 3.14.1.7.6 (or the reason revoked by 4.12.1.2); at standstill there
+   is no brake, start and end together, 30 s shown; bit 31.
+   `Consist_Step`, DMI `After_30s` (end pending until 30 s), `SS_Bit` 19
+   => 31. Author: the same. Agree; a remark: `Consist_Step`'s heading says
+   "30 s from the start whichever comes first" where the DMI keeps the
+   later.
+5. Packet 64. Mine: 7.4.2.16.1 holds Q_DIR only; 4.8.3 accepts it from
+   the RBC in level 2 only (R [2] in 0, NTC, 1); [8] rejects the revocable
+   TSRs (NID_TSR not 255) of balise groups in level 2 received
+   thereafter (3.11.5.13); deleted on entering level 0, NTC, 1
+   (4.9.1.3.1), on entering NP, SB, PS, SH, SR, SL, NL, UN, SN, RV (the
+   row of the 4.10.1.3 table; U in SM, FS, AD, LS, OS, TR, PT), at the end
+   of the ordering RBC's session (3.11.5.14 a, the session clause exists)
+   and at the RBC/RBC border (b). Author (e6/consist-entry): the same, b)
+   left (B2560), Q_DIR ignored by decision. Agree; a remark: the Q_DIR
+   decision takes a packet given for the other direction, which the
+   validity direction of radio data (7.5.1.103) would set aside.
+6. 3130700_03 step 62. Mine: V_PBD 65 = V5, V_MRSP 65; the chart's 65.4
+   km/h at 200 m is driven as `Calibrated` 65.0, and `Kmh_To_Cms` rounds
+   65.004 km/h to 1806 cm/s (65.02 km/h): V_est just above V_MRSP, t2 of
+   3.13.10.3.3 Overspeed, right at that speed; Normal needs V_est <= 65,
+   which step 58's comment asks (V_TRAIN=<below V5>). Not the on-board:
+   the runner's speed model on a chart drawn on the V5 plateau. Author
+   (S8727c744 model, B2600): the same. Agree.
+7. 4080404_02 BG1d. Mine: the two balises (M_DUP 00) carry a packet 5
+   each for the nominal direction, BG2 at 150 m and BG3 beyond, then BG2
+   at 0 m and BG4 at 0 m; ERA's PDF has both, its step 39 names packets
+   12, 21, 27 only and step 44 reads BG2 at 200 m. 8.4.1.4 (packet 5 no
+   exception; 8.4.1.6 needs duplicated balises): not compliant, so
+   inconsistent by 3.16.1.1, which 3.16.1.1.1 leaves the on-board free
+   not to detect; detected, the group would be rejected with a brake, no
+   FS at step 41. No clause picks a packet; the steps fit the first, ours
+   keeps the last and brakes by 3.16.2.7.1.1 at 206 m: a SUBSET-076 data
+   defect, not the on-board. Author (B2520, appended to Sa8a3ba1a's E7
+   line, step 47 failing for BG2d's packet 133 to the RIU): the same.
+   Agree.
+8. 5040300_24 step 97. Mine: Table 49 S3, FRMCS+GSM-R entered with FRMCS
+   installed and not registered (E4) -> A41 ("FRMCS network registration
+   failed") -> D8 -> both systems: S3 again; the DMI's S3-4: A41's text,
+   else back to the Radio data window; neither shows the Main window with
+   ST05. ERA shows ST05, then the A.3.1 time from the FRMCS detection,
+   the text, the Radio data window: it reads "not registered" as known
+   once the time "after which the registration is considered as failed"
+   is over. Ours: the runner's entry is taken (131.1 s), FRMCS detected at
+   127.5 s without SA-REGISTRATION.Indication, the Radio data window, no
+   entry 33 ever. Cause: `EVC_Sessions.Network.Driver_Entries` stores the
+   type with no E4 -> A41 branch, and `Supervise_Wait` times out only
+   In_SoM (S4), not at S3. The on-board's fault; the DMI and the runner
+   are right. Author (S7e2edbdf onboard, B2601): the on-board, the cause
+   not traced, the path read as "A41, then S4 with the hour glass".
+   Agree on the locus; the path after A41 is D8 -> S3, not S4, and
+   whether A41 comes at once or after the A.3.1 time is the reading
+   B2601's fix has to make: B2621.
+
+Counts: 8 items, 9 verdicts with item 2's two questions: 8 agreed (1, 2a,
+3, 4, 5, 6, 7, 8 on the locus), 1 disagreed (2b, the override at S10
+before the Train Data acknowledgement), none undecided; item 8's reading
+of the path after A41 recorded beside B2601. Backlog: B2620 (the
+override at S10 after A33), B2621 (item 8's path and the cause found).
+Brief premises wrong: none of substance (item 6's "65.4" is the drawn
+speed; the runner drives 65.0, rounded up to 65.02). Remarks without a
+line: the desk-opening scenario's terminating case, `Consist_Step`'s
+heading, the Q_DIR decision of packet 64. The review took about 105 tool
+calls of 130.
