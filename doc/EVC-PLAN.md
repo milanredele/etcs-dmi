@@ -14157,3 +14157,23 @@ the model line of Sfb2423ac and the _76 note of ~[workbook train]
 withdrawn. The runner 1163 / 1069 / 958 unchanged; 9 steps after the
 first failure moved to failed (the traction cut-off steps of _75 and _76
 that follow the Warning).
+
+**B2360, the raised T_brake_emergency: checked, not built.** The words
+"In order to comply with the requirement 3.11.11.6 of the SRS, we
+increase the T_BRAKE_EMERGENCY by one second" are in step 61's comment
+of all eight 3130700_01 to _08 (the brief named four): _01, _03, _05,
+_07 carry the gamma sheet (K52 3.5 s, W52 2.5 s), the even ones the
+lambda train (K52 2.5). 3111100_01 says the same in other words and has
+no workbook; 3131040_71 has K52 3.5 s without them, so the sheet's data
+alone are no criterion. The words are specific, but the runner cannot
+read them: `S076_Sequences` cuts a step's comment at Max_Text (400
+characters) and the phrase lies near character 600 of a comment of about
+720. The build (`S076_Bench.Set_Gamma` with a flag, `Build_Gamma`
+taking combination 1's time less 1 s, the flag from the comments in
+`S076_Run`) found no comment, moved nothing and was withdrawn. B2360
+narrowed: a longer comment in `S076_Sequences` first (outside this
+package's units), then the build and the full runner.
+
+Edits outside the named units: none (the runner's `S076_Run.ODO_Input`
+is the ODO speed input of the brief). Commits: the trace of 3131050_21,
+the speed input naming V_EMA, this paragraph with B2360.
