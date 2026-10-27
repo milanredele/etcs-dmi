@@ -422,6 +422,7 @@ begin
    Scenario_TAF_Up_To_L2;
    Scenario_Track_Ahead_Free;
    Scenario_TAF_Roll_Back;
+   Scenario_TSR_Inhibition;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Order_With_L1_MA;
