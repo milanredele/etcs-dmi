@@ -9,6 +9,7 @@ test/wasm/obj/*
 test/wasm/*.wasm
 _site/
 .claude/worktrees/
+.claude/settings.local.json
 # Cross build for the TMS570 (ports/tms570/build.sh): objects under
 # obj/.../tms570/ (already covered by obj/*, listed for clarity)
 obj/tms570/
