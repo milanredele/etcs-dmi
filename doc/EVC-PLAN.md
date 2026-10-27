@@ -14116,3 +14116,54 @@ B2400 and B2401 are the user's decisions with B1060, B1063, B1340;
 B2360, B2361, B2340, B2380 and B1960's last trace (runner); then B781's
 remaining bullets, B2380's FRMCS sequences; the review again (eight
 items, readings first).
+
+### The events shown again after a DMI restart, the override from S20 back, the safe consist text (e6/dmi-restart) (2026-10-27)
+
+**The events after a DMI restart (B2240 done).** The claim held at
+the source: `EVC_Core.Outputs.Send_Procedure_Messages` sent
+MSG_SYSTEM_STATUS and MSG_TEXT / MSG_TEXT_REMOVE as the events of the
+cycle only. The texts: `EVC_Text_Messages` keeps every message in a
+slot with `Shown` (set at the display, the slot cleared at the
+removal) and `Acked`; a text whose end came before its acknowledgement
+keeps its slot, its brake and `Shown` until the acknowledgement (the
+brake was kept without the text being shown on a restarted DMI: the
+open question of the line, answered by reading `Evaluate`). The system
+status messages: the owners know only their events
+(`EVC_Procedures.Status_Event`, `EVC_Sessions.Status_Event`,
+`EVC_Radio_Authority.Status_Entry`, and the `*_Shown` markers of
+`Show_Mode_Indications`, `Show_Route_Unsuitable`,
+`Show_Trackside_Malfunction`), six senders, and none of them knows the
+ends the DMI owns alone (its 30 s timers, its mode changes of 15.1.1.2,
+the acknowledgements) which `EVC_JRU_Records.System_Status` takes from
+MSG_STATUS_ENDED and the driver's acknowledgements. Decision: the JRU's
+set is the list to resend, being the set "displayed as the on-board
+sees it"; kept by entry beside its SUBSET-027 bits (`Entries_Shown`,
+`Entry_Shown`), because a bit is shared by two entries (1 and 2, 4 and
+5, 15 and 16, 17 and 18: the brake and the trip rows) — the smaller
+change than an accessor in six owners that would still miss the DMI's
+own ends. In the cycle after the hello `Send_Procedure_Messages`
+(before `Send_VBC_List`, which clears `DMI_Restarted`, the order in
+the spec) sends `Resend_Texts` (every slot shown, the hour and minute
+of its first display, the acknowledgement bit only while awaited) in
+place of the cycle's text starts (a start of the cycle is in a shown
+slot already), the cycle's removals as they are, then
+`Resend_Status_Entries`: a start for every entry the set held at the
+end of the last cycle and that no status event of this cycle names
+(`EVC_Outbox.Status_Event`: a start sent already, or an end). The DMI
+does not show a duplicate (read in `DMI_Text_Messages.Put`: the same
+id replaces its slot; `DMI_System_Status.Start`: an active entry
+begins its end conditions anew, no second text). An entry ended by the
+DMI's own timer while no DMI was connected is shown again, its timer
+restarting: what the on-board saw. The comment of MSG_DMI_HELLO in
+common/dmi_protocol.ads says both. Scenario
+`EVC_Test_Procedures.Scenario_DMI_Restart_Displayed` (FS, level 1):
+three plain texts, one acknowledged before the restart (removed), one
+not acknowledged after its 3 s (Q_TEXTCONFIRM 2, the service brake),
+"Train data changed" with its brake while moving (5.17.2.2 S2); after
+the hello the two texts displayed shown again (flags 4 and 5: the
+second with the request), not the acknowledged one, the starts of
+entries 18 and 6 ("Entering FS" of the mode set at the start: its end
+is the DMI's, no DMI reports it in the generic), nothing in the next
+cycle, and the acknowledgement on the restarted DMI releases the text's
+brake. Proofs `evc_core-outputs`, `evc_text_messages`,
+`evc_jru_records`. Runner 1163 / 1069 / 958, 0 movements.

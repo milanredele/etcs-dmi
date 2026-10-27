@@ -256,6 +256,9 @@ is
                    (EVC_Bytes.Byte (EVC_Radio_Authority.Status_Entry),
                     EVC_DMI_Port.SS_Event_Start));
       end if;
+      if DMI_Restarted then
+         Resend_Texts;
+      end if;
       for I in 1 .. EVC_Text_Messages.Output_Count loop
          declare
             O : constant EVC_Text_Messages.Output_T :=
@@ -263,7 +266,12 @@ is
             F : Frame_Buffer_T;
             L : Natural;
          begin
-            if EVC_Text_Messages."=" (O.Kind, EVC_Text_Messages.Show) then
+            if EVC_Text_Messages."=" (O.Kind, EVC_Text_Messages.Show)
+              and then DMI_Restarted
+            then
+               --  shown by Resend_Texts, or removed again in this cycle
+               null;
+            elsif EVC_Text_Messages."=" (O.Kind, EVC_Text_Messages.Show) then
                Text_Frame (O.Id, O.Flags,
                            EVC_Bytes.Byte (Seconds / 3600 mod 24),
                            EVC_Bytes.Byte (Seconds / 60 mod 60),
@@ -274,7 +282,57 @@ is
             end if;
          end;
       end loop;
+      if DMI_Restarted then
+         Resend_Status_Entries;
+      end if;
    end Send_Procedure_Messages;
+
+   procedure Resend_Texts is
+   begin
+      for Slot in 1 .. EVC_Text_Messages.Max_Messages loop
+         pragma Loop_Invariant (True);
+         if EVC_Text_Messages.Shown (Slot) then
+            declare
+               O : constant EVC_Text_Messages.Output_T :=
+                 EVC_Text_Messages.Shown_Output (Slot);
+               Seconds : constant Unsigned_64 :=
+                 EVC_Text_Messages.Shown_Ms (Slot) / 1000;
+               F : Frame_Buffer_T;
+               L : Natural;
+            begin
+               Text_Frame (O.Id, O.Flags,
+                           EVC_Bytes.Byte (Seconds / 3600 mod 24),
+                           EVC_Bytes.Byte (Seconds / 60 mod 60),
+                           O.Text (1 .. O.Length), F, L);
+               EVC_Outbox.Put (DMI, F (1 .. L));
+            end;
+         end if;
+      end loop;
+   end Resend_Texts;
+
+   procedure Resend_Status_Entries is
+      function Sent (E : EVC_Bytes.Byte) return Boolean
+        with Global => EVC_Outbox.Queue
+      is
+      begin
+         for I in 1 .. EVC_Outbox.Status_Count loop
+            pragma Loop_Invariant (True);
+            if Natural (EVC_Outbox.Status_Event (I).Entry_Number) = Natural (E)
+            then
+               return True;
+            end if;
+         end loop;
+         return False;
+      end Sent;
+   begin
+      for E in EVC_Bytes.Byte range 1 .. 63 loop
+         pragma Loop_Invariant (True);
+         if EVC_JRU_Records.Entry_Shown (E) and then not Sent (E) then
+            EVC_Outbox.Put
+              (DMI, System_Status_Frame (E, EVC_DMI_Port.SS_Event_Start));
+         end if;
+      end loop;
+   end Resend_Status_Entries;
 
    procedure Record_Text_Display (I : Positive) is
       use EVC_JRU_Messages;

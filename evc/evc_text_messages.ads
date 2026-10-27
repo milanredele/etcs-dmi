@@ -100,6 +100,21 @@ is
    function Displayed return Natural
      with Global => State;
 
+   --  The message of a slot as displayed, to show again on a DMI that
+   --  restarted (MSG_DMI_HELLO): Shown when it was shown and not removed
+   --  since; its Show output with the request for acknowledgement only
+   --  while the acknowledgement is awaited, and the on-board time in ms
+   --  when it was shown (its hour and minute, 3.12.3.1.10)
+   function Shown (Slot : Positive) return Boolean
+     with Global => State,
+          Pre => Slot <= Max_Messages;
+   function Shown_Output (Slot : Positive) return Output_T
+     with Global => State,
+          Pre => Slot <= Max_Messages;
+   function Shown_Ms (Slot : Positive) return Unsigned_64
+     with Global => State,
+          Pre => Slot <= Max_Messages;
+
    --  The records of the cycle for the juridical recording (EVC_Ports,
    --  event 24): byte 2 the kind, byte 3 the id mod 256, byte 4 the class
    Max_Events : constant := 8;
