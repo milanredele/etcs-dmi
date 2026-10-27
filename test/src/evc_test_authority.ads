@@ -67,6 +67,7 @@ package EVC_Test_Authority is
    --  2 transition location" (packet 90) in level 1
    procedure Scenario_TAF_Up_To_L2;
    procedure Scenario_Track_Ahead_Free;
+   procedure Scenario_TAF_Roll_Back;
    --  Message 34 referring to the group 10 of country 123: the display
    --  from Begin_M to Begin_M + Len_M metres beyond it
    function TAF_Message (Begin_M, Len_M : Natural)

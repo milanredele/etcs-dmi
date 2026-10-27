@@ -14176,3 +14176,27 @@ standstill cycle; a real reversal stops the train, and a standstill
 after the Overlap timer started deletes the overlap (3.8.4.4.3, not
 reverted), so the overlap case checks the start only. Left of the
 bullet: the relocation (B781).
+
+**A.3.5.1 9th bullet, the track ahead free request over a reverse
+movement** (a defect found and fixed). `EVC_Test_Authority.
+Scenario_TAF_Roll_Back`: in level 2 and SR, the request of message 34
+shown from 200 m to 300 m beyond the group 10 (3.15.5.2), the train at
+50 cm a cycle rolls back 1.5 m in rear of the location where it is
+shown and comes forward 5 m; past its end, the same roll back. Found:
+behind the beginning the request was withdrawn and the forward movement
+showed it a second time, `EVC_Radio_Authority.Evaluate_TAF` judging the
+beginning against the estimated front end in every cycle. Fixed: `TAF_T`
+keeps `Begun` (cleared by a new request in `Take_TAF`, 3.15.5.6), and
+the request is shown from the beginning once reached to its end. The end
+needed nothing: passed, the request is deleted (`Stored` false), so a
+roll back behind it does not show it again. Proof of
+`evc_radio_authority` (978 checks, none unproved); runner 0 regressions,
+0 improvements. Left of the bullet: the relocation (B781).
+
+Edits outside the brief's units, in all: `EVC_Profiles.Stored_T`,
+`EVC_JRU_Records.Track_Conditions`, `EVC_Test_JRU.
+Scenario_JRU_Track_Conditions` (item 1); `EVC_Radio_Authority` (`TAF_T`,
+`Take_TAF`, `Evaluate_TAF`) is the TAF's owner the brief allows where a
+scenario shows a defect. Left of B781: the relocation for the 3rd, 4th,
+7th, 9th and 12th bullets, the stop of the 3rd, the LS profile of the
+4th, the 6th (handover) and 11th (LX) bullets.
