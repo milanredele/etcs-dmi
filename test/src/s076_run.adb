@@ -5426,7 +5426,7 @@ package body S076_Run is
       Sequence : String (1 .. 10);
       Step     : Positive;
    end record;
-   Linking_Data_Cases : constant array (1 .. 13) of Linking_Case_T :=
+   Linking_Data_Cases : constant array (1 .. 15) of Linking_Case_T :=
      (("3131040_13", 56),
       ("3131040_27", 55),
       ("3131040_31", 55),
@@ -5439,7 +5439,9 @@ package body S076_Run is
       ("3131050_17", 55),
       ("3131040_78", 56),
       ("3131040_77", 56),
-      ("3130234_05", 50));
+      ("3130234_05", 50),
+      ("4080436_02", 63),
+      ("4080444_02", 63));
 
    --  what the data of case I say against the track or the clause
    function Linking_Why (I : Positive) return String is
@@ -5476,6 +5478,11 @@ package body S076_Run is
            & " (Q_LINKREACTION trip), no step passes NID_BG 0 (the ERA"
            & " document's steps give BG 1 d, 2 d, 3 d); the trip of"
            & " 3.16.2.3.1 b) after BG2d, TR at 813 m where FS is expected",
+         when 14 | 15 =>
+           "linking: BG1d (100 m) links BG2 at 150 m, BG3 at 200 and BG4"
+           & " at 300 (Q_LINKREACTION trip), no step passes BG3 (the ERA"
+           & " document's steps give BG 1 d, 2 d, 4 d; BG4d at 250 m); the"
+           & " trip of 3.16.2.3.1 b) after 171 m, TR where BG4d expects FS",
          when others =>
            "the text: V_TRAIN > V_EMA, the comment and the Indication"
            & " expected: below V_EMA (3.13.10.4.15)");
