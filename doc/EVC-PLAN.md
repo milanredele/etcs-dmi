@@ -14827,3 +14827,37 @@ the next one does not: the scenario reads it a cycle later. Matrix:
 A.3.5.1 noted for the 11th bullet, 5.16.2.1 and 5.16.3.2 re-read and
 noted (not reverted, the scenario). No code change in evc/, no proof
 run, the runner not moved by it.
+
+**A.3.5.1 4th and 7th bullets over a relocation** (no defect: the kept
+flags of the reverse movement hold). Checked at the source: the stored
+locations are `EVC_Profiles.Location_T` (an origin and an offset) and
+their frame positions come from the origin table, which a relocation
+changes (3.6.4.2.5 a)); the location itself stays, so
+`EVC_Procedures.Note_Passed` (its `Same`: the slot's start and end
+locations) keeps the beginning reached and the end passed, and
+`EVC_Track_Conditions.Phases` ORs the flags of `Stored_T`, which no
+relocation touches. The shape, `EVC_Test_Profiles.Lay_Relocating` and
+`Lay_Run` beside the roll-back scenarios: the group 10 at 100 m links
+the group 20 at 300 m with Q_LOCACC 12 m (the accuracy of the unlinked
+group 10 being the default 12 m too, so that the confidence interval
+does not change across the relocation by the accuracies), the train
+run to 150 m, then the odometer over-reading by 2 % (`Error_Per_Mille`
+20) without its own interval (`Bound_Per_Mille` 0): from 150 to 400 m
+it counts 5 m too many, the group 20 is read at 402.5 m (the bench's
+antenna) and moves the locations referred to the group 10 5 m ahead in
+the frame, the min and max safe front ends against them about 3.8 m
+back (the interval of 13.2 m before, 12 m after). The brief's 3 m and
+"1 m in rear of B" did not fit the confidence interval: the locations
+were placed from a probe run. (a) `Scenario_Mode_Profile_Relocated`: an
+OS profile from 200 to 296 m of the group 10 (Q_MAMODE 1), acknowledged
+at its start; FS at its end by the min safe front end (4.6.3 [75]) with
+the group 10 still the SOLR; after the group 20 is read the min safe
+front end is 1.94 m in rear of the end; driven on to 420 m: FS kept, no
+mode change, no acknowledgement asked. (b)
+`Scenario_Track_Condition_Relocated`: a powerless section from 322.5 to
+422.5 m of the group 10; "Lowered pantograph" (TC01) at its start by the
+max safe front end with the group 10 still the SOLR (5.18.2.3); after
+the group 20 is read the max safe front end is 4.44 m in rear of the
+start; driven on to 420 m: TC01 shown in every cycle, the announcement
+(TC03) not again, no record 45 again. Matrix: A.3.5.1 noted for the
+relocation of both bullets. No code change in evc/.

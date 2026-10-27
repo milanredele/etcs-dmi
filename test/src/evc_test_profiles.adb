@@ -1668,6 +1668,181 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_LX_Roll_Back;
 
+   --  A relocation in rear of a location passed (A.3.5.1, 3.6.4.2.5 a)):
+   --  the group 10 at 100 m links the group 20 at 300 m (Q_LOCACC 12 m,
+   --  the accuracy of the unlinked group 10 by default), the odometer
+   --  over-reading by 2 % without a confidence interval of its own, so
+   --  that the group 20 is read 6 m beyond its linked location and its
+   --  reading puts the estimated, min and max safe front ends 6 m back
+   --  against the locations referred to the group 10; the train at
+   --  18 km/h, the SSP, the gradient and an MA of 3000 m carried by the
+   --  group 10, before which the caller's packets are carried; Lay_Run
+   --  then runs the train to 150 m
+   procedure Lay_Relocating is
+   begin
+      Start_X;
+      Speed_Cms := 500;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 300), (1 => 20), Locacc => 12)));
+      Add_Group (Group (20, 400));
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((1 => 3000)));
+   end Lay_Relocating;
+
+   procedure Lay_Run is
+   begin
+      Run_X (15_000);
+      Error_Per_Mille := 20;
+      Bound_Per_Mille := 0;
+   end Lay_Run;
+
+   --  A.3.5.1 4th bullet over a relocation: an On Sight mode profile from
+   --  200 to 296 m of the group 10 (300 to 396 m), its end passed by the
+   --  min safe front end before the group 20 is read by the over-read,
+   --  then ahead of it again by the relocation on the group 20: FS kept, no
+   --  second transition, no acknowledgement asked (Lay_Relocating)
+   procedure Scenario_Mode_Profile_Relocated is
+      MP      : T80.Packet_T;
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      Changes : Natural := 0;
+      Asked   : Natural := 0;
+      Last    : Mode_T;
+      X       : Integer_64;
+      Gap     : Integer_64;
+
+      procedure Step_Counted is
+      begin
+         Step_X (50);
+         for I in 1 .. EVC_Procedures.Event_Count loop
+            if EVC_Procedures.Event (I).Kind
+                 = EVC_Procedures.Event_Ack_Request
+            then
+               Asked := Asked + 1;
+            end if;
+         end loop;
+         if EVC_Core.Mode /= Last then
+            Changes := Changes + 1;
+            Last := EVC_Core.Mode;
+         end if;
+      end Step_Counted;
+   begin
+      Lay_Relocating;
+      MP.Q_DIR := 1;
+      MP.Q_SCALE := 1;
+      MP.D_MAMODE := 200;
+      MP.M_MAMODE := 0;
+      MP.V_MAMODE := 127;
+      MP.L_MAMODE := 96;
+      MP.L_ACKMAMODE := 100;
+      MP.Q_MAMODE := 1;
+      Carry (1, 1, MP);
+      Lay_Run;
+      Last := EVC_Core.Mode;
+      while EVC_Core.Mode = M_FS and then Train_Cm < 35_000 loop
+         Step_Counted;
+      end loop;
+      Input (DMI, (16#40#, 5, 0, 0, 0, 2, 1, 0, 0, 0));
+      Step_Counted;
+      Check (EVC_Core.Mode = M_OS and then not EVC_Procedures.Ack_Requested,
+             "mode profile relocated: OS at the start, acknowledged");
+      Changes := 0;
+      Asked := 0;
+      while EVC_Core.Mode = M_OS and then Train_Cm < 41_000 loop
+         Step_Counted;
+      end loop;
+      X := Train_Cm;
+      Check (EVC_Core.Mode = M_FS and then Changes = 1
+             and then Natural (Pos.SOLR.Id.NID_BG) = 10
+             and then MAu.Mode_Profiles (1).Used,
+             "mode profile relocated: FS at the end passed by the min safe "
+             & "front end before the group 20 (4.6.3 [75]), at" & X'Image);
+      Changes := 0;
+      while Natural (Pos.SOLR.Id.NID_BG) /= 20 and then Train_Cm < 41_000
+      loop
+         Step_Counted;
+      end loop;
+      Gap := Min_X (MAu.Mode_Profiles (1).Finish)
+        - Integer_64 (SI.Current.Train.Min_Safe_Front);
+      Check (Natural (Pos.SOLR.Id.NID_BG) = 20 and then Gap > 0,
+             "mode profile relocated: the min safe front end in rear of "
+             & "the end after the relocation on the group 20 (3.6.4.2.5 a)), "
+             & "by" & Gap'Image & " cm");
+      while Train_Cm < 42_000 loop
+         Step_Counted;
+      end loop;
+      Check (EVC_Core.Mode = M_FS and then Changes = 0 and then Asked = 0,
+             "mode profile relocated: FS kept in rear of the end and "
+             & "forward over it again, no second transition, no "
+             & "acknowledgement asked (A.3.5.1 4th bullet), got"
+             & Changes'Image & Asked'Image);
+      Speed_Cms := Saved;
+   end Scenario_Mode_Profile_Relocated;
+
+   --  A.3.5.1 7th bullet over a relocation: a powerless section with the
+   --  pantograph to be lowered from 322.5 to 422.5 m of the group 10
+   --  (422.5 to 522.5 m), its start reached by the max safe front end
+   --  before the group 20 is read by the over-read, then ahead of it
+   --  again by the
+   --  relocation on the group 20: "Lowered pantograph" kept, the
+   --  announcement not shown again, no record of the track condition
+   --  again (Lay_Relocating)
+   procedure Scenario_Track_Condition_Relocated is
+      Saved : constant Unsigned_16 := Speed_Cms;
+      P     : T68.Packet_T;
+      Seen  : array (0 .. 15) of Natural := (others => 0);
+      Held  : Boolean := True;
+      X     : Integer_64;
+      Gap   : Integer_64;
+   begin
+      Lay_Relocating;
+      P.Q_DIR := 1;
+      P.Q_SCALE := 0;
+      P.Q_TRACKINIT := 0;
+      P.Has_D_TRACKCOND := True;
+      P.D_TRACKCOND := 3_225;
+      P.L_TRACKCOND := 1_000;
+      P.M_TRACKCOND := 3;
+      P.N_ITER := 0;
+      Carry (1, 0, P);
+      Lay_Run;
+      Run_X (35_000);
+      Check (TC_Shows (3), "track condition relocated: announced (5.18.2.2)");
+      while not TC_Shows (1) and then Train_Cm < 41_000 loop
+         Step_X (50);
+      end loop;
+      X := Train_Cm;
+      Check (TC_Shows (1) and then not TC_Shows (3)
+             and then Natural (Pos.SOLR.Id.NID_BG) = 10,
+             "track condition relocated: lowered pantograph at the start "
+             & "reached by the max safe front end before the group 20 "
+             & "(5.18.2.3), at" & X'Image);
+      for K in Seen'Range loop
+         Seen (K) := JRU_TCs (K);
+      end loop;
+      while Natural (Pos.SOLR.Id.NID_BG) /= 20 and then Train_Cm < 41_000
+      loop
+         Step_X (50);
+         Held := Held and then TC_Shows (1) and then not TC_Shows (3);
+      end loop;
+      Gap := Max_X (TCo.Conditions.List (1).Start)
+        - Integer_64 (SI.Current.Train.Max_Safe_Front);
+      Check (Natural (Pos.SOLR.Id.NID_BG) = 20 and then Gap > 0,
+             "track condition relocated: the max safe front end in rear of "
+             & "the start after the relocation on the group 20 "
+             & "(3.6.4.2.5 a)), by" & Gap'Image & " cm");
+      while Train_Cm < 42_000 loop
+         Step_X (50);
+         Held := Held and then TC_Shows (1) and then not TC_Shows (3);
+      end loop;
+      Check (Held and then (for all K in Seen'Range => Seen (K) = JRU_TCs (K)),
+             "track condition relocated: the lowered pantograph kept in "
+             & "rear of the start and forward over it again, the "
+             & "announcement not shown again, no record (A.3.5.1 7th "
+             & "bullet), got" & Held'Image);
+      Speed_Cms := Saved;
+   end Scenario_Track_Condition_Relocated;
+
    --  3.12.2.3, 3.12.2.3.1, 3.12.2.4, 3.13.1.5: the route suitability
    --  data compared with the Train Data; the closest unsuitable
    --  location the temporary EOA and SvL; a change of the Train Data
