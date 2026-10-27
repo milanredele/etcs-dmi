@@ -76,11 +76,33 @@ is
    --  (the reason of a trip, 5.11; the reverse movement distances, 5.13;
    --  5.17), the text messages (3.12.3: shown with the hour and the
    --  minute of the on-board time, or removed)
+   --  After the DMI's hello (DMI_Restarted, read before Send_VBC_List,
+   --  its last reader, clears it): the texts displayed (Resend_Texts) in
+   --  place of the cycle's starts of a text, then the system status
+   --  messages the on-board sees displayed (Resend_Status_Entries)
    procedure Send_Procedure_Messages
      with Global => (Input  => (Clock_Ms, EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_Sessions.State,
-                                EVC_Radio_Authority.State),
+                                EVC_Radio_Authority.State,
+                                EVC_JRU_Records.State, DMI_Restarted),
+                     In_Out => EVC_Outbox.Queue);
+
+   --  DMI MSG_DMI_HELLO: every text message displayed and not removed
+   --  (EVC_Text_Messages.Shown), with the hour and the minute it was
+   --  first shown at and the request for acknowledgement while one is
+   --  awaited, so that the brake of 3.12.3.4.7 is released by the
+   --  driver of the restarted DMI
+   procedure Resend_Texts
+     with Global => (Input  => EVC_Text_Messages.State,
+                     In_Out => EVC_Outbox.Queue);
+
+   --  DMI MSG_DMI_HELLO: the start of every entry displayed at the end of
+   --  the last cycle (EVC_JRU_Records.Entry_Shown: the starts and ends
+   --  sent, the acknowledgements and the ends the DMI reported) and not
+   --  started or ended again in this cycle (EVC_Outbox.Status_Event)
+   procedure Resend_Status_Entries
+     with Global => (Input  => EVC_JRU_Records.State,
                      In_Out => EVC_Outbox.Queue);
 
    --  The SUBSET-027 message of the I-th text message record of the

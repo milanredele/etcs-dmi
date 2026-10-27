@@ -1721,6 +1721,94 @@ package body EVC_Test_Procedures is
              & "not the newest one put in the first slot");
    end Scenario_Text_Message_Room;
 
+   --  The DMI restarted (MSG_DMI_HELLO) while texts and a system status
+   --  message are displayed: the texts shown and not removed are shown
+   --  again, the one awaiting its acknowledgement with the request (its
+   --  brake of 3.12.3.4.7 kept and released by the new DMI), the one
+   --  acknowledged before the restart not; the system status message
+   --  active ("Train data changed", the brake of 5.17.2.2 S2) started
+   --  again; all once, in the cycle after the hello
+   procedure Scenario_DMI_Restart_Displayed is
+      Cat : constant := 128;
+      C_Kept, C_Acked, C_Await : ST.Text_Conditions_T;
+      function Id_Of (S : String) return Natural is
+      begin
+         for I in 1 .. Text_N loop
+            if Texts (I).Text (1 .. Texts (I).Len) = S then
+               return Texts (I).Id;
+            end if;
+         end loop;
+         return 0;
+      end Id_Of;
+      function Flags_Of (S : String) return Natural is
+      begin
+         for I in 1 .. Text_N loop
+            if Texts (I).Text (1 .. Texts (I).Len) = S then
+               return Texts (I).Flags;
+            end if;
+         end loop;
+         return 16#FF#;
+      end Flags_Of;
+      Acked_Id, Await_Id : Natural;
+   begin
+      Begin_Scenario (M_FS, L1);
+      TIU_In (13, 0);
+      C_Acked.Confirm := 1;
+      C_Await.Confirm := 2;
+      C_Await.T_S := 3;
+      Line_Group (EOA_M => 2_000);
+      Close;
+      Group (2, 20);
+      Add (ST.Plain_Text ("Kept", C_Kept));
+      Close;
+      Group (3, 26);
+      Add (ST.Plain_Text ("Acked", C_Acked));
+      Close;
+      Group (4, 32);
+      Add (ST.Plain_Text ("Await", C_Await));
+      Close;
+      Run_Front (100, 40);
+      Acked_Id := Id_Of ("Acked");
+      Await_Id := Id_Of ("Await");
+      Check (Id_Of ("Kept") /= 0 and then Acked_Id /= 0 and then Await_Id /= 0
+             and then SB and then Why (EVC_Ports.TIU_Reason_Ack_Missing),
+             "DMI restart: three texts shown, the third not acknowledged "
+             & "after its 3 s, the service brake (3.12.3.4.7)");
+      Ack (3, Acked_Id);
+      Cycle;
+      TIU_In (13, Cat + 3);
+      Cycle;
+      Check (Removed_Id (Acked_Id) and then Seen_SS (18, 0),
+             "DMI restart: the acknowledged text removed (3.12.3.4.3.2 a)), "
+             & """Train data changed"" with its brake (5.17.2.2 S2)");
+
+      Forget;
+      Input (DMI, Frame (16#43#, (1 .. 0 => 0)));
+      Cycle;
+      Check (Id_Of ("Kept") /= 0 and then Flags_Of ("Kept") = 4
+             and then Id_Of ("Await") = Await_Id
+             and then Flags_Of ("Await") = 5
+             and then Id_Of ("Acked") = 0 and then Text_N = 2,
+             "DMI restart: the texts displayed shown again after "
+             & "MSG_DMI_HELLO, the one awaited with the request for "
+             & "acknowledgement, not the one acknowledged before");
+      --  with "Entering FS" of the mode set at the start, whose end the
+      --  DMI owns (15.1.1.2) and no DMI reported here (MSG_STATUS_ENDED)
+      Check (Seen_SS (18, 0) and then Seen_SS (6, 0) and then SS_N = 2,
+             "DMI restart: the system status messages displayed started "
+             & "again, events" & SS_N'Image);
+      Forget;
+      Cycle;
+      Check (Text_N = 0 and then SS_N = 0,
+             "DMI restart: once, not in the next cycle");
+      Ack (3, Await_Id);
+      Cycle;
+      Check (Removed_Id (Await_Id)
+             and then not Why (EVC_Ports.TIU_Reason_Ack_Missing),
+             "DMI restart: the text acknowledged on the restarted DMI, its "
+             & "brake released (3.14.1.7.5)");
+   end Scenario_DMI_Restart_Displayed;
+
    --  5.22 Inhibition of the BTM alarm reaction (SUBSET-076 5220200)
    procedure Scenario_BMM is
    begin
@@ -2756,6 +2844,7 @@ package body EVC_Test_Procedures is
       Scenario_Reversing;
       Scenario_Text_Messages;
       Scenario_Text_Message_Room;
+      Scenario_DMI_Restart_Displayed;
       Scenario_BMM;
       Scenario_BTM_Alarm;
       Scenario_Mode_Speeds;

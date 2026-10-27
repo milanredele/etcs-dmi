@@ -142,6 +142,14 @@ is
       return N;
    end Displayed;
 
+   function Shown (Slot : Positive) return Boolean is
+     (Messages (Slot).Used and then Messages (Slot).Shown)
+     with Refined_Global => Messages;
+
+   function Shown_Ms (Slot : Positive) return Unsigned_64 is
+     (Messages (Slot).Start_Ms)
+     with Refined_Global => Messages;
+
    function Event_Count return Natural is (Event_N)
      with Refined_Global => Event_N;
    function Event (I : Positive) return Event_T is (Events (I).E)
@@ -611,6 +619,16 @@ is
      ((if M.Confirm /= 0 then 1 else 0)
       or (if M.Important then 2 else 0)
       or (if M.Plain then 4 else 0));
+
+   function Shown_Output (Slot : Positive) return Output_T is
+     ((Kind   => Show,
+       Id     => Messages (Slot).Id,
+       Flags  => (if Messages (Slot).Acked
+                  then Flags_Of (Messages (Slot)) and not 1
+                  else Flags_Of (Messages (Slot))),
+       Length => Messages (Slot).Length,
+       Text   => Messages (Slot).Text))
+     with Refined_Global => Messages;
 
    --  The end condition of a started message in this cycle (3.12.3.4.3,
    --  3.12.3.4.3.1.2, 3.12.3.4.3.1.4): the sub-conditions fulfilled so

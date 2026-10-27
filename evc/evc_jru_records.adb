@@ -10,7 +10,7 @@ package body EVC_JRU_Records
        Refined_State => (State => (Cab_A_Recorded, Cab_B_Recorded,
                                    Cab_Recorded,
                                    Last_TC, Last_Inputs, Shown,
-                                 Last_LSSMA))
+                                   Entries_Shown, Last_LSSMA))
 is
 
    use EVC_Driver_Requests;
@@ -26,6 +26,9 @@ is
    Last_Inputs : Input_Values_T := Power_Up_Inputs;
    --  the system status messages displayed (System_Status)
    Shown : Unsigned_32 := 0;
+   --  the same set by entry of the catalogue, entry N as 2 ** N
+   --  (Entry_Shown: the entries of one bit of Shown told apart)
+   Entries_Shown : Unsigned_64 := 0;
    --  V_LSSMA last recorded (LSSMA)
    Last_LSSMA : Natural := V_LSSMA_None;
 
@@ -110,6 +113,7 @@ is
       Last_TC := (Count => 0, List => (others => (others => 0)));
       Last_Inputs := Power_Up_Inputs;
       Shown := 0;
+      Entries_Shown := 0;
       Last_LSSMA := V_LSSMA_None;
    end Reset;
 
@@ -168,15 +172,20 @@ is
    --  MSG_STATUS_ENDED (EVC_Driver_Requests.Status_End)
    procedure System_Status (Entry_Number, Event : Byte;
                             Changed : in out Boolean)
-     with Refined_Global => (In_Out => Shown)
+     with Refined_Global => (In_Out => (Shown, Entries_Shown))
    is
       N   : constant Natural := SS_Bit (Entry_Number);
       Old : constant Unsigned_32 := Shown;
    begin
       if N > 0 and then Event = 0 then
          Shown := Shown or Shift_Left (1, N - 1);
+         Entries_Shown :=
+           Entries_Shown or Shift_Left (1, Natural (Entry_Number) mod 64);
       elsif N > 0 and then Event = 1 then
          Shown := Shown and not Shift_Left (1, N - 1);
+         Entries_Shown :=
+           Entries_Shown
+           and not Shift_Left (1, Natural (Entry_Number) mod 64);
       end if;
       Shown := Shown and (2 ** 31 - 1);
       Changed := Changed or else Shown /= Old;
@@ -184,7 +193,7 @@ is
 
    procedure System_Status_Acknowledged (Entry_Number : Byte;
                                          Changed : in out Boolean)
-     with Refined_Global => (In_Out => Shown)
+     with Refined_Global => (In_Out => (Shown, Entries_Shown))
    is
    begin
       System_Status (Entry_Number, 1, Changed);
@@ -192,6 +201,12 @@ is
 
    function Status_Shown return Unsigned_32 is (Shown and (2 ** 31 - 1))
      with Refined_Global => Shown;
+
+   function Entry_Shown (Entry_Number : Byte) return Boolean is
+     (SS_Bit (Entry_Number) > 0
+      and then (Entries_Shown
+                and Shift_Left (1, Natural (Entry_Number) mod 64)) /= 0)
+     with Refined_Global => Entries_Shown;
 
    function Input_Event (I : Input_T) return Byte is
      (case I is

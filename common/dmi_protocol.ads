@@ -798,13 +798,18 @@ package DMI_Protocol is
    --  shows until it changes: MSG_TRAIN_TYPES, MSG_SYSTEM_VERSION,
    --  MSG_STORED_VALUES, MSG_RBC_CONTACT (when a contact is stored),
    --  MSG_STATUS (once, with the position or "unknown"), MSG_TRACK_COND
-   --  and MSG_VBC_LIST (the lists as they are, empty included). Not sent
-   --  again: what the on-board sends every cycle (MSG_MODE_LEVEL,
-   --  MSG_ONBOARD, MSG_SPEED_STATE, MSG_STATUS while the position is
-   --  known), what the DMI asks for (MSG_RADIO_NETWORKS), and the starts
-   --  and ends of a display (MSG_SYSTEM_STATUS, MSG_TEXT,
-   --  MSG_TEXT_REMOVE): events, so a restarted DMI does not show again
-   --  the system status messages and texts displayed before its restart.
+   --  and MSG_VBC_LIST (the lists as they are, empty included), and what
+   --  is displayed: a MSG_TEXT for every text shown and not removed (its
+   --  hour and minute of first display, the acknowledgement asked while
+   --  it is awaited) and a MSG_SYSTEM_STATUS start for every entry the
+   --  on-board sees displayed (its starts and ends sent, the driver's
+   --  acknowledgements, the ends the DMI reported by MSG_STATUS_ENDED).
+   --  Not sent again: what the on-board sends every cycle
+   --  (MSG_MODE_LEVEL, MSG_ONBOARD, MSG_SPEED_STATE, MSG_STATUS while the
+   --  position is known), what the DMI asks for (MSG_RADIO_NETWORKS), and
+   --  MSG_TEXT_REMOVE. A text or an entry the DMI shows already is not
+   --  shown twice (the same text id replaces its message; the start of
+   --  an active entry begins its end conditions anew, 15.1.1.7).
    --  No payload (Dmi_Hello_Length); a receiver ignores any other length.
    Dmi_Hello_Length : constant := 0;
 

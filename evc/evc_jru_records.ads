@@ -128,6 +128,10 @@ is
    function Status_Shown return Unsigned_32
      with Global => State,
           Post => Status_Shown'Result < 2 ** 31;
+   --  An entry of the catalogue in that set (the entries of one bit
+   --  told apart): what a restarted DMI is shown again (MSG_DMI_HELLO)
+   function Entry_Shown (Entry_Number : Byte) return Boolean
+     with Global => State;
 
    --  M_TRACKCOND_TI of a kind of the second TIU output (EVC_Ports)
    function Trackcond_TI (Kind : Natural) return Byte

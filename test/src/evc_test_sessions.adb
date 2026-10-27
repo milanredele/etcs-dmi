@@ -1341,6 +1341,71 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_SoM_L2_Override_Before_S10;
 
+   --  5.4.5.3 a) after S20: the Radio data re-entered at S20 (5.4.5.3 j),
+   --  level 2: S3, then S4 or A31) with the Train Data validated at S12
+   --  and the train running number kept valid (no new entry into SB,
+   --  4.10 does not apply): while the registration or the session of the
+   --  start of mission is awaited the process is not at S10 nor S20, the
+   --  override is not taken; at S20 again it is
+   procedure Scenario_SoM_L2_Override_From_S20 is
+      N  : Natural;
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 2, Engine_Id => 76_000, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Add_Group (Group (10, 20));
+      Run_X (5_000, 100);
+      Stand;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
+      Establish (1);
+      Stand;
+      Send (Train_Entry);
+      N := Output_Of (129);
+      if N > 0 then
+         Decode_Radio_Message (N, M, St);
+      end if;
+      Send (Text_Entry (1, "5678"));
+      Give_Radio_Message (1, Msg (MCat.Track_M8, Now_T, 0, 7, M.Values (3)));
+      Stand;
+      Stand;
+      Check (N > 0 and then R.Train_Data_Acknowledged
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "override from S20: S20, the Train Data acknowledged");
+      --  5.4.5.3 j): the Radio data re-entered, another RBC
+      Send (RBC_Entry (0, 5 * 16_384 + 301, "0077"));
+      Check (EVC_Train_Data.Valid
+             and then EVC_Mission."=" (EVC_Mission.TRN_Status,
+                                       EVC_Mission.Valid)
+             and then (EVC_Sessions.SoM_Opening
+                       or else EVC_Sessions.SoM_Awaiting_Registration),
+             "override from S20: A31 / S4 after the Radio data, the Train "
+             & "Data and the train running number still valid, opening "
+             & Boolean'Image (EVC_Sessions.SoM_Opening) & ", registration "
+             & Boolean'Image (EVC_Sessions.SoM_Awaiting_Registration));
+      Check (R.Being_Established (2),
+             "override from S20: A31, the session with the RBC entered "
+             & "being established");
+      Send (Action (6));
+      Check (not EVC_Procedures.Override_Active
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "override from S20: at A31 not taken (5.4.5.3 a))");
+      Establish (2);
+      Stand;
+      Stand;
+      Check (not EVC_Sessions.SoM_Opening
+             and then not EVC_Sessions.SoM_Awaiting_Registration,
+             "override from S20: the session opened, S10 again");
+      Send (Action (6));
+      Check (EVC_Procedures.Override_Active
+             and then EVC_Core.Mode = EVC_Modes.M_SR,
+             "override from S20: at S10 again taken (5.4.5.3 a))");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_SoM_L2_Override_From_S20;
+
    --  5.4.3.2 S21, E27 -> S25, E33 with a Shunting profile (packet 80
    --  M_MAMODE 1) at the train's position: Shunting proposed, the
    --  acknowledgement gives SH (4.6.3 [50])

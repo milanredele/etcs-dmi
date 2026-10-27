@@ -14363,3 +14363,129 @@ package's units), then the build and the full runner.
 Edits outside the named units: none (the runner's `S076_Run.ODO_Input`
 is the ODO speed input of the brief). Commits: the trace of 3131050_21,
 the speed input naming V_EMA, this paragraph with B2360.
+### The events shown again after a DMI restart, the override from S20 back, the safe consist text (e6/dmi-restart) (2026-10-27)
+
+**The events after a DMI restart (B2240 done).** The claim held at
+the source: `EVC_Core.Outputs.Send_Procedure_Messages` sent
+MSG_SYSTEM_STATUS and MSG_TEXT / MSG_TEXT_REMOVE as the events of the
+cycle only. The texts: `EVC_Text_Messages` keeps every message in a
+slot with `Shown` (set at the display, the slot cleared at the
+removal) and `Acked`; a text whose end came before its acknowledgement
+keeps its slot, its brake and `Shown` until the acknowledgement (the
+brake was kept without the text being shown on a restarted DMI: the
+open question of the line, answered by reading `Evaluate`). The system
+status messages: the owners know only their events
+(`EVC_Procedures.Status_Event`, `EVC_Sessions.Status_Event`,
+`EVC_Radio_Authority.Status_Entry`, and the `*_Shown` markers of
+`Show_Mode_Indications`, `Show_Route_Unsuitable`,
+`Show_Trackside_Malfunction`), six senders, and none of them knows the
+ends the DMI owns alone (its 30 s timers, its mode changes of 15.1.1.2,
+the acknowledgements) which `EVC_JRU_Records.System_Status` takes from
+MSG_STATUS_ENDED and the driver's acknowledgements. Decision: the JRU's
+set is the list to resend, being the set "displayed as the on-board
+sees it"; kept by entry beside its SUBSET-027 bits (`Entries_Shown`,
+`Entry_Shown`), because a bit is shared by two entries (1 and 2, 4 and
+5, 15 and 16, 17 and 18: the brake and the trip rows) — the smaller
+change than an accessor in six owners that would still miss the DMI's
+own ends. In the cycle after the hello `Send_Procedure_Messages`
+(before `Send_VBC_List`, which clears `DMI_Restarted`, the order in
+the spec) sends `Resend_Texts` (every slot shown, the hour and minute
+of its first display, the acknowledgement bit only while awaited) in
+place of the cycle's text starts (a start of the cycle is in a shown
+slot already), the cycle's removals as they are, then
+`Resend_Status_Entries`: a start for every entry the set held at the
+end of the last cycle and that no status event of this cycle names
+(`EVC_Outbox.Status_Event`: a start sent already, or an end). The DMI
+does not show a duplicate (read in `DMI_Text_Messages.Put`: the same
+id replaces its slot; `DMI_System_Status.Start`: an active entry
+begins its end conditions anew, no second text). An entry ended by the
+DMI's own timer while no DMI was connected is shown again, its timer
+restarting: what the on-board saw. The comment of MSG_DMI_HELLO in
+common/dmi_protocol.ads says both. Scenario
+`EVC_Test_Procedures.Scenario_DMI_Restart_Displayed` (FS, level 1):
+three plain texts, one acknowledged before the restart (removed), one
+not acknowledged after its 3 s (Q_TEXTCONFIRM 2, the service brake),
+"Train data changed" with its brake while moving (5.17.2.2 S2); after
+the hello the two texts displayed shown again (flags 4 and 5: the
+second with the request), not the acknowledged one, the starts of
+entries 18 and 6 ("Entering FS" of the mode set at the start: its end
+is the DMI's, no DMI reports it in the generic), nothing in the next
+cycle, and the acknowledgement on the restarted DMI releases the text's
+brake. Proofs `evc_core-outputs`, `evc_text_messages`,
+`evc_jru_records`. Runner 1163 / 1069 / 958, 0 movements.
+
+**The override from S20 back (B2402 done).** 5.4.5.3 a): "only at S10
+and S20". The claim held: from S20, j) (level 2: S3, then A31 or S4)
+and e) (S2, D3, S3 ...) leave the Train Data validated at S12 and the
+train running number valid (no entry into SB, so 4.10's TBR does not
+apply), and neither `SoM_Started` (`EVC_Mission.Waiting_For_RBC`,
+`Proposed`) nor `TD_Ack_Awaited` holds there. `EVC_Mission` has no
+step of the start of mission; `EVC_Sessions.Mission` has one
+(`Step_T`: Opening from A31 until D31, Decided with `Awaiting_Network`
+for S4 after D7) and exposes it (`EVC_Sessions.SoM_Opening`,
+`SoM_Awaiting_Registration`). Fix: `EVC_Procedures.Context_T.SoM_Opening`
+(both, built in `EVC_Core.Modes.Run_Procedures`), and
+`Override_Allowed` refuses the override in SB while it holds; S2 and
+S3 are the DMI's entry windows, which the on-board does not see until
+the entry. Scenario `EVC_Test_Sessions.Scenario_SoM_L2_Override_From_S20`
+(two sessions configured): the start of mission to S20 as in
+`Scenario_SoM_L2_Override_Before_S10`, the Radio data re-entered with
+RBC 301, the session being established (A31): the override taken
+before the fix (run with the refusal removed), refused now; the
+session opened, S10: taken. With one session configured the opening
+was judged failed in the next cycle (A32, S10: the override then
+allowed by a) at S10), the session to RBC 300 neither terminated nor
+the one to RBC 301 attempted: B2420, not traced. The DMI's EOA button
+(`DMI_Conditions.Override_EOA`, DMI Table 34 #1) is enabled at A31 and
+S4 as at S11 (read, not run): B2320 covers it. Row 5.4.5.3 a) noted.
+Proofs `evc_procedures`, `evc_core-modes` (the parent unchanged).
+
+**The safe consist length unavailable (B1401, the paper; its premise
+wrong).** 4.4.21.1.12: "If the safe consist length information is
+acquired from an external source and it becomes unavailable, the
+ERTMS/ETCS on-board equipment shall inform the driver and the trackside
+and, if the train is not at standstill, it shall command the service
+brake." The line's premise (no system status message for it in the
+DMI of 4.0.0) is wrong at the source: Table 68 of the DMI
+specification (15.1.1.5, PDF page 314) has "Safe consist length no
+longer available", start condition 4.4.21.1.12, end "Message displayed
+for 30 s (if 3.14.1.7.6 fulfilled beforehand or if brake command
+reason revoked as per 4.12.1.2 beforehand), 3.14.1.7.6 (if message
+displayed for 30 s beforehand), Brake command reason revoked as per
+4.12.1.2 (if message displayed for 30 s beforehand)", row "Brake
+reason". Our DMI has it already: `SS_Safe_Consist_Length` = 19 in
+common/dmi_protocol.ads, `DMI_System_Status`'s catalogue row
+(`T_Safe_Consist`, `After_30s`, the brake modes), and SUBSET-027's
+SYSTEM_STATUS_MESSAGE has its bit 31 (`EVC_JRU_Records.SS_Bit`'s
+comment: "has no entry of the on-board"). What is missing is on the
+on-board alone: `EVC_DMI_Port` has no entry 19 (its SS_* go from 18 to
+20), no unit sends it, and `SS_Bit` maps nothing to bit 31. The three
+ways of the brief: (1) a new system status entry with its text,
+numbered after the table's last: not needed, the table has the row;
+(2) a plain text of 3.12.3 generated on board: against 15.1.1.1 (the
+system status messages "shall be displayed ... as specified in Table
+68") and it would bypass the row's end conditions; (3) nothing beyond
+the brake and the button: leaves 4.4.21.1.12 "inform the driver"
+unfulfilled where the specification provides the means.
+Recommendation, no decision of the user needed: the entry of Table 68,
+with no change of dmi/ or of the protocol. The on-board's part, a build
+item: `EVC_DMI_Port.SS_Safe_Consist_Length` (19); the loss as an event
+of the cycle (today `Lost` is local to
+`EVC_Stored_Information.Consist_Shortening`, SM or SB with the
+manoeuvre set, standstill or not; an accessor beside `Consist_Brake`),
+the start of entry 19 at the loss in the owner of the brake's reasons
+(`EVC_Procedures`, beside `Consist_SB`, the shape of entry 1 at
+`Link_SB`), its end left to the DMI (the 30 s, the acknowledgement of
+3.14.1.7.6, the reason revoked: the DMI's row) or sent at the release
+of `Consist_SB` (4.12.1.2); `SS_Bit (19)` = 31; a scenario where the
+input of TIU signal 15 goes unavailable in SM while moving (the
+service brake and entry 19) and at standstill (entry 19, no brake).
+Left: the package's bound came after the paper (B1401 narrowed to
+that build item).
+
+Runner 1163 / 1069 / 958 before and after both builds, 0 movements.
+Edits outside the named units: `EVC_JRU_Records` (`Entries_Shown`, the
+accessor `Entry_Shown`, its reset: the option the brief left open for
+B2240), `test/src/evc_test.adb` (the call), `doc/TRACE-SUBSET-026.csv`
+(the row 5.4.5.3 a)). Backlog: B2240 and B2402 done, B1401 narrowed,
+B2420 opened.
