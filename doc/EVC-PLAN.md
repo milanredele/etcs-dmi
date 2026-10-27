@@ -15382,3 +15382,10 @@ B2620 decided by the user on 2026-10-27: while the Train Data
 acknowledgement of the start of mission's report is awaited, the override
 is not selectable; `Override_Allowed`'s refusal on `TD_Ack_Awaited`
 stands, the reviewer's reading is not followed, no change to the code.
+
+B2320 decided by the user on 2026-10-27: the DMI shall not enable the
+Override button when the on-board refuses the selection; such questions
+are judged from the driver's point of view (a button that does nothing is
+wrong). A build item now: the on-board tells the DMI whether the
+override is selectable (a bit of MSG_ONBOARD), the DMI's condition reads
+it; the next round's.
