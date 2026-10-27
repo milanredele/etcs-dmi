@@ -176,6 +176,17 @@ is
      return Boolean
    is (L12_Now or else (C.Level_Valid and then C.Level in L1 | L2));
 
+   --  4.8.3 [8], the row Temporary Speed Restriction from a balise group
+   --  in level 2 (A [8]): a revocable TSR (NID_TSR not 255, 7.5.1.99) is
+   --  rejected while the inhibition of revocable TSRs from balises in
+   --  level 2 is stored (Inhibited, EVC_Radio_Info.TSR_Inhibited)
+   --  @req 4.8.3.1.1 Table-footnote [8]
+   function Revocable_TSR_Rejected (C         : Context_T;
+                                    Inhibited : Boolean;
+                                    NID_TSR   : Natural) return Boolean
+   is (Inhibited and then C.Level_Valid and then C.Level = L2
+       and then NID_TSR /= 255);
+
    --  4.8.3 for the on-board: in its level when valid, else in every
    --  level
    function First_Filter (I : Info_T; C : Context_T) return Boolean is

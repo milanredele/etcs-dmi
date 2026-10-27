@@ -143,6 +143,17 @@ is
      with Global => (In_Out => State),
           Post => MAR_Known = Known;
 
+   --  3.11.5.13, 4.8.3 [8]: the inhibition of revocable TSRs from
+   --  balises in level 2 (packet 64) is stored (EVC_Radio_Authority sets
+   --  it at the reception and at its deletion; the stored information
+   --  rejects the revocable TSRs of the balise groups read while it is)
+   function TSR_Inhibited return Boolean
+     with Global => State;
+
+   procedure Set_TSR_Inhibited (On : Boolean)
+     with Global => (In_Out => State),
+          Post => TSR_Inhibited = On and then Count = Count'Old;
+
    --  Messages refused for want of room since Clear (saturating)
    function Refused return Natural
      with Global => State;
@@ -151,7 +162,8 @@ is
    procedure Clear
      with Global => (Output => State),
           Post => Count = 0 and then Refused = 0 and then T_MAR_Ms = 0
-                  and then not MAR_Known and then not Assignment.Valid;
+                  and then not MAR_Known and then not Assignment.Valid
+                  and then not TSR_Inhibited;
 
    --  The cycle's messages taken: the table empty
    procedure Empty

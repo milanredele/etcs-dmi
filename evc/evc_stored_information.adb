@@ -52,7 +52,7 @@ package body EVC_Stored_Information
                                    Radio_SH_Ids, Timer_Deletion,
                                    Contact_Braking, Linking_Braking,
                                    Consist_Braking, Consist_Was,
-                                   Proposal,
+                                   Consist_Loss, Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
                                    Former_Length, Former_Behind,
@@ -143,6 +143,8 @@ is
    --  until the shortening at standstill; its availability last cycle
    Consist_Braking : Boolean := False;
    Consist_Was     : Boolean := False;
+   --  4.4.21.1.12: the safe consist length lost in this cycle's Evaluate
+   Consist_Loss    : Boolean := False;
    --  3.8.2.4: the information "track ahead free up
    --  to the level 2 transition location" accepted in the last Evaluate
    --  and the group it names (3.8.2.4.2); the country of the group
@@ -195,6 +197,9 @@ is
      with Refined_Global => PBD_Last;
    function Consist_Brake return Boolean is (Consist_Braking)
      with Refined_Global => Consist_Braking;
+
+   function Consist_Lost return Boolean is (Consist_Loss)
+     with Refined_Global => Consist_Loss;
    function MA_On_Board return Boolean is (MA_Board)
      with Refined_Global => MA_Board;
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
@@ -276,6 +281,7 @@ is
       Linking_Braking := False;
       Consist_Braking := False;
       Consist_Was := False;
+      Consist_Loss := False;
       TAF_L2_New := False;
       TAF_L2_Loc := (others => <>);
       Group_Country := 0;
@@ -688,10 +694,14 @@ is
    --  permitted braking distance (52, 3.11.11), the TSRs and their
    --  revocation (65, 66, 3.11.5), the level crossings (88, 3.11.9,
    --  3.12.5), to EVC_Track_Description
-   procedure Take_Speed_Packet (K : Speed_Kind_T;
-                                R : in out Reader_T;
-                                M : Message_T;
-                                T : Origin_Table_T)
+   --  A, Inhibited: the context of a balise group's packet and the
+   --  inhibition of its revocable TSRs (4.8.3 [8]); False by radio
+   procedure Take_Speed_Packet (K         : Speed_Kind_T;
+                                R         : in out Reader_T;
+                                M         : Message_T;
+                                T         : Origin_Table_T;
+                                A         : EVC_Acceptance.Context_T;
+                                Inhibited : Boolean)
      with No_Inline,
           Global => (In_Out => (EVC_Track_Description.State,
                                 Events, Event_N),
@@ -738,7 +748,13 @@ is
                X : ETCS_Track_Packets.P65.Packet_T;
             begin
                ETCS_Track_Packets.P65.Decode (R, X, OK);
-               if OK then
+               if OK
+                 and then EVC_Acceptance.Revocable_TSR_Rejected
+                            (A, Inhibited, Natural (X.NID_TSR))
+               then
+                  Record_Event (Info_TSR, Change_Rejected,
+                                Natural (X.NID_TSR));
+               elsif OK then
                   EVC_Track_Description.Take_TSR (X, M, T);
                   Record_Event (Info_TSR, Change_Stored,
                                 Natural (X.NID_TSR));
@@ -1314,7 +1330,8 @@ is
                        MA_Accepted : in out Boolean;
                        Ctx         : Mode_Context_T;
                        Now_Ms      : Unsigned_64;
-                       From_Balise : Boolean := True)
+                       From_Balise : Boolean := True;
+                       Inhibited   : Boolean := False)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -1332,7 +1349,7 @@ is
          when K3 =>
             Take_National_Packet (R, M);
          when K27 | K51 | K52 | K65 | K66 | K88 =>
-            Take_Speed_Packet (K, R, M, T);
+            Take_Speed_Packet (K, R, M, T, A, Inhibited);
          when K21 | K141 | K70 | K71 =>
             Take_Description_Packet (K, R, M, T);
          when K68 | K39 | K67 | K69 | K40 =>
@@ -1386,7 +1403,7 @@ is
                                 Events, Event_N, Balise_Buffer.State,
                                 TAF_L2_New, TAF_L2_Loc),
                      Input  => (EVC_Position.State, EVC_Train_Data.State,
-                                Group_Country)),
+                                EVC_Radio_Info.State, Group_Country)),
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
    is
       pragma Warnings
@@ -1436,7 +1453,8 @@ is
          return;
       end if;
       EVC_Position.Open_Taken_Packet (J, P, R);
-      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms);
+      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms,
+                Inhibited => EVC_Radio_Info.TSR_Inhibited);
    end Take_Packet;
 
    --  4.8.3 [1]: the packets a unit takes itself
@@ -1685,7 +1703,8 @@ is
                                 TAF_L2_Loc, EVC_System_Version.State,
                                 EVC_VBC.State),
                      Output => Group_Country,
-                     Input  => (EVC_Position.State, EVC_Train_Data.State)),
+                     Input  => (EVC_Position.State, EVC_Train_Data.State,
+                                EVC_Radio_Info.State)),
           Pre => G <= EVC_Position.Taken_Count
    is
       Tk          : constant EVC_Position.Taken_T := EVC_Position.Taken (G);
@@ -3100,6 +3119,7 @@ is
                                  Train : Train_Frame_T;
                                  Mode  : EVC_Modes.Mode_T)
      with Global => (Input  => (EVC_Train_Data.State, EVC_Odometry.State),
+                     Output => Consist_Loss,
                      In_Out => (Consist_Braking, Consist_Was, Timer_Deletion,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -3117,6 +3137,7 @@ is
       O    : EVC_Movement_Authority.Outcome_T;
    begin
       Consist_Was := Now;
+      Consist_Loss := Lost;
       if Lost and then not EVC_Odometry.Standstill then
          Consist_Braking := True;
       elsif (Lost or else Consist_Braking) and then EVC_Odometry.Standstill
@@ -3136,6 +3157,7 @@ is
                                 Mode  : EVC_Modes.Mode_T)
      with Global => (Input  => (EVC_Sessions.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State),
+                     Output => Consist_Loss,
                      In_Out => (Contact_Braking, Linking_Braking,
                                 Consist_Braking, Consist_Was,
                                 Timer_Deletion,

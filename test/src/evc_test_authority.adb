@@ -11,6 +11,8 @@ with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
 with ETCS_Track_Packets.P68;
+with ETCS_Track_Packets.P64;
+with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P71;
 with ETCS_Track_Packets.P90;
 with ETCS_Train_Packets.P9;
@@ -27,6 +29,7 @@ with EVC_Levels;
 with EVC_Linking;
 with EVC_Procedures;
 with EVC_Radio;
+with EVC_Radio_Info;
 with EVC_Radio_Acceptance;
 with EVC_Radio_Authority;
 with EVC_SDM;
@@ -54,6 +57,8 @@ package body EVC_Test_Authority is
    package T49 renames ETCS_Track_Packets.P49;
    package T68 renames ETCS_Track_Packets.P68;
    package T71 renames ETCS_Track_Packets.P71;
+   package T64 renames ETCS_Track_Packets.P64;
+   package T65 renames ETCS_Track_Packets.P65;
    package RA renames EVC_Radio_Authority;
    use type MCat.Message_Kind_T;
    use type EVC_SDM.Status_T;
@@ -2502,5 +2507,101 @@ package body EVC_Test_Authority is
              "TAF roll back: 1.5 m in rear of its end and forward again, "
              & "not shown again (A.3.5.1 9th bullet)");
    end Scenario_TAF_Roll_Back;
+
+   --  Message 24 referring to the group NID_BG with packet 64, the
+   --  inhibition of revocable TSRs from balises in level 2
+   function Inhibition_Message (NID_BG : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      P  : T64.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 1;
+      T64.Encode (P, W, OK);
+      Check (OK, "authority: packet 64 encoded");
+      return Message_Bytes (W);
+   end Inhibition_Message;
+
+   procedure Scenario_TSR_Inhibition is
+      --  a TSR of 40 km/h D_M m beyond its group over 50 m, identity Id
+      --  (255: non revocable)
+      function TSR_At (Id : Natural; D_M : Natural) return T65.Packet_T is
+         P : T65.Packet_T;
+      begin
+         P.Q_DIR := 1;
+         P.Q_SCALE := 1;
+         P.NID_TSR := ETCS_Variables.NID_TSR_T (Id);
+         P.D_TSR := ETCS_Variables.D_TSR_T (D_M);
+         P.L_TSR := 50;
+         P.Q_FRONT := 1;
+         P.V_TSR := 8;
+         return P;
+      end TSR_At;
+   begin
+      Check (not EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: none stored at the start");
+      Start_L2;
+      Add_Group (Group (20, 200));
+      Add_Group (Group (30, 400));
+      Carry (2, 0, TSR_At (5, 50));
+      Carry (2, 0, TSR_At (255, 80));
+      Carry (3, 0, TSR_At (6, 50));
+      Run_X (11_000);
+      Give_Radio_Message (1, Inhibition_Message (10));
+      Stand_X (200);
+      Check (EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: packet 64 of message 24 in level 2 stored "
+             & "(3.11.5.12, 3.11.5.13, 4.8.3 A in level 2)");
+      Run_X (21_000);
+      Check (EVC_Track_Description.TSR_Count = 1,
+             "TSR inhibition: of the group read in level 2 the revocable "
+             & "TSR rejected, the non revocable one (NID_TSR 255) taken "
+             & "(4.8.3 [8], 3.11.5.13); TSRs"
+             & Natural'Image (EVC_Track_Description.TSR_Count));
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L1);
+      Stand_X (200);
+      Check (not EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: deleted on entering level 1 (4.9.1.3.1)");
+      Run_X (41_000);
+      Check (EVC_Track_Description.TSR_Count = 2,
+             "TSR inhibition: deleted, the next group's revocable TSR "
+             & "taken (4.9.1.3.1); TSRs"
+             & Natural'Image (EVC_Track_Description.TSR_Count));
+      --  3.11.5.14 a): the session with the RBC that ordered it ends
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, Inhibition_Message (10));
+      Stand_X (200);
+      Check (EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: stored again in level 2");
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Stand_X (200);
+      Check (not EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: deleted on entering SR (4.10.1.3, its row "
+             & "of the table)");
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Stand_X (200);
+      Give_Radio_Message (1, Inhibition_Message (10));
+      Stand_X (200);
+      Check (EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: stored again in FS, kept on entering FS "
+             & "(4.10.1.3: U)");
+      EVC_Radio.Set_State (1, EVC_Radio.Idle);
+      Stand_X (200);
+      Check (not EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: deleted when the session with the RBC that "
+             & "ordered it is terminated (3.11.5.14 a)");
+      --  4.8.3, From RBC: R [2] in level 1
+      Start_X;
+      Establish;
+      Give_Radio_Message (1, Inhibition_Message (10));
+      Stand_X (200);
+      Check (not EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: packet 64 not taken in level 1 (4.8.3 R [2])");
+   end Scenario_TSR_Inhibition;
 
 end EVC_Test_Authority;

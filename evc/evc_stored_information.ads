@@ -298,6 +298,13 @@ is
    --  @req 4.4.21.1.12, 3.14.1.7.6
    function Consist_Brake return Boolean
      with Global => State;
+
+   --  4.4.21.1.12: the safe consist length of the external source became
+   --  unavailable in the last Evaluate (the modes of Consist_Brake),
+   --  standstill or not: the driver is informed of it
+   --  @req 4.4.21.1.12
+   function Consist_Lost return Boolean
+     with Global => State;
    function MA_On_Board return Boolean
      with Global => State;
    function Mode_Profile_Overlap return Boolean

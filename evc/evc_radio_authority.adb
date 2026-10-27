@@ -25,7 +25,7 @@ package body EVC_Radio_Authority
        Refined_State => (State => (Messages, Rejected_N, TD_Acked, Held,
                                    Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
-                                   Params, Reasons, Request_Due,
+                                   Params, Inhibition, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
                                    TAF_Request, TAF_Group,
                                    SR_Authorised, Requests, Start_Reason,
@@ -69,6 +69,16 @@ is
       T_CYCRQST     : T_CYCRQST_T := T_CYCRQST_No_Repetition;
    end record;
    Params          : Params_T := (others => <>);
+
+   --  3.11.5.12, 3.11.5.13: the inhibition of revocable TSRs from balises
+   --  in level 2 (packet 64) stored, and the session of the RBC that
+   --  ordered it (3.11.5.14); EVC_Radio_Info.TSR_Inhibited holds On for
+   --  the stored information
+   type Inhibition_T is record
+      On      : Boolean := False;
+      Session : EVC_Radio.Session_T := EVC_Radio.Session_T'First;
+   end record;
+   Inhibition : Inhibition_T := (others => <>);
    --  the reasons applicable (Q_MARQSTREASON bits), a request due in the
    --  cycle, one sent since Clear and when
    Reasons         : Q_MARQSTREASON_T := 0;
@@ -460,6 +470,7 @@ is
       Cycles := 0;
       Radio_MAs := 0;
       Params := (others => <>);
+      Inhibition := (others => <>);
       Reasons := 0;
       Request_Due := False;
       Request_Sent := False;
@@ -611,6 +622,29 @@ is
          end if;
       end loop;
    end Take_Parameters;
+
+   --  3.11.5.13: packet 64 of the last message of the session S stores
+   --  the inhibition, effective for the balise groups read from this
+   --  cycle (EVC_Radio_Info.TSR_Inhibited); 4.8.3, From RBC: A in level
+   --  2, R [2] in the others (C, the context of the message's verdict).
+   --  Decision: taken whatever its Q_DIR (the order concerns the
+   --  balises the train reads thereafter, not a direction of the track)
+   --  @req 3.11.5.13, 7.4.2.16.1
+   procedure Take_Inhibition (S : EVC_Radio.Session_T;
+                              C : EVC_Radio_Acceptance.Context_T)
+     with Global => (Input  => EVC_Received.Store,
+                     In_Out => (Inhibition, EVC_Radio_Info.State))
+   is
+   begin
+      if C.Level_Valid and then C.Level = L2
+        and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
+                    EVC_Received.Last_Packet_Kind (I)
+                      = ETCS_Catalogue.Track_P64)
+      then
+         Inhibition := (On => True, Session => S);
+         EVC_Radio_Info.Set_TSR_Inhibited (True);
+      end if;
+   end Take_Inhibition;
 
    --  4.4.11.1.3 c), 4.4.11.1.6.6: packet 63 of the last message, the
    --  list of expected balise groups in SR (7.4.2.16), replacing the
@@ -972,6 +1006,7 @@ is
          return;
       end if;
       Take_Parameters;
+      Take_Inhibition (S, C);
       if Kind = ETCS_Message_Catalogue.Track_M6 then
          --  5.11.2.2 S120, E125: in PT (4.8.4: rejected in other modes),
          --  4.8.4 [1]: the recognition the session half judged by the
@@ -1394,6 +1429,33 @@ is
       end if;
    end Evaluate_TAF;
 
+   --  The inhibition of revocable TSRs from balises deleted: 4.9.1.3.1,
+   --  on entering level 0, NTC or 1 (it is only taken in level 2, so a
+   --  valid level other than 2 is the entry); 4.10.1.3, its row of the
+   --  table: on entering NP, SB, PS, SH, SR, SL, NL, UN, SN or RV (Mode,
+   --  entered in this cycle when Entered); 3.11.5.14 a), the session
+   --  with the RBC that ordered it terminated. The border of 3.11.5.14
+   --  b) is not taken
+   --  @req 4.9.1.3.1, 4.10.1.3 Table, 3.11.5.14, 3.11.5.14 1st bullet
+   procedure Delete_Inhibition (Mode : Mode_T; Entered : Boolean)
+     with Global => (Input  => (EVC_Levels.State, EVC_Radio.State),
+                     In_Out => (Inhibition, EVC_Radio_Info.State)),
+          Post => EVC_Radio_Info.Count = EVC_Radio_Info.Count'Old
+   is
+   begin
+      if Inhibition.On
+        and then ((EVC_Levels.Valid and then EVC_Levels.Level /= L2)
+                  or else (Entered
+                           and then Mode in M_NP | M_SB | M_PS | M_SH
+                                          | M_SR | M_SL | M_NL | M_UN
+                                          | M_SN | M_RV)
+                  or else not EVC_Radio.Established (Inhibition.Session))
+      then
+         Inhibition.On := False;
+      end if;
+      EVC_Radio_Info.Set_TSR_Inhibited (Inhibition.On);
+   end Delete_Inhibition;
+
    --  4.6.3 [11], 3.13.10.2.6 b): a group of the cycle whose first
    --  possible location is known by the linking to be in rear of the EOA
    --  by less than the antenna to front end distance, at it or beyond
@@ -1456,6 +1518,8 @@ is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
       F           : Facts_T := Facts;
+      --  the mode of the cycle is entered now (4.10.1.3)
+      Entered     : constant Boolean := Ctx.Mode /= Mode_Now;
    begin
       if MA_Received then
          Count (Radio_MAs);
@@ -1517,6 +1581,7 @@ is
       EVC_Radio_Info.Set_MAR_Known
         (Params.Known
          and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering);
+      Delete_Inhibition (Ctx.Mode, Entered);
       Held := (others => False);
       --  4.4.11.1.6.4: the driver's entry is now the last value received
       if Facts.SR_Entered then

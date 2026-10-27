@@ -72,6 +72,13 @@ package EVC_Test_Authority is
    procedure Scenario_TAF_Up_To_L2;
    procedure Scenario_Track_Ahead_Free;
    procedure Scenario_TAF_Roll_Back;
+   --  3.11.5.13, 4.8.3 [8]: packet 64 of message 24 stores the
+   --  inhibition of revocable TSRs from balises in level 2: a revocable
+   --  TSR of a group read then is rejected, a non revocable one taken;
+   --  entering level 1 deletes it (4.9.1.3.1), the next group's revocable
+   --  TSR is taken; entering SR deletes it (4.10.1.3), the session with
+   --  its RBC terminated too (3.11.5.14 a); not taken in level 1 (R [2])
+   procedure Scenario_TSR_Inhibition;
    --  Message 34 referring to the group 10 of country 123: the display
    --  from Begin_M to Begin_M + Len_M metres beyond it
    function TAF_Message (Begin_M, Len_M : Natural)

@@ -5,7 +5,7 @@
 package body EVC_Radio_Info
   with SPARK_Mode => On,
        Refined_State => (State => (Messages, Slots, N, Refused_N, MAR,
-                              MAR_K, Assign))
+                              MAR_K, Assign, Inhibit))
 is
 
    type Message_Array_T is array (Index_T) of ETCS_Message.Message_T;
@@ -18,6 +18,7 @@ is
    MAR       : Unsigned_64 range 0 .. Max_T_MAR_Ms := 0;
    MAR_K     : Boolean := False;
    Assign    : Assignment_T := (others => <>);
+   Inhibit   : Boolean := False;
 
    function T_MAR_Ms return Unsigned_64 is (MAR)
      with Refined_Global => MAR;
@@ -38,6 +39,16 @@ is
    begin
       MAR_K := Known;
    end Set_MAR_Known;
+
+   function TSR_Inhibited return Boolean is (Inhibit)
+     with Refined_Global => Inhibit;
+
+   procedure Set_TSR_Inhibited (On : Boolean)
+     with Refined_Global => (Proof_In => N, Output => Inhibit)
+   is
+   begin
+      Inhibit := On;
+   end Set_TSR_Inhibited;
 
    function Assignment return Assignment_T is (Assign)
      with Refined_Global => Assign;
@@ -77,10 +88,11 @@ is
 
    procedure Clear
      with Refined_Global => (Output => (Messages, Slots, N, Refused_N, MAR,
-                                         MAR_K, Assign))
+                                         MAR_K, Assign, Inhibit))
    is
    begin
       Assign := (others => <>);
+      Inhibit := False;
       MAR := 0;
       MAR_K := False;
       Messages := (others => (others => <>));

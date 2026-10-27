@@ -76,6 +76,8 @@ is
      EVC_DMI_Port.SS_Train_Data_Changed;
    SS_Train_Data_Changed_Brake      : constant :=
      EVC_DMI_Port.SS_Train_Data_Changed_Brake;
+   SS_Safe_Consist_Length           : constant :=
+     EVC_DMI_Port.SS_Safe_Consist_Length;
 
    --  4.4.13.1.3: the system status message that indicates the reason
    --  of the trip (DMI Table 68)
@@ -1577,6 +1579,32 @@ is
       end if;
    end LX_Step;
 
+   --  4.4.21.1.12: the safe consist length lost (EVC_Stored_Information,
+   --  Evaluate before this step): the service brake while moving
+   --  (Consist_SB) and the driver informed, DMI Table 68 "Safe consist
+   --  length no longer available"; its end is sent when the brake is
+   --  released by the shortening at standstill (3.14.1.7.6), at once with
+   --  the start when the train was at standstill; the DMI keeps it 30 s
+   --  from the start whichever comes first (its row's end conditions).
+   --  Decision: the loss at standstill sends the start and the end in the
+   --  same cycle, there being no brake reason to revoke
+   --  @req 4.4.21.1.12
+   procedure Consist_Step
+     with Global => (Input  => EVC_Stored_Information.State,
+                     In_Out => (Consist_SB, Status_List, Status_N))
+   is
+      Brake : constant Boolean := EVC_Stored_Information.Consist_Brake;
+      Lost  : constant Boolean := EVC_Stored_Information.Consist_Lost;
+   begin
+      if Lost then
+         Status (SS_Safe_Consist_Length, 0);
+      end if;
+      if (Lost or else Consist_SB) and then not Brake then
+         Status (SS_Safe_Consist_Length, 1);
+      end if;
+      Consist_SB := Brake;
+   end Consist_Step;
+
    --  Evaluate
 
    --  6. The conditions of 4.6.3 of this half that the steps of the
@@ -1700,7 +1728,7 @@ is
          end if;
          Link_SB := True;
       end if;
-      Consist_SB := EVC_Stored_Information.Consist_Brake;
+      Consist_Step;
       --  2.
       Override_Step (C, S);
       --  3.

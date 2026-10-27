@@ -14,6 +14,7 @@ with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Distances;       use EVC_Distances;
+with EVC_JRU_Records;
 with EVC_Modes;           use EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Levels;
@@ -305,11 +306,23 @@ package body EVC_Test_Manoeuvre is
    --  4.4.21.1.12 in SM: the safe consist length of the TIU lost while
    --  moving, the service brake (3.14.1.7.6), message 133 to the RBC
    --  (3.18.3.10), the MA shortened to the train at standstill, which
-   --  releases the brake; lost at standstill, shortened at once
+   --  releases the brake; lost at standstill, shortened at once; the
+   --  driver informed by DMI Table 68 "Safe consist length no longer
+   --  available" (entry 19), its end at the brake's release, at once at
+   --  standstill, the JRU's bit 31 (SUBSET-027 4.2.4.23)
    procedure Consist_Lost_In_SM is
-      T    : Unsigned_64;
-      Sent : Natural;
+      T     : Unsigned_64;
+      Sent  : Natural;
+      SCL   : constant Natural :=
+        Natural (EVC_DMI_Port.SS_Safe_Consist_Length);
+      Shown : Natural;
+      Ended : Natural;
    begin
+      Check (EVC_JRU_Records.SS_Bit (EVC_DMI_Port.SS_Safe_Consist_Length)
+             = 31,
+             "SCL: the DMI's entry 19 'Safe consist length no longer "
+             & "available', the JRU's system status bit 31 (DMI Table 68, "
+             & "SUBSET-027 4.2.4.23)");
       Start_L2_SM;
       Select_SM;
       T := Wait_For (MCat.Train_M131, 1_000);
@@ -317,8 +330,16 @@ package body EVC_Test_Manoeuvre is
       Stand_X (300);
       Run_X (Train_Cm + 5_000, 500);
       Sent := EVC_Sessions.SM_Consist_Sent;
+      Shown := SS_Seen (SCL);
+      Ended := SS_Ended (SCL);
       EVC_Core.Handle_Input (TIU, SCL_Frame (0));
       Run_X (Train_Cm + 500, 250);
+      Check (SS_Seen (SCL) = Shown + 1 and then SS_Ended (SCL) = Ended,
+             "SCL: lost in SM while moving, the driver informed, DMI "
+             & "entry 19 started and not ended while braking "
+             & "(4.4.21.1.12); started"
+             & Natural'Image (SS_Seen (SCL) - Shown) & ", ended"
+             & Natural'Image (SS_Ended (SCL) - Ended));
       Check (EVC_Core.Mode = M_SM
              and then EVC_Stored_Information.Consist_Brake
              and then EVC_Procedures.Brake_Demand.SB
@@ -337,13 +358,22 @@ package body EVC_Test_Manoeuvre is
              "SCL: lost in SM, at standstill the MA shortened to the "
              & "train and the brake released (4.4.21.1.12, A.3.4.1.2 o), "
              & "3.14.1.7.6)");
+      Check (SS_Seen (SCL) = Shown + 1 and then SS_Ended (SCL) = Ended + 1,
+             "SCL: the brake released at standstill, DMI entry 19 ended "
+             & "(its 30 s kept by the DMI, Table 68, 3.14.1.7.6)");
       Start_L2_SM;
       Select_SM;
       T := Wait_For (MCat.Train_M131, 1_000);
       Give_Radio_Message (1, SM_Authorisation (T));
       Stand_X (300);
+      Shown := SS_Seen (SCL);
+      Ended := SS_Ended (SCL);
       EVC_Core.Handle_Input (TIU, SCL_Frame (0));
       T := Wait_For (MCat.Train_M133, 300);
+      Check (SS_Seen (SCL) = Shown + 1 and then SS_Ended (SCL) = Ended + 1,
+             "SCL: lost in SM at standstill, the driver informed, DMI "
+             & "entry 19 started and ended in the same cycle, no brake "
+             & "(4.4.21.1.12, Table 68's 30 s)");
       Check (EVC_Core.Mode = M_SM
              and then not EVC_Stored_Information.Consist_Brake
              and then not EVC_Procedures.Brake_Demand.SB
