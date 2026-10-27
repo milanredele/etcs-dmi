@@ -14193,3 +14193,53 @@ the one to RBC 301 attempted: B2420, not traced. The DMI's EOA button
 (`DMI_Conditions.Override_EOA`, DMI Table 34 #1) is enabled at A31 and
 S4 as at S11 (read, not run): B2320 covers it. Row 5.4.5.3 a) noted.
 Proofs `evc_procedures`, `evc_core-modes` (the parent unchanged).
+
+**The safe consist length unavailable (B1401, the paper; its premise
+wrong).** 4.4.21.1.12: "If the safe consist length information is
+acquired from an external source and it becomes unavailable, the
+ERTMS/ETCS on-board equipment shall inform the driver and the trackside
+and, if the train is not at standstill, it shall command the service
+brake." The line's premise (no system status message for it in the
+DMI of 4.0.0) is wrong at the source: Table 68 of the DMI
+specification (15.1.1.5, PDF page 314) has "Safe consist length no
+longer available", start condition 4.4.21.1.12, end "Message displayed
+for 30 s (if 3.14.1.7.6 fulfilled beforehand or if brake command
+reason revoked as per 4.12.1.2 beforehand), 3.14.1.7.6 (if message
+displayed for 30 s beforehand), Brake command reason revoked as per
+4.12.1.2 (if message displayed for 30 s beforehand)", row "Brake
+reason". Our DMI has it already: `SS_Safe_Consist_Length` = 19 in
+common/dmi_protocol.ads, `DMI_System_Status`'s catalogue row
+(`T_Safe_Consist`, `After_30s`, the brake modes), and SUBSET-027's
+SYSTEM_STATUS_MESSAGE has its bit 31 (`EVC_JRU_Records.SS_Bit`'s
+comment: "has no entry of the on-board"). What is missing is on the
+on-board alone: `EVC_DMI_Port` has no entry 19 (its SS_* go from 18 to
+20), no unit sends it, and `SS_Bit` maps nothing to bit 31. The three
+ways of the brief: (1) a new system status entry with its text,
+numbered after the table's last: not needed, the table has the row;
+(2) a plain text of 3.12.3 generated on board: against 15.1.1.1 (the
+system status messages "shall be displayed ... as specified in Table
+68") and it would bypass the row's end conditions; (3) nothing beyond
+the brake and the button: leaves 4.4.21.1.12 "inform the driver"
+unfulfilled where the specification provides the means.
+Recommendation, no decision of the user needed: the entry of Table 68,
+with no change of dmi/ or of the protocol. The on-board's part, a build
+item: `EVC_DMI_Port.SS_Safe_Consist_Length` (19); the loss as an event
+of the cycle (today `Lost` is local to
+`EVC_Stored_Information.Consist_Shortening`, SM or SB with the
+manoeuvre set, standstill or not; an accessor beside `Consist_Brake`),
+the start of entry 19 at the loss in the owner of the brake's reasons
+(`EVC_Procedures`, beside `Consist_SB`, the shape of entry 1 at
+`Link_SB`), its end left to the DMI (the 30 s, the acknowledgement of
+3.14.1.7.6, the reason revoked: the DMI's row) or sent at the release
+of `Consist_SB` (4.12.1.2); `SS_Bit (19)` = 31; a scenario where the
+input of TIU signal 15 goes unavailable in SM while moving (the
+service brake and entry 19) and at standstill (entry 19, no brake).
+Left: the package's bound came after the paper (B1401 narrowed to
+that build item).
+
+Runner 1163 / 1069 / 958 before and after both builds, 0 movements.
+Edits outside the named units: `EVC_JRU_Records` (`Entries_Shown`, the
+accessor `Entry_Shown`, its reset: the option the brief left open for
+B2240), `test/src/evc_test.adb` (the call), `doc/TRACE-SUBSET-026.csv`
+(the row 5.4.5.3 a)). Backlog: B2240 and B2402 done, B1401 narrowed,
+B2420 opened.
