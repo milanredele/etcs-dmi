@@ -39,6 +39,7 @@ package body Test_Support is
       Consist_Length     : Boolean := False;
       Consist_Front_Zero : Boolean := False;
       Override_Speed     : Boolean := True;
+      Override_Refused   : Boolean := False;
       Non_Leading        : Boolean := False;
       Passive_Shunting   : Boolean := False;
       BMM_Active         : Boolean := False;
@@ -264,7 +265,29 @@ package body Test_Support is
            Flag (Onboard.NV_Driver_ID_Running, 1)
            or Flag (Onboard.NV_Adhesion, 2)
            or Flag (Onboard.VBC_Room, 4)
-           or Flag (Onboard.VBC_Stored, 8),
+           or Flag (Onboard.VBC_Stored, 8)
+           --  this EVC takes the override where DMI Table 34 #1 reads the
+           --  data it reports, unless the scenario says it refuses (as
+           --  SUBSET-026 5.4.5.3 a) does outside S10 and S20); the mode
+           --  is the one this EVC sent (Mode_T'Pos: SB 1, FS 2, AD 3, LS
+           --  5, OS 6, SR 7, SH 8, UN 9, SN 12, PT 13), not the DMI's,
+           --  which falls to SF when the link is lost
+           or Flag (Onboard.Override_Speed
+                    and then not Onboard.Override_Refused
+                    and then Mode_Sent
+                    and then
+                      (Last_ML.Mode in 2 | 3 | 5 .. 9 | 12
+                       or else
+                         (Last_ML.Mode = 1
+                          and then DMI_Driver_Data.Driver_ID_Entered
+                          and then DMI_Driver_Data.Train_Data_Entered
+                          and then DMI_Driver_Data.TRN_Entered
+                          and then Last_ML.Level = 5)
+                       or else
+                         (Last_ML.Mode = 13
+                          and then DMI_Driver_Data.Train_Data_Entered
+                          and then DMI_Driver_Data.TRN_Entered)),
+                    16),
          --  Table 49 S0: this EVC has no session to wait for unless the
          --  scenario asks for one; the conditions to initiate a start of
          --  mission are fulfilled while the mode it sent is SB
@@ -304,6 +327,7 @@ package body Test_Support is
       Consist_Length   : Boolean := False;
       Consist_Front_Zero : Boolean := False;
       Override_Speed   : Boolean := True;
+      Override_Refused : Boolean := False;
       Non_Leading      : Boolean := False;
       Passive_Shunting : Boolean := False;
       BMM_Active       : Boolean := False;
@@ -335,6 +359,7 @@ package body Test_Support is
                   Consist_Length     => Consist_Length,
                   Consist_Front_Zero => Consist_Front_Zero,
                   Override_Speed     => Override_Speed,
+                  Override_Refused   => Override_Refused,
                   Non_Leading        => Non_Leading,
                   Passive_Shunting   => Passive_Shunting,
                   BMM_Active         => BMM_Active,

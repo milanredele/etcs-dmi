@@ -61,7 +61,6 @@ package DMI_Conditions is
 
    --  The vehicle
    Standstill          : Boolean := False;
-   Override_Speed_OK   : Boolean := False; -- at or below the "override" limit
    Non_Leading_Signal  : Boolean := False;
    Passive_Shunting    : Boolean := False;
    BMM_Inhibit_Active  : Boolean := False; -- "BTM alarm reaction inhibition"
@@ -78,6 +77,9 @@ package DMI_Conditions is
    NV_Adhesion          : Boolean := False; -- modification by the driver
    VBC_Room             : Boolean := False; -- capacity not reached
    VBC_Stored           : Boolean := False; -- at least one VBC stored
+   --  the on-board allows the driver to select "Override" now
+   --  (SUBSET-026 5.8.2.1, 5.4.5.3 a): the speed term included)
+   Override_Selectable  : Boolean := False;
 
    --  Start of mission (SUBSET-026 5.4, DMI Table 49)
    --  Train_Data_Request: no start of mission, the on-board requests the

@@ -295,6 +295,7 @@ package body EVC_Mock is
       RBC     : Unsigned_8 := 0;
       Train   : Unsigned_8 := 0;
       Radio   : Unsigned_8;
+      Override_OK : Boolean;
    begin
       if Driver_ID_Valid then
          Data := Data or 1;
@@ -338,6 +339,18 @@ package body EVC_Mock is
       if BMM_Inhibited then
          Train := Train or 16;
       end if;
+      --  the override is taken below that speed in the modes of
+      --  SUBSET-026 5.8.2.1 b), with the data of c), and in SB in level
+      --  2 (the simulator has no step of the start of mission to refuse
+      --  it at); the DMI enables its EOA button on this national bit 4
+      Override_OK :=
+        EVC_Train.Speed_KMH <= 30
+        and then (Mode = SH
+                  or else (Train_Data_Valid and then TRN_Valid
+                           and then (Mode in SR | FS | AD
+                                     or else (Mode = SB
+                                              and then Driver_ID_Valid
+                                              and then Level_Pos = 5))));
 
       --  radio: the stored type, both systems installed (3), the GSM-R
       --  Mobile Terminal's registration, never FRMCS
@@ -360,7 +373,8 @@ package body EVC_Mock is
       --  has room (bit 2), at least one VBC is stored (bit 3)
       Put_U8 (Payload, Offset,
               2 or (if VBC_Count < VBC_Capacity then 4 else 0)
-                or (if VBC_Count > 0 then 8 else 0));
+                or (if VBC_Count > 0 then 8 else 0)
+                or (if Override_OK then 16 else 0));
       --  Table 49 S0: the cab is active and the mode is SB, and no
       --  session has to end first, so the conditions to initiate a start
       --  of mission are fulfilled as long as the mode is SB

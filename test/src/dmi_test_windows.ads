@@ -19,6 +19,8 @@ package DMI_Test_Windows is
 
    procedure Scenario_Enabling_Conditions;
 
+   procedure Scenario_Override_Selectable;
+
    procedure Scenario_Waiting_Window;
 
 end DMI_Test_Windows;

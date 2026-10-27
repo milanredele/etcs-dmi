@@ -77,6 +77,7 @@ begin
    DMI_Test_Windows.Scenario_Button_Down_Type;
    DMI_Test_Windows.Scenario_Button_Up_Type;
    DMI_Test_Windows.Scenario_Enabling_Conditions;
+   DMI_Test_Windows.Scenario_Override_Selectable;
    DMI_Test_Windows.Scenario_Waiting_Window;
    DMI_Test_Data_Entry.Scenario_Entry_Mechanics;
    DMI_Test_Data_Entry.Scenario_Validation_Window;

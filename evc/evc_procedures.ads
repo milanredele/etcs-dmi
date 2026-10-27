@@ -227,6 +227,14 @@ is
    function Override_Indicated return Boolean
      with Global => State;
 
+   --  5.8.2.1 a) to c), 5.4.5.3 a): the driver may select "Override",
+   --  as the cycle's override step judged it (the answer a selection
+   --  of this cycle got), so that the DMI enables its EOA button only
+   --  where the selection is taken (DMI 11.2.2.4 Table 34 #1)
+   --  @req 5.8.2.1, 5.8.2.1 a), 5.8.2.1 b), 5.8.2.1 c)
+   function Override_Selectable return Boolean
+     with Global => State;
+
    --  5.17.2.2 S6: the driver is requested to re-enter or re-validate
    --  the Train Data (the Train Data entry of EVC_Mission; the data
    --  validated end the request: Train_Data_Revalidated)

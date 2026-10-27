@@ -561,7 +561,11 @@ is
          Train    => Train_Bits
                      or (if EVC_Position.Status = EVC_Position.Valid
                          then Train_Position_Status_Valid else 0),
-         National => National_Bits,
+         --  5.8.2.1, 5.4.5.3 a): the override selectable, the speed
+         --  included (DMI Table 34 #1 reads this bit alone)
+         National => National_Bits
+                     or (if EVC_Procedures.Override_Selectable
+                         then National_Override_Selectable else 0),
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
          --  desk is open and no session with an RBC exists or is being
       --  established, so the start of mission may begin (the desk is

@@ -23,7 +23,8 @@ package body EVC_Procedures
        Refined_State =>
          (State => (Conds, Pending, Reason, Version_Seen, Ctx,
                     Orientation_Now, Ovr, Ovr_Since, Ovr_Run, Ovr_Last,
-                    Ovr_Selected_Now, Ovr_For_Trips, Ovr_In_SR, Former,
+                    Ovr_Selected_Now, Ovr_Selectable, Ovr_For_Trips,
+                    Ovr_In_SR, Former,
                     Former_X,
                     Former_S,
                     Former_Passed, Ack_On, Ack_M, Ack_After, Ack_Since,
@@ -144,6 +145,8 @@ is
    Ovr_Run          : Length_T := 0;
    Ovr_Last         : Dist_T := 0;
    Ovr_Selected_Now : Boolean := False;
+   --  5.8.2.1: a selection of the cycle would be taken
+   Ovr_Selectable   : Boolean := False;
    --  5.8.4.2: the trips of the cycle see the override as it was before
    --  the information of the balise groups ended it
    --  @req 5.8.4.2
@@ -320,6 +323,8 @@ is
    function Override_Indicated return Boolean is
      (Ovr and then not (Ctx.Level_Valid and then Ctx.Level = NTC))
      with Refined_Global => (Ovr, Ctx);
+   function Override_Selectable return Boolean is (Ovr_Selectable)
+     with Refined_Global => Ovr_Selectable;
    function Reversing_Possible return Boolean is (Rev_Possible)
      with Refined_Global => Rev_Possible;
    function Reversing_Area_Known return Boolean is (Rev.Area)
@@ -419,6 +424,7 @@ is
       Ovr_Run := 0;
       Ovr_Last := 0;
       Ovr_Selected_Now := False;
+      Ovr_Selectable := False;
       Ovr_For_Trips := False;
       Ovr_In_SR := False;
       Former := False;
@@ -919,7 +925,8 @@ is
    procedure Override_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (Orientation_Now, EVC_Driver_Requests.State,
                                 Now_Flags),
-                     Output => (Ovr_Selected_Now, Ovr_For_Trips),
+                     Output => (Ovr_Selected_Now, Ovr_Selectable,
+                                Ovr_For_Trips),
                      In_Out => (Ovr, Ovr_Since, Ovr_Run, Ovr_Last, Ovr_In_SR,
                                 Former, Former_X,
                                 Former_S, Former_Passed, Events, Event_N,
@@ -930,10 +937,9 @@ is
       Crossed    : Boolean := False;
    begin
       Ovr_Selected_Now := False;
+      Ovr_Selectable := Override_Allowed (C, NV);
       --  5.8.2.3: triggered when selected
-      if EVC_Driver_Requests.Override_Selected
-        and then Override_Allowed (C, NV)
-      then
+      if EVC_Driver_Requests.Override_Selected and then Ovr_Selectable then
          Record_Event (Event_Override_Start, (if Ovr then 1 else 0), 0);
          --  5.8.3.9: selected again, the time and the distance restart
          Ovr := True;

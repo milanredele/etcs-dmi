@@ -587,6 +587,7 @@ package body DMI_Test_Windows is
       Standing    : constant U8 := 16#03#; -- standstill, override speed ok
       Running     : constant U8 := 16#02#; -- moving, still below the limit
       NV_Adh      : constant U8 := 16#02#; -- adhesion may be modified
+      Ovr_OK      : constant U8 := 16#10#; -- the override is selectable
 
       procedure Onboard (Data     : U8 := Data_All;
                          Session  : U8 := 0;
@@ -694,19 +695,26 @@ package body DMI_Test_Windows is
              "Table 33 #2: Driver ID while running when the NV allows it");
       Check (not Enabled (1), "Table 33 #1: no Start in FS");
 
-      -- Table 34 #1 EOA (Override window)
-      Onboard;
+      -- Table 34 #1 EOA (Override window): the on-board's word, national
+      -- bit 4 (SUBSET-026 5.8.2.1, 5.4.5.3 a)), whatever the other bytes
+      Onboard (National => NV_Adh or Ovr_OK);
       Open_Window (610, F2_Override);
       Check (Top_Is (DMI_Windows.W_Override), "the Override window is open");
-      Check (Enabled (1), "Table 34 #1: EOA in FS below the override limit");
-      Onboard (Train => 0);
-      Check (not Enabled (1), "Table 34 #1: no EOA above the override limit");
-      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Check (Enabled (1), "Table 34 #1: EOA in FS, the on-board takes it");
       Onboard;
-      Check (not Enabled (1), "Table 34 #1: no EOA in SB below level 2");
+      Check (not Enabled (1),
+             "Table 34 #1: no EOA in FS where the on-board refuses it");
+      Onboard (Train => 0, National => NV_Adh or Ovr_OK);
+      Check (Enabled (1),
+             "Table 34 #1: the speed is the on-board's term of the bit");
       Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
       Onboard;
-      Check (Enabled (1), "Table 34 #1: EOA in SB with level 2 and the data");
+      Check (not Enabled (1),
+             "Table 34 #1: no EOA in SB, level 2, the data valid, refused");
+      Onboard (National => NV_Adh or Ovr_OK);
+      Check (Enabled (1), "Table 34 #1: EOA in SB with level 2, taken");
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Onboard;
 
       -- Table 35 (Special window)
       Send_Mode_Level (Mode => 7, Level => 4); -- SR, level 1
@@ -784,6 +792,62 @@ package body DMI_Test_Windows is
                      & "data (action 22)");
       Drain_Outbox;
    end Scenario_Enabling_Conditions;
+
+   ---------------------------------------------------------------------
+   -- The EOA button of the Override window over the start of mission in
+   -- level 2 (SUBSET-026 5.4.5.3 a), 5.8.2.1; DMI 11.2.2.4 Table 34 #1):
+   -- the data of the row are valid at S11, S10 and S21 alike, the
+   -- on-board takes the override at S10 only and says so in national
+   -- bit 4, so the button is enabled at S10 and disabled at S11 (the
+   -- Train Data acknowledgement awaited) and at S21 (after Start)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Override_Selectable is
+      use type Interfaces.Unsigned_8;
+      subtype U8 is Interfaces.Unsigned_8;
+      Data_All : constant U8 := 16#0F#; -- id, train data, level, TRN valid
+      Standing : constant U8 := 16#03#; -- standstill, override speed ok
+      NV_Adh   : constant U8 := 16#02#; -- adhesion may be modified
+      Ovr_OK   : constant U8 := 16#10#; -- the override is selectable
+
+      function EOA_Enabled return Boolean is
+        (DMI_Windows.Is_Open
+         and then DMI_Windows."=" (DMI_Windows.Top, DMI_Windows.W_Override)
+         and then DMI_Windows.Button_Enabled (1));
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      --  S11: the session open, the Train Data sent, not acknowledged
+      Send_Onboard_Raw (Data_All, 2, 0, Standing, NV_Adh, 0, 0, 0);
+      Step;
+      Drain_Sounds;
+      Press (610, 90);                          -- F2: Override window
+      Step;
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows."=" (DMI_Windows.Top,
+                                       DMI_Windows.W_Override),
+             "S11: the Override window is open");
+      Check (not EOA_Enabled,
+             "5.4.5.3 a): no EOA at S11, the on-board refuses it");
+      Check_Frame ("override_eoa_s11");
+      --  S10: the Train Data acknowledged, the on-board takes it
+      Send_Onboard_Raw (Data_All, 2, 1, Standing, NV_Adh or Ovr_OK, 0, 0, 0);
+      Step;
+      Check (EOA_Enabled, "5.4.5.3 a): EOA at S10, the on-board takes it");
+      Check_Frame ("override_eoa_s10");
+      --  S21: 'Start' selected, the MA requested and awaited (Table 50 S7)
+      Send_Onboard_Raw (Data_All, 2, 1, Standing, NV_Adh, 0, 3, 0);
+      Step;
+      Check (not EOA_Enabled,
+             "5.4.5.3 a): no EOA at S21, the on-board refuses it");
+      Check_Frame ("override_eoa_s21");
+      Drain_Sounds;
+      Drain_Outbox;
+   end Scenario_Override_Selectable;
 
    ---------------------------------------------------------------------
    -- WIN-11: the hour glass ST05 and the Main window with all buttons

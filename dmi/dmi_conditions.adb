@@ -290,19 +290,15 @@ package body DMI_Conditions is
    -- Table 34 - Override window (11.2.2.4)
    ---------------------------------------------------------------------
 
-   --  #1 EOA
-   function Override_EOA return Boolean is
-     (Override_Speed_OK
-      and then
-        (SDI.Mode in SDI.M_FS | SDI.M_AD | SDI.M_LS | SDI.M_SR | SDI.M_OS
-                   | SDI.M_UN | SDI.M_SN | SDI.M_SH
-         or else
-         (SDI.Mode = SDI.M_SB and then Driver_ID_Valid
-          and then Train_Data_Valid and then TRN_Valid
-          and then Level_Valid and then Level_Is_2)
-         or else
-         (SDI.Mode = SDI.M_PT and then Train_Data_Valid
-          and then TRN_Valid)));
+   --  #1 EOA. Decision: the row names the on-board's data (the speed
+   --  limit of the override, the mode, the Driver ID, the Train Data, the
+   --  train running number, the level) and SUBSET-026 5.8.2.1 with
+   --  5.4.5.3 a) say when the on-board takes the selection; the button
+   --  is enabled on the on-board's word alone (MSG_ONBOARD national bit
+   --  4), so that it is never enabled where the selection is refused (at
+   --  S11 or S21 to S25 in SB). No term of the row is one the on-board
+   --  cannot know, so the DMI keeps none of its own.
+   function Override_EOA return Boolean is (Override_Selectable);
 
    ---------------------------------------------------------------------
    -- Table 35 - Special window (11.2.3.4)
@@ -444,7 +440,6 @@ package body DMI_Conditions is
       Length_Confirmed     := False;
       Consist_Length_Acked := False;
       Standstill           := False;
-      Override_Speed_OK    := False;
       Non_Leading_Signal   := False;
       Passive_Shunting     := False;
       BMM_Inhibit_Active   := False;
@@ -452,6 +447,7 @@ package body DMI_Conditions is
       NV_Adhesion          := False;
       VBC_Room             := False;
       VBC_Stored           := False;
+      Override_Selectable  := False;
       Start_Of_Mission     := No_Mission_Start;
       Waiting              := Nothing;
       Start_Pending        := False;

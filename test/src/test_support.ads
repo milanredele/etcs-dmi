@@ -94,6 +94,9 @@ package Test_Support is
       Consist_Length   : Boolean := False;
       Consist_Front_Zero : Boolean := False;
       Override_Speed   : Boolean := True;
+      --  the on-board refuses the override although Table 34 #1 reads
+      --  its data as allowing it (SUBSET-026 5.4.5.3 a): S11, S21)
+      Override_Refused : Boolean := False;
       Non_Leading      : Boolean := False;
       Passive_Shunting : Boolean := False;
       BMM_Active       : Boolean := False;
