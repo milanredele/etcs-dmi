@@ -15734,3 +15734,126 @@ unchanged, no defect.
 
 `Consist_Step`'s heading (review 56, item 4) is left: the bound (120 of
 160 calls) came with item 2 in hand; B2660.
+
+### Review of the fifty-seventh round: eight verdicts re-derived blind (e5/review-57) (2026-10-27)
+
+Each verdict below was written from the clause, the data and the trace
+before the author's record (the four subsections above, the backlog,
+the triage) was read. All eight items were taken.
+
+1. The VBC store's rooms. Mine: SUBSET-040 4.5.1.2 (at least 20 set by
+   the driver) and 4.3.2.1 w) (10 memorised, "not including" the
+   driver's 20) are two rooms, 30 in all; a new identity when its
+   origin's room is full is ignored, since 3.15.9.5's deletions are a
+   closed list and no stored cover may make room for it; 3.15.9.4 names
+   no room for a replacement from the other origin, and keeping the room
+   it takes is the reading under which both minimums hold after any
+   history and the "shall replace" never fails for want of room.
+   `EVC_VBC.Put` matches the identity in either room first and keeps
+   its origin, takes a new one only below its room; `Full` counts the
+   driver's room; `vbc_rooms` covers the 11th order, the 21st set, an
+   order with the driver's room full, the replacement in the driver's
+   room and No Power. Author (e6/vbc-capacity): the same, the
+   replacement in its room by decision with the same argument (the
+   other reading lets trackside pass 10). Agree.
+2. The Override EOA button. Mine: 5.4.5.3 a) allows the selection at
+   S10 and S20 only, with 5.8.2.1 for SB (speed at most V_NVALLOWOVTRP,
+   SB in level 2, validated Train Data and train running number). The
+   driver reaches the Override window at S10, S11 and S20 (the Main
+   window closable); at S21 the DMI is in Table 50 S7 (the Main window,
+   every button and [close] disabled, 11.7.3.2), out of reach. Enabled
+   at S10 and S20, not at S11, where every term of Table 34 #1's SB
+   branch is true: the DMI cannot tell S11 from S20 and has no
+   V_NVALLOWOVTRP, so the on-board decides. `Override_Allowed` excludes
+   `SoM_Started`, `TD_Ack_Awaited` and `SoM_Opening`, MSG_ONBOARD
+   national bit 4 carries it, `Override_EOA` reads the bit alone.
+   Author (e6/override-bit): the same. Agree. Remark without a line: the
+   scenario's second case and its golden `override_eoa_s10` are the
+   state with the session open and the Train Data acknowledged, which is
+   S20 (S10 is level 2 with no session, D11); the logic is right, the
+   label is not.
+3. The Radio network type at S3. Mine: S3's E4 is a condition at the
+   entry and goes to A41 with no wait named; A41's "has failed" with
+   A.3.1's FRMCS time (40 s from the FRMCS on-board's detection as
+   connected) allows waiting within those 40 s (the hour glass) and A41
+   at their end, at once when they are past, a registration in time
+   ending the wait silently; after A41, D8: S3 with FRMCS+GSM-R and both
+   systems installed, S10 otherwise. Author (e6/network-type): the same
+   reading by decision, built in `Driver_Entries` (`Type_Wait`) and
+   `Supervise_Wait`, with the scenario's five cases. Agree on the
+   reading and the build, with a gap: the time counts from `FRMCS_At`,
+   set only by `Take_FRMCS` at the FRMCS on-board's first report; an
+   FRMCS installed that never reports leaves `Type_Wait` set for ever
+   (the hour glass at S3, no A41), where E4 holds plainly and A.3.1's
+   time never starts. Undecided between A41 at once there (the literal
+   S3) and another bound: B2720.
+4. The MA request parameters and Q_DIR. Mine: 4.9.1.3 deletes packet
+   57's parameters on entering level 1 only, 4.10.1.3's row on entering
+   NP; 3.6.3.1.3 takes from any medium only information valid for the
+   train orientation (radio Q_DIR against the LRBG, 7.5.1.103), with
+   exceptions for SL / PS / SH engines and an SM authorisation only.
+   `Note_Level` deletes on a valid level passing to L1, `Take_Inhibition`
+   judges packet 64 by `Radio_Valid_For (LRBG_Of_Last, Q_DIR)`: right.
+   `Take_Parameters` (57) and `Take_SR_List` (63) of the same unit take
+   their packets whatever Q_DIR by decision, which 3.6.3.1.3 does not
+   allow. Author: the same two builds, and 57 / 63 left to decide in
+   B2681. Agree; my call for B2681: the same judgement as packet 64.
+5. The desk opening. Mine: 5.4.1.4 acts on an established session with
+   no termination ongoing; a terminating one is left to its
+   termination, one being established is not established and is left
+   (3.5.3.8 a) aborts it at a desk closure during the start of mission,
+   not at an opening). `Apply_Desk` terminates the established ones on
+   the closed -> open edge; the scenario's four cases. Author: the same,
+   no defect. Agree.
+6. 3130700_03 SV30 step 62. Mine: the on-board holds a speed of the
+   language as floor (n x 1250 / 9) cm/s: 65 km/h (1805.56) is 1805
+   cm/s. The runner drove `Kmh_To_Cms` (65.0x) = 1806 (Ada rounds), 1
+   cm/s above V_MRSP: t2 of Table 5, Overspeed is the on-board's right
+   answer. `Chart_Cms` now drives min (rounded, the multiple's floor) =
+   1805: t1, the step passes. Lowering a chart within 0.5 km/h of a
+   multiple of 5 is right (a plateau drawn at a limit stands for it, t1
+   is "<="), raising never: 3131030_17 at 1450 m runs under MRSP 150,
+   V_warning 150 + dV_warning_max 5 = 155 km/h, ours 4166 + 138 = 4304
+   cm/s; its chart's 154.92 km/h is 4303, raised to 155 it is 4305 /
+   4306 (Warning). The runner's fault. Author (e5/runner-speed): the
+   same numbers (1806 against 1805; 4305 against our V_warning 4304).
+   Agree.
+7. 5040300_24 SV30 steps 97 to 102. Traced: 97 / 98 the hour glass and
+   JRU 21, 99 the 40 s from the FRMCS detection (127.7 -> 168.2 s), 100
+   / 101 entry 33 and JRU 23 pass; 102 fails, top W_MAIN. DMI Table 49
+   (11.7.2.4): S3-4 E5 -> A41 -> D10: FRMCS+GSM-R stored with both
+   systems installed -> S3-1, the Radio data window (the sequence's
+   case, its comment says D8 -> S3). The on-board did its part;
+   `DMI_Windows.Onboard_State_Changed` ends a Radio_Network wait in the
+   One radio window (`D9_Pending`) or leaves the Main window open, with
+   no D10 branch. The DMI's fault. Author: the same, B2680 (dmi). Agree.
+8. 3050600_06 SV30 step 73. Mine: 4.10.1.3 deletes the choice on
+   entering NP, SB or SH, and a desk closure in SB enters no mode
+   (4.10.1.2); but A.3.4.1.2 k), "driver closes the desk during SoM",
+   and A.3.4's column k delete "Mission performed with only one radio
+   system" (the Driver ID to be revalidated, the Radio Network
+   information unchanged in the same column). The sequence closes the
+   desk at step 63 during the start of mission, the choice stored at
+   step 60: it is deleted, and the reopened start of mission reaches S4
+   again (hour glass at 73), then S5 with no value (step 79's "The
+   information has been deleted"). Traced: steps 60 to 72 pass (the
+   Driver ID revalidated), 73 and 74 fail. `One_Radio` is cleared only
+   in `EVC_Sessions.Network.Clear`; the A.3.4.1.2 k) block of
+   `EVC_Core.Modes` (`Desk_Closed_In_SoM`) deletes the other rows of
+   column k but not this one. The choice does not survive; the
+   on-board's fault. Author (e5/runner-speed): the on-board, B2700,
+   with "whether the desk closure and opening in SB deletes the
+   election" left to decide on 4.10.1.3. Agree on the locus; A.3.4
+   column k decides the question: B2721.
+
+Counts: 8 items, 6 agreed outright (1, 2, 4, 5, 6, 7), 1 agreed with a
+gap left undecided (3, the FRMCS that never reports), 1 agreed on the
+locus with the deciding clause the author did not cite (8); none
+disagreed. My calls: B2681 the same Q_DIR judgement for packets 57 and
+63 as for 64; B2700 settled by A.3.4.1.2 k) (the choice deleted on a
+desk closure during the start of mission; the S4 time of the reopened
+start of mission is B2700's second question, untouched here). Backlog:
+B2720 (item 3's gap), B2721 (item 8's clause). Brief premises wrong:
+none. Remarks without a line: the S20 state named S10 in
+`Scenario_Override_Selectable` and its golden. The review took about 90
+tool calls of 130.
