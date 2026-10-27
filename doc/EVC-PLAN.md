@@ -15396,3 +15396,55 @@ trackside, apart), from the driver's seat: the driver can always set 20
 whatever trackside ordered. One array of 30 with the origin per cover,
 the DMI's full bit from the driver's count, the protocol's list 16 -> 30;
 the next round's.
+
+### The on-board tells the DMI whether the override is selectable; the desk scenario's terminating case; the consist heading (e6/override-bit) (2026-10-27)
+
+B2320, the override selectable told to the DMI. The claim held at the
+source: `DMI_Conditions.Override_EOA` was the DMI's own reading of DMI
+Table 34 #1 (11.2.2.4: the speed limit of the override, the modes
+FS/AD/LS/SR/OS/UN/SN/SH, SB with the Driver ID, the Train Data, the
+train running number valid and level 2, PT with the Train Data and the
+train running number), so it enabled the EOA button at S11 and at S21 to
+S25 where `EVC_Procedures.Override_Allowed` refuses (`SoM_Started`,
+`TD_Ack_Awaited`, `SoM_Opening`). The protocol's "override u8 (bool)" is
+of MSG_MODE_LEVEL, the override active (5.8.3.7), not its selection.
+Built: MSG_ONBOARD national bit 4 (the byte of the "allowed" bits, bits
+4 to 7 were free; no length change), from
+`EVC_Procedures.Override_Selectable`, a state of the override step set
+each cycle to `Override_Allowed (C, NV)`, the answer a selection of that
+cycle gets; `EVC_Core.Outputs.Send_Onboard` sets the bit; the constant
+`EVC_DMI_Port.National_Override_Selectable`. Decisions: the bit carries
+the speed term of 5.8.2.1 a) too (the driver sees the whole answer; train
+bit 1 stays the speed term alone, the DMI no longer reads it), and
+`Override_EOA` reads the bit alone: every term of the row names the
+on-board's data, none is one the on-board cannot know, so the DMI keeps
+none of its own (`DMI_Conditions.Override_Speed_OK` removed). Where the
+two readings differed, the bit is the narrower (5.8.2.1 c) asks for the
+data in every mode but SH, the row in SB only), except the Driver ID of
+the row's SB branch, which `Override_Allowed` does not test; at S10 and
+S20 it is valid (S1 before them). The DMI's own wrapper EVC
+(`Test_Support`, a new `Override_Refused` input) and `EVC_Mock` set the
+bit where Table 34 #1 read their data before, so no existing display
+golden changed. Scenarios: `DMI_Test_Windows.Scenario_Override_Selectable`
+(goldens `override_eoa_s11` and `override_eoa_s21` disabled,
+`override_eoa_s10` enabled, MSG_ONBOARD driven raw), the Table 34 checks
+of `Scenario_Enabling_Conditions` on the bit; `EVC_Test_Sessions`: the
+bit clear at S1, S4, S11 (`Scenario_SoM_L2_Override_Before_S10`), A31
+(`_From_S20`), S21, S24 (`Scenario_SoM_L2_SR_Proposal`), set at S20, S10
+and in SR at standstill. Goldens: `evc/bench_onboard` (cycle group 7,
+national 5 -> 21) and `evc/bench_level2` (hash only) re-recorded for the
+bit. Rows 5.8.2.1, 5.8.2.1 c) noted; there is no matrix of the DMI
+specification for 11.2.2.4 (the brief's "DMI row"). Proofs
+`evc_procedures`, `evc_core-outputs`: no unproved check. Runner 1169 /
+1058 / 963, 0 movements: the runner's override presses fall where the
+on-board took them before.
+
+The desk scenario's terminating case (review 56, item 3):
+`Scenario_Session_Desk_Opening` now closes and opens the desk again while
+the session terminates (156 sent, 39 not given): left Terminating, no
+second 156, the 39 releases it; and opens the desk while the session of
+Sleeping is being established: left alone, no 156. `Apply_Desk`
+unchanged, no defect.
+
+`Consist_Step`'s heading (review 56, item 4) is left: the bound (120 of
+160 calls) came with item 2 in hand; B2660.
