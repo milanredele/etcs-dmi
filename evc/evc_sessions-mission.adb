@@ -306,11 +306,15 @@ is
    --  D31: opened (the system version agreed: D32, and 5.4.3.3
    --  "Following D31" the contact valid) or failed (A32: no session
    --  with the RBC any more; the driver is informed by the indication
-   --  of 3.5.7, EVC_Sessions: S10). 3.18.4.3.4: a session called on
-   --  the EIRENE short number stores the RBC identity EURORADIO
-   --  reported (unknown, No_RBC, when it reported none)
-   --  @req 3.18.4.3.4
-   procedure Judge_Opening
+   --  of 3.5.7, EVC_Sessions: S10); decision: a session with the RBC
+   --  queued for a free session (Queued, Queued_RBC) is not a failure,
+   --  3.5.3.5.2 terminating the one it replaces first. 3.18.4.3.4: a
+   --  session called on the EIRENE short number stores the RBC
+   --  identity EURORADIO reported (unknown, No_RBC, when it reported
+   --  none)
+   --  @req 3.18.4.3.4, 3.5.3.5.2
+   procedure Judge_Opening (Queued     : Boolean;
+                            Queued_RBC : R.RBC_Id_T)
      with Global => (In_Out => (Step, R.State),
                      Input  => SoM_RBC,
                      Output => SoM_S)
@@ -339,13 +343,17 @@ is
                             else R.Info (SoM_S).RBC),
                          Radio => R.Info (SoM_S).Radio));
          Step := Report_Due;
-      elsif not Any then
+      elsif not Any and then not (Queued and then Queued_RBC = SoM_RBC)
+      then
          Step := Decided;
       end if;
    end Judge_Opening;
 
    --  @req 3.5.3.4 a), 3.5.3.8 a), 5.4.3.2 D7
-   procedure Evaluate_SoM (Ctx : R.Context_T; Req : in out Request_T)
+   procedure Evaluate_SoM (Ctx        : R.Context_T;
+                           Queued     : Boolean;
+                           Queued_RBC : R.RBC_Id_T;
+                           Req        : in out Request_T)
      with Global => (In_Out => (Step, SoM_RBC, SoM_S, Report_Valid,
                                 Reject_Due, Awaiting_Network, R.State),
                      Input  => (Reject_S, EVC_Mission.State,
@@ -419,7 +427,7 @@ is
          end if;
       end if;
       if Step = Opening and then not Req.Open then
-         Judge_Opening;
+         Judge_Opening (Queued, Queued_RBC);
       end if;
       --  A40: the session terminated, the driver informed; S10
       if Reject_Due then
@@ -506,10 +514,13 @@ is
       end if;
    end Evaluate_EoM;
 
-   procedure Evaluate (Ctx : EVC_Radio.Context_T; Req : out Request_T) is
+   procedure Evaluate (Ctx        : EVC_Radio.Context_T;
+                       Queued     : Boolean;
+                       Queued_RBC : EVC_Radio.RBC_Id_T;
+                       Req        : out Request_T) is
    begin
       Req := (others => <>);
-      Evaluate_SoM (Ctx, Req);
+      Evaluate_SoM (Ctx, Queued, Queued_RBC, Req);
       Evaluate_TD (Ctx);
       Evaluate_EoM (Ctx, Req);
    end Evaluate;

@@ -14968,3 +14968,97 @@ Edits outside the named units: none (`S076_Run.DMI_Input` at the press
 of Radio network type is the radio network type step of the brief).
 Commits: B2360 with the comment field, B2520's trace, the radio network
 type step.
+### The start of mission's session steps: the S4 wait by D7, the RBC id changed with a session open, the session at desk opening (e6/sessions-som) (2026-10-27)
+
+**The S4 wait reached by D7 (B2480 done).** 5.4.3.2 D7 leads to A31 or
+S4 by the network registration alone; S4 is reached from D7 only (S3,
+S5 and A43 do not enter it), and left by E6 / E61 / E62 to A31 or by
+E7 / E71 / E72 (the time of A.3.1, 40 s, from the latest GSM-R order or
+from the FRMCS detection) to A42. `EVC_Sessions.Mission` follows D7 in
+two ways: with a known RBC contact the session is opened at once and
+the registration awaited while opening (`Opening`, decision 1 of the
+start of mission), without one the start of mission waits at S4 itself
+(`Awaiting_Registration`: Step Decided with `Awaiting_Network`). The
+claim held at the source: `EVC_Sessions.Apply_Network` passed
+`Mission.Opening` alone as `Network.Evaluate`'s In_SoM, and
+`EVC_Sessions.Network.Supervise_Wait` times the wait out only while
+In_SoM holds, so the second way never timed out. Fix: In_SoM is
+`Mission.Opening or else Mission.Awaiting_Registration` (the two steps
+of Table 49 at which the registration is awaited; no other step of
+ours waits at S4). The hour glass of `EVC_Core.Outputs` needed no
+change (it ends with `Registration_Timed_Out`). Scenario
+`EVC_Test_Network.Scenario_Network_S4_Without_Contact`: D7 without a
+contact as 3050600_06 reaches it (level 2 by balise in SB, the Driver
+ID entered), both systems with FRMCS not registered: entry 33 alone at
+40 s from the power-up's order (E72); FRMCS alone: entry 33 at 40 s from
+the detection (E71); GSM-R alone, no mobile registered: entry 34 at 40
+s (E7); each with MSG_ONBOARD waiting 1 before and 0 after; failing
+three checks before the fix. Runner: 3050600_06 SV30 failed 58 ->
+blocked 60 (E5-radio, the driver's "Mission with one radio system"),
+the expected movement; 1163 / 1064 / 963, 0 regressions. Rows 5.4.3.2
+S4 and A42 noted; Sfb725745's onboard line marked fixed (its s076 line
+for 5040300_25 unchanged); B2380 narrowed.
+
+**The RBC id changed with a session open (B2420 with B2500 done).**
+3.5.3.5.2: "the existing communication session(s) shall be terminated
+... and the new one shall be established"; 3.5.3.5.2.1 excepts the
+Accepting RBC of a handover only, and its words "unless the on-board
+equipment is only able to handle one communication session through
+GSM-R" show that an on-board holding one session is foreseen (3.5.3.4
+sets no minimum): the configuration `EVC_Config` Sessions 1 is not
+below the specification. Traced with one session
+(`EVC_Test_Sessions.Scenario_SoM_L2_Override_From_S20` run with
+Sessions 1): in the cycle of the Radio data with RBC 301,
+`EVC_Sessions.Mission.Evaluate_SoM` opens (A31, `Opening`),
+`EVC_Sessions.Establish` terminates the session with RBC 300 (state
+Terminating, 156 sent) and `EVC_Sessions.Open`, with no idle session,
+queues 301 in `Pending`; in the next cycle
+`EVC_Sessions.Mission.Judge_Opening` counted only the non-idle sessions
+to the SoM RBC, found none and went to Decided (A32, S10: the override
+then taken); after the acknowledgement 39 the release freed the
+session and `Pending` opened 301, outside the start of mission. The
+backlog's "neither terminated nor attempted" did not hold; the
+reviewer's candidate cause did. Fix (decision): a session with the SoM
+RBC queued for a free session is not a failed opening:
+`EVC_Sessions.Mission.Evaluate` takes `Queued`, `Queued_RBC`
+(`Pending.Active`, `Pending.RBC` from `EVC_Sessions.Apply_Mission`) down
+to `Judge_Opening`, which stays at A31 while they name the SoM RBC; a
+`Stop` of the networks (`Apply_Network` clears `Pending`) still fails it.
+The scenario runs with two and with one session: 300 terminating with
+156 at the entry in both, the override refused at A31 and A31 kept in
+the next cycle, 39 for 300, 301 being established, its establishment
+(32, 38), the SoM position report 157 with packet 11 acknowledged by 301
+(8), S10, the override taken. Two sessions before: the scenario left
+300 terminating without 39 and took the override at S10 without
+acknowledging the 157's Train Data; with the 39 given the override
+waits for that acknowledgement (`Train_Data_Awaited`, 4.8.3 [3]) in
+both configurations, so the scenario acknowledges it. Why the earlier
+run did not wait was not traced. Row 3.5.3.5.2 noted (`@req 3.5.3.5.2`
+on `Judge_Opening`). Runner: 0 movements.
+
+**The session at desk opening (B789, first part, done).** 5.4.1.4: "If,
+upon desk opening, there is an already established communication
+session for which no termination is ongoing, the ERTMS/ETCS on-board
+equipment shall first terminate this communication session"; the
+clause names no mode or level (5.4.3.2 S0 then finds no session
+established). The claim held: nothing in `EVC_Sessions` looked at the
+desk's opening (`EVC_Sessions.Mission.Evaluate_SoM` stops the session
+at the desk's closing during a start of mission, 5.4.3.2.2 / 3.5.3.8
+a)). Built: `EVC_Sessions.Apply_Desk`, in `EVC_Sessions.Evaluate` before
+the mode's session order, keeps whether a desk was open in the last
+cycle (`Desk_Was_Open`, reset by `Clear`) and, at its opening
+(`EVC_Position.Active_Cab` from `No_Cab`), terminates every session in
+state Established (156, `Terminate_Session`); a session Terminating
+(the termination ongoing), being established or with its connection
+lost is left. Scenario `EVC_Test_Sessions.Scenario_Session_Desk_Opening`:
+level 2, SB with the desk closed, Sleeping entered and the session of
+4.4.6.1.10 b) established, Sleeping left (SB, the session still
+established), Cab A opened: Terminating and 156 in that cycle, 39 then
+Idle, a second opening without a session sends nothing. Runner:
+5040300_20 failed 45 -> passed in SV21, SV22, SV30 (step 42 Cab A
+activated in SL, level 1, SB; step 45 expects 156), which the triage
+line of `~expect RTM message: 156 not sent` had grouped "not re-traced"
+with the s076 cases of 3150100_09 / _11; its note now says so. Row
+5.4.1.4 deferred -> done (`@req 5.4.1.4` on `Apply_Desk`); B789
+narrowed to 5.6.4.1.2 and the scenario of 5.6.2.2. Runner 1166 / 1061 /
+963, 0 regressions.

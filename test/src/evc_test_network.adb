@@ -318,6 +318,95 @@ package body EVC_Test_Network is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_FRMCS;
 
+   procedure Scenario_Network_S4_Without_Contact is
+      use type EVC_Core.Time_Ms_T;
+      Start : EVC_Core.Time_Ms_T;
+      Waited : EVC_Core.Time_Ms_T;
+      FRMCS_Shown, GSMR_Shown : Boolean;
+
+      --  the start of mission to S4 by D7 as 3050600_06 reaches it: a
+      --  level transition to level 2 by balise in SB, the RBC contact
+      --  unknown, the Driver ID entered; Start is the power-up (the
+      --  GSM-R order and the FRMCS detection)
+      procedure To_S4 (Systems : EVC_Config.Radio_Systems_T;
+                       T       : EVC_Config.Network_Type_T) is
+      begin
+         EVC_Config.Set_Radio_For_Test
+           ((Sessions => 1, Engine_Id => 76_000, Systems => Systems,
+             Default_Type => T, Default_MN => 16#262FFF#));
+         EVC_Test_Modes.Start_E4;
+         if EVC_Config."/=" (Systems, EVC_Config.GSMR_Only) then
+            Give_Radio_Event (1, FRMCS_Not_Registered);
+         end if;
+         Start := EVC_Core.Time_Ms;
+         Add_Group (Group (10, 20));
+         Run_X (5_000, 100);
+         Stand;
+         Send (Action (11, 5));
+         Send (Text_Entry (0, "1234"));
+      end To_S4;
+
+      --  stand until a registration failure is shown or 45 s from Start
+      procedure Await_Failure is
+      begin
+         FRMCS_Shown := False;
+         GSMR_Shown := False;
+         while EVC_Core.Time_Ms - Start < 45_000 loop
+            Stand;
+            FRMCS_Shown := FRMCS_Shown
+              or else Status_Shown
+                        (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+            GSMR_Shown := GSMR_Shown
+              or else Status_Shown
+                        (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+            exit when FRMCS_Shown or else GSMR_Shown;
+         end loop;
+         Waited := EVC_Core.Time_Ms - Start;
+      end Await_Failure;
+   begin
+      --  both systems, FRMCS+GSM-R: the GSM-R mobile registered
+      --  (Auto_Register), FRMCS reported not registered
+      To_S4 (EVC_Config.Both_Systems, EVC_Config.FRMCS_GSMR);
+      Check (not R.Contact.Known and then EVC_Sessions.SoM_Awaiting_Registration
+             and then Waiting = 1,
+             "S4 by D7 without a contact, both systems: the registration "
+             & "awaited (5.4.3.2 D7 -> S4), got waiting" & Waiting'Image);
+      Await_Failure;
+      Check (FRMCS_Shown and then not GSMR_Shown and then Waiting = 0
+             and then EVC_Sessions.Registration_Timed_Out
+             and then Waited in 39_000 .. 41_000,
+             "S4 by D7 without a contact, both systems: E72 -> A42 40 s "
+             & "after the GSM-R order of the power-up (A.3.1), FRMCS "
+             & "network registration failed, entry 33, the wait ended; at"
+             & Waited'Image & " ms " & FRMCS_Shown'Image
+             & GSMR_Shown'Image);
+      --  FRMCS the only system, the type FRMCS
+      To_S4 (EVC_Config.FRMCS_Only, EVC_Config.FRMCS);
+      Check (EVC_Sessions.SoM_Awaiting_Registration and then Waiting = 1,
+             "S4 by D7 without a contact, FRMCS alone: the registration "
+             & "awaited (5.4.3.2 D7 -> S4)");
+      Await_Failure;
+      Check (FRMCS_Shown and then not GSMR_Shown and then Waiting = 0
+             and then Waited in 39_000 .. 41_000,
+             "S4 by D7 without a contact, FRMCS alone: E71 -> A42 40 s "
+             & "after the FRMCS on-board was detected connected (A.3.1), "
+             & "entry 33; at" & Waited'Image & " ms");
+      --  GSM-R the only system, no mobile registered
+      Auto_Register := False;
+      To_S4 (EVC_Config.GSMR_Only, EVC_Config.GSMR);
+      Check (EVC_Sessions.SoM_Awaiting_Registration and then Waiting = 1,
+             "S4 by D7 without a contact, GSM-R alone: the registration "
+             & "awaited (5.4.3.2 D7 -> S4)");
+      Await_Failure;
+      Check (GSMR_Shown and then not FRMCS_Shown and then Waiting = 0
+             and then Waited in 39_000 .. 41_000,
+             "S4 by D7 without a contact, GSM-R alone: E7 -> A42 40 s "
+             & "after the order of the power-up (A.3.1), GSM-R network "
+             & "registration failed, entry 34; at" & Waited'Image & " ms");
+      Auto_Register := True;
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_S4_Without_Contact;
+
    --  Message 24, or K, (T_TRAIN now) with packet 45: GSM-R, network MN
    function M24_With_45
      (MN : ETCS_Variables.NID_MN_T;

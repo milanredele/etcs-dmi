@@ -346,6 +346,7 @@ begin
    Scenario_Coordinate_Assignment;
    Scenario_Report_Reversing;
    Scenario_Session_Sleeping;
+   Scenario_Session_Desk_Opening;
    Scenario_Text_Ack_Report;
    Scenario_Train_Integrity;
    --  phase E6: Supervised Manoeuvre, the safe consist length
@@ -368,6 +369,7 @@ begin
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;
    Scenario_Network_FRMCS;
+   Scenario_Network_S4_Without_Contact;
    Scenario_Network_Radio_Order;
    Scenario_Network_Level_1;
    EVC_Test_Handover.Scenario_Handover_Radio;

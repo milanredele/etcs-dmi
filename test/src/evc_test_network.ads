@@ -26,6 +26,12 @@ package EVC_Test_Network is
    --  registration failed"
    procedure Scenario_Network_FRMCS;
 
+   --  5.4.3.2 D7 -> S4 without a known RBC contact (the position and
+   --  level 2 valid at D2): the wait of S4 ends at the time of A.3.1 by
+   --  E72, E71 and E7 as when the session is being opened, A42 entry 33
+   --  or 34
+   procedure Scenario_Network_S4_Without_Contact;
+
    --  e5/registration-3: packet 45 by radio (message 24) filtered by
    --  4.8.3 / 4.8.4 (EVC_Radio_Acceptance), 4.8.4 [1], [2], [13]
    procedure Scenario_Network_Radio_Order;
