@@ -15377,3 +15377,8 @@ Q_DIR); B2600 (the runner's speed at a V5 level: the calibration), B789's
 rest (5.6.4.1.2), B788; B781's 6th bullet and the relocations; B2320,
 B2400, B1060, B1063, B1340 are the user's decisions; the review again
 (eight items, readings first, no backlog read).
+
+B2620 decided by the user on 2026-10-27: while the Train Data
+acknowledgement of the start of mission's report is awaited, the override
+is not selectable; `Override_Allowed`'s refusal on `TD_Ack_Awaited`
+stands, the reviewer's reading is not followed, no change to the code.
