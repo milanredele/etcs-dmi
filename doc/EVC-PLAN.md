@@ -14719,6 +14719,25 @@ with the count (4 sequences), with B2320, B2400, B1060, B1063, B1340;
 B781's 6th and 11th bullets and the relocations; the review again (eight
 items, readings first, no read of the backlog's tail).
 
+After the round (e5/linking-defects, 79 calls, 4.0 USD): the user decided
+B2401 with no workaround. The coordinator checked the five sequences in
+the ERA documents of the sibling's archive (work/inner, the PDF of each):
+their step lists have balise group steps only for the groups the .scn
+gives, the never-given group is a link entry of a packet 5 only, so the
+converter is cleared and the sequences' data are at fault; the on-board's
+reactions (3.16.2.7.1.1 for 3131040_01, independent of Q_LINKREACTION;
+the trip of 3.16.2.3.1 b) for the others) are right. 3130234_05 (three
+versions), 4080436_02 and 4080444_02 blocked as S076-defect in
+`S076_Run.Linking_Data_Cases` at the step their trip spoils; 3131040_01
+and 4080404_02 get no row: a scratch copy without the brake fails the
+same step (S8722745e; the radio infill of packet 133, E7), and
+4080404_02's brake comes from BG1d's second balise linking BG2 and BG4
+at D_LINK 0, not from NID_BG 3 (B2520: two packets 5 in one group's two
+balises, which one to keep). B2340 and B2401 done. The runner 1163 /
+1070 / 957 -> 1163 / 1065 / 962, 0 regressions; the chain green again
+(the proof unchanged: no edit in evc/). Round 55 in all: 40.8 USD, seven
+agents.
+
 ### Five sequences with a linked group never given, blocked as SUBSET-076 defects (e5/linking-defects) (2026-10-27)
 
 **The fact.** The user decided B2401 on 2026-10-27: the bench invents no
