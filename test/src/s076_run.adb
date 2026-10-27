@@ -2330,6 +2330,40 @@ package body S076_Run is
             if not S.Has_Speed then
                return NJ (R_Runner, "ODO speed without supervision shown");
             end if;
+            --  A speed increase whose text names V_EMA (the target speed
+            --  shown, the LoA's) plus dV_warning, dV_sbi or dV_ebi of A.3.1
+            --  (4, 5.5, 7.5 km/h up to 110 km/h): the chart's speed when it
+            --  already satisfies the text, else the limit shown as below.
+            --  The corpus (SV21, SV22, SV30): 3131040_75 and _76 step 52
+            --  (dV_warning, the chart 37.8 km/h where the band below gave
+            --  44, past the workbook's SBI) and _79, _80 step 53 (dV_ebi,
+            --  34.4 and 39.8 km/h) keep the chart; _77 and _78 step 49
+            --  (dV_sbi, 22.1 and 19 km/h) and step 56 (V_EMA, under 20
+            --  km/h) take the limit shown
+            if not Below and then Has (E, "V_EMA")
+              and then S.V_Target in 1 .. 110 and then Chart_Kmh >= 0.0
+            then
+               declare
+                  DV    : constant Long_Float :=
+                    (if Has (E, "warning") then 4.0
+                     elsif Has (E, "SBI") then 5.5
+                     elsif Has (E, "EBI") then 7.5
+                     else 0.0);
+                  Limit : constant Long_Float :=
+                    Long_Float (S.V_Target) + DV;
+                  Chart : constant Long_Float := Chart_Kmh;
+               begin
+                  if Chart > Limit
+                    or else (Chart >= Limit and then Has (E, ">="))
+                  then
+                     Explicit_Speed := -1;
+                     return Pass ("ODO speed kept at the chart's"
+                                  & Integer'Image (Integer (Chart))
+                                  & " km/h, above V_EMA" & S.V_Target'Image
+                                  & " + dV");
+                  end if;
+               end;
+            end if;
             if Has (E, "EBI") then
                Kmh := (S.V_Perm) + 8;
             elsif Has (E, "SBI") then

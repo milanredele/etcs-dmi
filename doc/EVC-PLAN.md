@@ -14303,3 +14303,63 @@ Scenario_JRU_Track_Conditions` (item 1); `EVC_Radio_Authority` (`TAF_T`,
 scenario shows a defect. Left of B781: the relocation for the 3rd, 4th,
 7th, 9th and 12th bullets, the stop of the 3rd, the LS profile of the
 4th, the 6th (handover) and 11th (LX) bullets.
+### The gamma families, fifth package: the last trace, the speed input naming V_EMA, the raised T_brake_emergency (e5/runner-curves-5) (2026-10-27)
+
+**3131050_21 SV30 step 82** (RSM Indication, JRU 20 M_SDMTYPE 2
+M_SDMSUPSTAT 1, expected at 653 m with the release speed calculated on
+board; ours intervention, the EB at 672 m). BG2d (200 m): the EOA at
+700 m (L_ENDSECTION 500), the SvL at 900 m (D_DP 200, V_RELEASEDP 126),
+packet 27 60 km/h then 15 km/h from 800 m, gradient 0, level 2 from
+200 m (alpha 0 in 3.13.9.4.8.2). BG1d's packet 5 gives BG2d Q_LOCACC
+12 m where step 48's comment takes 0: d_tripEOA = 700 + 2 x 12 + 10 +
+10 % x 500 = 784 m, 16 m in rear of the restriction, where workbook
+21b's EBI gives 22.9 km/h (17.34 m at 23 km/h); the SvL's EBI (21a, 84 m
+beyond the EOA) about 38.5 km/h: 3.13.9.4.8 gives 23 km/h, ours 23 km/h.
+The comments' 25 km/h (step 48, 26 m by 21b) and 28 km/h (step 81) and
+the RSM start 47 m before the EOA (21a's SBI1 at 25 km/h, the step's
+653 m) come from Q_LOCACC 0; the train at 25 km/h is above our release
+speed: the service brake at 640 m in TSM, then RSM over the release
+speed and the EB. Triaged `s076` (S388a7b2a, the three versions). B1960
+closed: every trace of the line done.
+
+**B2361, the speed increase naming V_EMA.** `S076_Run.ODO_Input` took
+the middle of the shown warning and SBI speeds for
+V_TRAIN>=<V_EMA+dVwarning(V_EMA)> (44 km/h, both the ceiling's 45),
+past the target's SBI, where the chart's 37.8 km/h already satisfies the
+text (V_EMA 20 + 4 = 24 km/h; t7 of Table 8 names that speed band, the
+position condition d_W follows). Now a speed increase whose text names
+V_EMA keeps the chart's speed when it exceeds V_EMA (the target speed
+shown) + dV_warning / dV_sbi / dV_ebi of A.3.1 (4, 5.5, 7.5 km/h up to
+110 km/h), else the limit shown as before. The corpus (8 inputs in SV30,
+the same in SV21 / SV22): 3131040_75, _76 step 52 (dV_warning: 37.8 km/h
+against 24) and _79, _80 step 53 (dV_ebi: 34.4, 39.8 km/h against 27.5)
+keep the chart; _77, _78 step 49 (dV_sbi: 22.1, 19 km/h against 25.5)
+and step 56 (V_EMA, the chart under 20) do not. No sequence moved: _75
+and _76 still fail at step 54, now for their data alone (`s076`:
+S3276e893, the steps 50 m in rear of the workbook's Warning at 723 m and
+the chart falling from 705 m, 33.6 km/h there; Sfb2423ac, now _76, the
+steps 35 m in rear, the Warning at 1092 m, the chart 24.4 km/h there);
+the model line of Sfb2423ac and the _76 note of ~[workbook train]
+withdrawn. The runner 1163 / 1069 / 958 unchanged; 9 steps after the
+first failure moved to failed (the traction cut-off steps of _75 and _76
+that follow the Warning).
+
+**B2360, the raised T_brake_emergency: checked, not built.** The words
+"In order to comply with the requirement 3.11.11.6 of the SRS, we
+increase the T_BRAKE_EMERGENCY by one second" are in step 61's comment
+of all eight 3130700_01 to _08 (the brief named four): _01, _03, _05,
+_07 carry the gamma sheet (K52 3.5 s, W52 2.5 s), the even ones the
+lambda train (K52 2.5). 3111100_01 says the same in other words and has
+no workbook; 3131040_71 has K52 3.5 s without them, so the sheet's data
+alone are no criterion. The words are specific, but the runner cannot
+read them: `S076_Sequences` cuts a step's comment at Max_Text (400
+characters) and the phrase lies near character 600 of a comment of about
+720. The build (`S076_Bench.Set_Gamma` with a flag, `Build_Gamma`
+taking combination 1's time less 1 s, the flag from the comments in
+`S076_Run`) found no comment, moved nothing and was withdrawn. B2360
+narrowed: a longer comment in `S076_Sequences` first (outside this
+package's units), then the build and the full runner.
+
+Edits outside the named units: none (the runner's `S076_Run.ODO_Input`
+is the ODO speed input of the brief). Commits: the trace of 3131050_21,
+the speed input naming V_EMA, this paragraph with B2360.
