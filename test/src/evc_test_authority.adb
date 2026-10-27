@@ -2400,4 +2400,61 @@ package body EVC_Test_Authority is
              & "consequence (3.15.5.2 b, 3.15.5.5)");
    end Scenario_Track_Ahead_Free;
 
+   --  A.3.5.1 9th bullet: the track ahead free request (message 34, its
+   --  display from 200 m to 300 m beyond the group 10, 3.15.5.2) in SR;
+   --  the train, 50 cm a cycle, rolls back 1.5 m in rear of the location
+   --  where the request is shown and comes forward 5 m: shown in every
+   --  cycle, never withdrawn; past its end, the same roll back does not
+   --  show it again
+   procedure Scenario_TAF_Roll_Back is
+      X      : Integer_64;
+      Kept   : Boolean := True;
+      Again  : Boolean := False;
+
+      --  50 cm a cycle to To, the request shown (Shown) in every cycle
+      --  or never
+      procedure Go_To (To : Integer_64; Shown : Boolean) is
+      begin
+         while Train_Cm /= To loop
+            Run_X ((if To > Train_Cm then Train_Cm + 50 else Train_Cm - 50),
+                   50);
+            if Shown then
+               Kept := Kept and then RA.TAF_Shown;
+            else
+               Again := Again or else RA.TAF_Shown;
+            end if;
+         end loop;
+      end Go_To;
+   begin
+      Start_L2;
+      Run_X (15_000);
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Stand_X (200);
+      Give_Radio_Message (1, TAF_Message (200, 100));
+      Stand_X (200);
+      while not RA.TAF_Shown and then Train_Cm < 35_000 loop
+         Run_X (Train_Cm + 50, 50);
+      end loop;
+      X := Train_Cm;
+      Check (RA.TAF_Shown, "TAF roll back: shown from its beginning "
+             & "(3.15.5.2 a), at" & X'Image);
+      Go_To (X - 150, Shown => True);
+      Go_To (X + 500, Shown => True);
+      Check (Kept and then RA.TAF_Stored,
+             "TAF roll back: 1.5 m in rear of its beginning and forward "
+             & "again, shown in every cycle, neither withdrawn nor shown a "
+             & "second time (A.3.5.1 9th bullet)");
+      while RA.TAF_Shown and then Train_Cm < 45_000 loop
+         Run_X (Train_Cm + 50, 50);
+      end loop;
+      X := Train_Cm;
+      Check (not RA.TAF_Shown, "TAF roll back: ended at its end "
+             & "(3.15.5.2 b), at" & X'Image);
+      Go_To (X - 150, Shown => False);
+      Go_To (X + 500, Shown => False);
+      Check (not Again and then RA.TAF_Granted = 0,
+             "TAF roll back: 1.5 m in rear of its end and forward again, "
+             & "not shown again (A.3.5.1 9th bullet)");
+   end Scenario_TAF_Roll_Back;
+
 end EVC_Test_Authority;

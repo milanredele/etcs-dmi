@@ -461,6 +461,67 @@ is
    is (Frame (T, E.Finish, (if E.Value in 2 | 4 then Estimated_Item
                             else Min_Item)));
 
+   --  The item of the train interface's output of a track condition kind
+   --  (5.20.2 to 5.20.5), 0 for a kind without one
+   function External_Kind (Value : Value_T) return Natural
+   is (case Value is
+          when 3      => Ext_Pantograph,
+          when 9      => Ext_Main_Switch,
+          when 5      => Ext_Air_Tight,
+          when 6      => Ext_Regenerative,
+          when 7      => Ext_Eddy_Service,
+          when 10     => Ext_Eddy_Emergency,
+          when 8      => Ext_Magnetic_Shoe,
+          when others => 0);
+
+   --  The locations of a stored element passed (Phases)
+   type Phases_T is record
+      Announced, Started, Ended, Rear_Started, Rear_Ended : Boolean;
+   end record;
+
+   --  The locations of the element E of a store in the sense S passed now
+   --  or before (A.3.5.1: once passed, kept over a reverse movement):
+   --  point C, Lead in rear of the start, and the start by the max safe
+   --  front end, the end by the min safe front end, the start and the end
+   --  by the min safe rear end; Est, the sound horn and the radio hole,
+   --  by the estimated front end against the estimated items (5.18.5.2,
+   --  5.18.9.2); Point, a change of traction system or of allowed current,
+   --  a single location whose end is its start's min item
+   --  @req A.3.5.1
+   function Phases (T     : Origin_Table_T;
+                    Train : Train_Frame_T;
+                    S     : Sense_T;
+                    E     : Stored_T;
+                    Lead  : Length_T;
+                    Est   : Boolean;
+                    Point : Boolean) return Phases_T
+   is
+      Item  : constant Item_Kind_T :=
+        (if Est then Estimated_Item else Max_Item);
+      Last  : constant Location_T := (if Point then E.Start else E.Finish);
+      D     : constant Dist_T := A (S, Frame (T, E.Start, Item));
+      Fin   : constant Dist_T :=
+        A (S, Frame (T, Last, (if Est then Estimated_Item else Min_Item)));
+      Fin_R : constant Dist_T := A (S, Frame (T, Last, Min_Item));
+      Max_F : constant Dist_T :=
+        A (S, (if Est then Train.Est_Front else Train.Max_Front));
+      Min_F : constant Dist_T :=
+        A (S, (if Est then Train.Est_Front else Train.Min_Front));
+      Min_R : constant Dist_T := A (S, Train.Min_Rear);
+   begin
+      return (Announced    => E.Announced or else Max_F >= Diff (D, Lead),
+              Started      => E.Started or else Max_F >= D,
+              Ended        => E.Ended or else Min_F >= Fin,
+              Rear_Started => E.Rear_Started or else Min_R >= D,
+              Rear_Ended   => E.Noted or else Min_R >= Fin_R);
+   end Phases;
+
+   --  The phase of an item of the train interface's output (External_T):
+   --  the start reached, the end passed by the min safe front end when
+   --  Front (the end's distance from the min safe front end)
+   function Phase_Of (P : Phases_T; Front : Boolean) return Natural
+   is (if not P.Started then 0 elsif Front and then P.Ended then 2 else 1);
+
    procedure Evaluate (T      : Origin_Table_T;
                        Train  : Train_Frame_T;
                        Now_Ms : Unsigned_64;
@@ -511,10 +572,45 @@ is
         (not E.Noted
          or else Now_Ms < E.Noted_Ms
          or else Now_Ms - E.Noted_Ms <= After_End_Ms);
+
+      --  the locations passed by the elements of St kept (A.3.5.1);
+      --  Kinds, the store of the track conditions (its Value the kind)
+      procedure Keep (St : in out Store_T; Point, Kinds : Boolean)
+        with Post => St.Count = St.Count'Old
+      is
+      begin
+         if not Train.Valid or else St.Sense /= Train.Sense then
+            return;
+         end if;
+         for I in 1 .. St.Count loop
+            pragma Loop_Invariant (St.Count = St.Count'Loop_Entry);
+            declare
+               V : constant Value_T := St.List (I).Value;
+               P : constant Phases_T :=
+                 Phases (T, Train, St.Sense, St.List (I),
+                         Lead  => (if not Kinds then Announce
+                                   elsif V = 2 then Horn
+                                   elsif V = 4 then 0
+                                   else Announce),
+                         Est   => Kinds and then V in 2 | 4,
+                         Point => Point);
+            begin
+               St.List (I).Announced := P.Announced;
+               St.List (I).Started := P.Started;
+               St.List (I).Ended := P.Ended;
+               St.List (I).Rear_Started := P.Rear_Started;
+               Note (St, I, P.Rear_Ended);
+            end;
+         end loop;
+      end Keep;
    begin
       Ind := (Count => 0, List => (others => (others => <>)));
       Orders := (Count => 0, List => (others => (others => <>)));
       Hole_S := Overlaps_Radio_Hole (T, Train);
+      Keep (Cond_S, Point => False, Kinds => True);
+      Keep (Traction_S, Point => True, Kinds => False);
+      Keep (Platform_S, Point => False, Kinds => False);
+      Keep (Current_S, Point => True, Kinds => False);
       if Train.Valid and then Cond_S.Sense = Train.Sense then
          for I in 1 .. Cond_S.Count loop
             pragma Loop_Invariant (Cond_S.Count = Cond_S.Count'Loop_Entry);
@@ -537,37 +633,36 @@ is
                FE  : constant Dist_T :=
                  A (S, Frame (T, E.Finish, Estimated_Item));
             begin
-               Note (Cond_S, I, Min_R >= Fin);
+               --  the phases as kept, so that a reverse movement neither
+               --  reverts nor repeats them (A.3.5.1)
                case E.Value is
                   when 2 =>
                      --  5.18.9: sound horn, the estimated front end
-                     if Est_F >= Diff (DE, Horn) and then Est_F < FE then
+                     if E.Announced and then not E.Ended then
                         Show (Id, Sym.Active);
                      end if;
                   when 4 =>
                      --  5.18.5: radio hole
-                     if Est_F >= DE and then Est_F < FE then
+                     if E.Started and then not E.Ended then
                         Show (Id, Sym.Active);
                      end if;
                   when 3 | 9 =>
                      --  5.18.2, 5.18.3: powerless section, its end
                      --  against the min safe front end
-                     if Max_F >= C and then Max_F < D then
+                     if E.Announced and then not E.Started then
                         Show (Id, Sym.Announce);
-                     elsif Max_F >= D and then Min_F < Fin then
+                     elsif E.Started and then not E.Ended then
                         Show (Id, Sym.Active);
-                     elsif Min_F >= Fin and then Within_After (Cond_S.List (I))
-                     then
+                     elsif E.Ended and then Within_After (E) then
                         Show (Id, Sym.After);
                      end if;
                   when 5 =>
                      --  5.18.6: air tightness
-                     if Max_F >= C and then Max_F < D then
+                     if E.Announced and then not E.Started then
                         Show (Id, Sym.Announce);
-                     elsif Max_F >= D and then Min_R < Fin then
+                     elsif E.Started and then not E.Noted then
                         Show (Id, Sym.Active);
-                     elsif Min_R >= Fin and then Within_After (Cond_S.List (I))
-                     then
+                     elsif E.Noted and then Within_After (E) then
                         Show (Id, Sym.After);
                      end if;
                   when 0 =>
@@ -599,9 +694,9 @@ is
                      end;
                   when 6 | 7 | 8 | 10 =>
                      --  5.18.7
-                     if Max_F >= C and then Max_F < D then
+                     if E.Announced and then not E.Started then
                         Show (Id, Sym.Announce);
-                     elsif Max_F >= D and then Min_R < Fin then
+                     elsif E.Started and then not E.Noted then
                         Show (Id, Sym.Active);
                      end if;
                   when others =>
@@ -628,23 +723,15 @@ is
                V   : constant Natural :=
                  Natural'Min (Natural'Max (E.Value, 0) / 1_024, 5);
                Sym : constant Symbols_T := Traction_Symbols (V);
-               F   : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
-               FM  : constant Dist_T := A (S, Frame (T, E.Start, Min_Item));
                FE  : constant Dist_T :=
                  A (S, Frame (T, E.Start, Estimated_Item));
-               C   : constant Dist_T := Diff (F, Announce);
-               Max_F  : constant Dist_T := A (S, Train.Max_Front);
-               Min_R  : constant Dist_T := A (S, Train.Min_Rear);
                Est_F  : constant Dist_T := A (S, Train.Est_Front);
                Id  : constant Natural := 128 + Natural'Min (I, 127);
             begin
-               Note (Traction_S, I, Min_R >= FM);
                --  5.18.10
-               if Max_F >= C and then Max_F < F then
+               if E.Announced and then not E.Started then
                   Show (Id, Sym.Announce);
-               elsif Max_F >= F
-                 and then Within_After (Traction_S.List (I))
-               then
+               elsif E.Started and then Within_After (E) then
                   Show (Id, Sym.Active);
                end if;
                --  the order at the max item the supervision compares
@@ -785,45 +872,40 @@ is
                D      : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
                Fin    : constant Dist_T :=
                  A (S, Frame (T, E.Finish, Min_Item));
-               C      : constant Dist_T := Diff (D, Announce);
                Max_F  : constant Dist_T := A (S, Train.Max_Front);
                Min_F  : constant Dist_T := A (S, Train.Min_Front);
                Min_R  : constant Dist_T := A (S, Train.Min_Rear);
-               Kind   : constant Natural :=
-                 (case E.Value is
-                     when 3      => Ext_Pantograph,
-                     when 9      => Ext_Main_Switch,
-                     when 5      => Ext_Air_Tight,
-                     when 6      => Ext_Regenerative,
-                     when 7      => Ext_Eddy_Service,
-                     when 10     => Ext_Eddy_Emergency,
-                     when 8      => Ext_Magnetic_Shoe,
-                     when others => 0);
+               Kind   : constant Natural := External_Kind (E.Value);
                Id     : constant Natural := Natural'Min (E.Id, 255);
+               P      : constant Phases_T :=
+                 Phases (T, Train, S, E, Announce, False, False);
             begin
-               if Kind /= 0 and then Max_F >= C and then Min_R < Fin then
+               if Kind /= 0 and then P.Announced and then not P.Rear_Ended
+               then
                   if Kind in Ext_Pantograph | Ext_Main_Switch then
                      --  5.20.2.3 to .5, 5.20.3.3 to .5: to D from the max
                      --  safe front end while the min safe rear end is in
                      --  rear of D; to E from the min safe front end
                      Put ((Kind      => Kind,
                            Id        => Id,
-                           Has_Start => Min_R < D,
+                           Has_Start => not P.Rear_Started,
                            To_Start  => Diff (D, Max_F),
                            Has_End   => True,
                            To_End    => Diff (Fin, Min_F),
-                           Value     => 0));
+                           Value     => 0,
+                           Phase     => Phase_Of (P, True)));
                   else
                      --  5.20.4.3 to .5, 5.20.5.4 to .6: to D from the max
                      --  safe front end until it reaches D; to E from the
                      --  min safe rear end
                      Put ((Kind      => Kind,
                            Id        => Id,
-                           Has_Start => Max_F < D,
+                           Has_Start => not P.Started,
                            To_Start  => Diff (D, Max_F),
                            Has_End   => True,
                            To_End    => Diff (Fin, Min_R),
-                           Value     => 0));
+                           Value     => 0,
+                           Phase     => Phase_Of (P, False)));
                   end if;
                end if;
             end;
@@ -836,14 +918,14 @@ is
                S     : constant Sense_T := Traction_S.Sense;
                E     : constant Stored_T := Traction_S.List (I);
                F     : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
-               C     : constant Dist_T := Diff (F, Announce);
                Max_F : constant Dist_T := A (S, Train.Max_Front);
-               Min_R : constant Dist_T := A (S, Train.Min_Rear);
+               P     : constant Phases_T :=
+                 Phases (T, Train, S, E, Announce, False, True);
             begin
                --  5.20.6.2 to .4: to F from the max safe front end, and
                --  the new traction system, until the min safe rear end
                --  reaches F
-               if Max_F >= C and then Min_R < F then
+               if P.Announced and then not P.Rear_Started then
                   Put ((Kind      => Ext_Traction,
                         Id        => 128 + Natural'Min (I, 127),
                         Has_Start => True,
@@ -851,7 +933,8 @@ is
                         Has_End   => False,
                         To_End    => 0,
                         Value     => Natural'Min (Natural'Max (E.Value, 0),
-                                                  65_535)));
+                                                  65_535),
+                        Phase     => Phase_Of (P, False)));
                end if;
             end;
          end loop;
@@ -864,11 +947,11 @@ is
                S     : constant Sense_T := Current_S.Sense;
                E     : constant Stored_T := Current_S.List (I);
                F     : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
-               C     : constant Dist_T := Diff (F, Announce);
                Max_F : constant Dist_T := A (S, Train.Max_Front);
-               Min_R : constant Dist_T := A (S, Train.Min_Rear);
+               P     : constant Phases_T :=
+                 Phases (T, Train, S, E, Announce, False, True);
             begin
-               if Max_F >= C and then Min_R < F then
+               if P.Announced and then not P.Rear_Started then
                   Put ((Kind      => Ext_Current,
                         Id        => 160,
                         Has_Start => True,
@@ -876,7 +959,8 @@ is
                         Has_End   => False,
                         To_End    => 0,
                         Value     => Natural'Min (Natural'Max (E.Value, 0),
-                                                  65_535)));
+                                                  65_535),
+                        Phase     => Phase_Of (P, False)));
                end if;
             end;
          end loop;
@@ -893,20 +977,21 @@ is
                E     : constant Stored_T := Platform_S.List (I);
                D     : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
                Fin   : constant Dist_T := A (S, Frame (T, E.Finish, Min_Item));
-               C     : constant Dist_T := Diff (D, Announce);
                Max_F : constant Dist_T := A (S, Train.Max_Front);
                Min_F : constant Dist_T := A (S, Train.Min_Front);
-               Min_R : constant Dist_T := A (S, Train.Min_Rear);
+               P     : constant Phases_T :=
+                 Phases (T, Train, S, E, Announce, False, False);
             begin
-               if Max_F >= C and then Min_R < Fin then
+               if P.Announced and then not P.Rear_Ended then
                   Put ((Kind      => Ext_Platform,
                         Id        => 192 + Natural'Min (I, 63),
-                        Has_Start => Min_R < D,
+                        Has_Start => not P.Rear_Started,
                         To_Start  => Diff (D, Max_F),
                         Has_End   => True,
                         To_End    => Diff (Fin, Min_F),
                         Value     => Natural'Min (Natural'Max (E.Value, 0),
-                                                  65_535)));
+                                                  65_535),
+                        Phase     => Phase_Of (P, True)));
                end if;
             end;
          end loop;

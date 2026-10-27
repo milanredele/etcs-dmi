@@ -14220,3 +14220,86 @@ first at step 47 (S363c8035, the Driver ID window after the power-up
 of step 45), and step 78 fails on master too (the Radio Data window of
 step 75 not open), not "not judged, radio"; B1841 narrowed to that.
 The runner 1163 / 1070 / 957 unchanged, 0 regressions.
+### The track conditions over a reverse movement fixed, the MA timers and the TAF request over a reverse movement (e6/roll-back-2) (2026-10-27)
+
+**B2341, A.3.5.1 7th bullet, the track conditions over a reverse
+movement** (fixed). The claim held at the source: `EVC_Track_Conditions.
+Evaluate` and `External` judged every phase against the train's position
+in each cycle, and the records 45 took their phase from the signs of the
+distances of the train interface's items (`EVC_JRU_Records.
+Track_Conditions`, `To_Start > 0`, `To_End < 0`), so a roll back behind
+a location wrote them again. `EVC_Track_Conditions.Phases` judges the
+locations of an element (point C and the start by the max safe front
+end, the end by the min safe front end, the start and the end by the
+min safe rear end; the sound horn and the radio hole by the estimated
+front end against the estimated items; a change of traction system or
+of allowed current a single location), each one ORed with its flag in
+`EVC_Profiles.Stored_T` (`Announced`, `Started`, `Ended`,
+`Rear_Started`; the end by the rear is the existing `Noted`); `Evaluate`
+keeps them first (its nested `Keep`) for the four stores (the
+conditions, the traction and current changes, the platforms), then
+shows from the flags; `External` reads `Phases` (the same answer
+whatever the order of the two in the cycle) and gives each item its
+`Phase` (0 the start not reached, 1 reached, 2 the end passed by the
+min safe front end), which the record 45 takes. Decision: the
+remaining distances of 5.20.2.3 (not in the bullet's list) follow the
+train; only their start and stop (5.20.2.2, .4, .5) are kept. Kind 0
+(the non stopping areas: the virtual limits of the supervision) and the
+big metal masses (`BMM_At_Antenna`) are unchanged, as A.3.5.1.1 says.
+The scenario's expectations (the lowered pantograph kept and the
+announcement not shown again behind the start, 5.18.2.3; the raise
+pantograph kept behind the end, 5.18.2.5; the distance to the start not
+generated again behind the rear end's location, 5.20.2.4; no record 45
+again) are the clauses'; `Scenario_Track_Condition_Roll_Back` is called
+from `evc_test.adb`. Size: `Evaluate` and `External` stay within their
+known lines (the kind of the external item to `External_Kind`). Proof of
+`evc_track_conditions` (247 checks), `evc_jru_records` (445) and
+`evc_profiles` (590), none unproved; runner 0 regressions, 0
+improvements (no sequence moved). Edits outside the brief's units:
+`EVC_Profiles.Stored_T` (the four flags), `EVC_JRU_Records.
+Track_Conditions` (the phase of the item), `EVC_Test_JRU.
+Scenario_JRU_Track_Conditions` (the new component in its aggregates).
+Left of the 7th bullet: the relocation (B781).
+
+**A.3.5.1 12th bullet, the MA timers over a reverse movement** (no
+defect). Wrong premise of the brief: the timers live in
+`EVC_Movement_Authority` (`Supervise`, the `End_Timer` and `OL_Timer` of
+the MA), not in `EVC_Radio_Authority`, and their scenarios in
+`EVC_Test_Profiles`, not in `EVC_Test_Authority`. `Supervise` starts
+each timer only when it is not running (3.8.4.1.1, 3.8.4.4.1), so a
+second passage of the start location cannot restart it.
+`EVC_Test_Profiles.Scenario_MA_Timers_Roll_Back`: an MA of 500 + 200 m
+from the group 10 at 100 m (EOA 800 m), the End Section timer 20 s from
+500 m, and in a second track the Overlap timer 20 s from 600 m (D_OL
+100 m); the train at 18 km/h, 50 cm a cycle, rolls back 1.5 m in rear of
+the location where the timer started and comes forward 5 m: the timer
+running with the same start, its time-out at the same cycle as in the
+same run without the roll back. Decision: the bench reverses without a
+standstill cycle; a real reversal stops the train, and a standstill
+after the Overlap timer started deletes the overlap (3.8.4.4.3, not
+reverted), so the overlap case checks the start only. Left of the
+bullet: the relocation (B781).
+
+**A.3.5.1 9th bullet, the track ahead free request over a reverse
+movement** (a defect found and fixed). `EVC_Test_Authority.
+Scenario_TAF_Roll_Back`: in level 2 and SR, the request of message 34
+shown from 200 m to 300 m beyond the group 10 (3.15.5.2), the train at
+50 cm a cycle rolls back 1.5 m in rear of the location where it is
+shown and comes forward 5 m; past its end, the same roll back. Found:
+behind the beginning the request was withdrawn and the forward movement
+showed it a second time, `EVC_Radio_Authority.Evaluate_TAF` judging the
+beginning against the estimated front end in every cycle. Fixed: `TAF_T`
+keeps `Begun` (cleared by a new request in `Take_TAF`, 3.15.5.6), and
+the request is shown from the beginning once reached to its end. The end
+needed nothing: passed, the request is deleted (`Stored` false), so a
+roll back behind it does not show it again. Proof of
+`evc_radio_authority` (978 checks, none unproved); runner 0 regressions,
+0 improvements. Left of the bullet: the relocation (B781).
+
+Edits outside the brief's units, in all: `EVC_Profiles.Stored_T`,
+`EVC_JRU_Records.Track_Conditions`, `EVC_Test_JRU.
+Scenario_JRU_Track_Conditions` (item 1); `EVC_Radio_Authority` (`TAF_T`,
+`Take_TAF`, `Evaluate_TAF`) is the TAF's owner the brief allows where a
+scenario shows a defect. Left of B781: the relocation for the 3rd, 4th,
+7th, 9th and 12th bullets, the stop of the 3rd, the LS profile of the
+4th, the 6th (handover) and 11th (LX) bullets.

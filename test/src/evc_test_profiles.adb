@@ -1271,9 +1271,6 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Mode_Profile_Roll_Back;
 
-   --  Not called yet (B2341): EVC_Track_Conditions.Evaluate and External
-   --  judge the phases against the train's position in every cycle, so the
-   --  three checks of the roll back fail until the phases are kept.
    --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
    --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls
    --  back 1.5 m in rear of the location where "Lowered pantograph" is
@@ -1420,6 +1417,99 @@ package body EVC_Test_Profiles is
              & Same_Records'Image & Bad'Image);
       Speed_Cms := Saved;
    end Scenario_Track_Condition_Roll_Back;
+
+   --  A.3.5.1 12th bullet: the End Section timer (20 s from 500 m, the EOA
+   --  at 800 m, 3.8.4.1.1) and the Overlap timer (20 s from 600 m, the
+   --  EOA at 800 m, 3.8.4.4.1), each started by the max safe front end;
+   --  the train at 18 km/h, 50 cm a cycle, rolls back 1.5 m in rear of
+   --  the location where the timer started and comes forward 5 m: the
+   --  timer neither restarted nor stopped, its time-out at the same cycle
+   --  as without the roll back
+   procedure Scenario_MA_Timers_Roll_Back is
+      Saved : constant Unsigned_16 := Speed_Cms;
+      C1, C2 : Natural;
+      S1, S2 : Boolean;
+
+      --  Overlap: the Overlap timer, else the End Section timer; with
+      --  Roll the roll back once the timer runs; Cycles, the cycles from
+      --  its start to its time-out, Same, the timer running with the same
+      --  start after the roll back
+      procedure Run (Overlap, Roll : Boolean;
+                     Cycles : out Natural; Same : out Boolean) is
+         M       : T12.Packet_T := MA_Of ((500, 200));
+         X       : Integer_64;
+         Started : Unsigned_64;
+
+         function Running return Boolean is
+           (if Overlap then MAu.MA.OL_Timer.Running and then MAu.MA.Has_OL
+            else MAu.MA.End_Timer.Running and then not MAu.MA.Withdrawn);
+
+         function Start return Unsigned_64 is
+           (if Overlap then MAu.MA.OL_Timer.Started
+            else MAu.MA.End_Timer.Started);
+
+         procedure Go (Step : Integer_64) is
+         begin
+            Step_X (Step);
+            Cycles := Cycles + 1;
+         end Go;
+      begin
+         Cycles := 0;
+         Start_X;
+         Add_Group (Group (10, 100));
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         if Overlap then
+            M.Q_OVERLAP := 1;
+            M.Has_D_STARTOL := True;
+            M.D_STARTOL := 200;
+            M.T_OL := 20;
+            M.D_OL := 100;
+            M.V_RELEASEOL := 127;
+         else
+            M.Q_ENDTIMER := 1;
+            M.Has_T_ENDTIMER := True;
+            M.T_ENDTIMER := 20;
+            M.D_ENDTIMERSTARTLOC := 300;
+         end if;
+         Carry (1, 1, M);
+         Run_X (45_000);
+         while not Running and then Train_Cm < 70_000 loop
+            Step_X (50);
+         end loop;
+         X := Train_Cm;
+         Started := Start;
+         if Roll then
+            while Train_Cm > X - 150 loop
+               Go (-50);
+            end loop;
+            while Train_Cm < X + 500 loop
+               Go (50);
+            end loop;
+         end if;
+         Same := Running and then Start = Started;
+         while Running and then Cycles < 2_000 loop
+            Go (50);
+         end loop;
+      end Run;
+   begin
+      Speed_Cms := 500;
+      Run (Overlap => False, Roll => False, Cycles => C1, Same => S1);
+      Run (Overlap => False, Roll => True, Cycles => C2, Same => S2);
+      Check (S1 and then S2 and then C1 = C2 and then C1 < 2_000,
+             "MA timers roll back: the End Section timer neither restarted "
+             & "nor stopped by a roll back 1.5 m in rear of its start "
+             & "location, its time-out at the same cycle (A.3.5.1 12th "
+             & "bullet, 3.8.4.1.1), got" & S2'Image & C1'Image & C2'Image);
+      Run (Overlap => True, Roll => False, Cycles => C1, Same => S1);
+      Run (Overlap => True, Roll => True, Cycles => C2, Same => S2);
+      Check (S1 and then S2 and then C1 = C2 and then C1 < 2_000,
+             "MA timers roll back: the Overlap timer neither restarted nor "
+             & "stopped by a roll back 1.5 m in rear of its start location, "
+             & "its time-out at the same cycle (A.3.5.1 12th bullet, "
+             & "3.8.4.4.1), got" & S2'Image & C1'Image & C2'Image);
+      Speed_Cms := Saved;
+   end Scenario_MA_Timers_Roll_Back;
 
    --  3.12.2.3, 3.12.2.3.1, 3.12.2.4, 3.13.1.5: the route suitability
    --  data compared with the Train Data; the closest unsuitable

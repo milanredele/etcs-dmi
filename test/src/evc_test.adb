@@ -189,6 +189,8 @@ begin
    Scenario_Track_Conditions;
    Scenario_Other_Profiles;
    Scenario_Mode_Profile_Roll_Back;
+   Scenario_Track_Condition_Roll_Back;
+   Scenario_MA_Timers_Roll_Back;
    Scenario_Route_Suitability;
    Scenario_Rear_Deletion;
    Scenario_Snapshot_Seams;
@@ -418,6 +420,7 @@ begin
    Scenario_Start_After_Ack;
    Scenario_TAF_Up_To_L2;
    Scenario_Track_Ahead_Free;
+   Scenario_TAF_Roll_Back;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Order_With_L1_MA;

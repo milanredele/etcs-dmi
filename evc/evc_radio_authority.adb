@@ -218,6 +218,8 @@ is
       Begin_D : Dist_T := 0;
       End_D   : Dist_T := 0;
       Shown   : Boolean := False;
+      --  its beginning reached: kept over a reverse movement (A.3.5.1)
+      Begun   : Boolean := False;
       Due     : Boolean := False;
       Session : EVC_Radio.Session_T := 1;
       Granted : Natural := 0;
@@ -844,6 +846,7 @@ is
               Begin_D => Begin_D,
               End_D   => Begin_D + Length,
               Shown   => False,
+              Begun   => False,
               Due     => False,
               Session => S,
               Granted => TAF.Granted);
@@ -1355,7 +1358,7 @@ is
    --  end (the estimated front end), the driver's acknowledgement while
    --  shown ends it with message 149 owed (Produce); passed its end, it
    --  ends unanswered (3.15.5.5); 4.9.1.3: deleted out of level 2
-   --  @req 3.15.5.2 a), 3.15.5.2 b), 3.15.5.4, 4.9.1.3
+   --  @req 3.15.5.2 a), 3.15.5.2 b), 3.15.5.4, 4.9.1.3, A.3.5.1
    procedure Evaluate_TAF (Facts : Facts_T)
      with Global => (Input  => (EVC_Levels.State, EVC_Odometry.State,
                                 EVC_Position.State),
@@ -1373,9 +1376,14 @@ is
       end if;
       To_End := (if TAF.On_LRBG then TAF.End_D - Front
                  else EVC_Odometry.Remaining_Estimated (TAF.End_V));
+      --  A.3.5.1: the beginning once reached is kept, a reverse movement
+      --  in rear of it neither withdraws the request nor shows it again
       TAF.Shown := TAF.Stored and then To_End > 0
-        and then (if TAF.On_LRBG then TAF.Begin_D - Front <= 0
-                  else EVC_Odometry.Remaining_Estimated (TAF.Begin_V) <= 0);
+        and then (TAF.Begun
+                  or else (if TAF.On_LRBG then TAF.Begin_D - Front <= 0
+                           else EVC_Odometry.Remaining_Estimated (TAF.Begin_V)
+                                  <= 0));
+      TAF.Begun := TAF.Begun or else TAF.Shown;
       if TAF.Stored and then To_End <= 0 then
          TAF.Stored := False;
       end if;

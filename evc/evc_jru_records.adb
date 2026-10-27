@@ -528,9 +528,7 @@ is
               Info.List (I);
             C : constant TC_Change_T :=
               (TI    => Trackcond_TI (E.Kind),
-               Phase => (if E.Has_Start and then E.To_Start > 0 then 0
-                         elsif E.Has_End and then E.To_End < 0 then 2
-                         else 1),
+               Phase => Byte (E.Phase),
                Id    => Byte (E.Id));
          begin
             Now.Count := I;

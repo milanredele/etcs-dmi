@@ -171,6 +171,11 @@ is
       --  computed, 3.11.11.3)
       Noted    : Boolean := False;
       Noted_Ms : Unsigned_64 := 0;
+      --  the locations of a track condition passed, kept over a reverse
+      --  movement (A.3.5.1): its point C and its start by the max safe
+      --  front end, its end by the min safe front end, its start by the
+      --  min safe rear end (its end by the min safe rear end: Noted)
+      Announced, Started, Ended, Rear_Started : Boolean := False;
       --  the order of a speed restriction to ensure a permitted braking
       --  distance (packet 52, 3.11.11.2): its gradient (per mille,
       --  signed) and whether the service brake is to achieve it
