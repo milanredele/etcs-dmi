@@ -347,7 +347,10 @@ is
    --  allowed current consumption M_CURRENT, for a station platform
    --  M_PLATFORM * 4 + Q_PLATFORM (the nominal height, the side
    --  relative to the sense of the track description, which is the
-   --  train orientation's when the information was received)
+   --  train orientation's when the information was received); Phase, the
+   --  start not reached (0), reached (1), the end passed by the train end
+   --  of To_End (2), as kept over a reverse movement (A.3.5.1) where the
+   --  distances follow the train
    Max_External : constant := 8;
    type External_Item_T is record
       Kind      : Natural range 0 .. 10 := 0;
@@ -357,6 +360,7 @@ is
       Has_End   : Boolean := False;
       To_End    : Dist_T := 0;
       Value     : Natural range 0 .. 65_535 := 0;
+      Phase     : Natural range 0 .. 2 := 0;
    end record;
    type External_Array is array (1 .. Max_External) of External_Item_T;
    type External_T is record

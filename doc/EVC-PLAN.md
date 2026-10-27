@@ -14116,3 +14116,44 @@ B2400 and B2401 are the user's decisions with B1060, B1063, B1340;
 B2360, B2361, B2340, B2380 and B1960's last trace (runner); then B781's
 remaining bullets, B2380's FRMCS sequences; the review again (eight
 items, readings first).
+
+### The track conditions over a reverse movement fixed, the MA timers and the TAF request over a reverse movement (e6/roll-back-2) (2026-10-27)
+
+**B2341, A.3.5.1 7th bullet, the track conditions over a reverse
+movement** (fixed). The claim held at the source: `EVC_Track_Conditions.
+Evaluate` and `External` judged every phase against the train's position
+in each cycle, and the records 45 took their phase from the signs of the
+distances of the train interface's items (`EVC_JRU_Records.
+Track_Conditions`, `To_Start > 0`, `To_End < 0`), so a roll back behind
+a location wrote them again. `EVC_Track_Conditions.Phases` judges the
+locations of an element (point C and the start by the max safe front
+end, the end by the min safe front end, the start and the end by the
+min safe rear end; the sound horn and the radio hole by the estimated
+front end against the estimated items; a change of traction system or
+of allowed current a single location), each one ORed with its flag in
+`EVC_Profiles.Stored_T` (`Announced`, `Started`, `Ended`,
+`Rear_Started`; the end by the rear is the existing `Noted`); `Evaluate`
+keeps them first (its nested `Keep`) for the four stores (the
+conditions, the traction and current changes, the platforms), then
+shows from the flags; `External` reads `Phases` (the same answer
+whatever the order of the two in the cycle) and gives each item its
+`Phase` (0 the start not reached, 1 reached, 2 the end passed by the
+min safe front end), which the record 45 takes. Decision: the
+remaining distances of 5.20.2.3 (not in the bullet's list) follow the
+train; only their start and stop (5.20.2.2, .4, .5) are kept. Kind 0
+(the non stopping areas: the virtual limits of the supervision) and the
+big metal masses (`BMM_At_Antenna`) are unchanged, as A.3.5.1.1 says.
+The scenario's expectations (the lowered pantograph kept and the
+announcement not shown again behind the start, 5.18.2.3; the raise
+pantograph kept behind the end, 5.18.2.5; the distance to the start not
+generated again behind the rear end's location, 5.20.2.4; no record 45
+again) are the clauses'; `Scenario_Track_Condition_Roll_Back` is called
+from `evc_test.adb`. Size: `Evaluate` and `External` stay within their
+known lines (the kind of the external item to `External_Kind`). Proof of
+`evc_track_conditions` (247 checks), `evc_jru_records` (445) and
+`evc_profiles` (590), none unproved; runner 0 regressions, 0
+improvements (no sequence moved). Edits outside the brief's units:
+`EVC_Profiles.Stored_T` (the four flags), `EVC_JRU_Records.
+Track_Conditions` (the phase of the item), `EVC_Test_JRU.
+Scenario_JRU_Track_Conditions` (the new component in its aggregates).
+Left of the 7th bullet: the relocation (B781).

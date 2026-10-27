@@ -266,10 +266,10 @@ package body EVC_Test_JRU is
       Info.Count := 2;
       Info.List (1) := (Kind => Ext_Pantograph, Id => 1, Has_Start => True,
                         To_Start => 50_000, Has_End => True,
-                        To_End => 70_000, Value => 0);
+                        To_End => 70_000, Value => 0, Phase => 0);
       Info.List (2) := (Kind => Ext_Platform, Id => 193, Has_Start => False,
                         To_Start => 0, Has_End => True, To_End => 12_000,
-                        Value => 3 * 4 + 1);
+                        Value => 3 * 4 + 1, Phase => 1);
       EVC_JRU_Records.Track_Conditions_Body (Info, B, Bits);
       Check (Bits = 7 + 36 + 42
              and then G (0, 2) = 1 and then G (2, 5) = 2

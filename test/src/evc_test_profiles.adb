@@ -1271,9 +1271,6 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Mode_Profile_Roll_Back;
 
-   --  Not called yet (B2341): EVC_Track_Conditions.Evaluate and External
-   --  judge the phases against the train's position in every cycle, so the
-   --  three checks of the roll back fail until the phases are kept.
    --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
    --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls
    --  back 1.5 m in rear of the location where "Lowered pantograph" is
