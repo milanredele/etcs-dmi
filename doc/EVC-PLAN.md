@@ -14599,3 +14599,122 @@ one-session case is a trace); one backlog line (B2500). Brief premises
 wrong: item 4's clause numbers, item 7's timer (E72, not E71), item 8's
 V_EMA. The review took about 90 tool calls of 130, the most on the
 three traces (about 40).
+
+### E5 integration after the fifty-fifth round, the twenty-third of E6 (2026-10-27)
+
+Merged: e5/rbc-interlocking (doc/RBC-INTERLOCKING.md, the second study
+after the estimate, the user's two questions: no interface to the
+interlocking in ETCS, 2.4.1.3 d) leaves it to external systems without
+an interoperability requirement and SUBSET-037 Table 3 reserves an
+application type only; EULYNX SCI-RBC is the supplier-neutral one,
+every detail of it from memory since none of six web fetches reached a
+document; the harness needs no large station: about 15 sections, a line
+of blocks, a junction, a station with two platform tracks and a
+crossover, one RBC border, exercise every RBC function, with a scripted
+route-table mock that checks nothing and a section graph where `sim/`
+has a line: +3.5k harness lines, about 3 rounds on the estimate),
+e5/runner-net-2 (B2380: `S076_Run.Timer_Input` runs the A.3.1 timer 40
+s from `S076_Bench.FRMCS_Timer_Origin_Ms` (the FRMCS detection with
+FRMCS alone, the latest GSM-R order with both), both systems installed
+from the power-up before the step expecting the FRMCS failure;
+3050600_06 blocked 57 -> failed 58, the cause the on-board's:
+`EVC_Sessions.Apply_Network` passes `Mission.Opening` as the wait's
+In_SoM, so the S4 reached by D7 without a known RBC contact never
+times out, no entry 33 or 34 (B2480); 5040300_25 has no timer step at
+all; the corpus count for B2340 / B2401: SV30 164 sequences announce a
+linked group never given, 38 record the miss, 13 speak of it, 4 get
+our brake without the intent (3131040_01, 3130234_05, 4080436_02,
+4080444_02) and one candidate more (4080404_02); B1841:
+`S076_Bench.Set_Default_MN` from the first NID_MN of a selection
+comment, the record 48 still not judged because 5040300_08 / _13 fail
+at step 47 first), e6/roll-back-2 (B2341 fixed:
+`EVC_Track_Conditions.Phases` judges each location once into flags of
+`EVC_Profiles.Stored_T` (`Announced`, `Started`, `Ended`,
+`Rear_Started`), `Evaluate` and `External` show from the flags, the JRU
+record 45 takes the item's phase instead of the signs of the distances;
+the remaining distances of 5.20.2.3 follow the train (not in the
+bullet's list); `Scenario_Track_Condition_Roll_Back` called; the MA
+timers of A.3.5.1 12th bullet: no defect, `EVC_Movement_Authority.
+Supervise` starts a timer only when not running,
+`Scenario_MA_Timers_Roll_Back`; the TAF request of the 9th bullet:
+withdrawn by a roll-back of 1.5 m and shown again forward, fixed with
+`TAF_T.Begun` in `EVC_Radio_Authority`, `Scenario_TAF_Roll_Back`),
+e5/runner-curves-5 (3131050_21 step 82 s076, S388a7b2a: BG1d's packet
+5 gives BG2d Q_LOCACC 12 m where the sequence's comments compute with
+0, d_tripEOA 784 m, the release speed about 23 km/h by workbook 21b
+and ours 23; B1960 closed, the last of the gamma traces; B2361:
+`S076_Run.ODO_Input` keeps the chart's speed for an increase whose text
+names V_EMA when the chart already exceeds V_EMA + dV of A.3.1, 8
+inputs in the corpus per version, 4 kept, no sequence moved, _75 and
+_76 fail at step 54 on their own data (S3276e893, Sfb2423ac rewritten
+as s076: the steps 50 and 35 m in rear of their workbook); B2360
+narrowed: the words are in step 61 of all eight 3130700 sequences, not
+four, and `S076_Sequences` cuts a comment at 400 characters before them:
+a longer field first), e6/dmi-restart (B2240: `EVC_Core.Outputs.
+Resend_Texts` and `Resend_Status_Entries` after the hello, the texts
+from `EVC_Text_Messages.Shown` with the acknowledgement bit while
+awaited, the status entries from a set kept by entry in
+`EVC_JRU_Records` (`Entries_Shown`) since the six owners do not know
+the ends the DMI owns, `Scenario_DMI_Restart_Displayed`; the DMI
+replaces a text id it already shows and restarts an active entry's end
+conditions, so no duplicate shows twice; B2402: the override at A31 /
+S4 from S20 was taken, refused now by `Context_T.SoM_Opening` from
+`EVC_Sessions.Mission`'s step, `Scenario_SoM_L2_Override_From_S20`;
+B2420 found there: with one session configured, re-entering RBC 301
+with a session open to 300 is judged a failed opening (A32) without
+terminating 300; B1401: the premise wrong, DMI Table 68 (15.1.1.5) has
+"Safe consist length no longer available" and the protocol entry 19
+exists, the on-board has no entry 19 and nothing sends it: a build
+item, no decision), and e5/review-55 (the fourth blind review, below).
+
+The review (e5/review-55, 94 calls, 5.4 USD): eight items, all reached;
+ten verdicts, 9 agreed, 0 disagreed, 1 undecided: the RBC id changed
+with a session open (B2500): the reviewer reads 3.5.3.5.2 as terminate
+300 and open 301 whatever the number of sessions configured, and names
+a candidate cause (`EVC_Sessions.Open` parks the request in `Pending`,
+`Judge_Opening` does not count it): a claim to trace, not a verdict.
+The reviewer was not blind on two items: a `tail` of doc/BACKLOG.csv at
+its fifth call showed B2402's note, B2420 and B2480; the next review
+brief forbids any read of the backlog's tail before the verdicts. The
+review's brief had three premises wrong (the clause numbers of the
+texts: 3.12.3.4.7 decides; E72 not E71 for 3050600_06; V_EMA 20 km/h,
+not 24). Four rounds of reviews: 35 items, 32 agreed, 5 disagreed, 2
+undecided; 12 lines, 4 fixes from them; 22.1 USD.
+
+Verification of the merged tree: one chain run, all green: `test/check.sh`
+ok; the full proof 13614 checks, none unproved, margin 47726 steps;
+cross build and stack 32768 B budget, margin 6160 B; wasm and both
+smokes 0 failures; the runner 1163 / 1069 / 958 -> 1163 / 1070 / 957
+(3050600_06 blocked -> failed), 0 regressions against the merged
+baseline, no signature untriaged. The merge: the study and the review
+fast-forwarded; backlog and plan conflicts on roll-back-2, runner-curves-5
+and dmi-restart, none in code; the named branches existed before any
+worktree branch was deleted (every agent renames its worktree branch).
+
+Costs (doc/ROUNDS.csv): 36.8 USD with the review and the study (29.0
+for the four packages, 2.4 the study, 5.4 the review), 11 of 12 package
+items done (B2360 narrowed at a format limit), 7 of 36 brief premises
+wrong in the packages (the 3130700 count, 5040300_25's timer, B1841's
+step 78, the timers' unit and the timer scenarios' package, B1401's DMI
+table, the EULYNX pages), no agent over budget, no resumption; the
+agents stopped at 115 to 133 calls, each with its last item finished
+(the bound rule of this round: an item in hand at the bound is finished,
+not a new one begun). The sibling checkout as an additional directory of
+the project's permissions: no permission prompt this round. Lessons: a
+"searched: no text names it" claim of an earlier agent (B1401, e6/sm-
+ninth) was wrong and stood four rounds, the DMI's Table 68 has the
+entry; a fix that keeps a phase (the track conditions) must also reach
+the records that derived the phase from the position (the JRU record
+45), the brief named the indications only.
+
+The matrix: clauses left 74 (todo 2, partial 72) unchanged; the rows
+A.3.5.1 and 5.4.5.3 a) noted. Open items: doc/BACKLOG.csv (44 open
+after this round; 3 added of which 1 by the review, 5 closed). Next:
+B2480 (the S4 wait by D7, `Apply_Network`), B2420 with B2500 (the RBC
+id changed with a session open, one trace: terminate and open), B1401
+(the entry 19 sent: `EVC_DMI_Port`, `EVC_Procedures` beside
+`Consist_SB`, the bit 31), B2360 (the comment field of
+`S076_Sequences`, then the flag); B2340 / B2401 are the user's decision
+with the count (4 sequences), with B2320, B2400, B1060, B1063, B1340;
+B781's 6th and 11th bullets and the relocations; the review again (eight
+items, readings first, no read of the backlog's tail).
