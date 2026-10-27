@@ -14790,3 +14790,85 @@ sequences); after: 1163 / 1065 / 962, 0 regressions; the five
 improvements are 3130234_05 (three versions, failed 50 -> blocked 50)
 and 4080436_02, 4080444_02 (failed 63 -> blocked 63). B2340 and B2401
 done; B2260 untouched; B2520 new.
+
+### The safe consist entry sent, the packets 64 and 57 of the radio authority (e6/consist-entry) (2026-10-27)
+
+**The safe consist length unavailable (B1401 done).** The paper's claims
+held at the source: Table 68 of the DMI (15.1.1.5) has "Safe consist
+length no longer available" (start 4.4.21.1.12, row "Brake reason"),
+the protocol has entry 19 and `DMI_System_Status` renders it with
+`End_Event => After_30s` (the end event of the on-board waits for the
+30 s), SUBSET-027 4.2.4.23 has it as bit 31, and the on-board had no
+entry 19. Built: `EVC_DMI_Port.SS_Safe_Consist_Length` (19);
+`EVC_Stored_Information.Consist_Lost`, the loss of `Consist_Shortening`
+(SM, or SB with the SM's default Train Data) as an event of the cycle's
+Evaluate, standstill or not; `EVC_Procedures.Consist_Step` (in place of
+the copy of `Consist_Brake` into `Consist_SB`) sends the start at the
+loss and the end when the brake is released by the shortening at
+standstill (3.14.1.7.6), and the end with the start when the train was
+at standstill. Decision: at standstill there is no brake reason to
+revoke, so the end goes at once and the DMI's row keeps the text 30 s.
+`EVC_JRU_Records.SS_Bit (19)` = 31. The scenario extends
+`EVC_Test_Manoeuvre.Consist_Lost_In_SM` (inside `Scenario_Safe_Consist`),
+where the TIU loss in SM already happened moving and at standstill
+(the brief named `EVC_Test_Procedures`, which has no SM or TIU set-up):
+entry 19 started and not ended while braking, ended at the release,
+started and ended together at standstill, the bit. The DMI's own
+rendering of entry 19 was already covered (`DMI_Test_System_Status`).
+Row 4.4.21.1.12 re-noted (done). Not part of this item: "inform the
+trackside" was already message 133 (`EVC_Sessions.Manoeuvre`).
+
+**Packet 64, the inhibition of revocable TSRs from balises (B785
+done).** The claim held: `EVC_Radio_Authority.General_Taken` listed
+packet 64 and nothing decoded it. The packet holds only Q_DIR
+(7.4.2.16.1). A balise group's TSR is revocable when NID_TSR is not
+255 (7.5.1.99). 4.8.3, row Temporary Speed Restriction from a balise
+group: A [8] in level 2; row Inhibition, From RBC: R [2] in levels 0,
+NTC and 1, A in level 2. The packet 65 of a balise is decoded in
+`EVC_Stored_Information.Take_Speed_Packet`, which cannot read
+`EVC_Radio_Authority` (the authority reads the stored information; the
+leaf `EVC_Radio_Info` exists to carry such facts, as it carries T_MAR).
+Built: `EVC_Radio_Authority.Take_Inhibition` stores the packet of an
+accepted message in level 2 with its session and sets
+`EVC_Radio_Info.TSR_Inhibited` at once (the groups read from that
+cycle); `EVC_Acceptance.Revocable_TSR_Rejected` is the row [8]
+(inhibited, level 2, NID_TSR not 255), applied at the take of packet 65
+for the balise path only (`Take_Packet` passes the inhibition to
+`Dispatch`, the radio and the released balise sets pass False);
+`EVC_Radio_Authority.Delete_Inhibition` in Evaluate deletes it on a
+valid level other than 2 (4.9.1.3.1: since it is only taken in level 2,
+that is the entry to 0, NTC or 1), on entering a mode whose row of the
+4.10.1.3 table is D (NP, SB, PS, SH, SR, SL, NL, UN, SN, RV: a reading
+the brief did not name, found in the comment of 4100103_05 step 132 "deleted
+when the mode change to SR") and when the session of the RBC that
+ordered it is no longer established (3.11.5.14 a). Decision: taken
+whatever its Q_DIR (the order concerns the balises read thereafter).
+Left: 3.11.5.14 b), the RBC/RBC border, no unit gives its crossing to
+the authority (B2560). Scenario `EVC_Test_Authority.Scenario_TSR_Inhibition`:
+message 24 with packet 64 in level 2, group 20 with a revocable and a
+non revocable TSR (one TSR stored), level 1 deletes it and group 30's
+revocable TSR is taken; stored again, SR deletes it, FS keeps it, the
+session set idle deletes it; not taken in level 1. Rows: 3.11.5.13,
+3.11.5.14 1st bullet, 4.8.3.1.1 Table-footnote [8], 4.9.1.3.1 done,
+3.11.5.14 partial, 7.4.2.16.1 and 4.10.1.3 Table notes extended.
+
+**Packet 57's deletion on entering level 1 (B786).** Not taken: the
+package's bound (120 calls) came during item 2. What was read for it:
+4.9.1.3 deletes the MA request parameters on entering level 1, and the
+row MA Request Parameters of the 4.10.1.3 table deletes them on
+entering NP; `Take_Parameters` sets `Params`, which Evaluate mirrors to
+`EVC_Radio_Info.Set_T_MAR` / `Set_MAR_Known`, so a deletion of `Params`
+reaches the snapshot through that mirror; unlike packet 64, packet 57
+is A in every level, so the entry to level 1 needs the level of the
+last cycle, not the level alone.
+
+**Runner.** Before 1163 passed, 1065 failed, 962 blocked; after the
+first item 1163 / 1065 / 962 (0 movements); after the second 1166 /
+1062 / 962, 0 regressions: 4100103_05 SV21, SV22, SV30 failed 109 ->
+passed. Its step 82 gives message 24 with packet 64 in L2 OS, step 92
+BG2d with packet 65 NID_TSR 1, D_TSR 50, L_TSR 100, V_TSR 8 (40 km/h)
+at 800 m; ours now keeps the permitted speed 150 km/h at 900 m (step 94
+"Permitted Speed is NOT updated"), where before the TSR was taken and
+the service brake recorded by JRU 4 failed step 109 (S00c71576, no
+triage line of its own; gone from the baseline). Baseline re-recorded.
+Backlog: B1401 and B785 done, B786 open, B2560 new.
