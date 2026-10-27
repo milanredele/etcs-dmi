@@ -66,6 +66,9 @@ package EVC_Test_Sessions is
    --  4.4.18.1.7: the position report in RV
    procedure Scenario_Report_Reversing;
    procedure Scenario_Session_Sleeping;
+
+   --  5.4.1.4: the session established at desk opening terminated
+   procedure Scenario_Session_Desk_Opening;
    --  3.12.3.5: message 158 at the driver's acknowledgement of a text
    --  message with a request to report it, to the RBC of the request
    procedure Scenario_Text_Ack_Report;

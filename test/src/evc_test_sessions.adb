@@ -1682,6 +1682,51 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Sleeping;
 
+   --  5.4.1.4: a session established while the desk is closed (Sleeping
+   --  with the RBC in level 2, 4.4.6.1.10 b), the desk opened in SB: the
+   --  session is terminated first (156); a session whose termination is
+   --  ongoing is left to it
+   procedure Scenario_Session_Desk_Opening is
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 0, others => <>));
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      Run_X (15_000);
+      Stand_X (2_000);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L2);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand_X (1_000);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 1));
+      Stand_X (1_000);
+      Establish (1);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 0));
+      Stand_X (1_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_SB
+             and then R.Info (1).State = R.Established,
+             "desk opening: SB with the desk closed, the session of "
+             & "Sleeping established " & EVC_Modes.Mode_T'Image (EVC_Core.Mode)
+             & " " & R.Session_State_T'Image (R.Info (1).State));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (R.Info (1).State = R.Terminating and then Is_Message (1, 156),
+             "desk opening: the established session terminated first, "
+             & "156 (5.4.1.4) " & R.Session_State_T'Image (R.Info (1).State));
+      Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
+      Stand;
+      Check (R.Info (1).State = R.Idle,
+             "desk opening: the termination acknowledged, the session "
+             & "released (3.5.5.3.1)");
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand;
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (R.Info (1).State = R.Idle and then Radio_Outputs = 0,
+             "desk opening: no session, nothing to terminate (5.4.1.4)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_Desk_Opening;
+
    ---------------------------------------------------------------------
    --  Phase 3 (e5/session-4): the position reports of 3.6.5
    ---------------------------------------------------------------------

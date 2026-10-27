@@ -14858,3 +14858,30 @@ waits for that acknowledgement (`Train_Data_Awaited`, 4.8.3 [3]) in
 both configurations, so the scenario acknowledges it. Why the earlier
 run did not wait was not traced. Row 3.5.3.5.2 noted (`@req 3.5.3.5.2`
 on `Judge_Opening`). Runner: 0 movements.
+
+**The session at desk opening (B789, first part, done).** 5.4.1.4: "If,
+upon desk opening, there is an already established communication
+session for which no termination is ongoing, the ERTMS/ETCS on-board
+equipment shall first terminate this communication session"; the
+clause names no mode or level (5.4.3.2 S0 then finds no session
+established). The claim held: nothing in `EVC_Sessions` looked at the
+desk's opening (`EVC_Sessions.Mission.Evaluate_SoM` stops the session
+at the desk's closing during a start of mission, 5.4.3.2.2 / 3.5.3.8
+a)). Built: `EVC_Sessions.Apply_Desk`, in `EVC_Sessions.Evaluate` before
+the mode's session order, keeps whether a desk was open in the last
+cycle (`Desk_Was_Open`, reset by `Clear`) and, at its opening
+(`EVC_Position.Active_Cab` from `No_Cab`), terminates every session in
+state Established (156, `Terminate_Session`); a session Terminating
+(the termination ongoing), being established or with its connection
+lost is left. Scenario `EVC_Test_Sessions.Scenario_Session_Desk_Opening`:
+level 2, SB with the desk closed, Sleeping entered and the session of
+4.4.6.1.10 b) established, Sleeping left (SB, the session still
+established), Cab A opened: Terminating and 156 in that cycle, 39 then
+Idle, a second opening without a session sends nothing. Runner:
+5040300_20 failed 45 -> passed in SV21, SV22, SV30 (step 42 Cab A
+activated in SL, level 1, SB; step 45 expects 156), which the triage
+line of `~expect RTM message: 156 not sent` had grouped "not re-traced"
+with the s076 cases of 3150100_09 / _11; its note now says so. Row
+5.4.1.4 deferred -> done (`@req 5.4.1.4` on `Apply_Desk`); B789
+narrowed to 5.6.4.1.2 and the scenario of 5.6.2.2. Runner 1166 / 1061 /
+963, 0 regressions.

@@ -2278,9 +2278,9 @@ Subset-076-6-3_5040300_18_v400_SV30,blocked,51,not-modelled
 Subset-076-6-3_5040300_19_v400_SV21,passed,0,-
 Subset-076-6-3_5040300_19_v400_SV22,passed,0,-
 Subset-076-6-3_5040300_19_v400_SV30,passed,0,-
-Subset-076-6-3_5040300_20_v400_SV21,failed,45,S185bee31
-Subset-076-6-3_5040300_20_v400_SV22,failed,45,S185bee31
-Subset-076-6-3_5040300_20_v400_SV30,failed,45,S185bee31
+Subset-076-6-3_5040300_20_v400_SV21,passed,0,-
+Subset-076-6-3_5040300_20_v400_SV22,passed,0,-
+Subset-076-6-3_5040300_20_v400_SV30,passed,0,-
 Subset-076-6-3_5040300_21_v400_SV21,blocked,80,E5-radio
 Subset-076-6-3_5040300_21_v400_SV30,blocked,80,E5-radio
 Subset-076-6-3_5040300_22_v400_SV30,blocked,68,E5-radio

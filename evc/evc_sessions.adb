@@ -29,7 +29,8 @@ package body EVC_Sessions
                                    Requesting, Timer_On, Timer_Since,
                                    Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code, Mode_Session,
-                                   Mode_Capped, Sleeping, Contact_Tripped,
+                                   Mode_Capped, Sleeping, Desk_Was_Open,
+                                   Contact_Tripped,
                                    In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Integrity.State,
@@ -155,6 +156,8 @@ is
    Mode_Capped  : Boolean := False;
    --  4.4.6.1.13: the mode is Sleeping (the last change of Mode_Changed)
    Sleeping     : Boolean := False;
+   --  5.4.1.4: a desk was open in the last cycle
+   Desk_Was_Open : Boolean := False;
    --  3.16.3.4: the reaction of T_NVCONTACT triggered in this cycle
    Contact_Tripped : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
@@ -562,6 +565,7 @@ is
       Mode_Session := False;
       Mode_Capped := False;
       Sleeping := False;
+      Desk_Was_Open := False;
       Contact_Tripped := False;
       Ref_On := False;
       Ref_Ms := 0;
@@ -1385,6 +1389,31 @@ is
       end loop;
    end Stop_Attempts;
 
+   --  5.4.1.4: "upon desk opening, there is an already established
+   --  communication session for which no termination is ongoing": the
+   --  on-board first terminates it (message 156), whatever the mode
+   --  @req 5.4.1.4
+   procedure Apply_Desk (Now : Time_Ms_T)
+     with Global => (In_Out => (Desk_Was_Open, Links, R.State, Ind,
+                                Requesting, Timer_On),
+                     Input  => EVC_Position.State),
+          Post => R.Sessions = R.Sessions'Old
+   is
+      N    : constant R.Session_Count_T := R.Sessions;
+      Open : constant Boolean :=
+        EVC_Position.Active_Cab /= EVC_Position.No_Cab;
+   begin
+      if Open and then not Desk_Was_Open then
+         for S in Session_T loop
+            pragma Loop_Invariant (R.Sessions = N);
+            if R.Usable (S) and then R.Info (S).State = R.Established then
+               Terminate_Session (S, Now);
+            end if;
+         end loop;
+      end if;
+      Desk_Was_Open := Open;
+   end Apply_Desk;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T) is
       N     : constant R.Session_Count_T := R.Sessions;
       In_L2 : constant Boolean :=
@@ -1417,6 +1446,7 @@ is
          Ref_On := False;
       end if;
       In_Hole := Ctx.Radio_Hole;
+      Apply_Desk (Ctx.Now_Ms);
       Mode_Session_Order;
       Apply_Order (Ctx.Now_Ms, Ctx.Mode);
       for S in Session_T loop
