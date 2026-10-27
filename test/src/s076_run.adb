@@ -1813,6 +1813,33 @@ package body S076_Run is
             end if;
             return J;
          end;
+      elsif Same (Verb, "select")
+        and then Same (Item, "Mission-with-one-radio-system")
+      then
+         --  5.4.3.2 S5, DMI 11.3.16 (Table 49 S5): the on-board asks the
+         --  driver whether to perform the mission with only one radio
+         --  system in its window, the dedicated 'No' / 'Yes' keyboard
+         --  (key 7 'No', key 8 'Yes', as DMI_Test_Settings presses
+         --  them); the choice is the comment's, 'Yes'
+         --  unless it quotes "No" (the 6 steps of SV30 say "Yes")
+         for I in 1 .. 10 loop
+            exit when Top_Is (W_One_Radio);
+            B.Cycle;
+         end loop;
+         if not Top_Is (W_One_Radio) then
+            return Fail ("DMI Mission with one radio system: the window "
+                         & "is not open, top is " & Top_Image);
+         end if;
+         declare
+            No : constant Boolean := Has (Image (St.Comment), """No""");
+         begin
+            Key (if No then 7 else 8);
+            Enter_Single;
+            B.Cycle;
+            return Pass ("DMI Mission with one radio system "
+                         & (if No then "'No'" else "'Yes'")
+                         & " entered, top " & Top_Image);
+         end;
       elsif Has (Item, "RBC") or else Has (Item, "Radio")
         or else Has (Item, "GSM-R")
       then

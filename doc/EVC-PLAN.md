@@ -15453,3 +15453,44 @@ workbook of their own sequence beyond 400 characters (the corpus count
 by script); the widening moved only this step. The first failure at
 step 78 (Seb6766c6, model: ours trips at 1257 m before BG22d) is
 unchanged. No code, no triage change.
+
+**3050600_06 step 60, the mission with one radio system: driven.**
+Step 60 "The driver selects the 'Mission with one radio system'"
+(comment: the driver selects "Yes") follows entry 33 FRMCS network
+registration failed (step 58) with both systems installed: 5.4.3.2 S5
+(the driver asked whether to perform the mission with only one radio
+system), the DMI's window of 11.3.16 with its 'No' / 'Yes' keyboard
+(Table 49 S5), which ours opens. `S076_Run.DMI_Input` blocked every
+radio dialogue step as radio; it now enters the choice in that window
+(keys 7 'No' and 8 'Yes' as `DMI_Test_Settings` presses them, 'Yes'
+unless the comment quotes "No": the 6 such steps of SV30, in 3050600_06
+(two), 5040300_23, 5040300_25, 5100200_12 and 4100103_15, all say
+"Yes"). Ours: 'Yes' without valid RBC contact information goes to the
+Radio data window (Table 49 S5 E3), and step 61 (JRU 11 M_DRIVERACTIONS
+00110110 = 54, SUBSET-027 4.2.4.11 "Perform mission with only one radio
+system" selected) passes, as do steps 63 to 72 (the desk closed and
+opened again in SB, the Driver ID revalidated, the Main window). The
+sequence fails at step 73 now (S7e2edbdf): the hour glass of S4 is
+expected after the desk re-opening, then the A.3.1 time again (step
+75), entry 33 (76, 77) and the S5 window again with its value deleted
+(78, 79); ours shows the Main window without the hour glass and never
+opens S5 again (step 80: top W_MAIN). Read in the source, not traced by
+a run: `EVC_Sessions.Network` clears its One_Radio only at power-up
+(`Clear`), and its D7 condition takes One_Radio with a registered radio
+as fulfilled; 4.10.1.3 deletes "Mission performed with only one radio
+system" on entering NP, SB or SH, and whether a desk closure and opening
+in SB counts as that is left to the on-board's item (B2700, onboard,
+with the S4 time: E72 counts from the latest GSM-R order, 25.0 s, and
+3.5.6.1 orders none at a desk opening). The other five sequences with
+the step stop before it (unchanged). The full runner 1178 / 1051 / 961
+-> 1178 / 1052 / 960, 0 regressions, 3050600_06 SV30 blocked 60 ->
+failed 73; steps 209989 -> 210005 passed, 12602 -> 12610 failed. A new
+`onboard` line of S7e2edbdf for 3050600_06; B2380 done (the runner's
+part of the FRMCS sequences), B2700 new.
+
+Edits outside the named units: none (`S076_Run.DMI_Input` at the one
+radio system step is the radio step's vocabulary of the brief; the
+chart's cap is `S076_Run.Chart_Cms`, next to `Kmh_To_Cms`, the
+calibration `S076_Sequences.Calibrated` unchanged). Commits: B2600 with
+the chart's plateau, the trace of 3131050_22 step 85, the one radio
+system step.
