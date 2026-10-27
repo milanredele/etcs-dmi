@@ -15426,8 +15426,9 @@ S20 it is valid (S1 before them). The DMI's own wrapper EVC
 (`Test_Support`, a new `Override_Refused` input) and `EVC_Mock` set the
 bit where Table 34 #1 read their data before, so no existing display
 golden changed. Scenarios: `DMI_Test_Windows.Scenario_Override_Selectable`
-(goldens `override_eoa_s11` and `override_eoa_s21` disabled,
-`override_eoa_s10` enabled, MSG_ONBOARD driven raw), the Table 34 checks
+(goldens `override_eoa_s11` disabled, `override_eoa_s10` enabled,
+MSG_ONBOARD driven raw; at S21 `override_s21_main_waiting`, see below),
+the Table 34 checks
 of `Scenario_Enabling_Conditions` on the bit; `EVC_Test_Sessions`: the
 bit clear at S1, S4, S11 (`Scenario_SoM_L2_Override_Before_S10`), A31
 (`_From_S20`), S21, S24 (`Scenario_SoM_L2_SR_Proposal`), set at S20, S10
@@ -15438,6 +15439,20 @@ specification for 11.2.2.4 (the brief's "DMI row"). Proofs
 `evc_procedures`, `evc_core-outputs`: no unproved check. Runner 1169 /
 1058 / 963, 0 movements: the runner's override presses fall where the
 on-board took them before.
+
+The S21 check, corrected after the coordinator's blind description (the
+first S21 golden showed the Main window with every item greyed, not the
+Override window, so "EOA not enabled" held vacuously): at S21 the
+on-board reports MSG_ONBOARD waiting 3 (the MA awaited after 'Start';
+som is 0), and `DMI_Windows.Onboard_State_Changed` answers every
+awaited answer by closing the open window and showing the Main window
+with all buttons disabled and the hour glass ST05 (DMI Table 50 S7 of
+11.7.3.3, 11.2.1.6; its [close] disabled by 11.7.3.2). The scenario now
+checks that the Main window replaced the Override window, then presses
+F2, [close] and F2 again and checks that the Main window stays and no
+Override window opens: at S21 the driver cannot reach the EOA button at
+all, whatever bit 4 says. The golden is renamed `override_s21_main_waiting`
+for what it shows (the same digest as the `override_eoa_s21` it replaces).
 
 The desk scenario's terminating case (review 56, item 3):
 `Scenario_Session_Desk_Opening` now closes and opens the desk again while

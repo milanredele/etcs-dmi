@@ -839,12 +839,30 @@ package body DMI_Test_Windows is
       Step;
       Check (EOA_Enabled, "5.4.5.3 a): EOA at S10, the on-board takes it");
       Check_Frame ("override_eoa_s10");
-      --  S21: 'Start' selected, the MA requested and awaited (Table 50 S7)
+      --  S21: 'Start' selected, the MA requested and awaited (MSG_ONBOARD
+      --  waiting 3): DMI_Windows.Onboard_State_Changed closes the Override
+      --  window and shows the Main window with every button disabled and
+      --  the hour glass (Table 50 S7, its [close] disabled by 11.7.3.2),
+      --  so the driver cannot reach the EOA button at all
       Send_Onboard_Raw (Data_All, 2, 1, Standing, NV_Adh, 0, 3, 0);
       Step;
-      Check (not EOA_Enabled,
-             "5.4.5.3 a): no EOA at S21, the on-board refuses it");
-      Check_Frame ("override_eoa_s21");
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows."=" (DMI_Windows.Top, DMI_Windows.W_Main),
+             "S21: the Main window of Table 50 S7 replaces the Override "
+             & "window");
+      Press (610, 90);                          -- F2 again
+      Step;
+      Press (370, 440);                         -- [close] of the window
+      Step;
+      Press (610, 90);                          -- and F2 once more
+      Step;
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows."=" (DMI_Windows.Top, DMI_Windows.W_Main)
+             and then not EOA_Enabled,
+             "5.4.5.3 a): at S21 F2 does not open the Override window, the "
+             & "Main window of Table 50 S7 stays ([close] disabled, "
+             & "11.7.3.2)");
+      Check_Frame ("override_s21_main_waiting");
       Drain_Sounds;
       Drain_Outbox;
    end Scenario_Override_Selectable;
