@@ -26,6 +26,7 @@ package EVC_Test_Profiles is
       procedure Scenario_Mode_Profile_Roll_Back;
       procedure Scenario_Track_Condition_Roll_Back;
       procedure Scenario_MA_Timers_Roll_Back;
+      procedure Scenario_LX_Roll_Back;
       procedure Scenario_Route_Suitability;
       procedure Scenario_Rear_Deletion;
       procedure Scenario_Snapshot_Seams;

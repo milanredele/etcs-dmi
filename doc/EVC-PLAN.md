@@ -14790,3 +14790,40 @@ sequences); after: 1163 / 1065 / 962, 0 regressions; the five
 improvements are 3130234_05 (three versions, failed 50 -> blocked 50)
 and 4080436_02, 4080444_02 (failed 63 -> blocked 63). B2340 and B2401
 done; B2260 untouched; B2520 new.
+
+### A.3.5.1 over a relocation and the bullets left: the LX substitution, the mode profile and the track conditions relocated, the stop of a text (e6/roll-back-3) (2026-10-27)
+
+**A.3.5.1 11th bullet, the substitution of a level crossing's start
+over a reverse movement** (no defect: kept by construction). The claim
+held at the source in its first half and needed no flag: the
+substitution of 5.16.2.1 / 5.16.3.2 is already a kept fact,
+`EVC_Track_Description.Release_LX` setting `Released` and
+`Released_From` of the stored level crossing once (`EVC_Procedures.
+LX_Step` calls it on the standstill in the stopping area or on
+`EVC_SDM`'s `LX_Release`), never cleared but by the deletion of the
+level crossing; `EVC_Track_Description.LX_Target` skips a released one,
+so its start is not a temporary EOA again whatever the position, and
+`EVC_Track_Description.Speed_Elements` keeps its restriction from the
+location of the substitution to its end. The second example of
+A.3.5.1.1 (the status and the restriction again in rear of the end) is
+`EVC_Stored_Information.Build_LX_Indications`: the latched `Indicated`
+against the min safe front end in every cycle, by design.
+`EVC_Test_Profiles.Scenario_LX_Roll_Back`: a level crossing not
+protected from 400 to 420 m (the group 10 at 100 m, V_LX 20 km/h), the
+train at 18 km/h, 50 cm a cycle. Stopping not required: the
+substitution at 271.5 m (the location of the Permitted speed
+supervision limit for V_LX as `EVC_SDM` finds it for the bench's train,
+not judged here), the restriction in the MRSP and the status shown; a
+roll back 1.5 m in rear of that location, forward over the start, a
+roll back 1.5 m in rear of the start and forward again: no cycle with a
+temporary EOA, no mode change. Past the end the status ends (5.16.1.5),
+a roll back 1.5 m in rear of the end shows it again with the
+restriction in the MRSP, the forward movement ends it again. Stopping
+required (L_STOPLX 30 m): stopped at 390 m for 1 s, substituted
+(5.16.2.1), the same two roll backs, no temporary EOA, no mode change.
+The snapshot of the cycle that makes the substitution still holds the
+temporary EOA (the stored information is built before the procedures),
+the next one does not: the scenario reads it a cycle later. Matrix:
+A.3.5.1 noted for the 11th bullet, 5.16.2.1 and 5.16.3.2 re-read and
+noted (not reverted, the scenario). No code change in evc/, no proof
+run, the runner not moved by it.

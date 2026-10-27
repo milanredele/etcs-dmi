@@ -1511,6 +1511,163 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_MA_Timers_Roll_Back;
 
+   --  A.3.5.1 11th bullet: a level crossing not protected from 400 to
+   --  420 m (the group 10 at 100 m, V_LX 20 km/h); its start a temporary
+   --  EOA and SvL (5.16.1.1) substituted by its speed restriction, with
+   --  the stopping not required at 18 km/h (5.16.3.2) and, on a second
+   --  track, stopped in the stopping area (5.16.2.1); the train rolls back
+   --  1.5 m in rear of the location of the substitution and of the start
+   --  and comes forward again: the temporary EOA not supervised again, no
+   --  trip; past the end, a roll back 1.5 m in rear of it shows the
+   --  status again (A.3.5.1.1 2nd example, 5.16.1.5) with the restriction
+   --  in the MRSP
+   procedure Scenario_LX_Roll_Back is
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      Changes : Natural := 0;
+      Temps   : Natural := 0;
+      X       : Integer_64;
+
+      function LX_Shown return Boolean is
+      begin
+         for I in 1 .. SI.Track_Cond_Count loop
+            if SI.Track_Cond_List (I).Kind = 38 then
+               return True;
+            end if;
+         end loop;
+         return False;
+      end LX_Shown;
+
+      function LX_In_MRSP return Boolean is
+      begin
+         for K in 1 .. SI.Current.MRSP.Count loop
+            if SI.Current.MRSP.Segments (K).Speed = 555 then
+               return True;
+            end if;
+         end loop;
+         return False;
+      end LX_In_MRSP;
+
+      --  the mode changes and the cycles with a temporary EOA counted
+      procedure Step_Counted (Step : Integer_64) is
+      begin
+         Step_X (Step);
+         if EVC_Core.Mode /= M_FS then
+            Changes := Changes + 1;
+         end if;
+         if SI.Current.Temporary.Present then
+            Temps := Temps + 1;
+         end if;
+      end Step_Counted;
+
+      procedure Go_To (To : Integer_64) is
+      begin
+         while Train_Cm /= To loop
+            Step_Counted (if To > Train_Cm then 50 else -50);
+         end loop;
+      end Go_To;
+
+      procedure Lay (Stop : Boolean) is
+         LX : T88.Packet_T;
+      begin
+         Start_X;
+         Speed_Cms := 500;
+         Add_Group (Group (10, 100));
+         LX.Q_DIR := 1;
+         LX.Q_SCALE := 1;
+         LX.NID_LX := 3;
+         LX.D_LX := 300;
+         LX.L_LX := 20;
+         LX.Q_LXSTATUS := 1;
+         LX.Has_V_LX := True;
+         LX.V_LX := 4;
+         LX.Q_STOPLX := (if Stop then 1 else 0);
+         LX.Has_L_STOPLX := Stop;
+         LX.L_STOPLX := (if Stop then 30 else 0);
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 0, LX);
+         Carry (1, 1, MA_Of ((1 => 3000)));
+         Run_X (20_000);
+         Changes := 0;
+         Temps := 0;
+      end Lay;
+   begin
+      --  5.16.3.2: at or below V_LX at the location of the Permitted
+      --  speed supervision limit for V_LX
+      Lay (Stop => False);
+      Check (EVC_Core.Mode = M_FS and then SI.Current.Temporary.Present
+             and then not TD.LX (1).Released,
+             "LX roll back: the start a temporary EOA (5.16.1.1)");
+      while not TD.LX (1).Released and then Train_Cm < 41_000 loop
+         Step_Counted (50);
+      end loop;
+      --  the snapshot of the next cycle without the temporary EOA
+      X := Train_Cm;
+      Step_Counted (50);
+      Check (TD.LX (1).Released and then X < 40_000
+             and then not SI.Current.Temporary.Present and then LX_In_MRSP
+             and then LX_Shown,
+             "LX roll back: substituted by the LX speed restriction before "
+             & "the start (5.16.3.2), at" & X'Image & " "
+             & SI.Current.Temporary.Present'Image & " "
+             & LX_In_MRSP'Image & " " & LX_Shown'Image & " "
+             & TD.LX (1).Indicated'Image);
+      Temps := 0;
+      Go_To (X - 150);
+      Go_To (40_500);
+      Go_To (40_000 - 150);
+      Go_To (40_500);
+      Check (TD.LX (1).Released and then Temps = 0 and then Changes = 0
+             and then LX_In_MRSP and then LX_Shown,
+             "LX roll back: 1.5 m in rear of the substitution and of the "
+             & "start and forward again, no temporary EOA again, no trip "
+             & "(A.3.5.1 11th bullet), got" & Temps'Image & Changes'Image);
+      while LX_Shown and then Train_Cm < 46_000 loop
+         Step_Counted (50);
+      end loop;
+      X := Train_Cm;
+      Check (not LX_Shown and then X > 42_000 and then Changes = 0,
+             "LX roll back: the status ends once the min safe front end "
+             & "passed the end (5.16.1.5), at" & X'Image);
+      Go_To (X - 150);
+      Check (LX_Shown and then LX_In_MRSP and then Temps = 0,
+             "LX roll back: 1.5 m in rear of the end, the status shown "
+             & "again and the restriction in the MRSP (A.3.5.1.1, 5.16.1.5)");
+      Go_To (X + 500);
+      Check (not LX_Shown and then Temps = 0 and then Changes = 0,
+             "LX roll back: forward past the end again, the status ended");
+
+      --  5.16.2.1: stopped with the estimated front end in the stopping
+      --  area (370 to 400 m)
+      Lay (Stop => True);
+      Go_To (37_500);
+      Speed_Cms := 100;
+      while Train_Cm < 39_000 loop
+         Step_X (10);
+      end loop;
+      Speed_Cms := 0;
+      Stand_X (1_000);
+      X := Train_Cm;
+      Check (TD.LX (1).Released and then not SI.Current.Temporary.Present
+             and then LX_In_MRSP,
+             "LX roll back: stopped in the stopping area, substituted "
+             & "(5.16.2.1)");
+      Speed_Cms := 500;
+      Temps := 0;
+      Changes := 0;
+      Go_To (X - 150);
+      Go_To (40_500);
+      Go_To (40_000 - 150);
+      Go_To (40_500);
+      Check (TD.LX (1).Released and then Temps = 0 and then Changes = 0
+             and then LX_In_MRSP,
+             "LX roll back: stopping required, 1.5 m in rear of the "
+             & "location of the stop and of the start and forward again, no "
+             & "temporary EOA again, no trip (A.3.5.1 11th bullet), got"
+             & Temps'Image & Changes'Image);
+      Speed_Cms := Saved;
+   end Scenario_LX_Roll_Back;
+
    --  3.12.2.3, 3.12.2.3.1, 3.12.2.4, 3.13.1.5: the route suitability
    --  data compared with the Train Data; the closest unsuitable
    --  location the temporary EOA and SvL; a change of the Train Data

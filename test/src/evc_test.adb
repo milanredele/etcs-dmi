@@ -191,6 +191,7 @@ begin
    Scenario_Mode_Profile_Roll_Back;
    Scenario_Track_Condition_Roll_Back;
    Scenario_MA_Timers_Roll_Back;
+   Scenario_LX_Roll_Back;
    Scenario_Route_Suitability;
    Scenario_Rear_Deletion;
    Scenario_Snapshot_Seams;
