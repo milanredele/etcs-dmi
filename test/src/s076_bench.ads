@@ -448,6 +448,14 @@ package S076_Bench is
    function RTM_Hold_Given return Boolean;  -- given since Hold_RTM
    function RTM_Hold_Given_Ms return Unsigned_64;
 
+   --  The bench time from which the time of A.3.1 "after which the
+   --  registration is considered as failed" counts for the FRMCS on-board
+   --  (5.4.3.2 S4): with FRMCS the only system installed, its detection
+   --  as connected (E71, the first report since the power-up); with both
+   --  systems, the latest order to register the GSM-R mobile (E72), the
+   --  detection while none was given; 0 where FRMCS is not installed
+   function FRMCS_Timer_Origin_Ms return Unsigned_64;
+
    --  An RTM output of the window: a train to track message of a
    --  session (Code its NID_MESSAGE, Data the message from its first
    --  byte) or a request to the radio (Code EVC_Ports.RTM_Request_T'Pos

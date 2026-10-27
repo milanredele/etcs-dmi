@@ -194,6 +194,9 @@ package body S076_Run is
    type Asked_T is array (1 .. 2) of Integer_64;
    Hold_Asked   : Asked_T := (others => -1);
    Cur            : Natural := 0;       -- the index of the step
+   --  the index of the power-up step from which both radio systems are
+   --  installed (0: none; set by Run_Loaded)
+   Both_From      : Natural := 0;
    Step_Start_Ms  : Unsigned_64 := 0;   -- the time the last step ended
    Explicit_Speed : Integer := -1;      -- cm/s set by an ODO input
    Wait_Used      : Natural := 0;       -- cycles waited in the window
@@ -1957,6 +1960,22 @@ package body S076_Run is
                       & Integer'Image (Text_Seconds (Image (St.Comment)))
                       & " s elapsed (the comment's)");
       end if;
+      --  A.3.1 "Time from when the FRMCS on-board equipment has been
+      --  detected to be connected ... after which the registration is
+      --  considered as failed", 40 s: run from the origin the bench gives
+      --  (5.4.3.2 S4 E71 or E72, S076_Bench.FRMCS_Timer_Origin_Ms), at once
+      --  when it has passed; the reaction, A42, is the next step's
+      --  (3050600_06 steps 57 and 75, 5040300_23 step 106, _24 step 99)
+      if Name = "" and then Has (Image (St.Comment), "A.3.1")
+        and then Has (Image (St.Comment), "FRMCS")
+      then
+         if B.FRMCS_Timer_Origin_Ms = 0 then
+            return NJ (R_Radio, "timer of A.3.1: FRMCS not installed");
+         end if;
+         Run_Timer (40, B.FRMCS_Timer_Origin_Ms);
+         return Pass ("A.3.1 FRMCS registration time 40 s elapsed since"
+                      & Unsigned_64'Image (B.FRMCS_Timer_Origin_Ms) & " ms");
+      end if;
       --  the radio timers whose value a message gave (T_NVCONTACT of
       --  packet 3, T_CYCRQST of packet 57, T_CYCLOC of packet 58, in s)
       --  are run as the others; 255 is "infinite" (7.5.1)
@@ -2945,6 +2964,10 @@ package body S076_Run is
          if Same (Kind, "power") then
             if Same (W (4), "on") then
                if not B.Powered then
+                  if Cur = Both_From then
+                     B.Set_Radio_Systems (EVC_Config.Both_Systems);
+                     B.Set_Network_Type (EVC_Config.FRMCS_GSMR);
+                  end if;
                   B.Power_On;
                end if;
             else
@@ -6754,28 +6777,41 @@ package body S076_Run is
             B.Set_Accuracy (S076_Bench.Accuracy_Bound_Per_Mille);
          end if;
       end loop;
-      --  The radio systems installed (3.5.6.7, 5.4.3.2 D7): the sequences
-      --  of feature 3050600 test 3.5.6 with both systems installed (in
-      --  3050600_05 3.5.6.7 b holds the set-up while FRMCS is not
-      --  registered); every other sequence was recorded with an on-board
-      --  that sets up its sessions after a packet 45 of type FRMCS+GSM-R,
-      --  which is GSM-R only here, as the port reports no FRMCS
-      --  registration (e5/registration decision 2).
-      --  The Radio Network type used while none is memorized (3.5.6.4):
-      --  the laboratory of feature 3050600 has the type FRMCS+GSM-R with
-      --  both systems and the FRMCS on-board never registered (3050600_03
-      --  step 45: 3.5.6.7 b) holds the set-up; 3050600_06 step 55: 5.4.3.2
-      --  S4 waits for both); every other sequence GSM-R alone, as the
-      --  port reports no FRMCS registration (e5/registration decision 2):
-      --  5040300_25 would need FRMCS registered before its power cycle
-      --  (step 55 sets up a session after a packet 45 of type FRMCS+GSM-R,
-      --  3.5.6.7 b) and its registration failing after it (step 100)
+      --  The radio systems installed (3.5.6.7, 5.4.3.2 D7) and the Radio
+      --  Network type used while none is memorized (3.5.6.4): the
+      --  sequences of feature 3050600 test 3.5.6 with both systems and
+      --  the type FRMCS+GSM-R, the FRMCS on-board never registered (the
+      --  laboratory had no FRMCS simulator: 3050600_03 step 45, 3.5.6.7 b)
+      --  holds the set-up; 3050600_06 step 55, 5.4.3.2 S4 waits for both).
+      --  Every other sequence was recorded with an on-board that sets up
+      --  its sessions after a packet 45 of type FRMCS+GSM-R, which holds
+      --  only with GSM-R alone while FRMCS is never registered: GSM-R
+      --  alone, up to the power-up before the first step that expects
+      --  "FRMCS network registration failed" (5040300_23 to 25: the
+      --  second power-up, A42 at 5.4.3.2 S4), from which both are
+      --  installed (Apply_Input)
+      Both_From := 0;
       if Image (Seq.Feature) = "3050600" then
          B.Set_Radio_Systems (EVC_Config.Both_Systems);
          B.Set_Network_Type (EVC_Config.FRMCS_GSMR);
       else
          B.Set_Radio_Systems (EVC_Config.GSMR_Only);
          B.Set_Network_Type (EVC_Config.GSMR);
+         declare
+            Power_Up : Natural := 0;
+         begin
+            for I in 1 .. Seq.Step_Count loop
+               exit when Has (Image (Seq.Steps (I).Line),
+                              "FRMCS-network-registration-failed");
+               if Has (Image (Seq.Steps (I).Line), "SIM power on") then
+                  Power_Up := I;
+               end if;
+               if I = Seq.Step_Count then
+                  Power_Up := 0;
+               end if;
+            end loop;
+            Both_From := Power_Up;
+         end;
       end if;
       B.Set_Gamma (Seq.Gamma);
       B.Set_Voltages (S076_Sequences.Engine_Voltages

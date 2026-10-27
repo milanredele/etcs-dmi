@@ -14116,3 +14116,52 @@ B2400 and B2401 are the user's decisions with B1060, B1063, B1340;
 B2360, B2361, B2340, B2380 and B1960's last trace (runner); then B781's
 remaining bullets, B2380's FRMCS sequences; the review again (eight
 items, readings first).
+
+### The runner's radio steps: the FRMCS sequences to the A.3.1 time, the linked groups never given counted, the default network per sequence (e5/runner-net-2) (2026-10-27)
+
+**The FRMCS sequences (B2380).** `S076_Run.Timer_Input`: a timer step
+without a name whose comment names A.3.1 and FRMCS ("Time from when the
+FRMCS on-board equipment has been detected to be connected ... after
+which the registration is considered as failed") runs 40 s from
+`S076_Bench.FRMCS_Timer_Origin_Ms`, the origin of 5.4.3.2 S4: the FRMCS
+detection (the bench's event 8 in the first cycle after the power-up)
+with FRMCS alone (E71), the latest registration request of a GSM-R
+mobile with both systems (E72); not judged (radio) where FRMCS is not
+installed. `S076_Run.Run_Loaded` installs both systems and the type
+FRMCS+GSM-R for feature 3050600 as before, and for every other
+sequence from the power-up before its first step that expects "FRMCS
+network registration failed" (`Both_From`, applied by `Apply_Input` at
+that power-up), GSM-R alone before it (the first parts set up sessions
+after a packet 45 of type FRMCS+GSM-R, which 3.5.6.7 b) holds with
+both systems and FRMCS never registered). The four sequences:
+
+- 3050600_06 SV30: both systems, packet 45 Q_NETWORKTYPE 1 (FRMCS+GSM-R)
+  NID_MN 654321, the GSM-R order at 25.0 s, the hour glass of S4 at
+  step 55 from 37.1 s; step 57 runs to 65.5 s; step 58 expects entry 33,
+  ours none: blocked at 57 -> failed at 58 (Sfb725745, triaged onboard).
+  The cause, traced: `EVC_Sessions.Apply_Network` passes
+  `Mission.Opening` as the wait's In_SoM, and the S4 reached by D7
+  without a known RBC contact (the contact UNKNOWN, step 85's comment)
+  is `Mission.Awaiting_Registration` (Step Decided), so the time of
+  A.3.1 never ends it (neither entry 33 nor, for GSM-R, entry 34). In a
+  scratch build with `Mission.Opening or else
+  Mission.Awaiting_Registration` steps 57 to 59 pass (entry 33, JRU 23
+  bit 24) and the sequence blocks at step 60 (the driver's "Mission with
+  one radio system", radio). Not the runner's unit: B2480 (onboard).
+  The second timer, step 75, after the cab change, runs at once (the
+  origin passed).
+- 5040300_23 SV30: blocked at step 82 as before (the cold movement step,
+  vocabulary unclassified), its timer at step 106 not reached.
+- 5040300_24 SV30: failed at step 97 as before (S7e2edbdf): step 96
+  presses Radio network type and the window opens; no step gives the
+  type the driver selects before step 97 expects the Main window with
+  the hour glass. The timer step 99 now runs (origin 127.5 s, the
+  second power-up).
+- 5040300_25 SV30: failed at step 100 as before (Sfb725745, triaged
+  s076): the file has no steps 96 to 99 (95 then 100), no S4 and no
+  timer step.
+
+The runner: 1163 / 1069 / 958 -> 1163 / 1070 / 957, the one movement
+3050600_06 (blocked -> failed, explained above, an improvement by the
+runner's rule), 0 regressions, no signature untriaged. B2380 narrowed,
+B762 and B844 narrowed by a sentence each, B2480 added.
