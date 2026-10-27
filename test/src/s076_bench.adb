@@ -36,6 +36,7 @@ package body S076_Bench is
    Was_Powered : Boolean := False;
    Radio_Systems : EVC_Config.Radio_Systems_T := EVC_Config.Both_Systems;
    Network_Type : EVC_Config.Network_Type_T := EVC_Config.GSMR;
+   Default_MN : EVC_Config.Network_Id_T := 0;
    Voltages : Natural := EVC_Config.Default_Fixed_Train.Voltages;
    --  The gamma sheet of Set_Gamma and the field it lacked
    Gamma_Sheet : S076_Sequences.Gamma_Sheet_T;
@@ -157,6 +158,10 @@ package body S076_Bench is
    --  steps of A.3.1 count from that detection with no
    --  SA-REGISTRATION.Indication (3050600_06 step 57, 5040300_23 to 25)
    FRMCS_Due : Boolean := False;
+   --  the bench times of that report and of the latest registration
+   --  request of a GSM-R mobile since the power-up (0: none)
+   FRMCS_Detected_At : Unsigned_64 := 0;
+   GSMR_Order_At     : Unsigned_64 := 0;
    T_By_Nid  : By_Nid_T := (others => (others => -1));
 
    procedure Clear_Radio is
@@ -475,6 +480,7 @@ package body S076_Bench is
          Last_Req (R.Session) := R.Code;
          if R.Code = RTM_Request_T'Pos (Request_Registration) + 1 then
             Registering (R.Session) := True;
+            GSMR_Order_At := Clock;
          end if;
       else
          return;
@@ -768,6 +774,11 @@ package body S076_Bench is
       Radio_Systems := Systems;
    end Set_Radio_Systems;
 
+   procedure Set_Default_MN (MN : EVC_Config.Network_Id_T) is
+   begin
+      Default_MN := MN;
+   end Set_Default_MN;
+
    procedure Set_Network_Type (Net_Type : EVC_Config.Network_Type_T) is
    begin
       Network_Type := Net_Type;
@@ -993,7 +1004,7 @@ package body S076_Bench is
          EVC_Config.Set_Radio_For_Test
            ((Sessions => EVC_Config.Current.Radio.Sessions,
              Engine_Id => 76_000, Systems => Radio_Systems,
-             Default_Type => Network_Type, others => <>));
+             Default_Type => Network_Type, Default_MN => Default_MN));
          EVC_Config.Set_Voltages_For_Test (Voltages);
       end Set_Test_Data;
    begin
@@ -1015,6 +1026,8 @@ package body S076_Bench is
       Is_Powered := True;
       Was_Powered := True;
       FRMCS_Due := Radio_Systems not in EVC_Config.GSMR_Only;
+      FRMCS_Detected_At := 0;
+      GSMR_Order_At := 0;
       --  the special brakes of a gamma train active (their status
       --  counts, 3.13.5.2): the combination in use is the train's, or
       --  combination 2 of the sheet where a track condition inhibits one
@@ -1209,6 +1222,7 @@ package body S076_Bench is
          end loop;
          if FRMCS_Due then
             FRMCS_Due := False;
+            FRMCS_Detected_At := Clock;
             EVC_Core.Handle_Input
               (RTM, (RTM_Tag_Event, 1,
                      Byte (RTM_Event_T'Pos (FRMCS_Not_Registered) + 1)));
@@ -1743,6 +1757,12 @@ package body S076_Bench is
    function RTM_Held return Boolean is (Hold_Length > 0);
    function RTM_Hold_Given return Boolean is (Hold_Given);
    function RTM_Hold_Given_Ms return Unsigned_64 is (Hold_Given_At);
+
+   function FRMCS_Timer_Origin_Ms return Unsigned_64 is
+     (if Radio_Systems in EVC_Config.GSMR_Only then 0
+      elsif Radio_Systems in EVC_Config.FRMCS_Only or else GSMR_Order_At = 0
+      then FRMCS_Detected_At
+      else GSMR_Order_At);
 
    function Radio_Count return Natural is (Radio_N);
    function Radio (I : Positive) return Radio_Out_T is (Radio_List (I));

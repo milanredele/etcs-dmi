@@ -61,6 +61,10 @@ package S076_Bench is
    --  at the next Power_On (3.5.6.4, EVC_Config.Radio_Config_T.
    --  Default_Type); kept over Reset
    procedure Set_Network_Type (Net_Type : EVC_Config.Network_Type_T);
+   --  The GSM-R network the on-board offers the driver while none other
+   --  is memorized at the next Power_On (3.5.6.3, 3.18.4.3.6,
+   --  EVC_Config.Radio_Config_T.Default_MN); kept over Reset
+   procedure Set_Default_MN (MN : EVC_Config.Network_Id_T);
 
    --  B472: the traction systems the engine accepts (M_VOLTAGE bits,
    --  EVC_Config.Fixed_Train_T.Voltages) the on-board takes at the next
@@ -447,6 +451,14 @@ package S076_Bench is
    function RTM_Held return Boolean;        -- held, not given yet
    function RTM_Hold_Given return Boolean;  -- given since Hold_RTM
    function RTM_Hold_Given_Ms return Unsigned_64;
+
+   --  The bench time from which the time of A.3.1 "after which the
+   --  registration is considered as failed" counts for the FRMCS on-board
+   --  (5.4.3.2 S4): with FRMCS the only system installed, its detection
+   --  as connected (E71, the first report since the power-up); with both
+   --  systems, the latest order to register the GSM-R mobile (E72), the
+   --  detection while none was given; 0 where FRMCS is not installed
+   function FRMCS_Timer_Origin_Ms return Unsigned_64;
 
    --  An RTM output of the window: a train to track message of a
    --  session (Code its NID_MESSAGE, Data the message from its first

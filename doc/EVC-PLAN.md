@@ -14116,3 +14116,107 @@ B2400 and B2401 are the user's decisions with B1060, B1063, B1340;
 B2360, B2361, B2340, B2380 and B1960's last trace (runner); then B781's
 remaining bullets, B2380's FRMCS sequences; the review again (eight
 items, readings first).
+
+### The runner's radio steps: the FRMCS sequences to the A.3.1 time, the linked groups never given counted, the default network per sequence (e5/runner-net-2) (2026-10-27)
+
+**The FRMCS sequences (B2380).** `S076_Run.Timer_Input`: a timer step
+without a name whose comment names A.3.1 and FRMCS ("Time from when the
+FRMCS on-board equipment has been detected to be connected ... after
+which the registration is considered as failed") runs 40 s from
+`S076_Bench.FRMCS_Timer_Origin_Ms`, the origin of 5.4.3.2 S4: the FRMCS
+detection (the bench's event 8 in the first cycle after the power-up)
+with FRMCS alone (E71), the latest registration request of a GSM-R
+mobile with both systems (E72); not judged (radio) where FRMCS is not
+installed. `S076_Run.Run_Loaded` installs both systems and the type
+FRMCS+GSM-R for feature 3050600 as before, and for every other
+sequence from the power-up before its first step that expects "FRMCS
+network registration failed" (`Both_From`, applied by `Apply_Input` at
+that power-up), GSM-R alone before it (the first parts set up sessions
+after a packet 45 of type FRMCS+GSM-R, which 3.5.6.7 b) holds with
+both systems and FRMCS never registered). The four sequences:
+
+- 3050600_06 SV30: both systems, packet 45 Q_NETWORKTYPE 1 (FRMCS+GSM-R)
+  NID_MN 654321, the GSM-R order at 25.0 s, the hour glass of S4 at
+  step 55 from 37.1 s; step 57 runs to 65.5 s; step 58 expects entry 33,
+  ours none: blocked at 57 -> failed at 58 (Sfb725745, triaged onboard).
+  The cause, traced: `EVC_Sessions.Apply_Network` passes
+  `Mission.Opening` as the wait's In_SoM, and the S4 reached by D7
+  without a known RBC contact (the contact UNKNOWN, step 85's comment)
+  is `Mission.Awaiting_Registration` (Step Decided), so the time of
+  A.3.1 never ends it (neither entry 33 nor, for GSM-R, entry 34). In a
+  scratch build with `Mission.Opening or else
+  Mission.Awaiting_Registration` steps 57 to 59 pass (entry 33, JRU 23
+  bit 24) and the sequence blocks at step 60 (the driver's "Mission with
+  one radio system", radio). Not the runner's unit: B2480 (onboard).
+  The second timer, step 75, after the cab change, runs at once (the
+  origin passed).
+- 5040300_23 SV30: blocked at step 82 as before (the cold movement step,
+  vocabulary unclassified), its timer at step 106 not reached.
+- 5040300_24 SV30: failed at step 97 as before (S7e2edbdf): step 96
+  presses Radio network type and the window opens; no step gives the
+  type the driver selects before step 97 expects the Main window with
+  the hour glass. The timer step 99 now runs (origin 127.5 s, the
+  second power-up).
+- 5040300_25 SV30: failed at step 100 as before (Sfb725745, triaged
+  s076): the file has no steps 96 to 99 (95 then 100), no S4 and no
+  timer step.
+
+The runner: 1163 / 1069 / 958 -> 1163 / 1070 / 957, the one movement
+3050600_06 (blocked -> failed, explained above, an improvement by the
+runner's rule), 0 regressions, no signature untriaged. B2380 narrowed,
+B762 and B844 narrowed by a sentence each, B2480 added.
+
+**The linked groups never given, counted (B2340 / B2401).** A count,
+no change to the bench or the runner. For every sequence: the groups
+its packets 5 announce (in telegrams and messages: NID_C, NID_BG of
+every link, NID_BG 16383 left out) against the groups its telegrams
+give (the header's NID_C, NID_BG); for each sequence found, a DEBUG run
+of the runner for the on-board's reaction (JRU event 6, the group
+missed, for one of those groups; event 4 with reaction 0 or 1, a trip
+or the service brake); the intent read from the steps' texts and
+comments by keyword (linking, linked, Q_LINKREACTION, miss, not found,
+not detected, not read, not received, lost, absent; a keyword
+anywhere in the sequence counts, so the first list is an upper
+bound). SV30: 164 sequences announce a group never given; 126 record
+no miss of it (the location not reached or the linking replaced); 38
+record the miss, 21 of them without a brake (Q_LINKREACTION 2), 17 with
+one:
+
+- the miss spoken of (13): 3040400_05 (passed), 3040400_07 (failed 76),
+  3160200_05 (passed), 3160200_27 (passed), 4080417_01 (failed 151),
+  4080420_03 (failed 85), 4080423_01 (failed 128), 4080455_03 (failed
+  92), 4080455_04 (failed 120), 4100103_07 (passed), 4120100_11
+  (blocked 142), 5210200_03 (failed 69), 9990500_25 (failed 48);
+- not spoken of, our brake without the sequence's intent (4):
+  3131040_01 (BG2 and BG3, the service brake of 3.16.2.7.1.1 in the
+  window of step 50, failed 56, S8722745e), 3130234_05 (NID_BG 0, the
+  trip of Q_LINKREACTION 0 in step 47's window, failed 50, S256875a4),
+  4080436_02 and 4080444_02 (NID_BG 3, a trip in step 62's window,
+  failed 63, Seb6766c6); a fifth candidate, 4080404_02 (NID_BG 3 never
+  given, event 4 of cause 5 with the service brake in step 43's window
+  but no event 6 recorded, failed 47, Sa8a3ba1a).
+
+Ten more SV30 sequences brake by a linking reaction with no event 6
+for a never-given group (a group given elsewhere than linked, the
+other causes of event 4). SV21: 154 sequences, 8 / 2 / 21 (spoken of,
+not spoken of, missed without a brake); SV22: 154, 9 / 2 / 21; the two
+not spoken of are 3131040_01 (blocked 56, old-tool, in both) and
+3130234_05 (failed 50). A synthesised telegram for the groups never
+given would touch at most these five sequences per system version, and
+the families of the missed group (3160200, the first list) would have
+to keep their miss: the user decides (B2401).
+
+**The default network per sequence (B1841).** The networks list the
+driver chooses from is not an RTM event: the on-board offers its
+configured network and the memorized one
+(`EVC_Sessions.Network.Offered_Count`), so the configuration is the
+way, and `EVC_Config.Radio_Config_T.Default_MN` already existed (no
+edit in evc/): `S076_Bench.Set_Default_MN`, applied at the power-up,
+and `S076_Run.Run_Loaded` takes the first NID_MN (BCD digits) of the
+comment of a step where the driver selects a GSM-R network (in SV30
+only 5040300_08 and _13 step 78, "NID_MN=654321h"), else 0 as before.
+No movement: the line's premise was out of date, both sequences fail
+first at step 47 (S363c8035, the Driver ID window after the power-up
+of step 45), and step 78 fails on master too (the Radio Data window of
+step 75 not open), not "not judged, radio"; B1841 narrowed to that.
+The runner 1163 / 1070 / 957 unchanged, 0 regressions.
