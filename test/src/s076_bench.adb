@@ -36,6 +36,7 @@ package body S076_Bench is
    Was_Powered : Boolean := False;
    Radio_Systems : EVC_Config.Radio_Systems_T := EVC_Config.Both_Systems;
    Network_Type : EVC_Config.Network_Type_T := EVC_Config.GSMR;
+   Default_MN : EVC_Config.Network_Id_T := 0;
    Voltages : Natural := EVC_Config.Default_Fixed_Train.Voltages;
    --  The gamma sheet of Set_Gamma and the field it lacked
    Gamma_Sheet : S076_Sequences.Gamma_Sheet_T;
@@ -773,6 +774,11 @@ package body S076_Bench is
       Radio_Systems := Systems;
    end Set_Radio_Systems;
 
+   procedure Set_Default_MN (MN : EVC_Config.Network_Id_T) is
+   begin
+      Default_MN := MN;
+   end Set_Default_MN;
+
    procedure Set_Network_Type (Net_Type : EVC_Config.Network_Type_T) is
    begin
       Network_Type := Net_Type;
@@ -998,7 +1004,7 @@ package body S076_Bench is
          EVC_Config.Set_Radio_For_Test
            ((Sessions => EVC_Config.Current.Radio.Sessions,
              Engine_Id => 76_000, Systems => Radio_Systems,
-             Default_Type => Network_Type, others => <>));
+             Default_Type => Network_Type, Default_MN => Default_MN));
          EVC_Config.Set_Voltages_For_Test (Voltages);
       end Set_Test_Data;
    begin

@@ -14205,3 +14205,18 @@ not spoken of are 3131040_01 (blocked 56, old-tool, in both) and
 given would touch at most these five sequences per system version, and
 the families of the missed group (3160200, the first list) would have
 to keep their miss: the user decides (B2401).
+
+**The default network per sequence (B1841).** The networks list the
+driver chooses from is not an RTM event: the on-board offers its
+configured network and the memorized one
+(`EVC_Sessions.Network.Offered_Count`), so the configuration is the
+way, and `EVC_Config.Radio_Config_T.Default_MN` already existed (no
+edit in evc/): `S076_Bench.Set_Default_MN`, applied at the power-up,
+and `S076_Run.Run_Loaded` takes the first NID_MN (BCD digits) of the
+comment of a step where the driver selects a GSM-R network (in SV30
+only 5040300_08 and _13 step 78, "NID_MN=654321h"), else 0 as before.
+No movement: the line's premise was out of date, both sequences fail
+first at step 47 (S363c8035, the Driver ID window after the power-up
+of step 45), and step 78 fails on master too (the Radio Data window of
+step 75 not open), not "not judged, radio"; B1841 narrowed to that.
+The runner 1163 / 1070 / 957 unchanged, 0 regressions.

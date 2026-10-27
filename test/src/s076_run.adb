@@ -6791,6 +6791,34 @@ package body S076_Run is
       --  second power-up, A42 at 5.4.3.2 S4), from which both are
       --  installed (Apply_Input)
       Both_From := 0;
+      --  The GSM-R network of the configuration (3.5.6.3), offered to the
+      --  driver in the list of 3.18.4.3.6 with the memorized one: the
+      --  first NID_MN the comment of a step where the driver selects a
+      --  GSM-R network names (5040300_08 and _13 step 78, "NID_MN=654321h",
+      --  BCD digits), else 0
+      declare
+         MN : EVC_Config.Network_Id_T := 0;
+      begin
+         for I in reverse 1 .. Seq.Step_Count loop
+            declare
+               C : constant String := Image (Seq.Steps (I).Comment);
+               P : constant Natural := Ada.Strings.Fixed.Index (C, "NID_MN=");
+               N : Natural := 0;
+            begin
+               if P > 0 and then Has (Image (Seq.Steps (I).Line),
+                                      "select GSM-R-network-ID")
+               then
+                  MN := 0;
+                  for K in P + 7 .. C'Last loop
+                     exit when C (K) not in '0' .. '9' or else N = 6;
+                     MN := MN * 16 + (Character'Pos (C (K)) - 48);
+                     N := N + 1;
+                  end loop;
+               end if;
+            end;
+         end loop;
+         B.Set_Default_MN (MN);
+      end;
       if Image (Seq.Feature) = "3050600" then
          B.Set_Radio_Systems (EVC_Config.Both_Systems);
          B.Set_Network_Type (EVC_Config.FRMCS_GSMR);

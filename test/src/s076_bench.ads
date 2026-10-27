@@ -61,6 +61,10 @@ package S076_Bench is
    --  at the next Power_On (3.5.6.4, EVC_Config.Radio_Config_T.
    --  Default_Type); kept over Reset
    procedure Set_Network_Type (Net_Type : EVC_Config.Network_Type_T);
+   --  The GSM-R network the on-board offers the driver while none other
+   --  is memorized at the next Power_On (3.5.6.3, 3.18.4.3.6,
+   --  EVC_Config.Radio_Config_T.Default_MN); kept over Reset
+   procedure Set_Default_MN (MN : EVC_Config.Network_Id_T);
 
    --  B472: the traction systems the engine accepts (M_VOLTAGE bits,
    --  EVC_Config.Fixed_Train_T.Voltages) the on-board takes at the next
