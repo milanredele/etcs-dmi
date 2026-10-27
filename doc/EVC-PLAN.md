@@ -15255,3 +15255,125 @@ speed; the runner drives 65.0, rounded up to 65.02). Remarks without a
 line: the desk-opening scenario's terminating case, `Consist_Step`'s
 heading, the Q_DIR decision of packet 64. The review took about 105 tool
 calls of 130.
+
+### E5 integration after the fifty-sixth round, the twenty-fourth of E6 (2026-10-27)
+
+Merged: e6/roll-back-3 (three bullets of A.3.5.1 by scenarios, no
+defect: the LX substitution kept over a reverse movement
+(`EVC_Track_Description.Release_LX` once, `LX_Target` skipping a
+released one, the status and restriction shown again in rear of the end
+by A.3.5.1.1, `Scenario_LX_Roll_Back` for 5.16.2.1 and 5.16.3.2); the
+relocation on a linked group built as a test shape
+(`EVC_Test_Profiles.Lay_Relocating`: the odometer over-reading 2 %, the
+group read 2.5 m late, the locations 5 m ahead after the reading; the
+brief's 3 m geometry did not fit the confidence interval), the mode
+profile's end and a track condition's start relocated in rear of the
+train: FS and TC01 kept, nothing twice, the kept flags hold because
+`Location_T` is an origin and an offset and a relocation changes the
+origin table only; the stop of a text over a roll-back
+(`End_Condition` keeps `Loc_Done`): B781 narrowed to the relocations of
+the 3rd, 9th, 11th, 12th bullets, the LS profile, the 6th),
+e5/runner-comments (B2360: `S076_Sequences.Step_T.Comment` its own
+`Comment_T` of 1000 characters (the corpus's longest 956; 2281 SV30
+comments exceed 400), the flag "we increase the T_BRAKE_EMERGENCY by
+one second" read in `S076_Run` and `Build_Gamma` taking combination 1's
+time less 1 s for the eight 3130700 sequences: V_PBD 65 = V5 now, step
+62 still fails on the runner's speed at the V5 level (the chart's 65.4
+driven as 65.0, rounded to 65.02 by `Kmh_To_Cms`, Overspeed by
+3.13.10.3.3 t2: B2600, S8727c744 model); a side effect: 3131050_22 step
+85's comment now read to its end, the step not judged; B2520: BG1d of
+4080404_02 carries two packets 5 for the nominal direction in its two
+balises (M_DUP 00 both) against 8.4.1.4, `EVC_Position.Take_Packets`
+keeps the last valid one, the sequence's data, closed; 5040300_24 step
+97: of 16 presses of the Radio network type button in the corpus this
+is the only one not followed by the window's step, the press stands for
+the entry (FRMCS+GSM-R, the type step 102 names), the on-board then
+shows the Radio data window again with no hour glass: B2601 onboard,
+S7e2edbdf), e6/sessions-som (B2480: the wait's In_SoM is `Opening or
+else Awaiting_Registration`, `Scenario_Network_S4_Without_Contact` for
+E7 / E71 / E72, 3050600_06 failed 58 -> blocked 60 (the driver's one
+radio system, radio), B2380 narrowed; B2420 / B2500: the reviewer's
+reading and candidate cause held: 300 terminated and 301 queued in
+`Pending`, `Judge_Opening` went to A32 the next cycle; now it stays at
+A31 while the start of mission's RBC is queued (`@req 3.5.3.5.2`),
+3.5.3.4 sets no minimum number of sessions and 3.5.3.5.2.1 foresees one,
+the scenario runs with two sessions and with one; B789 first part:
+`EVC_Sessions.Apply_Desk` terminates every Established session at desk
+opening (5.4.1.4, whatever the mode and level), `Scenario_Session_Desk_
+Opening`, 5040300_20 passed in three versions, the row 5.4.1.4 deferred
+-> done; a side finding written, not traced: the override at S10 with
+the Train Data of the SoM report not yet acknowledged now waits for the
+acknowledgement), e6/consist-entry (B1401: the entry 19 "Safe consist
+length no longer available" sent beside `Consist_SB`, at standstill the
+start and the end in one cycle (the DMI keeps it 30 s), moving the end
+at the brake release of 3.14.1.7.6, `SS_Bit` 19 => 31 (SUBSET-027
+4.2.4.23), `Consist_Lost_In_SM` extended (the brief's
+`EVC_Test_Procedures` had no SM set-up: `EVC_Test_Manoeuvre`); B785:
+packet 64 stored in `EVC_Radio_Authority` with its session, copied to
+`EVC_Radio_Info.TSR_Inhibited`, rejected outside level 2, the revocable
+TSR of a balise rejected by `EVC_Acceptance.Revocable_TSR_Rejected`
+(4.8.3 [8]), deleted on entering level 0 / NTC / 1 (4.9.1.3.1), on the
+ten modes of the 4.10.1.3 table and at the session's end,
+`Scenario_TSR_Inhibition`, 4100103_05 passed in three versions (step
+94 "Permitted Speed is NOT updated"); 3.11.5.14 b), the RBC/RBC border,
+B2560; B786 left at the bound: the agent reached 151 calls, no room for
+a resumption; what it needs is written), and e5/review-56 (the fifth
+blind review, below).
+
+The review (e5/review-56, 106 calls, 5.6 USD): eight items, all
+reached, fully blind (no read of the backlog before the verdicts); nine
+verdicts, 8 agreed, 1 disagreed, 0 undecided. Disagreed (B2620): the
+override at S10 reached from A33 with the Train Data of the SoM
+position report not yet acknowledged: Table 49 goes from A33 straight
+to S10, S11 lies on the S12 -> D15 path only, and 5.8.2.1 asks no
+acknowledgement; `Override_Allowed` refuses on `TD_Ack_Awaited`, set at
+A33; the author's 4.8.3 [3] governs RBC information, not the driver's
+selection. The reviewer traced item 8's cause itself (B2621):
+`EVC_Sessions.Network.Driver_Entries` has no branch for E4 -> A41 and
+`Supervise_Wait` times out at S4 only, the path is A41 -> D8 -> S3; a
+candidate, to be checked. Three remarks: `Scenario_Session_Desk_
+Opening` does not check the terminating case its heading names;
+`Consist_Step`'s heading says "whichever comes first" where the DMI
+ends at the later; packet 64 taken whatever its Q_DIR. No brief
+premise wrong in substance. Five rounds of reviews: 44 items, 41
+agreed, 6 disagreed, 2 undecided; 14 lines, of which 5 became fixes
+(B2500 this round); 27.7 USD.
+
+Verification of the merged tree: one chain run, all green: `test/check.sh`
+ok; the full proof 13639 checks, none unproved, margin 47726 steps;
+cross build and stack 32768 B budget, margin 6160 B; wasm and both
+smokes 0 failures; the runner 1163 / 1065 / 962 -> 1169 / 1058 / 963
+(5040300_20 and 4100103_05 passed in three versions, 3050600_06 failed
+-> blocked), 0 regressions against the merged baseline, no signature
+untriaged. The merge: roll-back-3 and the review fast-forwarded; plan
+conflicts on the other three, the backlog on two, none in code.
+
+Costs (doc/ROUNDS.csv): 36.2 USD with the review (30.5 for the four
+packages, 5.6 the review), 11 of 12 package items done (B786 left at a
+bound passed with 151 calls: an agent that passes its bound mid-item
+has no budget for a resumption; the brief's third item was not small
+enough), 5 of 36 brief premises wrong (the relocation's geometry, the
+text's end clause, the scenario package of the consist, the comment
+field's type, B2420's "neither terminated nor attempted"), no agent
+over budget, no resumption. Lessons: a reviewer's candidate cause held
+this time (B2500) and the brief had stated it as a claim: the right
+shape; a brief's geometry for a test (3 m, 1 m) is a claim like any
+other and the agent placed the locations from a probe run; a widened
+comment field changes what the runner reads of every sequence (a step
+of 3131050_22 became not judged), to be checked over the corpus when
+such a field changes.
+
+The matrix: clauses left 74 -> 75 (todo 2, partial 73): 3.11.5.14 taken
+from deferred to partial by packet 64 (done 2053 -> 2058, deferred 236
+-> 230); the rows 5.4.1.4, 5.4.3.2 S4 / A42, 3.5.3.5.2, 4.4.21.1.12,
+4.8.3 [8], 4.9.1.3.1, 3.11.5.13 set. Open items: doc/BACKLOG.csv (41
+open after this round; 5 added of which 2 by the review, 7 closed).
+Next: B2620 (the override at S10 after A33: the clause for the refusal
+or the refusal limited to S11), B2601 with B2621 (the Radio network type
+entry: A41 -> D8 -> S3, the time-out at S3), B786 (25 calls), B2560 (the
+inhibition at the RBC/RBC border), the reviewer's three remarks (the desk
+scenario's terminating case, `Consist_Step`'s heading, packet 64's
+Q_DIR); B2600 (the runner's speed at a V5 level: the calibration), B789's
+rest (5.6.4.1.2), B788; B781's 6th bullet and the relocations; B2320,
+B2400, B1060, B1063, B1340 are the user's decisions; the review again
+(eight items, readings first, no backlog read).
