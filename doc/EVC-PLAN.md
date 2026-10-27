@@ -15473,3 +15473,32 @@ taken in level 2, MAR_Known false and T_MAR 0 on entering level 1, still
 deleted back in level 2). Proof of `evc_radio_authority` clean; the
 runner unchanged (1169 / 1058 / 963, 0 regressions). Row 4.9.1.3 partial
 -> done; B786 done.
+
+**Packet 64's Q_DIR (the reviewer's remark): fixed.** 7.4.2.16.1:
+packet 64 carries Q_DIR (2 bits); 7.5.1.103: "the relevant validity
+direction of transmitted data, with reference to ... the directionality
+of the LRBG, in case of information sent via radio" (00 reverse, 01
+nominal, 10 both); 3.6.3.1.1 a) refers radio data to the LRBG
+orientation, and 3.6.3.1.3: "When receiving information from any
+transmission medium, the ERTMS/ETCS on-board equipment shall only take
+into account information valid for the train orientation. Other
+information shall be ignored" (exceptions only for SL / PS / SH engines
+and the SM authorisation). The other non-located radio orders of ours are
+judged so: the packets 42, 45 and 131 of `EVC_Sessions` by
+`EVC_Position.Radio_Valid_For (LRBG of the message, Q_DIR)` (taken when
+the orientation is not known, its decision for 3.6.3.1.4); inside
+`EVC_Radio_Authority` the packets 57 and 63 are taken whatever their
+Q_DIR by decision (headings of `Take_Parameters`, `Take_SR_List`). The
+reading taken for 64 is 3.6.3.1.3 with the sessions' shape:
+`Take_Inhibition` decodes each packet 64 (`ETCS_Track_Packets.P64`) and
+takes it when `Radio_Valid_For (LRBG_Of_Last, P.Q_DIR)`; the decision
+"taken whatever its Q_DIR" removed. `Scenario_TSR_Inhibition`: Q_DIR
+reverse not taken, both directions taken. Proof of `evc_radio_authority`
+clean; the runner unchanged (4100103_05 still passes in three versions;
+0 regressions). Row 3.6.3.1.3's note names packet 64. The packets 57 and
+63 against 3.6.3.1.3: B2681 (to decide, not changed here).
+
+Backlog: B2601, B2621, B786 done; B2380 narrowed; B2680 (dmi), B2681
+(onboard) new. Edits outside the named units: the accessor
+`EVC_Sessions.SoM_Awaiting_Registration` (item 1). Commits: B2601 with
+B2621, B786, packet 64's Q_DIR.

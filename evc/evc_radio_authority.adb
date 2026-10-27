@@ -9,6 +9,7 @@ with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
+with ETCS_Track_Packets.P64;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P9;
 with ETCS_Variables;          use ETCS_Variables;
@@ -656,23 +657,40 @@ is
    --  the inhibition, effective for the balise groups read from this
    --  cycle (EVC_Radio_Info.TSR_Inhibited); 4.8.3, From RBC: A in level
    --  2, R [2] in the others (C, the context of the message's verdict).
-   --  Decision: taken whatever its Q_DIR (the order concerns the
-   --  balises the train reads thereafter, not a direction of the track)
+   --  3.6.3.1.3: only a packet valid for the train orientation relative
+   --  to the LRBG of the message (its Q_DIR, 7.5.1.103) is taken, as
+   --  packet 45 of EVC_Sessions.Network.Take_Radio_Order; with the
+   --  orientation not known it is taken (EVC_Position.Radio_Valid_For)
    --  @req 3.11.5.13, 7.4.2.16.1
    procedure Take_Inhibition (S : EVC_Radio.Session_T;
                               C : EVC_Radio_Acceptance.Context_T)
-     with Global => (Input  => EVC_Received.Store,
+     with Global => (Input  => (EVC_Received.Store, EVC_Position.State),
                      In_Out => (Inhibition, EVC_Radio_Info.State))
    is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P64.Packet_T;
+      OK : Boolean;
    begin
-      if C.Level_Valid and then C.Level = L2
-        and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
-                    EVC_Received.Last_Packet_Kind (I)
-                      = ETCS_Catalogue.Track_P64)
-      then
-         Inhibition := (On => True, Session => S);
-         EVC_Radio_Info.Set_TSR_Inhibited (True);
+      if not (C.Level_Valid and then C.Level = L2) then
+         return;
       end if;
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P64
+         then
+            EVC_Received.Open_Message_Packet (I, R);
+            ETCS_Track_Packets.P64.Decode (R, P, OK);
+            if OK
+              and then EVC_Position.Radio_Valid_For (LRBG_Of_Last, P.Q_DIR)
+            then
+               Inhibition := (On => True, Session => S);
+               EVC_Radio_Info.Set_TSR_Inhibited (True);
+            end if;
+         end if;
+      end loop;
    end Take_Inhibition;
 
    --  4.4.11.1.3 c), 4.4.11.1.6.6: packet 63 of the last message, the
