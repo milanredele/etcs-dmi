@@ -1670,7 +1670,7 @@ is
                   ETCS_Track_Packets.P6.Decode (R, X, OK);
                   if OK and then ETCS_Track_Packets.P6.Valid (X) then
                      if X.Q_VBCO = 1 then
-                        EVC_VBC.Set (X.NID_C, X.NID_VBCMK, X.T_VBC);
+                        EVC_VBC.Order (X.NID_C, X.NID_VBCMK, X.T_VBC);
                      else
                         EVC_VBC.Remove (X.NID_C, X.NID_VBCMK);
                      end if;

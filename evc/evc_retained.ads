@@ -18,7 +18,8 @@
 --    - 3.18.2.7: the national values applicable (EVC_National_Values;
 --      the set not yet applicable is deleted, 3.18.2.9);
 --    - 3.15.9.5: the Virtual Balise Covers (EVC_VBC, the time left of
---      their periods);
+--      their periods and the room each takes, the driver's or
+--      trackside's: EVC_VBC.VBC_Max of them);
 --  not kept: what 4.10 deletes in NP (Train Data, driver ID, train
 --  running number, the MA and the track description, the RBC/RIU system
 --  version, ...). Not kept yet: EOLM information (Euroloop), the radio

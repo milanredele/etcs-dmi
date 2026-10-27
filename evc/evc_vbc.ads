@@ -9,10 +9,17 @@
 --  1.1, 6.5.1.5.21) and its country is not received (Covered).
 --
 --  Decisions:
---    - the store holds VBC_Max covers, the DMI's list length
---      (DMI_Protocol.VBC_List_Max), set by the driver or by trackside
---      alike; a new identity when the store is full is ignored, and the
---      DMI's Set VBC is disabled then (national bit 2, Full);
+--    - the store holds Driver_Max covers set by the driver and, apart,
+--      Trackside_Max ordered by trackside (SUBSET-040 4.5.1.2, 4.3.2.1
+--      w)), so that the driver can always set 20 whatever trackside
+--      ordered; a new identity when its room is full is ignored, no
+--      cover is replaced for it (the deletions of 3.15.9.5 are a closed
+--      list), and the DMI's Set VBC is disabled while the driver's room
+--      is full (national bit 2, Full);
+--    - 3.15.9.4: a VBC of a stored identity replaces the stored one in
+--      its room, whoever gave it: a VBC is its identity and its period
+--      (3.15.9.1), the room is the store's, so the counts never pass
+--      their rooms;
 --    - 3.15.9.6: the period runs on the on-board's clock while it is
 --      powered: the time left is what is kept over No Power, so that
 --      time without power does not count (the on-board has no clock
@@ -30,16 +37,30 @@ package EVC_VBC
        Initializes => State
 is
 
-   VBC_Max : constant := 16;
+   --  The room a cover takes: set by the driver (Set) or ordered by
+   --  trackside (Order)
+   type Origin_T is (Driver, Trackside);
+
+   --  The covers set by the driver the store holds: SUBSET-040 4.5.1.2
+   --  ("at least 20 VBCs set by the driver", SUBSET-026 3.15.9.2)
+   --  @req 3.15.9.2
+   Driver_Max    : constant := 20;
+   --  The covers ordered by trackside it holds besides: SUBSET-040
+   --  4.3.2.1 w) (10 memorised, not including the driver's 20; packet 6,
+   --  SUBSET-026 7.4.2.2.1)
+   --  @req 7.4.2.2.1
+   Trackside_Max : constant := 10;
+   VBC_Max       : constant := Driver_Max + Trackside_Max;
 
    --  One cover: its identity, T_VBC as it was given (for the DMI's set
-   --  code) and the time of its period left, in ms
+   --  code), the time of its period left, in ms, and the room it takes
    type Cover_T is record
       Used   : Boolean := False;
       NID_C  : NID_C_T := 0;
       Marker : NID_VBCMK_T := 0;
       T_VBC  : T_VBC_T := 0;
       Left   : Unsigned_64 := 0;
+      Origin : Origin_T := Driver;
    end record;
 
    type Cover_List_T is array (1 .. VBC_Max) of Cover_T;
@@ -52,11 +73,19 @@ is
    --  T_VBC in ms (24 hours a step)
    Day_Ms : constant := 24 * 3_600_000;
 
+   --  The covers stored, of both rooms (the DMI's list)
    function Count return Natural
      with Global => State,
           Post => Count'Result <= VBC_Max;
 
-   --  No room for a new identity
+   --  The covers stored in the room of Origin
+   function Count_Of (Origin : Origin_T) return Natural
+     with Global => State,
+          Post => Count_Of'Result <= VBC_Max;
+
+   --  No room for a new identity set by the driver (the DMI's Set VBC
+   --  disabled, DMI 11.2.4.5.1: "the maximum on-board storage capacity
+   --  of VBC set by driver"): the driver's count alone
    function Full return Boolean
      with Global => State;
 
@@ -87,8 +116,16 @@ is
    procedure Clear
      with Global => (Output => State);
 
+   --  The driver's Set VBC: a new identity taken while the driver's room
+   --  is not full, else ignored (the DMI's Set VBC is disabled then)
    --  @req 3.15.9.4, 3.15.9.6
    procedure Set (NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T)
+     with Global => (In_Out => State);
+
+   --  Trackside's order to set a VBC (packet 6, Q_VBCO 1): a new identity
+   --  taken while trackside's room is not full, else ignored
+   --  @req 3.15.9.4, 3.15.9.6
+   procedure Order (NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T)
      with Global => (In_Out => State);
 
    --  @req 3.15.9.5 a), 3.15.9.5 c)

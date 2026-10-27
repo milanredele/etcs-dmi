@@ -14,6 +14,11 @@ package EVC_Test_VBC is
    --  Power
    procedure Scenario_VBC_Driver;
 
+   --  SUBSET-040 4.5.1.2 and 4.3.2.1 w), 3.15.9.4, 3.15.9.5: the rooms of
+   --  20 covers set by the driver and 10 ordered by trackside, apart; the
+   --  national bit 2 from the driver's room; the 30 kept over No Power
+   procedure Scenario_VBC_Rooms;
+
    --  3.15.9.3 a), b), 3.15.9.3.1: a covered telegram is not received
    --  (only its juridical record); packet 6 sets and removes a cover;
    --  3.15.9.5 d) a group of another country deletes it

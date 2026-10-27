@@ -35,8 +35,20 @@ is
       end return;
    end Count;
 
+   function Count_Of (Origin : Origin_T) return Natural is
+   begin
+      return N : Natural := 0 do
+         for I in Store'Range loop
+            pragma Loop_Invariant (N < I);
+            if Store (I).Used and then Store (I).Origin = Origin then
+               N := N + 1;
+            end if;
+         end loop;
+      end return;
+   end Count_Of;
+
    function Full return Boolean is
-     (for all C of Store => C.Used)
+     (Count_Of (Driver) >= Driver_Max)
      with Refined_Global => Store;
 
    --  The I-th used slot
@@ -68,30 +80,51 @@ is
       Due := False;
    end Clear;
 
-   --  3.15.9.4: the same identity replaced, its period from now (3.15.9.6)
-   procedure Set (NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T) is
-      New_Cover : constant Cover_T :=
-        (Used => True, NID_C => NID_C, Marker => Marker, T_VBC => T,
-         Left => Unsigned_64 (T) * Day_Ms);
-      Free      : Natural := 0;
+   --  A VBC given from Origin: the same identity replaced in its room,
+   --  its period from now (3.15.9.4, 3.15.9.6); a new identity in a free
+   --  slot while the room of Origin is not full, else ignored
+   procedure Put
+     (Origin : Origin_T; NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T)
+   with Global => (In_Out => (Store, Due))
+   is
+      Room : constant Natural :=
+        (case Origin is
+            when Driver    => Driver_Max,
+            when Trackside => Trackside_Max);
+      Free : Natural := 0;
    begin
-      Due := True;
       for I in Store'Range loop
          pragma Loop_Invariant (Free < I);
          if Store (I).Used
            and then Store (I).NID_C = NID_C
            and then Store (I).Marker = Marker
          then
-            Store (I) := New_Cover;
+            Store (I) :=
+              (Used => True, NID_C => NID_C, Marker => Marker, T_VBC => T,
+               Left => Unsigned_64 (T) * Day_Ms, Origin => Store (I).Origin);
+            Due := True;
             return;
          elsif not Store (I).Used and then Free = 0 then
             Free := I;
          end if;
       end loop;
-      if Free in Store'Range then
-         Store (Free) := New_Cover;
+      if Free in Store'Range and then Count_Of (Origin) < Room then
+         Store (Free) :=
+           (Used => True, NID_C => NID_C, Marker => Marker, T_VBC => T,
+            Left => Unsigned_64 (T) * Day_Ms, Origin => Origin);
+         Due := True;
       end if;
+   end Put;
+
+   procedure Set (NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T) is
+   begin
+      Put (Driver, NID_C, Marker, T);
    end Set;
+
+   procedure Order (NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T) is
+   begin
+      Put (Trackside, NID_C, Marker, T);
+   end Order;
 
    procedure Remove (NID_C : NID_C_T; Marker : NID_VBCMK_T) is
    begin

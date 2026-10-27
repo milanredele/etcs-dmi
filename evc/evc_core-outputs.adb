@@ -621,7 +621,7 @@ is
       Frame : Frame_Buffer_T;
       Last  : Natural;
       Codes : VBC_Codes_T := (others => 0);
-      N     : constant Natural := EVC_VBC.Count;
+      N     : constant Natural := Natural'Min (EVC_VBC.Count, VBC_List_Max);
    begin
       if EVC_VBC.List_Due or else DMI_Restarted then
          for I in 1 .. N loop

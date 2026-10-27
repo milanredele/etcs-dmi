@@ -392,6 +392,7 @@ begin
    Scenario_Version_Country_Set;
    EVC_Test_VBC.Scenario_VBC_Store;
    EVC_Test_VBC.Scenario_VBC_Driver;
+   EVC_Test_VBC.Scenario_VBC_Rooms;
    EVC_Test_VBC.Scenario_VBC_Cover;
    Scenario_RBC;
    Scenario_Radio_MA;

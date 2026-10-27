@@ -52,11 +52,11 @@ package body EVC_Test_VBC is
       for I in 1 .. V.VBC_Max loop
          V.Set (300, NID_VBCMK_T (I), 1);
       end loop;
-      Check (V.Full and then V.Count = V.VBC_Max
+      Check (V.Full and then V.Count = V.Driver_Max
              and then not V.Covers (300, NID_VBCMK_T
                                           (V.VBC_Max)),
-             "vbc: the store is full at" & V.VBC_Max'Image
-             & " covers, a new identity ignored (decision)");
+             "vbc: the driver's room is full at" & V.Driver_Max'Image
+             & " covers, a new identity ignored (SUBSET-040 4.5.1.2)");
       Check (V.Code (V.Item (1)) = 1 + 123 * 64 + 9 * 65_536,
              "vbc: the set code of DMI 11.3.12.5");
       V.Clear;
@@ -106,6 +106,53 @@ package body EVC_Test_VBC is
              & "NID_VBCMK");
       V.Clear;
    end Scenario_VBC_Driver;
+
+   procedure Scenario_VBC_Rooms is
+      use type V.Origin_T;
+   begin
+      EVC_Test_Modes.Start_E4;
+      V.Clear;
+      for I in 1 .. V.Trackside_Max + 1 loop
+         V.Order (200, NID_VBCMK_T (I), 7);
+      end loop;
+      Check (V.Count_Of (V.Trackside) = V.Trackside_Max
+             and then not V.Covers (200, NID_VBCMK_T (V.Trackside_Max + 1))
+             and then V.Count_Of (V.Driver) = 0 and then not V.Full,
+             "vbc: 10 covers ordered by trackside, the 11th ignored, the "
+             & "driver's room untouched (SUBSET-040 4.3.2.1 w), 3.15.9.5)");
+      for I in 1 .. V.Driver_Max + 1 loop
+         V.Set (100, NID_VBCMK_T (I), 5);
+      end loop;
+      Check (V.Count_Of (V.Driver) = V.Driver_Max and then V.Full
+             and then not V.Covers (100, NID_VBCMK_T (V.Driver_Max + 1))
+             and then V.Count = V.VBC_Max,
+             "vbc: 20 covers set by the driver beside trackside's 10, the "
+             & "21st refused (SUBSET-040 4.5.1.2)");
+      V.Remove (200, 1);
+      V.Order (200, 40, 7);
+      Check (V.Covers (200, 40) and then V.Count = V.VBC_Max,
+             "vbc: a trackside order taken while the driver's room is "
+             & "full");
+      V.Order (100, 1, 9);
+      Check (V.Count_Of (V.Driver) = V.Driver_Max
+             and then V.Count_Of (V.Trackside) = V.Trackside_Max
+             and then V.Item (V.Trackside_Max + 1).Marker = 1
+             and then V.Item (V.Trackside_Max + 1).T_VBC = 9
+             and then V.Item (V.Trackside_Max + 1).Origin = V.Driver,
+             "vbc: trackside's VBC of a driver's identity replaces it in "
+             & "the driver's room (3.15.9.4, decision)");
+      Stand;
+      Check (Onboard_Field (5) mod 16 / 4 = 2,
+             "vbc: MSG_ONBOARD no room for the driver, VBCs stored "
+             & "(national bits 2, 3)");
+      EVC_Core.Power_Up;
+      Check (V.Count = V.VBC_Max
+             and then V.Count_Of (V.Driver) = V.Driver_Max
+             and then V.Full and then V.Covers (200, 40),
+             "vbc: the 30 covers and their rooms kept over No Power "
+             & "(3.15.9.5)");
+      V.Clear;
+   end Scenario_VBC_Rooms;
 
    --  Group G's balises carry the VBC marker M (packet 0, first, 8.4.2.3)
    procedure Mark (G : Positive; M : NID_VBCMK_T) is
