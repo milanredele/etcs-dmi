@@ -1714,8 +1714,12 @@ package body EVC_Test_Sessions is
    --  5.4.1.4: a session established while the desk is closed (Sleeping
    --  with the RBC in level 2, 4.4.6.1.10 b), the desk opened in SB: the
    --  session is terminated first (156); a session whose termination is
-   --  ongoing is left to it
+   --  ongoing is left to it (no second 156, the RBC's 39 ends it), and so
+   --  is one being established
    procedure Scenario_Session_Desk_Opening is
+      --  no message 156 among the RTM outputs of the last cycle
+      function No_156 return Boolean is
+        (for all J in 1 .. Radio_Outputs => not Is_Message (J, 156));
    begin
       EVC_Config.Set_Radio_For_Test
         ((Sessions => 1, Engine_Id => 0, others => <>));
@@ -1742,6 +1746,16 @@ package body EVC_Test_Sessions is
       Check (R.Info (1).State = R.Terminating and then Is_Message (1, 156),
              "desk opening: the established session terminated first, "
              & "156 (5.4.1.4) " & R.Session_State_T'Image (R.Info (1).State));
+      --  the desk closed and opened again before the RBC's 39: the
+      --  termination is ongoing, the session is left to it, no second 156
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand;
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (R.Info (1).State = R.Terminating and then No_156,
+             "desk opening: a session terminating at desk opening is left "
+             & "to its termination, no second 156 (5.4.1.4) "
+             & R.Session_State_T'Image (R.Info (1).State));
       Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
       Stand;
       Check (R.Info (1).State = R.Idle,
@@ -1753,6 +1767,23 @@ package body EVC_Test_Sessions is
       Stand;
       Check (R.Info (1).State = R.Idle and then Radio_Outputs = 0,
              "desk opening: no session, nothing to terminate (5.4.1.4)");
+      --  a session being established at desk opening (the one of Sleeping
+      --  asked for with the desk closed): not established, so not
+      --  terminated (5.4.1.4 names the established one only)
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand_X (1_000);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 1));
+      Stand_X (1_000);
+      Check (R.Being_Established (1),
+             "desk opening: the session of Sleeping being established "
+             & R.Session_State_T'Image (R.Info (1).State));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (R.Being_Established (1) and then No_156,
+             "desk opening: a session being established is left alone, no "
+             & "156 (5.4.1.4) " & R.Session_State_T'Image (R.Info (1).State));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 0));
+      Stand;
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Desk_Opening;
 
