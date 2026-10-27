@@ -15396,3 +15396,36 @@ trackside, apart), from the driver's seat: the driver can always set 20
 whatever trackside ordered. One array of 30 with the origin per cover,
 the DMI's full bit from the driver's count, the protocol's list 16 -> 30;
 the next round's.
+
+### The runner's speed at a plateau of the chart, a comment read to its end, the one-radio-system step (e5/runner-speed) (2026-10-27)
+
+**B2600, the speed at a plateau of the chart: built.** 3130700_03 SV30
+traced on master: step 62 Overspeed (JRU 21 status 2, V_PERM 65) at 283
+m, the train at 1806 cm/s. The chart's calibration is right: the
+speedprofile's 65.4 km/h at 200 m is `Calibrated` 65.01 km/h (zero 0.2,
+scale 0.997; the "mrsp" plateaus fit their multiples of 5 within 0.06
+km/h); the cause is the conversion: `Kmh_To_Cms` rounds 65.01 km/h to
+1806 cm/s, while the on-board takes a speed of the language as the floor
+of K x 1250 / 9 (`EVC_Profiles` for V_STATIC, `EVC_PBD.Restrict` for
+V_PBD): 65 km/h is 1805 cm/s, and 3.13.10.3.3 t2 (V_est > V_MRSP) gives
+Overspeed for 1806. The corpus (SV30, a scratch print at the end of
+every step): 1224 steps of 107 sequences end with the chart within 0.5
+km/h of our permitted speed; at 368 steps of 36 sequences the train is
+above it in cm/s (the rounding, or a drawing 0.1 km/h over); 7 sequences
+fail first at such a step, 2 by the speed (3130700_03 step 62;
+3130700_06 step 92, the chart's 10.1 km/h on V5 10, 281 cm/s against
+277), the 5 others for causes that are not the speed (3070300_12 step 87
+the level symbol, 4080454_01 step 125 a track condition, 5070300_04 step
+75 the RTM's Q_DESK, 5160000_01 step 55 the LX symbol, 9990400_41 step
+39 the mode). Decision in `S076_Run.Chart_Cms`: a chart speed within
+0.5 km/h (the calibration's own band) of a multiple of 5 km/h is driven
+at most at that multiple's cm/s as the on-board takes it, never raised
+to it. A first try that snapped both ways raised 3131030_17's chart
+(154.92 km/h at 1450 m, rising) to 4305 cm/s, above our V_warning 4304,
+and failed its step 68 (3131030_17 to _19, the three versions): the cap
+only lowers. The full runner 1169 / 1058 / 963 -> 1178 / 1051 / 961, 0
+regressions: 3130700_03 and 3130700_06 (S8727c744) and 3131040_59
+(S1fd323b5, its chart drawn at 102.5 for the ceiling 100) pass in the
+three versions. Triage: S8727c744's model line and S1fd323b5 marked
+fixed (S8727c744 stays at 3130700_04 step 65, its s076 line); B2600
+done.

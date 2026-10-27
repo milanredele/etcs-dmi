@@ -221,6 +221,35 @@ package body S076_Run is
       else Calibrated
         (Seq, Chart_Speed (Seq, Long_Float (B.Position) / 100.0)));
 
+   --  the calibration's own error, km/h: a plateau of the "mrsp" chart
+   --  is within it of a multiple of 5 km/h (S076_Sequences.Calibrated)
+   Plateau_Band : constant Long_Float := 0.5;
+
+   --  The speed of the language a chart speed stands for, cm/s: a
+   --  chart speed within Plateau_Band km/h of a multiple of 5 km/h (the
+   --  calibration's own error, S076_Sequences.Calibrated) is that
+   --  multiple, a plateau of the drawing, and is driven at most at that
+   --  speed as the on-board takes a speed of the language, the floor of
+   --  its cm/s (EVC_Profiles, EVC_PBD: 65 km/h is 1805 cm/s), so that a
+   --  plateau drawn at the MRSP is the limit, never above it (3.13.10.3.3
+   --  t2, V_est > V_MRSP); never raised to it (a chart rising through
+   --  154.9 km/h stays there: 3131030_17 at 1450 m, raised to 155 it
+   --  passed our V_warning). Rounded, 65 km/h was 1806 cm/s: in SV30 1224
+   --  steps of 107 sequences end with the chart within 0.5 km/h of our
+   --  permitted speed, 368 of 36 of them above it by that rounding (or
+   --  by a drawing of 0.1 km/h over), two sequences failing first there
+   --  with ours in Overspeed (3130700_03 step 62, 65.01 on its V5
+   --  plateau, step 58 'V_TRAIN=<below V5>'; 3130700_06 step 92, 10.1 on
+   --  V5 10). Another chart speed is rounded to the cm/s
+   function Chart_Cms (Kmh : Long_Float) return Natural is
+     (if Kmh >= 5.0 - Plateau_Band
+        and then abs (Kmh - 5.0 * Long_Float'Rounding (Kmh / 5.0))
+                   <= Plateau_Band
+      then Natural'Min
+             (Kmh_To_Cms (Kmh),
+              Natural (Long_Float'Rounding (Kmh / 5.0)) * 1_250 / 9)
+      else Kmh_To_Cms (Kmh));
+
    --  The speed charts are the reference of the speed (the driver of
    --  a sequence runs above a limit on purpose where the chart does); a
    --  limit to keep under the on-board's permitted speed was tried and
@@ -242,7 +271,7 @@ package body S076_Run is
               (1, Capped (Kmh_To_Cms (Long_Float (Default_Kmh))));
          end if;
          return Positive'Max
-           (1, Capped (Natural'Max (Kmh_To_Cms (C), Kmh_To_Cms (10.0))));
+           (1, Capped (Natural'Max (Chart_Cms (C), Kmh_To_Cms (10.0))));
       end;
    end Transit_Cms;
 
@@ -256,7 +285,7 @@ package body S076_Run is
          declare
             C : constant Long_Float := Chart_Kmh;
          begin
-            B.Set_Speed (if C >= 1.0 then Capped (Kmh_To_Cms (C)) else 0);
+            B.Set_Speed (if C >= 1.0 then Capped (Chart_Cms (C)) else 0);
          end;
       end if;
    end Arrive;
