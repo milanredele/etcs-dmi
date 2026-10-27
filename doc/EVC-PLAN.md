@@ -15396,3 +15396,61 @@ trackside, apart), from the driver's seat: the driver can always set 20
 whatever trackside ordered. One array of 30 with the origin per cover,
 the DMI's full bit from the driver's count, the protocol's list 16 -> 30;
 the next round's.
+
+### The Radio network type entered outside the start of mission's wait, the MA request parameters on a level entry, packet 64's direction (e6/network-type) (2026-10-27)
+
+**B2601 with B2621, the Radio Network type at S3: built.** 5.4.3.2 S3
+(PDF page 15): "If the driver selects FRMCS or FRMCS+GSM-R while FRMCS
+is installed on-board and the FRMCS on-board is not registered to the
+FRMCS Radio Network (E4), the process shall go to A41"; A41 (page 16):
+"inform the driver that the FRMCS network registration has failed. The
+process shall then go to D8"; D8: "If the stored Radio Network type is
+FRMCS+GSM-R while both radio systems are installed on-board, the process
+shall go back to S3. Otherwise, the process shall go to S10". The DMI's
+Table 49 (ERA_ERTMS_015560 11.7.2.4, page 236) is the same: S3-4 E5 ->
+A41 -> D10 -> S3-1 or S10. The reviewer's cause (B2621) held at the
+source: `EVC_Sessions.Network.Driver_Entries` stored the type with no
+branch for E4, and `Supervise_Wait` timed the FRMCS registration out
+only In_SoM (S4) and, with both systems, watched the latest GSM-R order
+only (once the mobile registered, no time ran for FRMCS). The path after
+A41 is D8 -> S3 (the reviewer's), not S4 (B2601's). The reading
+(decision): E4's "not registered" is the registration considered failed,
+which A.3.1 defines as the time "from when the FRMCS on-board equipment
+has been detected to be connected ... after which the registration is
+considered as failed" (40 s, `Registration_Time_Ms`), since A41 tells the
+driver that it "has failed"; until that time the on-board waits as at S4,
+which is what 5040300_24 shows (step 97 ST05 "the onboard still awaits
+the registration", step 99 the A.3.1 timer, steps 100 / 101 entry 33 and
+JRU 23 bit 24, step 102 the Radio data window "the process shall go back
+to S3"). From the driver's seat: no failure is announced while the
+registration may still succeed. Built: `Driver_Entries` sets `Type_Wait`
+when the entered type is FRMCS or FRMCS+GSM-R, FRMCS installed (not
+GSM-R only), FRMCS not registered, in SB (S3 is a step of the start of
+mission); `Supervise_Wait` ends it at the FRMCS registration (no message,
+the type stays stored, S3) or at 40 s from the FRMCS detection
+(`FRMCS_At`), A41: `FRMCS_Failed` (entry 33); when the time is already
+over at the entry, A41 in the same cycle; D8 is the wait's end (S3's
+entries are taken again; S10 is the DMI's D10). A mode other than SB ends
+it. The hour glass: `EVC_Sessions.SoM_Awaiting_Registration` is
+`Mission.Awaiting_Registration or else Network.Type_Awaited` (MSG_ONBOARD
+waiting 1 through the existing condition of `EVC_Core.Outputs`, the Main
+window's buttons disabled through `EVC_Core.Modes`' `SoM_Opening`).
+`Scenario_Network_Type_At_S3` (both systems, FRMCS+GSM-R stored, FRMCS
+reported not registered, the Driver ID then level 2): the entry waits
+(waiting 1, no entry 33), entry 33 at 39 to 41 s from the detection and
+the wait ended, an entry again after the time gives entry 33 at once, a
+GSM-R entry no wait, an FRMCS entry then the registration ends the wait
+without entry 33. Proofs of `evc_sessions-network` and `evc_sessions`
+clean. The runner: 5040300_24 SV30 failed 97 -> failed 102 (steps 97 to
+101 pass); step 102 fails on the DMI: `DMI_Windows.Onboard_State_Changed`
+opened the Main window for the hour glass and leaves it open at the
+wait's end (signature S322852a4, dmi, the existing line extended; B2680,
+the DMI's D10 -> S3-1 after a wait); 3050600_06 and 5040300_23 / 25
+unchanged; 0 regressions (1169 / 1058 / 963). Rows: 5.4.3.2 A41
+deferred -> done, D8 partial -> done, S3's note. B2601, B2621 done, B2380
+narrowed (left: 3050600_06 step 60's input, 5040300_23 step 82,
+5040300_25's missing steps).
+
+Edits outside the named units: `EVC_Sessions.SoM_Awaiting_Registration`
+(one accessor of the parent's body, the hour glass of the new wait; no
+contract changed).

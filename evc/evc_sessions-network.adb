@@ -17,7 +17,7 @@ package body EVC_Sessions.Network
                                    Timed_Out, Mode_Now, Exit_Seen,
                                    Trip_Stamp, Trip_Pending, FRMCS_Reg,
                                    FRMCS_Seen, FRMCS_At, FRMCS_Watch,
-                                   FRMCS_Out))
+                                   FRMCS_Out, Type_Wait))
 is
 
    package R renames EVC_Radio;
@@ -73,6 +73,12 @@ is
    FRMCS_Watch  : Boolean := False;
    FRMCS_Out    : Boolean := False;
 
+   --  5.4.3.2 S3 -> A41: the driver named FRMCS in the Radio Network type
+   --  while the FRMCS on-board is installed and not registered; the
+   --  on-board waits for the registration to be achieved or considered
+   --  failed (A41)
+   Type_Wait    : Boolean := False;
+
    --  5.4.3.2 S4, its time out: SUBSET-026 A.3.1 (page 218), "Time from
    --  the latest Radio Network registration order to a Mobile Terminal
    --  after which the registration is considered as failed": 40 s
@@ -103,6 +109,7 @@ is
       FRMCS_At := 0;
       FRMCS_Watch := False;
       FRMCS_Out := False;
+      Type_Wait := False;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -296,6 +303,10 @@ is
          if To = M_TR then
             Trip_Pending := True;
          end if;
+         if To /= M_SB then
+            --  the start of mission left: no S3 to return to
+            Type_Wait := False;
+         end if;
       end if;
       Mode_Now := To;
    end Mode_Changed;
@@ -375,11 +386,14 @@ is
    --  GSM-R network and mission with only one radio system
    --  @req 3.5.6.1 b), 3.18.4.3.6, 3.18.4.3.6.1 a), 3.18.4.3.6.1 b)
    --  @req 3.18.4.3.6.3 a), 3.18.4.3.6.3 b), 5.4.3.2 A29
-   --  @req 5.4.3.2 D8, 5.4.3.2 S3, 5.4.3.2 S5, 5.4.5.3 j) 2nd bullet
+   --  @req 5.4.3.2 D8, 5.4.3.2 S3, 5.4.5.3 j) 2nd bullet
+   --  @req 5.4.3.2 S5
    procedure Driver_Entries (Stop, Failed : in out Boolean)
-     with Global => (In_Out => (R.State, Due, One_Radio, Awaiting),
+     with Global => (In_Out => (R.State, Due, One_Radio, Awaiting,
+                                Type_Wait),
                      Output => List_Now,
-                     Input  => (Reg, Systems, Def_MN, DR.State))
+                     Input  => (Reg, Systems, Def_MN, FRMCS_Reg, Mode_Now,
+                                DR.State))
    is
       N  : R.Network_T := R.Network;
       B  : EVC_Bytes.Byte;
@@ -399,6 +413,13 @@ is
             N.Net_Type := EVC_Config.Network_Type_T'Val (B - 1);
             N.Type_Known := True;
             Publish (N);
+            --  S3 -> A41: FRMCS or FRMCS+GSM-R selected, FRMCS installed
+            --  and not registered (S3 is a step of the start of
+            --  mission, in SB); Supervise_Wait goes to A41
+            Type_Wait := Mode_Now = M_SB
+              and then N.Net_Type /= EVC_Config.GSMR
+              and then Systems /= EVC_Config.GSMR_Only
+              and then not FRMCS_Reg;
          end if;
       end if;
       if DR.Entered (DR.One_Radio_System) then
@@ -445,16 +466,25 @@ is
    --  system not registered. S4 is a step of the start of mission
    --  (In_SoM): outside it the watch goes on silently, so that a start
    --  of mission reaching S4 after the time fails at once (the time
-   --  counts from the latest order, or from the FRMCS detection)
-   --  @req 5.4.3.2 A42, 5.4.3.2 S4
+   --  counts from the latest order, or from the FRMCS detection).
+   --  S3 -> A41 (Type_Wait): decision: "not registered" is read as the
+   --  registration considered failed, the time of A.3.1 since the
+   --  FRMCS detection elapsed without it (A41 informs that it "has
+   --  failed"); until then the on-board waits as at S4 (the hour glass,
+   --  EVC_Sessions.SoM_Awaiting_Registration), its registration ends
+   --  the wait at S3 with no message; the time elapsed: A41,
+   --  "FRMCS network registration failed" (FRMCS_Failed, entry 33),
+   --  then D8: S3 again (the stored type FRMCS+GSM-R with both
+   --  systems installed) or S10, the wait ended either way
+   --  @req 5.4.3.2 A42, 5.4.3.2 S4, 5.4.3.2 A41
    procedure Supervise_Wait (Now          : R.Time_Ms_T;
                              In_SoM       : Boolean;
                              Failed       : in out Boolean;
                              FRMCS_Failed : in out Boolean)
      with Global => (In_Out => (Watching, Timed_Out, FRMCS_Watch,
-                                FRMCS_Out),
-                     Input  => (Order_At, Reg, FRMCS_Reg, FRMCS_At,
-                                Systems, One_Radio, R.State))
+                                FRMCS_Out, Type_Wait),
+                     Input  => (Order_At, Reg, FRMCS_Reg, FRMCS_Seen,
+                                FRMCS_At, Systems, One_Radio, R.State))
    is
       T     : constant EVC_Config.Network_Type_T := R.Network.Net_Type;
       Alone : constant Boolean :=
@@ -466,6 +496,16 @@ is
         T = EVC_Config.FRMCS_GSMR
         and then Systems = EVC_Config.Both_Systems;
    begin
+      if Type_Wait then
+         if FRMCS_Reg then
+            Type_Wait := False;
+         elsif FRMCS_Seen and then Now >= FRMCS_At
+           and then Now - FRMCS_At >= Registration_Time_Ms
+         then
+            Type_Wait := False;
+            FRMCS_Failed := True;
+         end if;
+      end if;
       if Alone then
          if FRMCS_Watch and then In_SoM and then Now >= FRMCS_At
            and then Now - FRMCS_At >= Registration_Time_Ms
@@ -591,6 +631,9 @@ is
    function Registration_Timed_Out return Boolean is
      (Timed_Out or else FRMCS_Out)
      with Refined_Global => (Timed_Out, FRMCS_Out);
+
+   function Type_Awaited return Boolean is (Type_Wait)
+     with Refined_Global => Type_Wait;
 
    function List_Due return Boolean is (List_Now)
      with Refined_Global => List_Now;

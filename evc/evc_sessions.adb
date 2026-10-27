@@ -1764,7 +1764,7 @@ is
      (Handover.Old_Contact.Known);
    function SoM_Opening return Boolean is (Mission.Opening);
    function SoM_Awaiting_Registration return Boolean is
-     (Mission.Awaiting_Registration);
+     (Mission.Awaiting_Registration or else Network.Type_Awaited);
    function Train_Data_Sent return Natural is (Mission.Train_Data_Sent);
    function SoM_Reports_Sent return Natural is (Mission.Reports_Sent);
    function EoM_Sent return Natural is (Mission.EoM_Sent);

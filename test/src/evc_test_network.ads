@@ -32,6 +32,11 @@ package EVC_Test_Network is
    --  or 34
    procedure Scenario_Network_S4_Without_Contact;
 
+   --  5.4.3.2 S3 E4 -> A41 -> D8: the driver's Radio Network type naming
+   --  FRMCS while the FRMCS on-board is not registered; the wait until
+   --  the time of A.3.1 from its detection, entry 33, the wait ended
+   procedure Scenario_Network_Type_At_S3;
+
    --  e5/registration-3: packet 45 by radio (message 24) filtered by
    --  4.8.3 / 4.8.4 (EVC_Radio_Acceptance), 4.8.4 [1], [2], [13]
    procedure Scenario_Network_Radio_Order;
