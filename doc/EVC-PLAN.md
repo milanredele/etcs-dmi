@@ -14157,3 +14157,22 @@ improvements (no sequence moved). Edits outside the brief's units:
 Track_Conditions` (the phase of the item), `EVC_Test_JRU.
 Scenario_JRU_Track_Conditions` (the new component in its aggregates).
 Left of the 7th bullet: the relocation (B781).
+
+**A.3.5.1 12th bullet, the MA timers over a reverse movement** (no
+defect). Wrong premise of the brief: the timers live in
+`EVC_Movement_Authority` (`Supervise`, the `End_Timer` and `OL_Timer` of
+the MA), not in `EVC_Radio_Authority`, and their scenarios in
+`EVC_Test_Profiles`, not in `EVC_Test_Authority`. `Supervise` starts
+each timer only when it is not running (3.8.4.1.1, 3.8.4.4.1), so a
+second passage of the start location cannot restart it.
+`EVC_Test_Profiles.Scenario_MA_Timers_Roll_Back`: an MA of 500 + 200 m
+from the group 10 at 100 m (EOA 800 m), the End Section timer 20 s from
+500 m, and in a second track the Overlap timer 20 s from 600 m (D_OL
+100 m); the train at 18 km/h, 50 cm a cycle, rolls back 1.5 m in rear of
+the location where the timer started and comes forward 5 m: the timer
+running with the same start, its time-out at the same cycle as in the
+same run without the roll back. Decision: the bench reverses without a
+standstill cycle; a real reversal stops the train, and a standstill
+after the Overlap timer started deletes the overlap (3.8.4.4.3, not
+reverted), so the overlap case checks the start only. Left of the
+bullet: the relocation (B781).
