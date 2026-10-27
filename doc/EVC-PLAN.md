@@ -14790,3 +14790,39 @@ sequences); after: 1163 / 1065 / 962, 0 regressions; the five
 improvements are 3130234_05 (three versions, failed 50 -> blocked 50)
 and 4080436_02, 4080444_02 (failed 63 -> blocked 63). B2340 and B2401
 done; B2260 untouched; B2520 new.
+
+### The runner's comment field and three traces: the raised T_brake_emergency, the two packets 5 of one group, the radio network type (e5/runner-comments) (2026-10-27)
+
+**B2360, the raised T_brake_emergency: built.** The corpus's "comment:"
+lines: SV30 43913, of which 2281 are longer than 400 characters, 1571
+than 512 (a `Text_T`), 66 than 800, none than 1000 (the longest 956, the
+same in SV21 / SV22); the longest "text:" line 422. `S076_Sequences`
+keeps a step's comment in its own `Comment_T` of `Max_Text` 1000
+characters (with its `Image`); the step text is a `Text_T` again, cut at
+`Max_Line` 512 instead of 400. The cost: about 250 kB more for the one
+sequence loaded at a time (`S076_Sequences.Loaded`, 512 steps), nothing
+else widened. `S076_Run` reads the words "we increase the
+T_BRAKE_EMERGENCY by one second" (case-insensitive) in any step's
+comment before `S076_Bench.Set_Gamma` (`T41_In_Sheet`), and `Build_Gamma`
+takes combination 1's T_brake_emergency 1 s (T41 of 3.11.11.6) less:
+K52 3.5 -> 2.5 s, combination 2's W52 2.5 s as it is. The words are in
+step 61 of 3130700_01 to _08 in the three versions; the flag acts on the
+gamma ones (_01, _03, _05, _07). 3111100_01 (other words, no workbook)
+and 3131040_71 (K52 3.5 s without the words) are untouched. 3130700_03
+SV30 step 62: V_PBD 65 now (V5 65 by step 61's comment; 60 before), and
+the step still fails, now as S8727c744: Overspeed (JRU 20 M_SDMSUPSTAT 2,
+V_PERM 65) at 283 m with the train at 65 km/h. The runner drives the
+speedprofile chart's 65.4 km/h from 200 to 800 m, 65.0 by the chart's
+calibration (zero 0.2, scale about 0.997), drawn on the MRSP chart's V5
+plateau, while step 58's comment says V_TRAIN=<below V5>; 3.13.10.3.3 t2
+gives Overspeed for V_est > V_MRSP. The train's speed is the runner's
+(`model`, B2600: the ODO speed input, outside this package's units, not
+tried). The review's note on item 7 of e5/review-54 (the sheet's other
+curves computed with 3.5 s) moved no step: the feature 3130700 counts are
+the same. The full runner 1163 / 1065 / 962 unchanged, 0 regressions;
+steps 209961 -> 209955 passed, 12726 -> 12717 failed, 4118 -> 4121 not
+judged: 3131050_22 step 85 (the three versions, after its first failure
+at step 78) is not judged now (workbook with other correction factors)
+since its comment's tail is read, and its 4 later steps are not run. The
+triage: Sb82bca11 closed in its note (no sequence carries it), a model
+line of S8727c744 for 3130700_03; B2360 done, B2600 new.

@@ -6888,7 +6888,21 @@ package body S076_Run is
             Both_From := Power_Up;
          end;
       end if;
-      B.Set_Gamma (Seq.Gamma);
+      --  A comment raising T_BRAKE_EMERGENCY by one second for 3.11.11.6
+      --  (step 61 of 3130700_01 to _08, the three versions; the gamma
+      --  sheet in _01, _03, _05, _07): the sheet's time holds T41
+      declare
+         T41 : Boolean := False;
+      begin
+         for I in 1 .. Seq.Step_Count loop
+            if Has (Up (Image (Seq.Steps (I).Comment)),
+                    "WE INCREASE THE T_BRAKE_EMERGENCY BY ONE SECOND")
+            then
+               T41 := True;
+            end if;
+         end loop;
+         B.Set_Gamma (Seq.Gamma, T41_In_Sheet => T41);
+      end;
       B.Set_Voltages (S076_Sequences.Engine_Voltages
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;

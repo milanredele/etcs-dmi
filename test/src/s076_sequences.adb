@@ -18,9 +18,6 @@ package body S076_Sequences is
       return T;
    end To_Text;
 
-   function Cut (S : String; Max : Natural) return Text_T is
-     (To_Text (S (S'First .. S'First + Natural'Min (S'Length, Max) - 1)));
-
    function Column (S : String) return Column_T is
       C : Column_T := (others => ' ');
       N : constant Natural := Natural'Min (S'Length, C'Length);
@@ -751,9 +748,16 @@ package body S076_Sequences is
       elsif (K = "text:" or else K = "comment:") and then S.Step_Count > 0
       then
          if K = "text:" then
-            S.Steps (S.Step_Count).Text := Cut (Rest (L, 2), Max_Text);
+            S.Steps (S.Step_Count).Text := To_Text (Rest (L, 2));
          else
-            S.Steps (S.Step_Count).Comment := Cut (Rest (L, 2), Max_Text);
+            declare
+               R : constant String := Rest (L, 2);
+               N : constant Natural := Natural'Min (R'Length, Max_Text);
+               C : Comment_T renames S.Steps (S.Step_Count).Comment;
+            begin
+               C.S (1 .. N) := R (R'First .. R'First + N - 1);
+               C.N := N;
+            end;
          end if;
       elsif (K = "input" or else K = "expect") and then S.Step_Count > 0
       then
