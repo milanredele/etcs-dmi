@@ -179,7 +179,12 @@ package DMI_Protocol is
    --    bit0 modification of Driver ID while running is allowed,
    --    bit1 modification of adhesion factor by driver is allowed,
    --    bit2 the maximum on-board storage capacity of VBC set by the
-   --    driver is not reached, bit3 at least one VBC is stored on-board
+   --    driver is not reached, bit3 at least one VBC is stored on-board,
+   --    bit4 the on-board allows the driver to select "Override" now
+   --    (SUBSET-026 5.8.2.1 a) to c), 5.4.5.3 a): the speed, the mode,
+   --    the data, only at S10 and S20 in SB): the EOA button of the
+   --    Override window is enabled on this bit (DMI Table 34 #1), so
+   --    that a press is never refused; train bit1 is its speed term
    --  som u8: start of mission (SUBSET-026 5.4, DMI Table 49)
    --    0 no start of mission is going on,
    --    1 the cab is active and the mode is SB but a communication

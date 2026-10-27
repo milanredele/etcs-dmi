@@ -1021,7 +1021,6 @@ package body DMI_Core is
       DMI_Conditions.Consist_Length_Acked := Bit (RBC, 4);
 
       DMI_Conditions.Standstill         := Bit (Train, 0);
-      DMI_Conditions.Override_Speed_OK  := Bit (Train, 1);
       DMI_Conditions.Non_Leading_Signal := Bit (Train, 2);
       DMI_Conditions.Passive_Shunting   := Bit (Train, 3);
       DMI_Conditions.BMM_Inhibit_Active := Bit (Train, 4);
@@ -1037,6 +1036,7 @@ package body DMI_Core is
       DMI_Conditions.NV_Adhesion          := Bit (National, 1);
       DMI_Conditions.VBC_Room             := Bit (National, 2);
       DMI_Conditions.VBC_Stored           := Bit (National, 3);
+      DMI_Conditions.Override_Selectable  := Bit (National, 4);
 
       DMI_Conditions.Start_Of_Mission :=
         (case SOM is

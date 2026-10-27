@@ -906,6 +906,11 @@ package body EVC_Test_Sessions is
       return Message_Of (MCat.Track_M2, V);
    end SR_Authorisation;
 
+   --  MSG_ONBOARD national bit 4 of the last cycle: the on-board tells
+   --  the DMI that the driver may select "Override" (5.8.2.1, 5.4.5.3 a))
+   function Override_Bit return Boolean is
+     ((Onboard_Byte (10) / 16) mod 2 = 1);
+
    --  5.4.3.2 S21, E26 -> S24, E32: 'Start' in level 2 with the session
    --  established and the Train Data acknowledged sends the MA request
    --  and waits (DMI Table 50 S7: MSG_ONBOARD waiting 3); the SR
@@ -930,6 +935,9 @@ package body EVC_Test_Sessions is
       Check (N > 0 and then R.Train_Data_Acknowledged
              and then EVC_Core.Mode = EVC_Modes.M_SB,
              "SR proposal: the level 2 start of mission at S20");
+      Check (Override_Bit,
+             "SR proposal: S20, the DMI is told the override is selectable "
+             & "(MSG_ONBOARD national bit 4, 5.4.5.3 a))");
 
       --  decision: message 2 before 'Start' proposes nothing
       Give_Radio_Message (1, SR_Authorisation (500));
@@ -946,6 +954,9 @@ package body EVC_Test_Sessions is
              and then Onboard_Byte (12) = 3,
              "SR proposal: 'Start' in level 2 sends the MA request and "
              & "waits (5.4.3.2 S21; MSG_ONBOARD waiting 3, DMI Table 50 S7)");
+      Check (not Override_Bit,
+             "SR proposal: S21, the override not selectable, the DMI told "
+             & "(national bit 4 clear, 5.4.5.3 a))");
 
       --  E26 -> S24: SR proposed, the wait over
       Give_Radio_Message (1, SR_Authorisation (500));
@@ -957,6 +968,9 @@ package body EVC_Test_Sessions is
              and then EVC_Core.Mode = EVC_Modes.M_SB,
              "SR proposal: the SR authorisation (message 2, E26) proposes "
              & "Staff Responsible (5.4.3.2 S24), the DMI waits no more");
+      Check (not Override_Bit,
+             "SR proposal: S24, the override not selectable, the DMI told "
+             & "(national bit 4 clear, 5.4.5.3 a))");
 
       --  E32: the driver's acknowledgement, SR
       Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
@@ -965,6 +979,10 @@ package body EVC_Test_Sessions is
              and then EVC_Radio_Authority.RBC_SR_Given,
              "SR proposal: acknowledged (E32), the mission starts in SR "
              & "(4.6.3 [8]) with the RBC's SR distance (4.4.11.1.6.4 b)");
+      Stand;
+      Check (Override_Bit,
+             "SR proposal: in SR at standstill with the data, the override "
+             & "selectable again (5.8.2.1 a) to c)), the DMI told");
    end Scenario_SoM_L2_SR_Proposal;
 
    --  e5/mode-proposal: message 3 referring to the group NID_BG of
@@ -1278,6 +1296,11 @@ package body EVC_Test_Sessions is
 
       procedure Try (Where : String; Taken : Boolean) is
       begin
+         --  the DMI was told beforehand whether the selection is taken
+         Check (Override_Bit = Taken
+                and then EVC_Procedures.Override_Selectable = Taken,
+                "override before S10: " & Where & ", MSG_ONBOARD national "
+                & "bit 4 " & (if Taken then "set" else "clear"));
          Send (Action (6));
          Check (EVC_Procedures.Override_Active = Taken
                 and then (EVC_Core.Mode = EVC_Modes.M_SR) = Taken,
@@ -1411,6 +1434,9 @@ package body EVC_Test_Sessions is
                    "override from S20: A31, the session with the RBC "
                    & "entered being established beside it" & Tag);
          end if;
+         Check (not Override_Bit,
+                "override from S20: A31, MSG_ONBOARD national bit 4 clear"
+                & Tag);
          Send (Action (6));
          Check (not EVC_Procedures.Override_Active
                 and then EVC_Core.Mode = EVC_Modes.M_SB,
@@ -1456,6 +1482,9 @@ package body EVC_Test_Sessions is
          Check (N > 0 and then R.Train_Data_Acknowledged,
                 "override from S20: the Train Data of the SoM position "
                 & "report acknowledged by RBC 301" & Tag);
+         Check (Override_Bit,
+                "override from S20: S10 again, MSG_ONBOARD national bit 4 "
+                & "set" & Tag);
          Send (Action (6));
          Check (EVC_Procedures.Override_Active
                 and then EVC_Core.Mode = EVC_Modes.M_SR,
@@ -1685,8 +1714,12 @@ package body EVC_Test_Sessions is
    --  5.4.1.4: a session established while the desk is closed (Sleeping
    --  with the RBC in level 2, 4.4.6.1.10 b), the desk opened in SB: the
    --  session is terminated first (156); a session whose termination is
-   --  ongoing is left to it
+   --  ongoing is left to it (no second 156, the RBC's 39 ends it), and so
+   --  is one being established
    procedure Scenario_Session_Desk_Opening is
+      --  no message 156 among the RTM outputs of the last cycle
+      function No_156 return Boolean is
+        (for all J in 1 .. Radio_Outputs => not Is_Message (J, 156));
    begin
       EVC_Config.Set_Radio_For_Test
         ((Sessions => 1, Engine_Id => 0, others => <>));
@@ -1713,6 +1746,16 @@ package body EVC_Test_Sessions is
       Check (R.Info (1).State = R.Terminating and then Is_Message (1, 156),
              "desk opening: the established session terminated first, "
              & "156 (5.4.1.4) " & R.Session_State_T'Image (R.Info (1).State));
+      --  the desk closed and opened again before the RBC's 39: the
+      --  termination is ongoing, the session is left to it, no second 156
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand;
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (R.Info (1).State = R.Terminating and then No_156,
+             "desk opening: a session terminating at desk opening is left "
+             & "to its termination, no second 156 (5.4.1.4) "
+             & R.Session_State_T'Image (R.Info (1).State));
       Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
       Stand;
       Check (R.Info (1).State = R.Idle,
@@ -1724,6 +1767,23 @@ package body EVC_Test_Sessions is
       Stand;
       Check (R.Info (1).State = R.Idle and then Radio_Outputs = 0,
              "desk opening: no session, nothing to terminate (5.4.1.4)");
+      --  a session being established at desk opening (the one of Sleeping
+      --  asked for with the desk closed): not established, so not
+      --  terminated (5.4.1.4 names the established one only)
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand_X (1_000);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 1));
+      Stand_X (1_000);
+      Check (R.Being_Established (1),
+             "desk opening: the session of Sleeping being established "
+             & R.Session_State_T'Image (R.Info (1).State));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (R.Being_Established (1) and then No_156,
+             "desk opening: a session being established is left alone, no "
+             & "156 (5.4.1.4) " & R.Session_State_T'Image (R.Info (1).State));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Sleeping_Requested) + 1), 0));
+      Stand;
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Desk_Opening;
 

@@ -207,6 +207,7 @@ is
    National_Adhesion          : constant Bits_T := 2;
    National_VBC_Room          : constant Bits_T := 4;
    National_VBC_Stored        : constant Bits_T := 8;
+   National_Override_Selectable : constant Bits_T := 16;  -- 5.8.2.1
    --  SoM
    SoM_Possible        : constant Byte := 2;
    SoM_Train_Data_Then : constant Byte := 3;  -- 5.17.2.2 S6
