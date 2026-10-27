@@ -1316,8 +1316,15 @@ is
                                 Mission.State))
    is
       Stop, Failed, FRMCS_Failed : Boolean;
+      --  5.4.3.2 S4 is reached from D7 only: with a known RBC contact
+      --  the session is opened at once and the registration awaited
+      --  while opening (Opening), without one the start of mission
+      --  waits at S4 itself (Awaiting_Registration); the time of A.3.1
+      --  ends both
+      In_S4 : constant Boolean :=
+        Mission.Opening or else Mission.Awaiting_Registration;
    begin
-      Network.Evaluate (Now, Mission.Opening, Stop, Failed, FRMCS_Failed);
+      Network.Evaluate (Now, In_S4, Stop, Failed, FRMCS_Failed);
       if FRMCS_Failed then
          --  5.4.3.2 A42: the FRMCS network registration failed
          Show (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);

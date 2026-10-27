@@ -118,7 +118,7 @@ Subset-076-6-3_3050600_04_v400_SV21,passed,0,-
 Subset-076-6-3_3050600_04_v400_SV22,passed,0,-
 Subset-076-6-3_3050600_04_v400_SV30,passed,0,-
 Subset-076-6-3_3050600_05_v400_SV30,failed,69,Sa8a3ba1a
-Subset-076-6-3_3050600_06_v400_SV30,failed,58,Sfb725745
+Subset-076-6-3_3050600_06_v400_SV30,blocked,60,E5-radio
 Subset-076-6-3_3050700_01_v400_SV21,failed,46,Sa8a3ba1a
 Subset-076-6-3_3050700_01_v400_SV22,failed,46,Sa8a3ba1a
 Subset-076-6-3_3050700_01_v400_SV30,failed,46,Sa8a3ba1a

@@ -14790,3 +14790,34 @@ sequences); after: 1163 / 1065 / 962, 0 regressions; the five
 improvements are 3130234_05 (three versions, failed 50 -> blocked 50)
 and 4080436_02, 4080444_02 (failed 63 -> blocked 63). B2340 and B2401
 done; B2260 untouched; B2520 new.
+
+### The start of mission's session steps: the S4 wait by D7, the RBC id changed with a session open, the session at desk opening (e6/sessions-som) (2026-10-27)
+
+**The S4 wait reached by D7 (B2480 done).** 5.4.3.2 D7 leads to A31 or
+S4 by the network registration alone; S4 is reached from D7 only (S3,
+S5 and A43 do not enter it), and left by E6 / E61 / E62 to A31 or by
+E7 / E71 / E72 (the time of A.3.1, 40 s, from the latest GSM-R order or
+from the FRMCS detection) to A42. `EVC_Sessions.Mission` follows D7 in
+two ways: with a known RBC contact the session is opened at once and
+the registration awaited while opening (`Opening`, decision 1 of the
+start of mission), without one the start of mission waits at S4 itself
+(`Awaiting_Registration`: Step Decided with `Awaiting_Network`). The
+claim held at the source: `EVC_Sessions.Apply_Network` passed
+`Mission.Opening` alone as `Network.Evaluate`'s In_SoM, and
+`EVC_Sessions.Network.Supervise_Wait` times the wait out only while
+In_SoM holds, so the second way never timed out. Fix: In_SoM is
+`Mission.Opening or else Mission.Awaiting_Registration` (the two steps
+of Table 49 at which the registration is awaited; no other step of
+ours waits at S4). The hour glass of `EVC_Core.Outputs` needed no
+change (it ends with `Registration_Timed_Out`). Scenario
+`EVC_Test_Network.Scenario_Network_S4_Without_Contact`: D7 without a
+contact as 3050600_06 reaches it (level 2 by balise in SB, the Driver
+ID entered), both systems with FRMCS not registered: entry 33 alone at
+40 s from the power-up's order (E72); FRMCS alone: entry 33 at 40 s from
+the detection (E71); GSM-R alone, no mobile registered: entry 34 at 40
+s (E7); each with MSG_ONBOARD waiting 1 before and 0 after; failing
+three checks before the fix. Runner: 3050600_06 SV30 failed 58 ->
+blocked 60 (E5-radio, the driver's "Mission with one radio system"),
+the expected movement; 1163 / 1064 / 963, 0 regressions. Rows 5.4.3.2
+S4 and A42 noted; Sfb725745's onboard line marked fixed (its s076 line
+for 5040300_25 unchanged); B2380 narrowed.
