@@ -14489,3 +14489,113 @@ accessor `Entry_Shown`, its reset: the option the brief left open for
 B2240), `test/src/evc_test.adb` (the call), `doc/TRACE-SUBSET-026.csv`
 (the row 5.4.5.3 a)). Backlog: B2240 and B2402 done, B1401 narrowed,
 B2420 opened.
+
+### Review of the fifty-fifth round: eight verdicts re-derived blind (e5/review-55) (2026-10-27)
+
+Each verdict below was written from the clause, the data and the trace
+before the author's record was read, with one exception: early in the
+review a look at the end of doc/BACKLOG.csv showed B2402's done note,
+B2420 and B2480, so items 3 and 7 are not blind on what those lines
+state (item 5's conclusion was also in the title of a commit on master).
+All eight items were taken.
+
+1. A.3.5.1 7th bullet. Mine: the bullet lists 5.18.2.2, .3, .5, .6 and
+   5.20.2.2, .4, .5, not 5.20.2.3; the announcement at C, "Lowered
+   pantograph" at D, "Raise pantograph" at E and its timer, the start of
+   the train interface's information at C and the end of each remaining
+   distance are kept (neither reverted nor done twice); the distances of
+   5.20.2.3 are the output's content, which by A.3.5.1.1 follows the
+   train (the distance to E grows by 1.5 m on a roll-back). `EVC_Track_
+   Conditions.Phases` latches Announced / Started / Ended / Rear_Started
+   in `EVC_Profiles.Stored_T`, the output computes D - max front and E -
+   min front every cycle, `Has_Start` from the latch. Author
+   (e6/roll-back-2): the same decision. Agree; a remark, no line: the
+   scenario does not check that the distance to E follows the train back.
+2. A.3.5.1 9th bullet. Mine: shown from 3.15.5.2 a) to b) or the
+   acknowledgement; the start and the stop are both kept, so a roll-back
+   behind the beginning keeps it shown, one behind the end does not show
+   it again; a new packet 34 replaces the stored request (3.15.5.6), also
+   one shown, and its own start is taken afresh. `Evaluate_TAF` latches
+   `Begun`, `Stored` is cleared at the end, `Take_TAF` rebuilds the record.
+   Author: the defect (withdrawn and shown twice) found by the scenario
+   and fixed so. Agree; no scenario of a second packet 34 over a shown
+   request (a remark).
+3. The override from S20 back, and the RBC changed. Mine: (a) a) allows
+   it at S10 and S20 only; S2 / S3 (entry windows), S4, A31, D31 and A32
+   do not, S10 after A32 does; `Override_Allowed` refusing `SoM_Opening`
+   (Opening or the registration awaited) matches. (b) 3.5.3.5.2 decides
+   the second question whatever the number of sessions configured: "the
+   existing communication session(s) shall be terminated ... and the new
+   one shall be established" (3.5.3.5.2.1 excepts the Accepting RBC of a
+   handover only): terminate 300 and open 301, a refusal is not a reading.
+   `EVC_Sessions.Establish` does terminate the sessions to other RBCs and
+   calls `Open`, which with no idle slot parks the request in `Pending`;
+   `EVC_Sessions.Mission.Judge_Opening` counts only non-idle sessions to
+   `SoM_RBC`, not `Pending`, and goes to Decided (A32) in the next cycle:
+   the candidate cause of what B2420 shows. Author (e6/dmi-restart): (a)
+   the same; (b) not traced, the reading left open (B2420), "neither
+   terminated nor attempted". Agree on (a); (b) undecided on the author's
+   side, decided on mine by the clause, the code path to be traced: B2500.
+   A remark: with two sessions configured the scenario checks the second
+   being established, not that the session to 300 is terminated.
+4. The DMI restart. Mine: the brief's clauses are partly off (3.12.3.4.3.1
+   is the one-or-all sub-conditions rule, 3.12.3.5 the report to the RBC,
+   DMI 8.2.3.1 the mode information); 3.12.3.4.7 and .7.1 (the brake
+   when not acknowledged before the end, the text displayed until
+   acknowledged) and DMI 15.1.1 (Table 68, 15.1.1.7) decide: everything
+   the on-board considers displayed is shown again, the texts awaiting
+   their acknowledgement with the request and their brake; the event
+   entries' "still active" is known only to a record of the starts and
+   ends (the DMI's 30 s and acknowledgements included), not to the units
+   that start them. Author: the same, `EVC_JRU_Records.Entry_Shown` the
+   list, the DMI restarting the end conditions of a re-sent entry. Agree.
+5. The safe consist length. Mine: Table 68 (PDF page 316) has "Safe
+   consist length no longer available" (start 4.4.21.1.12, end the later
+   of 30 s and 3.14.1.7.6 or the reason revoked), entry 19 of
+   common/dmi_protocol.ads which the DMI renders; `EVC_DMI_Port` skips 19
+   and no unit of evc/ sends it: a build item of the on-board. Author: the
+   same (the paper, B1401 narrowed). Agree.
+6. 3131050_21 step 82. Mine: BG2d at 200 m (Q_LOCACC 12 m by BG1d's
+   packet 5), EOA 700 m, SvL 900 m, 15 km/h from 800 m; 3.13.9.4.8 in
+   level 2: d_tripEOA = 700 + 24 + 10 + 50 = 784 m; the 15 km/h target's
+   EBI 16 m before 800 m lies between 22 and 23 km/h by 21b (17.34 m at 23),
+   the SvL's gives 42.7 (21c): about 22.5 km/h, ours 23 within the 1 km/h
+   of .2. The comments' 28 km/h is the EBI about 36 m before 800 m, what
+   Q_LOCACC 0 gives (760 m); the step's 653 m is 21a's SBI1 for 25 km/h.
+   The train at 24 to 25 km/h is above 23: our TSM SB at 640 m and the
+   RSM intervention at 672 m follow from the data. Author (S388a7b2a,
+   s076): 22.9 km/h, the comments computed with Q_LOCACC 0. Agree.
+7. 3050600_06 step 58. Mine: desk closed in SR, opened, Driver-ID, no
+   level or radio data window, the hour glass: S1, D2, D3, D7, S4, reached
+   before any RBC contact step; both systems with FRMCS+GSM-R, so E62 or
+   E72 (40 s after the latest GSM-R order, not E71's FRMCS detection the
+   step 57 comment names) and A42 with entry 33 (then D8, S3, step 60's
+   mission with one radio system). `EVC_Sessions.Apply_Network` passes
+   `Mission.Opening` (A31 to D31) as `In_SoM`; at S4 the step is Decided
+   with `Awaiting_Network`, so `Supervise_Wait` never times out. Author
+   (Sfb725745 onboard, B2480): the same, a scratch build with the S4 wait
+   included passes 57 to 59. Agree.
+8. 3131040_75 / _76 step 52. Mine: V_EMA is 20 km/h (packet 12 V_EMA 4,
+   Track!B2), not 24 as the brief has it: 24 is V_EMA + dV_warning, the
+   Warning at the target; the step should keep the chart's 37.8 km/h (the
+   Warning comes by location; 44 km/h went past the SBI). `S076_Run.
+   ODO_Input`'s rule is generic, not by name: per system version it sees
+   8 increases naming V_EMA (dVwarning _75 / _76, dVebi _79 / _80, dVsbi
+   _77 / _78, V_EMA alone in two) and keeps the chart in 4, as its heading
+   says. Step 54: ours Overspeed at 686 m with the max safe front end
+   149 m before the LoA, the workbook's Permitted at 38 km/h 147.85 m; the
+   Warning at 126.74 m comes after 705 m, where the chart's speed falls,
+   so ours stays in Overspeed. Blind I left open whose the gap was (the
+   sequence's step 49 comment puts the EoA 300 m beyond the LRBG, ours
+   about 846 m). Author (S3276e893, Sfb2423ac, s076): BG2d's packet 12 at
+   500 m has L_ENDSECTION 350, the LoA at 850 m; the steps lie 50 m in
+   rear of their own workbook. Checked in the file (BG2d's L_ENDSECTION
+   350; the 2000 m I first read is BG1d's): agree.
+
+Counts: 9 verdicts agreed (1, 2, 3a, 4, 5, 6, 7, and 8 once the
+author's packet reading was checked in the file), none disagreed, 1
+undecided (3b: 3.5.3.5.2 decides the reading, the code path of the
+one-session case is a trace); one backlog line (B2500). Brief premises
+wrong: item 4's clause numbers, item 7's timer (E72, not E71), item 8's
+V_EMA. The review took about 90 tool calls of 130, the most on the
+three traces (about 40).
