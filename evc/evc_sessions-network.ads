@@ -179,6 +179,11 @@ is
    function Registration_Timed_Out return Boolean
      with Global => State;
 
+   --  5.4.3.2 S3 -> A41: the FRMCS registration awaited after the driver's
+   --  Radio Network type, until achieved or failed (A41)
+   function Type_Awaited return Boolean
+     with Global => State;
+
    function List_Due return Boolean
      with Global => State;
    function Offered_Count return Natural

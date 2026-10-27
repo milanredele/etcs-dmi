@@ -407,6 +407,83 @@ package body EVC_Test_Network is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_S4_Without_Contact;
 
+   procedure Scenario_Network_Type_At_S3 is
+      use type EVC_Core.Time_Ms_T;
+      Start  : EVC_Core.Time_Ms_T;
+      Shown  : Boolean := False;
+      Early  : Boolean := False;
+      Waited : EVC_Core.Time_Ms_T;
+
+      --  the driver's Radio Network type (DMI Table 43b: 1 FRMCS,
+      --  2 FRMCS+GSM-R, 3 GSM-R), kind 6 of MSG_DRIVER_DATA
+      function Type_Entry (T : Natural) return Byte_Array is
+        (Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (6, Byte (T))));
+
+      --  both systems, the stored type FRMCS+GSM-R, the GSM-R mobile
+      --  registered (Auto_Register), FRMCS reported not registered at
+      --  Start; the Driver ID, then level 2: S3 (the contact unknown)
+      procedure To_S3 is
+      begin
+         EVC_Config.Set_Radio_For_Test
+           ((Sessions => 1, Engine_Id => 76_000,
+             Systems => EVC_Config.Both_Systems,
+             Default_Type => EVC_Config.FRMCS_GSMR,
+             Default_MN => 16#262FFF#));
+         EVC_Test_Modes.Start_E4;
+         Give_Radio_Event (1, FRMCS_Not_Registered);
+         Start := EVC_Core.Time_Ms;
+         Send (Text_Entry (0, "1234"));
+         Send (Action (11, 5));
+      end To_S3;
+   begin
+      To_S3;
+      Check (Waiting = 0 and then not EVC_Sessions.SoM_Awaiting_Registration,
+             "S3 reached, the contact unknown: no wait yet");
+      Send (Type_Entry (2));
+      Check (Waiting = 1 and then EVC_Sessions.SoM_Awaiting_Registration
+             and then not Status_Shown
+                            (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0),
+             "S3 E4: FRMCS+GSM-R entered, FRMCS installed and not "
+             & "registered: the registration awaited (hour glass), not yet "
+             & "considered failed (5.4.3.2 S3, A.3.1), got waiting"
+             & Waiting'Image);
+      while EVC_Core.Time_Ms - Start < 45_000 loop
+         Stand;
+         Shown := Status_Shown
+                    (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+         Early := Early or else (Shown and then Waiting = 1);
+         exit when Shown;
+      end loop;
+      Waited := EVC_Core.Time_Ms - Start;
+      Check (Shown and then not Early and then Waiting = 0
+             and then not EVC_Sessions.SoM_Awaiting_Registration
+             and then Waited in 39_000 .. 41_000,
+             "S3 E4 -> A41: 40 s after the FRMCS detection (A.3.1), FRMCS "
+             & "network registration failed, entry 33; D8 -> S3, the wait "
+             & "ended; at" & Waited'Image & " ms");
+      Send (Type_Entry (2));
+      Check (Status_Shown (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0)
+             and then Waiting = 0,
+             "S3 E4 again after the time of A.3.1: A41 at once, no wait");
+      Send (Type_Entry (3));
+      Check (Waiting = 0 and then not EVC_Sessions.SoM_Awaiting_Registration
+             and then not Status_Shown
+                            (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0),
+             "S3: GSM-R entered, no E4");
+      --  the registration achieved during the wait: back to S3, silent
+      To_S3;
+      Send (Type_Entry (1));
+      Check (Waiting = 1, "S3 E4: FRMCS entered, the wait");
+      Give_Radio_Event (1, FRMCS_Registered);
+      Stand;
+      Check (Waiting = 0 and then not EVC_Sessions.SoM_Awaiting_Registration
+             and then not Status_Shown
+                            (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0),
+             "S3 E4: the FRMCS registration achieved within the time: the "
+             & "wait ends, no A41");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_Type_At_S3;
+
    --  Message 24, or K, (T_TRAIN now) with packet 45: GSM-R, network MN
    function M24_With_45
      (MN : ETCS_Variables.NID_MN_T;

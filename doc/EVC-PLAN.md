@@ -15466,3 +15466,108 @@ noted; no status changed. Backlog: B1063 done; B2640 (a refused order
 leaves no trace; the capacities in the installation documentation of
 E8). B1060 (the validity clock) untouched. The runner: 0 regressions, no
 movement after either item (1169 / 1058 / 963).
+### The Radio network type entered outside the start of mission's wait, the MA request parameters on a level entry, packet 64's direction (e6/network-type) (2026-10-27)
+
+**B2601 with B2621, the Radio Network type at S3: built.** 5.4.3.2 S3
+(PDF page 15): "If the driver selects FRMCS or FRMCS+GSM-R while FRMCS
+is installed on-board and the FRMCS on-board is not registered to the
+FRMCS Radio Network (E4), the process shall go to A41"; A41 (page 16):
+"inform the driver that the FRMCS network registration has failed. The
+process shall then go to D8"; D8: "If the stored Radio Network type is
+FRMCS+GSM-R while both radio systems are installed on-board, the process
+shall go back to S3. Otherwise, the process shall go to S10". The DMI's
+Table 49 (ERA_ERTMS_015560 11.7.2.4, page 236) is the same: S3-4 E5 ->
+A41 -> D10 -> S3-1 or S10. The reviewer's cause (B2621) held at the
+source: `EVC_Sessions.Network.Driver_Entries` stored the type with no
+branch for E4, and `Supervise_Wait` timed the FRMCS registration out
+only In_SoM (S4) and, with both systems, watched the latest GSM-R order
+only (once the mobile registered, no time ran for FRMCS). The path after
+A41 is D8 -> S3 (the reviewer's), not S4 (B2601's). The reading
+(decision): E4's "not registered" is the registration considered failed,
+which A.3.1 defines as the time "from when the FRMCS on-board equipment
+has been detected to be connected ... after which the registration is
+considered as failed" (40 s, `Registration_Time_Ms`), since A41 tells the
+driver that it "has failed"; until that time the on-board waits as at S4,
+which is what 5040300_24 shows (step 97 ST05 "the onboard still awaits
+the registration", step 99 the A.3.1 timer, steps 100 / 101 entry 33 and
+JRU 23 bit 24, step 102 the Radio data window "the process shall go back
+to S3"). From the driver's seat: no failure is announced while the
+registration may still succeed. Built: `Driver_Entries` sets `Type_Wait`
+when the entered type is FRMCS or FRMCS+GSM-R, FRMCS installed (not
+GSM-R only), FRMCS not registered, in SB (S3 is a step of the start of
+mission); `Supervise_Wait` ends it at the FRMCS registration (no message,
+the type stays stored, S3) or at 40 s from the FRMCS detection
+(`FRMCS_At`), A41: `FRMCS_Failed` (entry 33); when the time is already
+over at the entry, A41 in the same cycle; D8 is the wait's end (S3's
+entries are taken again; S10 is the DMI's D10). A mode other than SB ends
+it. The hour glass: `EVC_Sessions.SoM_Awaiting_Registration` is
+`Mission.Awaiting_Registration or else Network.Type_Awaited` (MSG_ONBOARD
+waiting 1 through the existing condition of `EVC_Core.Outputs`, the Main
+window's buttons disabled through `EVC_Core.Modes`' `SoM_Opening`).
+`Scenario_Network_Type_At_S3` (both systems, FRMCS+GSM-R stored, FRMCS
+reported not registered, the Driver ID then level 2): the entry waits
+(waiting 1, no entry 33), entry 33 at 39 to 41 s from the detection and
+the wait ended, an entry again after the time gives entry 33 at once, a
+GSM-R entry no wait, an FRMCS entry then the registration ends the wait
+without entry 33. Proofs of `evc_sessions-network` and `evc_sessions`
+clean. The runner: 5040300_24 SV30 failed 97 -> failed 102 (steps 97 to
+101 pass); step 102 fails on the DMI: `DMI_Windows.Onboard_State_Changed`
+opened the Main window for the hour glass and leaves it open at the
+wait's end (signature S322852a4, dmi, the existing line extended; B2680,
+the DMI's D10 -> S3-1 after a wait); 3050600_06 and 5040300_23 / 25
+unchanged; 0 regressions (1169 / 1058 / 963). Rows: 5.4.3.2 A41
+deferred -> done, D8 partial -> done, S3's note. B2601, B2621 done, B2380
+narrowed (left: 3050600_06 step 60's input, 5040300_23 step 82,
+5040300_25's missing steps).
+
+Edits outside the named units: `EVC_Sessions.SoM_Awaiting_Registration`
+(one accessor of the parent's body, the hour glass of the new wait; no
+contract changed).
+
+**B786, the MA request parameters on entering level 1: built.** 4.9.1.3
+(PDF page 80): "In case of entering level 1, MA Request Parameters,
+Position Report Parameters and Track Ahead Free Request shall be
+deleted"; the 4.10.1.3 table's row "MA Request Parameters": D entering NP,
+U in the other modes. What consist-entry wrote held at the source:
+`Take_Parameters` set `Params` with no deletion but `Clear`, and
+`Evaluate` mirrors it to `EVC_Radio_Info.Set_T_MAR` / `Set_MAR_Known`;
+packet 57 is taken in every level, so the entry is a change of level.
+Built in `EVC_Radio_Authority`: `Note_Level` (the shape of
+`EVC_Sessions.Reports.Evaluate` for the position report parameters: a
+valid level other than the latest seen, now 1) deletes `Params`; it runs
+with the message's context before its packet 57 is taken (a packet 57
+received once level 1 is entered is kept) and in each `Evaluate`; entering
+NP deletes them in `Mode_Changed`. `Scenario_MA_Request` (T_MAR 20 s
+taken in level 2, MAR_Known false and T_MAR 0 on entering level 1, still
+deleted back in level 2). Proof of `evc_radio_authority` clean; the
+runner unchanged (1169 / 1058 / 963, 0 regressions). Row 4.9.1.3 partial
+-> done; B786 done.
+
+**Packet 64's Q_DIR (the reviewer's remark): fixed.** 7.4.2.16.1:
+packet 64 carries Q_DIR (2 bits); 7.5.1.103: "the relevant validity
+direction of transmitted data, with reference to ... the directionality
+of the LRBG, in case of information sent via radio" (00 reverse, 01
+nominal, 10 both); 3.6.3.1.1 a) refers radio data to the LRBG
+orientation, and 3.6.3.1.3: "When receiving information from any
+transmission medium, the ERTMS/ETCS on-board equipment shall only take
+into account information valid for the train orientation. Other
+information shall be ignored" (exceptions only for SL / PS / SH engines
+and the SM authorisation). The other non-located radio orders of ours are
+judged so: the packets 42, 45 and 131 of `EVC_Sessions` by
+`EVC_Position.Radio_Valid_For (LRBG of the message, Q_DIR)` (taken when
+the orientation is not known, its decision for 3.6.3.1.4); inside
+`EVC_Radio_Authority` the packets 57 and 63 are taken whatever their
+Q_DIR by decision (headings of `Take_Parameters`, `Take_SR_List`). The
+reading taken for 64 is 3.6.3.1.3 with the sessions' shape:
+`Take_Inhibition` decodes each packet 64 (`ETCS_Track_Packets.P64`) and
+takes it when `Radio_Valid_For (LRBG_Of_Last, P.Q_DIR)`; the decision
+"taken whatever its Q_DIR" removed. `Scenario_TSR_Inhibition`: Q_DIR
+reverse not taken, both directions taken. Proof of `evc_radio_authority`
+clean; the runner unchanged (4100103_05 still passes in three versions;
+0 regressions). Row 3.6.3.1.3's note names packet 64. The packets 57 and
+63 against 3.6.3.1.3: B2681 (to decide, not changed here).
+
+Backlog: B2601, B2621, B786 done; B2380 narrowed; B2680 (dmi), B2681
+(onboard) new. Edits outside the named units: the accessor
+`EVC_Sessions.SoM_Awaiting_Registration` (item 1). Commits: B2601 with
+B2621, B786, packet 64's Q_DIR.

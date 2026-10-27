@@ -558,6 +558,31 @@ package body EVC_Test_Authority is
              "MA request: the reason 'Start' ends when the desk is closed, "
              & "no request after (3.8.2.3.2 c)");
 
+      --  4.9.1.3: the parameters of packet 57 taken in level 2 (T_MAR
+      --  20 s), deleted on entering level 1, not back in level 2
+      P57.T_MAR := 20;
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((300, 400), 600), Stamp,
+                        With_57 => True, P57 => P57));
+      Stand_X (200);
+      Check (EVC_Radio_Info.MAR_Known
+             and then EVC_Radio_Info.T_MAR_Ms = 20_000,
+             "MA request: packet 57 taken in level 2, T_MAR 20 s "
+             & "(3.8.2.1.2)");
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L1);
+      Stand_X (200);
+      Check (not EVC_Radio_Info.MAR_Known
+             and then EVC_Radio_Info.T_MAR_Ms = 0,
+             "MA request: the parameters deleted on entering level 1 "
+             & "(4.9.1.3)");
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Stand_X (200);
+      Check (not EVC_Radio_Info.MAR_Known,
+             "MA request: level 2 entered again, the parameters stay "
+             & "deleted (4.9.1.3)");
+
       --  level 1: none
       Start_X;
       Establish;
@@ -2510,7 +2535,10 @@ package body EVC_Test_Authority is
 
    --  Message 24 referring to the group NID_BG with packet 64, the
    --  inhibition of revocable TSRs from balises in level 2
-   function Inhibition_Message (NID_BG : Natural) return Byte_Array is
+   function Inhibition_Message
+     (NID_BG : Natural;
+      Q_DIR  : ETCS_Variables.Q_DIR_T := 1) return Byte_Array
+   is
       W  : Writer_T;
       V  : ETCS_Message.Value_Array := (others => 0);
       P  : T64.Packet_T;
@@ -2520,7 +2548,7 @@ package body EVC_Test_Authority is
       V (5) := 123;
       V (6) := Unsigned_64 (NID_BG);
       Start_Message (W, MCat.Track_M24, V);
-      P.Q_DIR := 1;
+      P.Q_DIR := Q_DIR;
       T64.Encode (P, W, OK);
       Check (OK, "authority: packet 64 encoded");
       return Message_Bytes (W);
@@ -2602,6 +2630,20 @@ package body EVC_Test_Authority is
       Stand_X (200);
       Check (not EVC_Radio_Info.TSR_Inhibited,
              "TSR inhibition: packet 64 not taken in level 1 (4.8.3 R [2])");
+      --  3.6.3.1.3: packet 64 valid for the reverse direction of the
+      --  LRBG only is not for this train; both directions is
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, Inhibition_Message (10, Q_DIR => 0));
+      Stand_X (200);
+      Check (not EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: packet 64 with Q_DIR reverse not taken "
+             & "(3.6.3.1.3, 7.5.1.103)");
+      Give_Radio_Message (1, Inhibition_Message (10, Q_DIR => 2));
+      Stand_X (200);
+      Check (EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition: packet 64 valid for both directions taken "
+             & "(3.6.3.1.3)");
    end Scenario_TSR_Inhibition;
 
 end EVC_Test_Authority;
