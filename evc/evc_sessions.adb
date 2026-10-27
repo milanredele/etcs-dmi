@@ -1221,7 +1221,7 @@ is
    is
       Req : Mission.Request_T;
    begin
-      Mission.Evaluate (Ctx, Req);
+      Mission.Evaluate (Ctx, Pending.Active, Pending.RBC, Req);
       if Req.Stop and then R.Usable (Req.Session)
         and then R.Info (Req.Session).State /= R.Idle
       then

@@ -81,7 +81,12 @@ is
                      Input  => (EVC_Received.Store, EVC_Position.State));
 
    --  5. The steps of the cycle
-   procedure Evaluate (Ctx : EVC_Radio.Context_T; Req : out Request_T)
+   --  Queued: a session with Queued_RBC waits for a free session
+   --  (3.5.3.5.2: the one it replaces is being terminated)
+   procedure Evaluate (Ctx        : EVC_Radio.Context_T;
+                       Queued     : Boolean;
+                       Queued_RBC : EVC_Radio.RBC_Id_T;
+                       Req        : out Request_T)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => (EVC_Mission.State, EVC_Levels.State,
                                 EVC_Position.State, EVC_Train_Data.State,

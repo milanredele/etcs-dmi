@@ -14821,3 +14821,40 @@ blocked 60 (E5-radio, the driver's "Mission with one radio system"),
 the expected movement; 1163 / 1064 / 963, 0 regressions. Rows 5.4.3.2
 S4 and A42 noted; Sfb725745's onboard line marked fixed (its s076 line
 for 5040300_25 unchanged); B2380 narrowed.
+
+**The RBC id changed with a session open (B2420 with B2500 done).**
+3.5.3.5.2: "the existing communication session(s) shall be terminated
+... and the new one shall be established"; 3.5.3.5.2.1 excepts the
+Accepting RBC of a handover only, and its words "unless the on-board
+equipment is only able to handle one communication session through
+GSM-R" show that an on-board holding one session is foreseen (3.5.3.4
+sets no minimum): the configuration `EVC_Config` Sessions 1 is not
+below the specification. Traced with one session
+(`EVC_Test_Sessions.Scenario_SoM_L2_Override_From_S20` run with
+Sessions 1): in the cycle of the Radio data with RBC 301,
+`EVC_Sessions.Mission.Evaluate_SoM` opens (A31, `Opening`),
+`EVC_Sessions.Establish` terminates the session with RBC 300 (state
+Terminating, 156 sent) and `EVC_Sessions.Open`, with no idle session,
+queues 301 in `Pending`; in the next cycle
+`EVC_Sessions.Mission.Judge_Opening` counted only the non-idle sessions
+to the SoM RBC, found none and went to Decided (A32, S10: the override
+then taken); after the acknowledgement 39 the release freed the
+session and `Pending` opened 301, outside the start of mission. The
+backlog's "neither terminated nor attempted" did not hold; the
+reviewer's candidate cause did. Fix (decision): a session with the SoM
+RBC queued for a free session is not a failed opening:
+`EVC_Sessions.Mission.Evaluate` takes `Queued`, `Queued_RBC`
+(`Pending.Active`, `Pending.RBC` from `EVC_Sessions.Apply_Mission`) down
+to `Judge_Opening`, which stays at A31 while they name the SoM RBC; a
+`Stop` of the networks (`Apply_Network` clears `Pending`) still fails it.
+The scenario runs with two and with one session: 300 terminating with
+156 at the entry in both, the override refused at A31 and A31 kept in
+the next cycle, 39 for 300, 301 being established, its establishment
+(32, 38), the SoM position report 157 with packet 11 acknowledged by 301
+(8), S10, the override taken. Two sessions before: the scenario left
+300 terminating without 39 and took the override at S10 without
+acknowledging the 157's Train Data; with the 39 given the override
+waits for that acknowledgement (`Train_Data_Awaited`, 4.8.3 [3]) in
+both configurations, so the scenario acknowledges it. Why the earlier
+run did not wait was not traced. Row 3.5.3.5.2 noted (`@req 3.5.3.5.2`
+on `Judge_Opening`). Runner: 0 movements.

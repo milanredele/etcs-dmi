@@ -1346,63 +1346,124 @@ package body EVC_Test_Sessions is
    --  and the train running number kept valid (no new entry into SB,
    --  4.10 does not apply): while the registration or the session of the
    --  start of mission is awaited the process is not at S10 nor S20, the
-   --  override is not taken; at S20 again it is
+   --  override is not taken; at S20 again it is. 3.5.3.5.2: the session
+   --  with RBC 300 is terminated and the one with RBC 301 established,
+   --  with two sessions configured beside it, with one after it
    procedure Scenario_SoM_L2_Override_From_S20 is
-      N  : Natural;
-      M  : ETCS_Message.Message_T;
-      St : ETCS_Message.Status_T;
+
+      procedure Run (Sessions : EVC_Config.Radio_Sessions_T) is
+         N  : Natural;
+         M  : ETCS_Message.Message_T;
+         St : ETCS_Message.Status_T;
+         S2 : constant Natural := (if Sessions = 1 then 1 else 2);
+         SR : constant R.Session_T := R.Session_T (S2);
+         Tag : constant String := " (" & Sessions'Image & " sessions)";
+         --  The RTM output that is the message NID of session SR
+         function Output_On (NID : Natural) return Natural is
+         begin
+            for J in 1 .. Radio_Outputs loop
+               if Is_Message (J, NID, S2) then
+                  return J;
+               end if;
+            end loop;
+            return 0;
+         end Output_On;
+      begin
+         EVC_Config.Set_Radio_For_Test
+           ((Sessions => Sessions, Engine_Id => 76_000, others => <>));
+         EVC_Test_Modes.Start_E4;
+         Add_Group (Group (10, 20));
+         Run_X (5_000, 100);
+         Stand;
+         Send (Text_Entry (0, "1234"));
+         Send (Action (11, 5));
+         Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
+         Establish (1);
+         Stand;
+         Send (Train_Entry);
+         N := Output_Of (129);
+         if N > 0 then
+            Decode_Radio_Message (N, M, St);
+         end if;
+         Send (Text_Entry (1, "5678"));
+         Give_Radio_Message
+           (1, Msg (MCat.Track_M8, Now_T, 0, 7, M.Values (3)));
+         Stand;
+         Stand;
+         Check (N > 0 and then R.Train_Data_Acknowledged
+                and then EVC_Core.Mode = EVC_Modes.M_SB,
+                "override from S20: S20, the Train Data acknowledged" & Tag);
+         --  5.4.5.3 j): the Radio data re-entered, another RBC
+         Send (RBC_Entry (0, 5 * 16_384 + 301, "0077"));
+         Check (EVC_Train_Data.Valid
+                and then EVC_Mission."=" (EVC_Mission.TRN_Status,
+                                          EVC_Mission.Valid)
+                and then EVC_Sessions.SoM_Opening,
+                "override from S20: A31 after the Radio data, the Train "
+                & "Data and the train running number still valid" & Tag);
+         Check (R.Info (1).State = R.Terminating
+                and then R.Info (1).RBC.NID_RBC = 300,
+                "override from S20: A31 with RBC 301 terminates the session "
+                & "with RBC 300 (3.5.3.5.2), 156 sent" & Tag & ", got "
+                & R.Info (1).State'Image & R.Info (1).RBC.NID_RBC'Image);
+         if Sessions > 1 then
+            Check (R.Being_Established (2),
+                   "override from S20: A31, the session with the RBC "
+                   & "entered being established beside it" & Tag);
+         end if;
+         Send (Action (6));
+         Check (not EVC_Procedures.Override_Active
+                and then EVC_Core.Mode = EVC_Modes.M_SB,
+                "override from S20: at A31 not taken (5.4.5.3 a))" & Tag);
+         Stand;
+         Check (EVC_Sessions.SoM_Opening,
+                "override from S20: A31 kept while the session with RBC 300 "
+                & "terminates (3.5.3.5.2), not A32" & Tag);
+         --  3.5.5.3.1: the termination acknowledged, the connection
+         --  released
+         Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
+         Stand;
+         Check (R.Being_Established (SR)
+                and then R.Info (SR).RBC.NID_RBC = 301
+                and then EVC_Sessions.SoM_Opening,
+                "override from S20: the session with RBC 301 being "
+                & "established (3.5.3.5.2)" & Tag & ", got "
+                & R.Info (SR).State'Image & R.Info (SR).RBC.NID_RBC'Image);
+         --  3.5.3.7 b) to e) for RBC 301; A33: the SoM position report
+         --  with the Train Data (packet 11), their acknowledgement awaited
+         Give_Radio_Event (S2, Connection_Set_Up);
+         Stand;
+         Give_Radio_Message (S2, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
+         Stand;
+         N := Output_On (157);
+         if N > 0 then
+            Decode_Radio_Message (N, M, St);
+         end if;
+         Give_Radio_Message (S2, Msg (MCat.Track_M38, Now_T));
+         Stand;
+         Stand;
+         Check (not EVC_Sessions.SoM_Opening
+                and then not EVC_Sessions.SoM_Awaiting_Registration
+                and then R.Established (SR),
+                "override from S20: the session opened, S10 again" & Tag);
+         --  the Train Data of the report acknowledged by RBC 301
+         if N > 0 then
+            Give_Radio_Message
+              (S2, Msg (MCat.Track_M8, Now_T, 0, 7, M.Values (3)));
+         end if;
+         Stand;
+         Stand;
+         Check (N > 0 and then R.Train_Data_Acknowledged,
+                "override from S20: the Train Data of the SoM position "
+                & "report acknowledged by RBC 301" & Tag);
+         Send (Action (6));
+         Check (EVC_Procedures.Override_Active
+                and then EVC_Core.Mode = EVC_Modes.M_SR,
+                "override from S20: at S10 again taken (5.4.5.3 a))" & Tag);
+      end Run;
    begin
-      EVC_Config.Set_Radio_For_Test
-        ((Sessions => 2, Engine_Id => 76_000, others => <>));
-      EVC_Test_Modes.Start_E4;
-      Add_Group (Group (10, 20));
-      Run_X (5_000, 100);
-      Stand;
-      Send (Text_Entry (0, "1234"));
-      Send (Action (11, 5));
-      Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
-      Establish (1);
-      Stand;
-      Send (Train_Entry);
-      N := Output_Of (129);
-      if N > 0 then
-         Decode_Radio_Message (N, M, St);
-      end if;
-      Send (Text_Entry (1, "5678"));
-      Give_Radio_Message (1, Msg (MCat.Track_M8, Now_T, 0, 7, M.Values (3)));
-      Stand;
-      Stand;
-      Check (N > 0 and then R.Train_Data_Acknowledged
-             and then EVC_Core.Mode = EVC_Modes.M_SB,
-             "override from S20: S20, the Train Data acknowledged");
-      --  5.4.5.3 j): the Radio data re-entered, another RBC
-      Send (RBC_Entry (0, 5 * 16_384 + 301, "0077"));
-      Check (EVC_Train_Data.Valid
-             and then EVC_Mission."=" (EVC_Mission.TRN_Status,
-                                       EVC_Mission.Valid)
-             and then (EVC_Sessions.SoM_Opening
-                       or else EVC_Sessions.SoM_Awaiting_Registration),
-             "override from S20: A31 / S4 after the Radio data, the Train "
-             & "Data and the train running number still valid, opening "
-             & Boolean'Image (EVC_Sessions.SoM_Opening) & ", registration "
-             & Boolean'Image (EVC_Sessions.SoM_Awaiting_Registration));
-      Check (R.Being_Established (2),
-             "override from S20: A31, the session with the RBC entered "
-             & "being established");
-      Send (Action (6));
-      Check (not EVC_Procedures.Override_Active
-             and then EVC_Core.Mode = EVC_Modes.M_SB,
-             "override from S20: at A31 not taken (5.4.5.3 a))");
-      Establish (2);
-      Stand;
-      Stand;
-      Check (not EVC_Sessions.SoM_Opening
-             and then not EVC_Sessions.SoM_Awaiting_Registration,
-             "override from S20: the session opened, S10 again");
-      Send (Action (6));
-      Check (EVC_Procedures.Override_Active
-             and then EVC_Core.Mode = EVC_Modes.M_SR,
-             "override from S20: at S10 again taken (5.4.5.3 a))");
+      Run (2);
+      Run (1);
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_SoM_L2_Override_From_S20;
 
