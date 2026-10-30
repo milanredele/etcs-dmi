@@ -16565,3 +16565,11 @@ scenario; B781's 6th bullet and the relocations; the user's decisions:
 B2820 / B2720 (A41 at once, or 40 s from the power-up), B2681 (packets
 57 / 58 / 63 by direction), B1060, B1340; the review again (eight items,
 readings first, no backlog read).
+
+Decided by the user on 2026-10-30, after the two papers of
+e6/authority-rest and the review's verdicts: (1) B2720 / B2820: the 40 s
+of A.3.1 count from the power-up when no FRMCS report has come by then,
+for S3 and S4 alike (the paper's choice C; the reviewer's A41 at once
+not followed); (2) B2681: packets 57, 58 and 63 are judged by the train
+orientation like 64, no exception. Both are build items of the next
+round.
