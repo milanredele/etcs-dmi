@@ -15972,3 +15972,37 @@ inhibition at the RBC/RBC border), B2640; B789's rest, B788; B781's 6th
 bullet and the relocations; B1060 and B1340 are the user's decisions
 (papers written); the review again (eight items, readings first, no
 backlog read).
+
+### The three largest untraced failure signatures: the message 156 not sent, the air conditioning announcement, the LX status shown (e5/runner-top) (2026-10-30)
+
+**S185bee31, "expect RTM message: 156 not sent" (16 sequences).** Traced
+at SV30 (3130700_07, 4080451_01, 5060400_01, 6060500_10, the ERA PDFs of
+4080451_01 and 6060500_10 read); four causes, one triage line each.
+(1) Ours, not built: 5060400_01 (three versions) step 126 is the 156 at
+t0+60 s after the mode change report 136 of the entry to SH in level 2
+went unanswered (5.6.4.2 / 5.6.4.3, B788: `EVC_Sessions.Reports.
+Mode_Changed` sends once; its steps 120 to 124, the repetitions at
+t0+15 / 30 / 45 s, pass on the one 136 of the window); 4080451_01 (three
+versions) step 76 is the 156 of 5.6.4.1.2 after the request for shunting
+of step 66 answered only by a refused message 28 (the joined case
+3050500 5 starts at its third step, as in ERA's PDF; the comment says
+"After 60s"): B789. (2) The runner: an expectation waited 40 cycles
+(4 s), so even a built termination could not be seen; a 156 the on-board
+decides after an unanswered message comes at the end of A.3.1's
+repetitions (the first sending and 3 repetitions 15 s apart: 60 s), so
+`S076_Run.Wait_Limit` gives an `expect RTM message 156` 61 s. No
+sequence moves by it alone (the full runner: 0 regressions, 0
+improvements); 5060400_01 and 4080451_01 can pass once B788 / B789
+terminate. (3) A later phase: 6060500_10, 6060504_02, 6060505_02 step 99
+establish a session in Supervised Manoeuvre with an RBC of M_VERSION 2.0
+/ 2.2 / 2.1, where the added clause 3.5.3.7.6 of 6.6.3.4.1.3 terminates
+it right after the 159 (the matrix row deferred to E7): E7. (4) Ours,
+cause not found (B2800): 3130700_07 SV30 step 91, message 24 with
+packet 42 Q_RBC 0 naming the session's RBC 1515 at 2250 m gives no 156
+in 61 s, while the SV21 and SV22 twins (the same message bits, an RBC
+of 2.2 without message 38) send it in the input's cycle; the 39 of step
+93 is followed by a release, which `EVC_Sessions.Take_Message` does only
+for a session already Terminating, so the SV30 session seems to have
+left Established before step 89, not seen in the trace. 3150100_09 / _11
+keep the family line's s076 reading. The family line
+`~expect RTM message: 156 not sent` stays, noted.

@@ -145,11 +145,24 @@ package body S076_Run is
    --  [2], A.3.1: "Connection Lost/Set-Up failed" shows when the 45 s
    --  "connection status" timer expires; the sequences let that time pass
    --  in a step "repeated until t=t0+45" (3150100_07 step 79), so the
-   --  symbol's expectation waits for the timer (46 s)
+   --  symbol's expectation waits for the timer (46 s). A termination
+   --  (message 156) the on-board decides after an unanswered message
+   --  comes at the end of A.3.1's repetitions: the first sending and 3
+   --  repetitions 15 s apart, 60 s (5.6.4.1.2 after the request for
+   --  shunting, 5.6.4.3 after the report of a mode change, 3.5.3.7.4.1
+   --  30 s after the session established report); the sequences list
+   --  the 156 right after the input or the message it follows
+   --  (6060500_10 step 99 after the 159 of step 97, 5060400_01 step 126
+   --  "T_TRAIN=t0+60s"), so its expectation waits 61 s (in the corpus
+   --  of 2026-10-30 it moves no sequence alone: those two wait for the
+   --  terminations of 5.6.4.1.2 and 5.6.4.3)
    function Wait_Limit return Natural is
      (if Same (W (3), "status-symbol") and then Same (W (4), "displayed")
         and then Has (W (5), "Connection-Lost")
       then 46_000 / B.Cycle_Ms
+      elsif Same (W (2), "RTM") and then Same (W (3), "message")
+        and then Line.Count = 4 and then W (4) = "156"
+      then 61_000 / B.Cycle_Ms
       else Wait_Cycles);
 
    ---------------------------------------------------------------------
