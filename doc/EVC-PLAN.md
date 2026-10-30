@@ -16008,18 +16008,19 @@ keep the family line's s076 reading. The family line
 `~expect RTM message: 156 not sent` stays, noted.
 
 **S3372f797, the air conditioning announcement not shown (12
-sequences): left at the bound, the trace not concluded.** Read at
-5180200_01 SV30 step 106: message 24 of step 102 (packet 68,
-D_TRACKCOND 1100 m from NID_LRBG 1048577 = BG1d at 100 m, so the start
-at 1200 m, L_TRACKCOND 300 m, M_TRACKCOND 0011 air tightness, 5.18.6)
-is given at x = 1073 m where the sequence says 1000 m (the 5 s timer of
-step 99 drove the train on); our point C is the start less the larger
-of 10 s at the current speed and 100 m (`EVC_Track_Conditions`
-`Announce_Time_Ms`, `Announce_Min_Cm`), about 1003 m at 71 km/h, and
-`EVC_Track_Conditions.Phases` announces a condition received past its
-point C (`Max_F >= D - Lead`); yet the symbol is not shown from the
-step's reach-point (x = 1087 m) to the window's end (x = 1179 m). Not
-determined: whether the packet 68 was stored (its LRBG at that time)
-or the DMI symbol of 5.18.6.2.2 (automatic or by the driver) differs
-from the one the runner judges. 3070300_03, 4080454_01, 5180700_01 not
-traced. S82c622ac (the LX status shown) not taken.
+sequences): the sequences' data (s076), on a resumption.** Traced at
+5180200_01 SV30 step 106: the runner accepts the DMI's symbols 19 or 21
+(`S076_Tables.TC_Kinds`, automatic or by the driver, 5.18.6.2.2) and
+`EVC_Track_Conditions.Symbols` gives an air tightness area (kind 5) one
+of those two, so the variant is not the cause; the packet 68 of the
+message 24 of step 102 is M_TRACKCOND 0011, a powerless section with the
+pantograph lowered (7.5.1.77), not 0101 air tightness, in ERA's own
+message table too (D_TRACKCOND 1100, L_TRACKCOND 300); the joined case
+3120100 1 says "Air Tightness is chosen for coverage". The other three:
+3070300_03 step 86, message 83 (ERA's table too) is D_TRACKCOND 0,
+L_TRACKCOND 0, M_TRACKCOND 0000 while the step text names
+M_TRACKCOND=0101; 4080454_01 step 125, every packet 68 is M_TRACKCOND
+0000; 5180700_01 step 74, its packets 68 are 0110 and 0001. No air
+tightness area in any of them: one s076 line before the family line
+`~track condition`, which is noted. No code change, the runner not
+moved. S82c622ac (the LX status shown) not taken.
