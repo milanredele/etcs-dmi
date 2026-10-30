@@ -16024,3 +16024,22 @@ The runner: 5040300_24 SV30 failed 102 -> passed; signature S322852a4
 has no sequence left (its triage line says so); 0 regressions (1179 /
 1051 / 960). DMI 11.7.2.4 D10 noted here (the DMI has no matrix).
 B2680 done.
+
+**The s10 golden (review 57, item 2's remark): renamed to S20.**
+5.4.3.2 D11 "When the session is open, the process shall go to D15,
+otherwise it shall go to S10", D15 "If the ERTMS/ETCS on-board equipment
+has already received the Train Data acknowledgment from the RBC, the
+process shall go to S20, otherwise it shall go to S11": the case of
+`DMI_Test_Windows.Scenario_Override_Selectable` named S10 drove
+MSG_ONBOARD session 2 (a session exists) and rbc bit 0 (Train Data
+acknowledged), which is S20; the remark held. The golden
+`override_eoa_s10` is renamed `override_eoa_s20` (the same digest: the
+Override window, EOA enabled), the check's text says S20. A real S10
+case is added first (session 0, rbc 0, national bit 4 set): the
+Override window opens on F2 with EOA enabled, and its picture was
+verified equal to the S20 one (a temporary comparison against the S20
+golden passed): the Override window shows nothing of the session, so
+S10 has a check and no golden of its own. The Override window opened at
+S10 then stays open through S11 (EOA disabled, `override_eoa_s11`
+unchanged) and S20 (enabled). `golden_review.py --intent`: the rename,
+both groups as intended (identical pictures).

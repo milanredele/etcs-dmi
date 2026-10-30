@@ -822,8 +822,9 @@ package body DMI_Test_Windows is
                         V_Release => 0, V_Sbi => 0, V_Wsl => 0,
                         D_Target => 0, Monitoring => 0, Dial_Range => 1,
                         Vrelease_Exists => False);
-      --  S11: the session open, the Train Data sent, not acknowledged
-      Send_Onboard_Raw (Data_All, 2, 0, Standing, NV_Adh, 0, 0, 0);
+      --  S10 (5.4.3.2 D11): level 2, no session open, the on-board
+      --  takes the override
+      Send_Onboard_Raw (Data_All, 0, 0, Standing, NV_Adh or Ovr_OK, 0, 0, 0);
       Step;
       Drain_Sounds;
       Press (610, 90);                          -- F2: Override window
@@ -831,15 +832,26 @@ package body DMI_Test_Windows is
       Check (DMI_Windows.Is_Open
              and then DMI_Windows."=" (DMI_Windows.Top,
                                        DMI_Windows.W_Override),
-             "S11: the Override window is open");
+             "S10: the Override window is open");
+      --  the picture is that of S20 below: the Override window shows
+      --  nothing of the session, so S10 has no golden of its own
+      Check (EOA_Enabled, "5.4.5.3 a): EOA at S10, the on-board takes it");
+      --  S11: the session open, the Train Data sent, not acknowledged
+      Send_Onboard_Raw (Data_All, 2, 0, Standing, NV_Adh, 0, 0, 0);
+      Step;
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows."=" (DMI_Windows.Top,
+                                       DMI_Windows.W_Override),
+             "S11: the Override window stays open");
       Check (not EOA_Enabled,
              "5.4.5.3 a): no EOA at S11, the on-board refuses it");
       Check_Frame ("override_eoa_s11");
-      --  S10: the Train Data acknowledged, the on-board takes it
+      --  S20 (5.4.3.2 D15): the session open and the Train Data
+      --  acknowledged, the on-board takes it
       Send_Onboard_Raw (Data_All, 2, 1, Standing, NV_Adh or Ovr_OK, 0, 0, 0);
       Step;
-      Check (EOA_Enabled, "5.4.5.3 a): EOA at S10, the on-board takes it");
-      Check_Frame ("override_eoa_s10");
+      Check (EOA_Enabled, "5.4.5.3 a): EOA at S20, the on-board takes it");
+      Check_Frame ("override_eoa_s20");
       --  S21: 'Start' selected, the MA requested and awaited (MSG_ONBOARD
       --  waiting 3): DMI_Windows.Onboard_State_Changed closes the Override
       --  window and shows the Main window with every button disabled and
