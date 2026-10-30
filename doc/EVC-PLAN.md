@@ -16004,3 +16004,29 @@ deleted, the revocable TSR of the group at 400 m taken. Rows: 3.11.5.14
 and its 2nd bullet done. Proof of `evc_radio_authority`: no unproved
 check. Runner: 0 regressions, no movement (no sequence of the corpus
 reaches a border with an inhibition stored).
+
+**A refused trackside VBC order (B2640 done, no code).** The claim held
+at the source: `EVC_VBC.Order` puts a cover of trackside's origin and a
+new identity is ignored when trackside's room of 10 is full, with no
+record. What the documents say: SUBSET-027 4.2.4.28 and 4.2.4.29 are
+"the code entered by the driver to set a VBC" / "to remove a VBC"
+(NID_VBCMK, NID_C, T_VBC): the driver's covers only, no record of a
+trackside cover, set or refused; 4.2.4.6 TELEGRAM FROM BALISE records
+"the telegram coming from a balise", which this on-board writes for
+every telegram (`EVC_JRU_Messages`, message 6), so the packet 6 order
+is on the JRU in its telegram; 4.2.4.12 BALISE GROUP ERROR is for an
+error of the group (NID_ERRORBG, M_ERROR) and does not fit. 3.15.9 has
+no text on an order the on-board cannot store (3.15.9.5's deletions are
+closed, as the vbc-capacity decision read). SUBSET-040 4.3.2.1 w)
+"Number of Virtual Balise Covers set by trackside": maximum 10, minimum
+memorised on-board 10, so an eleventh cover is the trackside's
+engineering error. From the driver's seat: the Data view lists the
+covers stored, both origins (Table 45, the list of 30); an ignored
+order is simply not listed, and the driver has no expectation of a
+trackside cover that a message would correct (no DMI text exists for
+it either). Decision: no record of its own; the reading written in the
+heading of `EVC_VBC.Order` (the only edit). For the installation
+documentation of the target: the VBC store holds 20 covers set by the
+driver (SUBSET-040 4.5.1.2) and 10 set by trackside (4.3.2.1 w)), the
+minima of SUBSET-040, kept over No Power; a trackside order of a new
+identity beyond 10 is ignored, the driver's Set VBC is disabled at 20.

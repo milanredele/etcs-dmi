@@ -123,7 +123,13 @@ is
      with Global => (In_Out => State);
 
    --  Trackside's order to set a VBC (packet 6, Q_VBCO 1): a new identity
-   --  taken while trackside's room is not full, else ignored
+   --  taken while trackside's room is not full, else ignored. Decision:
+   --  an ignored order has no record of its own. SUBSET-040 4.3.2.1 w)
+   --  bounds trackside's covers to 10, so a full room is an engineering
+   --  error of the trackside; SUBSET-027 records the driver's covers
+   --  (4.2.4.28, .29) and no trackside one, and the order stays on the
+   --  JRU in its balise telegram (4.2.4.6); the driver's list of the
+   --  covers stored simply does not hold it
    --  @req 3.15.9.4, 3.15.9.6
    procedure Order (NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T)
      with Global => (In_Out => State);
