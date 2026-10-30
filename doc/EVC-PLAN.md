@@ -16380,3 +16380,81 @@ Global of `EVC_Core.Modes.Evaluate_Modes_And_Levels` (In_Out
 `EVC_Sessions.State`). Backlog: B2721, B2700, B788 done; B789
 narrowed; no new line. Commits: B2721 with B2700; B788; B789's
 5.6.4.1.2.
+
+### Review of the fifty-eighth round: eight verdicts re-derived blind (e5/review-58) (2026-10-30)
+
+Each verdict below was written from the clause, the data and the trace
+before the author's record was read. All eight items were taken; the
+traces used a temporary print in `S076_Bench` (session state, RTM
+outputs, LX flags), not committed.
+
+1. The S4 wait after a desk closure and reopening. Mine: A.3.4 column k
+   deletes "Mission performed with only one radio system" and keeps the
+   Radio Network information; 3.5.6.1 orders no registration at a desk
+   opening, so E72 ("since ... the latest GSM-R registration order")
+   already holds when the new start of mission reaches S4: A42 at once,
+   D9, S5 with no value; no new 40 s wait. 3050600_06 SV30 expects a new
+   wait (hour glass at step 73, a timer at step 75): the sequence assumes
+   a restart the text does not give. Author (e6/sessions-rest): the same,
+   `Rewatch` and `Supervise_Wait`. Agree.
+2. The mode change report repeated. Mine: SH ends on the RBC's order to
+   terminate, PT on message 6; 3 repetitions 15 s apart, the session
+   terminated 15 s after the last (t0 + 60 s); nothing without an
+   established session. `Supervise_Mode_Report` and the arming in
+   `Produce` (Armed dropped when no session is established) do that.
+   Author: the same. Agree.
+3. The inhibition at the border; a refused VBC. Mine: 3.11.5.14 2nd
+   bullet, the max safe front end crossing the RBC/RBC border once:
+   `Delete_Inhibition` reads `Border_Front`, set once per border by
+   `Evaluate_Border`; SUBSET-027 records the driver's covers only
+   (4.2.4.28, .29), the order stays in its telegram (4.2.4.6), SUBSET-040
+   4.3.2.1 w) makes a full room a trackside error: no record. Author
+   (e6/authority-rest): the same. Agree.
+4. The DMI after the network type's wait. Mine: A41 then D10: the
+   Radio data window when FRMCS+GSM-R is stored with both systems
+   installed, the Main window otherwise (FRMCS stored, or FRMCS alone);
+   a registration in time goes back to S3-1 like E6; the radio byte of
+   MSG_ONBOARD carries the stored type and the systems, no new value.
+   Author (e6/dmi-d10): the same. Agree.
+5. The two papers. (a) Mine: A41 at once: E4 is a condition at the
+   selection, the A.3.1 time counts from a detection that never came;
+   the paper recommends (C), 40 s from the power-up. Disagree on the
+   recommendation (they differ only for an entry within 40 s of the
+   power-up; both end today's endless `Type_Wait`, which waits for an
+   FRMCS_Seen that never comes): B2820. (b) Mine: 57, 58 and 63 carry
+   Q_DIR and 3.6.3.1.3's exceptions are closed: judged like 64; the
+   paper recommends (A) with 58. Agree.
+6. 3130700_07 SV30 step 91. Mine: the session is idle, not
+   Established, at step 89: the sequence's message 38 at step 65 is 75
+   bits with NID_LRBG (ERA's PDF calls it "Initiation of a Communication
+   Session", the SV2 layout; 8.7.16 has 51 bits, as 631 other SV30
+   sequences carry it); the on-board rejects it (M_ERROR 3 at 44000 ms),
+   gets no acknowledgement of the establishment and terminates at
+   73700 ms = 43700 + 30 s (3.5.3.7.4.1), re-connects, falls idle at
+   151800 ms; packet 42 then has nothing to terminate. The twins have no
+   38. A SUBSET-076 defect, also in 3130700_08 and 4080421_03 SV30.
+   Author (e5/runner-top): cause not found, B2800 onboard. Disagree:
+   B2821.
+7. S185bee31's causes. 5060400_01 SV30: 136 at 76300 ms, repeated at
+   91300, 106300, 121300, 156 at 136300 = t0 + 60 s; 4080451_01 SV30:
+   130 at about 60100, message 28 rejected, 130 at 75100, 90100, 105100,
+   156 at 120100 = t0 + 60 s, as the step's own comment says. Both pass
+   for the right reason, inside the runner's 61 s. Remark without a
+   line: the runner passes the repetition steps 120, 122, 124 of
+   5060400_01 on the first 136 (all at 76500 ms), so it does not time
+   them. Author: the same outcome (the baseline's improvements). Agree.
+8. S82c622ac at 5160000_01 SV30 step 55. Mine: LX1 (end 1450 m) leaves
+   the indication at its end, but LX2 (start 2250 m, V_LX 60,
+   Q_STOPLX 0) is indicated from about 1464 m (`EVC_Procedures.LX_Step`,
+   `SDM.LX_MRDT` or `LX_Release`), where the sequence makes its EOA the
+   MRDT at 1695 m; ours also keeps LX1's 70 km/h at 1548 m where the
+   step's comment has V_PERM 120 at 1450 (5.16.1.3: the restriction ends
+   at the LX end location). Undecided between the on-board's MRSP and
+   indication limit and the runner's speed: B2822. Author: not taken.
+
+Counts: 8 items, 6 agreed (1, 2, 3, 4, 5b, 7), 2 disagreed (5a on the
+recommendation, 6 on the cause), 1 undecided (8). My calls: 5a (A);
+6 a SUBSET-076 defect, to block at step 65 as S076-defect; 8 a trace of
+the LX restriction's end in the MRSP. Backlog: B2820, B2821, B2822.
+Brief premises wrong: none. The review took about 128 tool calls of
+130, past the bound of 100 (item 8 taken at about 104).
