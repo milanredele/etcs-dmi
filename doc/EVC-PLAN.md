@@ -16030,3 +16030,106 @@ documentation of the target: the VBC store holds 20 covers set by the
 driver (SUBSET-040 4.5.1.2) and 10 set by trackside (4.3.2.1 w)), the
 minima of SUBSET-040, kept over No Power; a trackside order of a new
 identity beyond 10 is ignored, the driver's Set VBC is disabled at 20.
+
+**Paper 1, for the user's decision: the S3 wait when the FRMCS
+on-board never reports (B2720).** The texts: 5.4.3.2 S3 (PDF page 15):
+"If the driver selects FRMCS or FRMCS+GSM-R while FRMCS is installed
+on-board and the FRMCS on-board is not registered to the FRMCS Radio
+Network (E4), the process shall go to A41"; A41: "inform the driver
+that the FRMCS network registration has failed. The process shall then
+go to D8"; A.3.1 (page 218): "Time from when the FRMCS on-board
+equipment has been detected to be connected to the ETCS on-board
+equipment after which the registration is considered as failed", 40 s;
+S4 E71 counts the same time, "since the FRMCS on-board equipment has
+been detected to be connected"; 3.5.6.1.3 (a note): "As soon as it is
+powered-up, the FRMCS on-board equipment reports continuously to the
+ETCS on-board equipment whether it is registered or not"; 5.10.2.4.1 a)
+makes level 2 with FRMCS "available for use" when "the ETCS on-board has
+detected that it is in working condition". The code:
+`EVC_Sessions.Network.Take_FRMCS` takes the first report since the
+power-up as the detection (`FRMCS_Seen`, `FRMCS_At`), and
+`Supervise_Wait` ends `Type_Wait` at a registration or 40 s after
+`FRMCS_At`, only once `FRMCS_Seen`; the S4 watch of FRMCS as the only
+system (`FRMCS_Watch`) is armed by the same first report. So, with
+FRMCS installed and no report ever, the S3 wait has no end, and the S4
+wait for FRMCS alone has none either (read from `Supervise_Wait`, no
+scenario run for S4). From the driver's seat: the hour glass
+(`SoM_Awaiting_Registration`) with no message and no end; he can only
+close the desk. The choices: (A) A41 at once when no report has come
+since the power-up: E4 holds to the letter (not registered), the time of
+A.3.1 is for an equipment detected; S4 would need the same reading (A42
+at once); a FRMCS on-board still starting at the moment of the entry
+fails at once and the driver enters the type again. (B) The 40 s from
+the driver's entry: bounded, but A.3.1 counts from the detection, not
+from an entry, and S4 has no entry to count from. (C) The 40 s from the
+power-up when no report has come by then: the on-board looks for its
+FRMCS on-board from its own power-up, and 3.5.6.1.3 has the FRMCS
+on-board reporting "as soon as it is powered-up", so the power-up is
+the earliest moment of the detection; one origin for S3 and S4, the
+wait bounded at 40 s after the power-up, an FRMCS on-board still
+starting tolerated; past those 40 s it is A41 at once, as (A). In
+service the driver reaches S3 or S4 well after 40 s from the power-up
+(desk, driver identity, level), so (A) and (C) differ only for an
+early entry. Recommendation: (C), one rule closing both waits with the
+same bound and the same message ("FRMCS network registration failed",
+entry 33). The build: `FRMCS_At` set at the power-up and the watch
+armed where FRMCS is installed, the first report then replacing it
+(`EVC_Sessions.Network`, not this package's unit), a sixth case of
+`Scenario_Network_Type_At_S3` (no report: the hour glass, then A41 and
+D8 at 40 s from the power-up) and the S4 case beside it.
+
+**Paper 2, for the user's decision: the direction of packets 57 and
+63 (B2681).** The texts: 3.6.3.1.1 a): the direction for which
+transmitted information is valid refers to "the LRBG orientation for
+information sent by radio"; 3.6.3.1.3: "When receiving information
+from any transmission medium, the ERTMS/ETCS on-board equipment shall
+only take into account information valid for the train orientation.
+Other information shall be ignored", with two exceptions, 3.6.3.1.3.1
+(SL, PS and SH engines: the balise group crossing direction) and
+3.6.3.1.3.2 (a Supervised Manoeuvre authorisation); 3.6.3.1.4 (the
+orientation not referable: one direction rejected, both evaluated);
+3.6.3.2 is the structure of location and profile data and says nothing
+on data that are neither; 7.5.1.103 Q_DIR: "the relevant validity
+direction of transmitted data, with reference to ... the
+directionality of the LRBG, in case of information sent via radio";
+7.4.2.14 packet 57 (Q_DIR, T_MAR, T_TIMEOUTRQST, T_CYCRQST) and
+7.4.2.16 packet 63 (Q_DIR, N_ITER, Q_NEWCOUNTRY, NID_C, NID_BG) carry
+Q_DIR with no text of their own on direction. The code:
+`EVC_Radio_Authority.Take_Parameters` (57) and `Take_SR_List` (63)
+take their packet whatever its Q_DIR, by decision ("they concern the
+train, not a direction"; "the groups are those the train may pass");
+packet 64 (`Take_Inhibition`) and the packets 42, 45 and 131 of the
+sessions are judged by `EVC_Position.Radio_Valid_For` (LRBG of the
+message, Q_DIR), taken when either orientation is unknown (its
+heading's decision). Packet 58 (7.4.2.15, the position report
+parameters, also with Q_DIR) is taken whatever its Q_DIR as well
+(`EVC_Sessions.Reports` calls `EVC_Position.Set_Report_Parameters`,
+neither reads Q_DIR): a third packet of the same question. The choices:
+(A) judge 57 and 63 (and 58) by `Radio_Valid_For` like 64: 3.6.3.1.3
+says "any transmission medium" and names its exceptions, neither of
+which is these; a Q_DIR would otherwise have no meaning in them; an RBC
+sending them for the reverse direction means them for a train
+oriented the other way (a message composed before a change of
+orientation). (B) keep the exception, its reason written with the
+clause: the parameters are of the train and the SR list names groups,
+not locations; the risk is to take what the RBC meant for the other
+orientation. The corpus: a scratch count over the var blocks of the
+sequences (sv30): packet 57 43 times in 29 sequences, all Q_DIR
+nominal; 63 17 times nominal in 13 and once both; 58 40 times nominal
+in 27; 64 10 times nominal in 7; none reverse (sv21 and sv22 alike). A
+nominal Q_DIR is invalid for a train oriented against the LRBG, which a
+static count cannot see, so the choice (A) for 57 and 63 was measured:
+a temporary build judging both by `Radio_Valid_For`, the full runner:
+1178 / 1052 / 960 with the step counts identical (210008 passed), 0
+regressions, 0 improvements, the build reverted. Neither choice moves
+the corpus. From the driver's seat: 63 decides whether a group passed
+in SR trips the train, 57 when the MA is requested: a packet meant
+for the other orientation applied is the worse outcome. Recommendation:
+(A), the reviewer's call, with packet 58 in the same step: two
+conditions in `EVC_Radio_Authority` (`Take_Parameters`,
+`Take_SR_List`, their Global grown by `EVC_Position.State`), one in
+`EVC_Sessions.Reports` for 58, a scenario per packet with Q_DIR
+reverse (not taken) and both (taken), the row 3.6.3.1.3 extended.
+
+The rows: 3.11.5.14 and its 2nd bullet done. Backlog: B2560 and B2640
+done, B2720 and B2681 narrowed to "paper written, the user decides".
