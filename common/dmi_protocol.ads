@@ -201,7 +201,12 @@ package DMI_Protocol is
    --    Main window with all buttons disabled and the hour glass ST05
    --    (11.2.1.6)
    --    0 nothing is awaited,
-   --    1 the registration to the radio network(s) (Table 49 S4),
+   --    1 the registration to the radio network(s) (Table 49 S4), or
+   --      the FRMCS registration after the driver's Radio network type
+   --      (Table 49 S3-4 E5, Table 50 S5-4 E1): a wait begun over the
+   --      Radio data window ends in it again when the radio byte says
+   --      FRMCS registered, or FRMCS+GSM-R stored with both systems
+   --      installed (A41 -> D10 -> S3-1), in the Main window otherwise,
    --    2 an answer from the RBC (Table 49 A31, Table 50 S8 and S9):
    --      the Main window stays when it ends (S10 / S1),
    --    3 the MA or the SR authorisation after 'Start' (Table 50 S7):

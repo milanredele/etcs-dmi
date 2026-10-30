@@ -15972,3 +15972,55 @@ inhibition at the RBC/RBC border), B2640; B789's rest, B788; B781's 6th
 bullet and the relocations; B1060 and B1340 are the user's decisions
 (papers written); the review again (eight items, readings first, no
 backlog read).
+
+### The DMI's return to the Radio data window after the network type's wait, the s10 golden, the consist heading (e6/dmi-d10) (2026-10-30)
+
+**B2680, Table 49 S3-4 E5 -> A41 -> D10 after the on-board's wait:
+built in the DMI.** DMI 11.7.2.4 (Table 49): S3-4 "If the driver enters
+FRMCS or FRMCS+GSM-R while FRMCS is installed on-board, and the FRMCS
+on-board registration is not registered to the FRMCS Radio Network (E5),
+the process shall go to A41. Otherwise (E6) ... back to S3-1"; A41 the
+text message, "The procedure shall go to D10"; D10 "If the stored Radio
+Network type is FRMCS+GSM-R while both radio systems are installed
+on-board, the procedure shall go back to S3-1. Otherwise, the procedure
+shall go to S10". The claims at the source: the on-board reports the
+type's wait as MSG_ONBOARD waiting 1, the same value as the S4 wait;
+the radio byte already carries the stored type (bits 0-1), the systems
+installed (bits 2-3) and the FRMCS registration (bit 4), so the DMI
+knows D10's condition from the on-board; the DMI already took D10 at
+the entry (`FRMCS_Registration_Missing` and `Both_Radio_Systems` of the
+entered type: S10 at once with FRMCS alone, the Radio data window kept
+with both systems); `Onboard_State_Changed` then replaced the Radio
+data window by the Main window for the hour glass and left the Main
+window open at the wait's end (`Waiting_Kind` Radio_Network,
+`D9_Pending` false): the backlog line held. Decision (who tells): no
+protocol change; the on-board tells the DMI the state (the radio byte),
+and the DMI keeps the window the wait interrupted: a waiting 1 that
+begins with the Radio data window on top (only after the type entry
+with both systems: the S4 wait begins in the Main window, A31's wait is
+waiting 2) records where to come back (`Radio_Data_Resume`: in the
+Start Up dialogue sequence or over the Main window, Table 50 S5-4 E1 ->
+A6 -> D9 alike); at its end the Radio data window comes back when the
+radio byte says FRMCS registered (a registration in time, E6's S3-1) or
+FRMCS+GSM-R stored with both systems (D10 -> S3-1), the Main window
+stays otherwise (S10). The alternative, a new waiting value from
+`EVC_Core.Outputs`, needs an accessor of `EVC_Sessions.Network`
+(private) in `EVC_Sessions`, which is not this package's unit. From the
+driver's seat: after "FRMCS network registration failed" the driver is
+back in the Radio data window where they entered the type. The protocol
+comment of waiting 1 says so. Scenario
+`DMI_Test_Windows.Scenario_Network_Type_Wait` (MSG_ONBOARD raw: S3-1
+with both systems, FRMCS+GSM-R entered, waiting 1, the system status
+message, waiting 0; then a registration in time; then FRMCS alone):
+before the fix 3 checks failed (D10 -> S3-1 twice, [Close] disabled),
+after it none. Goldens added: `network_type_wait_main` (the Main
+window, every button disabled, the hour glass after its title) and
+`network_type_wait_radio_data` (the Radio data window, 'Radio network
+type', 'GSM-R network ID' and 'Mission with one radio system' enabled,
+'Contact last RBC', 'Use short number' and 'Enter RBC data' disabled,
+"FRMCS network registration failed" in the message area);
+`golden_review.py --intent`: both as intended. `dmi_fuzz` raised 0.
+The runner: 5040300_24 SV30 failed 102 -> passed; signature S322852a4
+has no sequence left (its triage line says so); 0 regressions (1179 /
+1051 / 960). DMI 11.7.2.4 D10 noted here (the DMI has no matrix).
+B2680 done.

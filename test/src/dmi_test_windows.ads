@@ -23,4 +23,6 @@ package DMI_Test_Windows is
 
    procedure Scenario_Waiting_Window;
 
+   procedure Scenario_Network_Type_Wait;
+
 end DMI_Test_Windows;

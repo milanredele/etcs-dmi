@@ -82,6 +82,14 @@ package body DMI_Windows is
    -- Mission with one radio system window
    D9_Pending : Boolean := False;
 
+   -- Table 49 S3-4 E5 / Table 50 S5-4 E1: the wait for the FRMCS
+   -- registration that the Radio network type entry begins interrupts
+   -- the Radio data window (D10 / D9 taken at the entry: both radio
+   -- systems installed); when it ends the Radio data window comes back,
+   -- in the Start Up dialogue sequence or over the Main window
+   type Radio_Data_Resume_T is (No_Resume, Resume_Start_Up, Resume_Main);
+   Radio_Data_Resume : Radio_Data_Resume_T := No_Resume;
+
    -- Table 50 D5, exception (B023): the level entry led to S5-1 (Trip
    -- armed); if the on-board then switches to TR while the Radio data
    -- window is still in the stack, the default window is presented
@@ -1190,6 +1198,12 @@ package body DMI_Windows is
       -- window with all buttons disabled and the hour glass ST05
       if Awaiting_Answer then
          if not Waiting_Window then
+            Radio_Data_Resume :=
+              (if Waiting /= Radio_Network or else Depth = 0
+                 or else Stack (Depth) /= W_Radio_Data
+               then No_Resume
+               elsif Sequence_Active then Resume_Start_Up
+               else Resume_Main);
             To_Default_Window;
             Open (W_Main);
             Waiting_Window := True;
@@ -1226,6 +1240,19 @@ package body DMI_Windows is
                  and then Mission_With_One_Radio_Possible
                then
                   Start_Up_Window (W_One_Radio);
+               -- Table 49 S3-4 E5 -> A41 -> D10 (Table 50 S5-4 E1 -> A6
+               -- -> D9): back to the Radio data window when the stored
+               -- type is FRMCS+GSM-R with both radio systems installed
+               -- (the EVC's radio byte); a registration in time ends the
+               -- wait there too, as E6 (E2) does
+               elsif Radio_Data_Resume /= No_Resume
+                 and then (FRMCS_Registered or else Both_Radio_Systems)
+               then
+                  if Radio_Data_Resume = Resume_Start_Up then
+                     Start_Up_Window (W_Radio_Data);
+                  else
+                     Open (W_Radio_Data);       -- over the Main window
+                  end if;
                end if;
             when others =>
                -- Table 49 A31 and Table 50 S8 / S9 end in the Main window
@@ -1233,6 +1260,7 @@ package body DMI_Windows is
                null;
          end case;
          D9_Pending := False;
+         Radio_Data_Resume := No_Resume;
          Waiting_Kind := Nothing;
       end if;
 
