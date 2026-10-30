@@ -16458,3 +16458,110 @@ recommendation, 6 on the cause), 1 undecided (8). My calls: 5a (A);
 the LX restriction's end in the MRSP. Backlog: B2820, B2821, B2822.
 Brief premises wrong: none. The review took about 128 tool calls of
 130, past the bound of 100 (item 8 taken at about 104).
+
+### E5 integration after the fifty-eighth round, the twenty-sixth of E6 (2026-10-30)
+
+Merged: e6/authority-rest (B2560: the claim "no unit gives the border
+crossing" was wrong, `EVC_Position.Report_Triggers.Border_Front` fires
+once when the max safe front end reaches D_RBCTR; `Delete_Inhibition`
+deletes the inhibition on it, `Scenario_TSR_Inhibition_Border`, 3.11.5.14
+done; B2640: a trackside VBC order refused for a full room leaves no
+record of its own (SUBSET-027 4.2.4.28 / .29 record the driver's codes
+only, the order is on the JRU inside message 6; SUBSET-040 4.3.2.1 w)
+makes an eleventh the trackside's error), the reading in `Order`'s
+heading, the capacities 20 + 10 written for the installation notes; two
+papers for the user: B2720 recommends the 40 s of A.3.1 from the power-up
+when no FRMCS report has come (the same hole at S4 for FRMCS alone),
+B2681 recommends judging packets 57, 58 and 63 by `Radio_Valid_For` like
+64 (no reverse Q_DIR in the corpus, a temporary build moved nothing)),
+e5/runner-top (S185bee31, 16 sequences, traced by cause: 5060400_01 the
+mode change report's repetitions (B788) and 4080451_01 the shunting
+request's termination (B789), both built by sessions-rest this round;
+6060500_10 and twins E7 (6.6.3.4.1.3); 3130700_07 step 91 "cause not
+found" (B2800, overturned by the review below); 3150100_09 / _11 s076;
+`S076_Run.Wait_Limit` waits 61 s for an expected 156 (A.3.1: three
+repetitions 15 s apart); S3372f797, 12 sequences, s076 on a resumption:
+none of the four sequences carries an air tightness condition, ERA's
+PDFs checked (5180200_01's packet 68 is a powerless section, 3070300_03's
+is M_TRACKCOND 0000); S82c622ac not taken), e6/dmi-d10 (B2680: the DMI
+remembers the window the type's wait interrupted (`Radio_Data_Resume`)
+and comes back to the Radio data window when the radio byte says FRMCS
+registered or FRMCS+GSM-R with both systems installed (DMI Table 49 D10),
+the Main window otherwise; no protocol change; `Scenario_Network_Type_
+Wait`, two goldens judged as intended by the blind description (the
+describer misread Start as bright; a side effect not named by the
+author: Enter RBC data disabled by the scenario's radio byte); 5040300_24
+passed; the s10 golden renamed s20 (5.4.3.2 D11 / D15: S10 has no
+session), a real S10 check added with the same picture; B2660 the
+heading fixed), and e6/sessions-rest (B2721 / B2700: `One_Radio` deleted
+with A.3.4 column k at the desk closure (`EVC_Sessions.Desk_Closed_In_
+SoM` from `EVC_Core.Modes`), the timed-out S4 wait re-armed and not
+restarted (E72 counts from the latest GSM-R order and 3.5.6.1 orders
+none at a desk opening): A42 at once at the reopening, the one-radio
+window offered again; 3050600_06 stops at 72 instead of 73 (Sc1b91892,
+s076: the sequence expects a fresh 40 s), steps 80 to 85 pass; B788:
+`EVC_Sessions.Reports.Supervise_Mode_Report`, message 136 repeated
+three times 15 s apart then the session terminated (SH: ended by the
+order to terminate; PT: by message 6), `Scenario_Mode_Report_Repeated`,
+5.6.4.2 / .3 and 5.11.4.1.1 / .2 done; B789's 5.6.4.1.2: `EVC_Sessions.
+Take_SH_Request_Failed` called from `EVC_Core.Modes.Evaluate_Radio`
+(the sessions cannot read the authority: a circular dependency, the
+brief's premise wrong), `Scenario_SH_Request_Failed`; the bound passed
+at 132 with the third item in hand), and e5/review-58 (the seventh blind
+review, below). The merged tree passed 5060400_01 and 4080451_01 in
+three versions: the runner's 61 s wait and the sessions' builds met.
+
+The review (e5/review-58, 128 calls, 7.6 USD, its bound passed at 104
+for the eighth item): eight items, all reached, fully blind; ten
+verdicts, 7 agreed, 2 disagreed, 1 undecided. Disagreed: (B2820) the S3
+wait without an FRMCS report: the reviewer recommends A41 at once (E4
+holds plainly) against the paper's 40 s from the power-up: the user
+decides; (B2821) 3130700_07 step 91: the cause the runner agent did not
+find: the sequence's message 38 at step 65 has the SV2 layout (75 bits
+with NID_LRBG, ERA's PDF too) where 8.7.16 has 51, ours rejects it with
+M_ERROR 3, gets no acknowledgement and terminates the session by
+3.5.3.7.4.1 at 43.7 + 30 s, so the order of step 89 finds no session: a
+SUBSET-076 defect, also in 3130700_08 and 4080421_03 SV30. Undecided
+(B2822): S82c622ac at 5160000_01 step 55: the second level crossing's
+symbol shown from about 1464 m where the sequence makes it relevant at
+1695 m, and the first crossing's 70 km/h kept at 1548 m where the step's
+comment has 120 at 1450 (5.16.1.3): the restriction's end and the
+indication point to trace. A remark with no line: the runner passes the
+three repetition steps of 5060400_01 at once on the first 136, so it
+does not time them. Seven rounds of reviews: 60 items, 55 agreed, 8
+disagreed, 4 undecided; 19 lines, of which 7 became fixes (B2721 this
+round); 39.7 USD.
+
+Verification of the merged tree: one chain run, all green: `test/check.sh`
+ok; the full proof 13684 checks, none unproved, margin 47726 steps;
+cross build and stack 32768 B budget, margin 6160 B; wasm and both
+smokes 0 failures; the runner 1178 / 1052 / 960 -> 1185 / 1045 / 960
+(5040300_24 passed; the six of the merge), 0 regressions against the
+merged baseline, no signature untriaged. The merge: authority-rest
+fast-forwarded; plan conflicts on the other three, the backlog on two,
+none in code; two golden reviews with the blind description. The chain
+script had vanished from the scratchpad again and now lives with the
+briefs.
+
+Costs (doc/ROUNDS.csv): 34.3 USD with the review (26.7 for the four
+packages, 7.6 the review), 11 of 12 package items done (S82c622ac not
+taken), 2 of 32 brief premises wrong (the border accessor; the sessions
+reading the authority), no agent over budget, one resumption inside
+budget (S3372f797, 20 calls), two agents past their bound with an item
+in hand (132, 128). Lessons: a runner agent's "cause not found" is a
+claim the review can settle (the message 38 layout); the chain script
+belongs in a persistent place; a trace that passes a repetition's steps
+on one message is a weakness of the runner to fix (the next runner
+package).
+
+The matrix: clauses left 73 -> 71 (todo 2, partial 69): 3.11.5.14,
+5.6.4.2 / .3, 5.11.4.1.1 / .2 done (done 2061 -> 2068). Open items:
+doc/BACKLOG.csv (36 open after this round; 4 added of which 3 by the
+review, 7 closed). Next: B2821 (the three sequences with message 38 in
+the SV2 layout blocked as S076-defect; B2800 closed by it), B2822 (the
+LX restriction's end and the indication point), S82c622ac's other
+sequences, the runner timing the repetition steps; B789's 5.6.2.2
+scenario; B781's 6th bullet and the relocations; the user's decisions:
+B2820 / B2720 (A41 at once, or 40 s from the power-up), B2681 (packets
+57 / 58 / 63 by direction), B1060, B1340; the review again (eight items,
+readings first, no backlog read).
