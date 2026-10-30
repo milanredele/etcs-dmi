@@ -370,6 +370,7 @@ begin
    Scenario_Network_S4_Timeout;
    Scenario_Network_FRMCS;
    Scenario_Network_S4_Without_Contact;
+   Scenario_Network_One_Radio_Desk_Closed;
    Scenario_Network_Type_At_S3;
    Scenario_Network_Radio_Order;
    Scenario_Network_Level_1;

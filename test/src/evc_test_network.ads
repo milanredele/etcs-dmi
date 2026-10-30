@@ -32,6 +32,14 @@ package EVC_Test_Network is
    --  or 34
    procedure Scenario_Network_S4_Without_Contact;
 
+   --  A.3.4.1.2 k): the desk closed and opened again during the start of
+   --  mission after the driver elected the mission with only one radio
+   --  system (5.4.3.2 S5): the choice is deleted (A.3.4 column k), the
+   --  start of mission reaches S4 again and its wait ends by E72 at once,
+   --  the time since the latest GSM-R order elapsed: entry 33 again, S5
+   --  offered again with no value
+   procedure Scenario_Network_One_Radio_Desk_Closed;
+
    --  5.4.3.2 S3 E4 -> A41 -> D8: the driver's Radio Network type naming
    --  FRMCS while the FRMCS on-board is not registered; the wait until
    --  the time of A.3.1 from its detection, entry 33, the wait ended

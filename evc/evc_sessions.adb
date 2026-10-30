@@ -1515,6 +1515,11 @@ is
       Follow_Version;
    end Evaluate;
 
+   procedure Desk_Closed_In_SoM is
+   begin
+      Network.Desk_Closed_In_SoM;
+   end Desk_Closed_In_SoM;
+
    procedure Mode_Changed (From, To : Mode_T) is
    begin
       Count (Mode_Changes);

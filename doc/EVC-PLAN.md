@@ -15972,3 +15972,47 @@ inhibition at the RBC/RBC border), B2640; B789's rest, B788; B781's 6th
 bullet and the relocations; B1060 and B1340 are the user's decisions
 (papers written); the review again (eight items, readings first, no
 backlog read).
+
+### The sessions' remaining procedures: the one-radio choice at a desk closure, the mode change report repeated, the termination after the shunting request (e6/sessions-rest) (2026-10-30)
+
+**The one-radio choice deleted at a desk closure (B2721 with B2700
+done).** A.3.4.1.2 k) is "driver closes the desk during SoM"; A.3.4's
+column k gives "Mission performed with only one radio system" D (the
+Driver ID TBR; the Radio Network information, the radio system used and
+the RBC contact information U). The claim held at the source:
+`EVC_Sessions.Network`'s `One_Radio` was cleared only in `Clear`
+(power-up), and the column k block of
+`EVC_Core.Modes.Evaluate_Modes_And_Levels` (`EVC_Mission.Desk_Closed_In_SoM`)
+deleted the other rows. Built: `EVC_Sessions.Desk_Closed_In_SoM`, called
+from that block, gives `EVC_Sessions.Network.Desk_Closed_In_SoM`, which
+deletes the choice. Traced after the deletion alone: the reopened start
+of mission reaches D7 -> S4 again at the Driver ID's revalidation
+(`EVC_Sessions.Mission`: Idle at the desk closure, Decided with
+`Awaiting_Network` at the revalidation), but the wait of S4 had timed
+out in the ended start of mission (`Timed_Out`, entry 33 at 65.0 s), so
+no hour glass, no new A42 and no S5: the driver stuck at the Main
+window. Decision (the S4 time of B2700): E72 is "a sufficient time ...
+elapsed since it has sent the latest GSM-R Radio Network registration
+order", and 3.5.6.1 orders none at a desk opening, so the time is not
+restarted; the wait's outcome belonged to the start of mission that
+ended (5.4.3.2.1 "The desk is closed"), so it is watched again (the
+flag `Rewatch`, applied by `Supervise_Wait` once `In_SoM`, the step of
+the last cycle, has fallen); the new S4 then goes to A42 at once when
+the time has elapsed (the unit's earlier decision: "a start of mission
+reaching S4 after the time fails at once"): MSG_ONBOARD waiting 1 for
+one cycle, entry 33 again, A43 -> S5, the DMI's D9 opens the Mission
+with one radio system window with no value. Scenario
+`EVC_Test_Network.Scenario_Network_One_Radio_Desk_Closed` (3050600_06's
+path: S4 by D7 without a contact, both systems, FRMCS not registered,
+entry 33, 'Yes', the desk closed: the choice gone (Radio_Bits < 64);
+reopened, the Driver ID entered: the hour glass seen, entry 33 again,
+the wait ended, the choice not restored); before the fix it failed two
+checks. Runner: 3050600_06 SV30 failed 73 -> failed 72 (Sc1b91892,
+triaged s076: the sequence expects a new 40 s wait, the hour glass at
+73, "A timer expires" at 75; ours opens S5 before step 72's Main
+window), steps 80 to 85 pass now (S5 again, 'Yes', the Radio data and
+RBC data windows); 1178 / 1052 / 960 unchanged, steps 210005 -> 210011
+passed; the baseline re-recorded for that sequence alone. Row A.3.4.1.3
+Table (column k) noted with the unit and the scenario (no row
+A.3.4.1.2 k) exists in the matrix); triage S7e2edbdf's 3050600_06 line
+marked fixed.

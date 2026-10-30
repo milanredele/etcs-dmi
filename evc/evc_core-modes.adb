@@ -63,9 +63,10 @@ is
       end if;
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
-      --  transition orders, the national values not yet applicable); the
-      --  Train Data, the driver ID and the train running number are to be
-      --  revalidated (EVC_Mission)
+      --  transition orders, the national values not yet applicable, the
+      --  mission with only one radio system); the Train Data, the driver
+      --  ID and the train running number are to be revalidated
+      --  (EVC_Mission)
       if EVC_Mission.Desk_Closed_In_SoM then
          EVC_National_Values.Delete_Pending;
          EVC_Track_Description.Delete
@@ -80,6 +81,7 @@ is
          EVC_Position.Delete_Linking;
          EVC_Stored_Information.Set_Driver_Slippery (False);
          EVC_Levels.Delete_Orders;
+         EVC_Sessions.Desk_Closed_In_SoM;
       end if;
    end Evaluate_Modes_And_Levels;
 

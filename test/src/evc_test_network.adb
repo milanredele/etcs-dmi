@@ -407,6 +407,65 @@ package body EVC_Test_Network is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_S4_Without_Contact;
 
+   procedure Scenario_Network_One_Radio_Desk_Closed is
+      use type EVC_Core.Time_Ms_T;
+      Start      : EVC_Core.Time_Ms_T;
+      Shown      : Boolean := False;
+      Hour_Glass : Boolean := False;
+      Cab        : constant Byte := Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1);
+   begin
+      --  as 3050600_06: S4 by D7 without a contact, both systems, FRMCS
+      --  not registered, E72 -> A42 (entry 33) -> S5
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000,
+          Systems => EVC_Config.Both_Systems,
+          Default_Type => EVC_Config.FRMCS_GSMR, Default_MN => 16#262FFF#));
+      EVC_Test_Modes.Start_E4;
+      Give_Radio_Event (1, FRMCS_Not_Registered);
+      Start := EVC_Core.Time_Ms;
+      Add_Group (Group (10, 20));
+      Run_X (5_000, 100);
+      Stand;
+      Send (Action (11, 5));
+      Send (Text_Entry (0, "1234"));
+      while not Shown and then EVC_Core.Time_Ms - Start < 45_000 loop
+         Stand;
+         Shown := Status_Shown (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+      end loop;
+      --  S5: 'Yes' (DMI 11.3.16, the choice byte 1)
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (7, 1)));
+      Check (Shown and then EVC_Sessions.Radio_Bits >= 64,
+             "one radio, desk closed: entry 33 at S4's end, then the "
+             & "mission with one radio system elected (5.4.3.2 S5) "
+             & Shown'Image & EVC_Sessions.Radio_Bits'Image);
+      Input (TIU, (Cab, 0));
+      Stand;
+      Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_SB)
+             and then EVC_Sessions.Radio_Bits < 64,
+             "one radio, desk closed: the choice deleted at the desk "
+             & "closure during the start of mission (A.3.4.1.2 k), A.3.4 "
+             & "column k: D)" & EVC_Sessions.Radio_Bits'Image);
+      Input (TIU, (Cab, 1));
+      Stand;
+      Send (Text_Entry (0, "1234"));
+      Shown := False;
+      for I in 1 .. 20 loop
+         Hour_Glass := Hour_Glass or else Waiting = 1;
+         Shown := Shown
+           or else Status_Shown (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+         Stand;
+      end loop;
+      Check (Hour_Glass and then Shown and then Waiting = 0
+             and then EVC_Sessions.Registration_Timed_Out
+             and then EVC_Sessions.Radio_Bits < 64,
+             "one radio, desk closed: the reopened start of mission at S4 "
+             & "again (the hour glass), E72 at once (the latest GSM-R "
+             & "order 40 s ago), A42 entry 33 again, the choice not "
+             & "restored (S5 offered with no value) " & Hour_Glass'Image
+             & Shown'Image & Waiting'Image & EVC_Sessions.Radio_Bits'Image);
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_One_Radio_Desk_Closed;
+
    procedure Scenario_Network_Type_At_S3 is
       use type EVC_Core.Time_Ms_T;
       Start  : EVC_Core.Time_Ms_T;
@@ -569,7 +628,7 @@ package body EVC_Test_Network is
       EVC_Test_Modes.Start_E4;
       Send (Text_Entry (0, "1234"));
       Send (Action (11, 4));
-      Check (EVC_Core.Mode = EVC_Modes.M_SB
+      Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_SB)
              and then EVC_Core.Level = EVC_Modes.L1
              and then not R.Contact.Known
              and then R.Info (1).State = R.Idle,
@@ -592,7 +651,7 @@ package body EVC_Test_Network is
       Send (Text_Entry (1, "5678"));
       Send (RBC_Entry);
       Send (Text_Entry (4, "456"));
-      Check (EVC_Core.Mode = EVC_Modes.M_SB
+      Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_SB)
              and then EVC_Train_Data.Valid
              and then not R.Contact.Known and then R.Info (1).State = R.Idle
              and then R.Network.NID_MN = 16#456FFF#,

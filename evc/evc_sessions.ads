@@ -213,6 +213,13 @@ is
                      Input  => EVC_Mission.State),
           Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
 
+   --  The driver closed the desk during the start of mission
+   --  (EVC_Mission.Desk_Closed_In_SoM, A.3.4.1.2 k): A.3.4 column k's
+   --  mission with only one radio system deleted (EVC_Sessions.Network)
+   procedure Desk_Closed_In_SoM
+     with Global => (In_Out => State),
+          Post => Has_Released = Has_Released'Old;
+
    --  8. The messages and requests of the cycle (EVC_Radio.Send)
    --  @req 3.5.5.3, 3.16.3.5.3
    procedure Produce (Ctx : EVC_Radio.Context_T)

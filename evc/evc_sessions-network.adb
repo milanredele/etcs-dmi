@@ -17,7 +17,7 @@ package body EVC_Sessions.Network
                                    Timed_Out, Mode_Now, Exit_Seen,
                                    Trip_Stamp, Trip_Pending, FRMCS_Reg,
                                    FRMCS_Seen, FRMCS_At, FRMCS_Watch,
-                                   FRMCS_Out, Type_Wait))
+                                   FRMCS_Out, Type_Wait, Rewatch))
 is
 
    package R renames EVC_Radio;
@@ -54,6 +54,9 @@ is
    Order_At  : R.Time_Ms_T := 0;
    Watching  : Boolean := False;
    Timed_Out : Boolean := False;
+   --  the desk closed during the start of mission: the wait's outcome to
+   --  forget once that start of mission has left S4 (Desk_Closed_In_SoM)
+   Rewatch   : Boolean := False;
    --  4.8.4 for packet 45 by radio: the mode, and in PT whether message
    --  6 was received since PT was entered ([1])
    Mode_Now  : Mode_T := M_NP;
@@ -110,6 +113,7 @@ is
       FRMCS_Watch := False;
       FRMCS_Out := False;
       Type_Wait := False;
+      Rewatch := False;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -482,7 +486,7 @@ is
                              Failed       : in out Boolean;
                              FRMCS_Failed : in out Boolean)
      with Global => (In_Out => (Watching, Timed_Out, FRMCS_Watch,
-                                FRMCS_Out, Type_Wait),
+                                FRMCS_Out, Type_Wait, Rewatch),
                      Input  => (Order_At, Reg, FRMCS_Reg, FRMCS_Seen,
                                 FRMCS_At, Systems, One_Radio, R.State))
    is
@@ -496,6 +500,15 @@ is
         T = EVC_Config.FRMCS_GSMR
         and then Systems = EVC_Config.Both_Systems;
    begin
+      --  Desk_Closed_In_SoM: In_SoM is the step of the last cycle, so the
+      --  ended start of mission's S4 is forgotten once it is left
+      if Rewatch and then not In_SoM then
+         Rewatch := False;
+         Watching := Watching or else Timed_Out;
+         Timed_Out := False;
+         FRMCS_Watch := FRMCS_Watch or else FRMCS_Out;
+         FRMCS_Out := False;
+      end if;
       if Type_Wait then
          if FRMCS_Reg then
             Type_Wait := False;
@@ -534,6 +547,13 @@ is
            or else (Both and then not FRMCS_Registered);
       end if;
    end Supervise_Wait;
+
+   --  @req A.3.4.1.3 Table
+   procedure Desk_Closed_In_SoM is
+   begin
+      One_Radio := False;
+      Rewatch := True;
+   end Desk_Closed_In_SoM;
 
    procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
                        In_SoM : Boolean;
