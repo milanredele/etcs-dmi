@@ -1481,11 +1481,15 @@ is
    --  valid level other than 2 is the entry); 4.10.1.3, its row of the
    --  table: on entering NP, SB, PS, SH, SR, SL, NL, UN, SN or RV (Mode,
    --  entered in this cycle when Entered); 3.11.5.14 a), the session
-   --  with the RBC that ordered it terminated. The border of 3.11.5.14
-   --  b) is not taken
+   --  with the RBC that ordered it terminated; 3.11.5.14 b), the max
+   --  safe front end crossing the RBC/RBC border in this cycle (the
+   --  border trigger of EVC_Position, set once per transition order, the
+   --  only border it watches: a roll-back behind it does not repeat it)
    --  @req 4.9.1.3.1, 4.10.1.3 Table, 3.11.5.14, 3.11.5.14 1st bullet
+   --  @req 3.11.5.14 2nd bullet
    procedure Delete_Inhibition (Mode : Mode_T; Entered : Boolean)
-     with Global => (Input  => (EVC_Levels.State, EVC_Radio.State),
+     with Global => (Input  => (EVC_Levels.State, EVC_Radio.State,
+                                EVC_Position.State),
                      In_Out => (Inhibition, EVC_Radio_Info.State)),
           Post => EVC_Radio_Info.Count = EVC_Radio_Info.Count'Old
    is
@@ -1496,7 +1500,8 @@ is
                            and then Mode in M_NP | M_SB | M_PS | M_SH
                                           | M_SR | M_SL | M_NL | M_UN
                                           | M_SN | M_RV)
-                  or else not EVC_Radio.Established (Inhibition.Session))
+                  or else not EVC_Radio.Established (Inhibition.Session)
+                  or else EVC_Position.Report_Triggers.Border_Front)
       then
          Inhibition.On := False;
       end if;

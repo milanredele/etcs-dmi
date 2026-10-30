@@ -15972,3 +15972,35 @@ inhibition at the RBC/RBC border), B2640; B789's rest, B788; B781's 6th
 bullet and the relocations; B1060 and B1340 are the user's decisions
 (papers written); the review again (eight items, readings first, no
 backlog read).
+
+### The radio authority's remaining items and two decision papers: the inhibition at the RBC/RBC border, a refused VBC order, the S3 wait without an FRMCS report, the direction of packets 57 and 63 (e6/authority-rest) (2026-10-30)
+
+**The inhibition deleted at the RBC/RBC border (B2560 done).** 3.11.5.14
+b): "in case of RBC/RBC handover, the max safe front end of the train
+crosses the RBC/RBC border". The claim of the line ("no unit gives the
+border's crossing to the authority") was wrong at the source: the border
+of the transition order is watched by `EVC_Position` (`Set_Border`,
+called only by `EVC_Sessions.Handover.Apply_Order`), whose
+`Evaluate_Border` sets `Report_Triggers.Border_Front` in the cycle the
+max safe front end reaches it and invalidates the border (once per
+order: a roll-back behind it does not set it again); the triggers are
+reset at the start of the position's cycle, and the handover reads the
+same trigger in `EVC_Sessions.Handover.Evaluate` (3.15.1.3.1 b)). The
+authority's `Evaluate` already has `EVC_Position.State` as an input, so
+no accessor of `EVC_Sessions.Handover` was needed (no edit in
+`EVC_Sessions`). Built: `EVC_Radio_Authority.Delete_Inhibition` deletes
+the inhibition also when `EVC_Position.Report_Triggers.Border_Front`.
+The location compared is the max safe front end against D_RBCTR from
+the order's reference (5.15.1.4, the same as the border report). An
+order at once (D_RBCTR 0) has no border to cross: the inhibition stays
+until a) or another deletion, as the bullet reads. Scenario
+`EVC_Test_Authority.Scenario_TSR_Inhibition_Border` (failing before the
+fix at its two last checks): level 2, a transition order to RBC 400 by
+message 24 (packet 131, border 200 m beyond group 10, at 300 m), packet
+64 stored, the revocable TSR of the group at 200 m rejected; at 320 m
+the inhibition is deleted with the session of the Handing Over RBC
+still established; a roll-back to 270 m and forward to 410 m: still
+deleted, the revocable TSR of the group at 400 m taken. Rows: 3.11.5.14
+and its 2nd bullet done. Proof of `evc_radio_authority`: no unproved
+check. Runner: 0 regressions, no movement (no sequence of the corpus
+reaches a border with an inhibition stored).

@@ -40,6 +40,7 @@ with EVC_Text_Messages;
 with EVC_Position;
 with ETCS_Track_Packets.P74;
 with ETCS_Track_Packets.P79;
+with ETCS_Track_Packets.P131;
 with ETCS_Track_Packets.P137;
 with EVC_Movement_Authority;
 with EVC_Sessions;
@@ -2645,5 +2646,87 @@ package body EVC_Test_Authority is
              "TSR inhibition: packet 64 valid for both directions taken "
              & "(3.6.3.1.3)");
    end Scenario_TSR_Inhibition;
+
+   --  Message 24 referring to the group NID_BG with packet 131, the order
+   --  to switch to the RBC NID_RBC D_M metres beyond the group
+   function Transition_Message (NID_BG, D_M, NID_RBC : Natural)
+     return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      ETCS_Track_Packets.P131.Encode
+        ((NID_PACKET     => 131,
+          Q_DIR          => 2,
+          L_PACKET       => 0,
+          Q_SCALE        => 1,
+          D_RBCTR        => ETCS_Variables.D_RBCTR_T (D_M),
+          NID_C          => 123,
+          NID_RBC        => ETCS_Variables.NID_RBC_T (NID_RBC),
+          NID_RADIO      => 16#0077#,
+          Q_SLEEPSESSION => 0), W, OK);
+      Check (OK, "authority: packet 131 encoded");
+      return Message_Bytes (W);
+   end Transition_Message;
+
+   procedure Scenario_TSR_Inhibition_Border is
+      --  a revocable TSR of 40 km/h 50 m beyond its group over 50 m
+      function Revocable return T65.Packet_T is
+         P : T65.Packet_T;
+      begin
+         P.Q_DIR := 1;
+         P.Q_SCALE := 1;
+         P.NID_TSR := 7;
+         P.D_TSR := 50;
+         P.L_TSR := 50;
+         P.Q_FRONT := 1;
+         P.V_TSR := 8;
+         return P;
+      end Revocable;
+   begin
+      Start_L2;
+      Add_Group (Group (20, 200));
+      Add_Group (Group (40, 400));
+      Carry (2, 0, Revocable);
+      Carry (3, 0, Revocable);
+      Run_X (11_000);
+      --  the order to switch to the RBC 400 at the border 200 m beyond the
+      --  group 10 (at 300 m), then the inhibition by the RBC 1
+      Give_Radio_Message (1, Transition_Message (10, 200, 400));
+      Stand_X (200);
+      Give_Radio_Message (1, Inhibition_Message (10));
+      Stand_X (200);
+      Check (EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition at the border: stored with a handover order "
+             & "(3.11.5.13)");
+      Run_X (25_000);
+      Check (EVC_Track_Description.TSR_Count = 0,
+             "TSR inhibition at the border: the revocable TSR of the group "
+             & "in rear of the border rejected (4.8.3 [8]); TSRs"
+             & Natural'Image (EVC_Track_Description.TSR_Count));
+      Run_X (32_000);
+      Stand_X (200);
+      Check (not EVC_Radio_Info.TSR_Inhibited,
+             "TSR inhibition at the border: deleted when the max safe front "
+             & "end crosses the RBC/RBC border (3.11.5.14 b), the session "
+             & "with the RBC that ordered it established "
+             & Boolean'Image (EVC_Radio.Established (1)));
+      --  a roll-back behind the border and forward again: still deleted,
+      --  the revocable TSR of the next group taken
+      Run_X (27_000);
+      Stand_X (200);
+      Run_X (41_000);
+      Stand_X (200);
+      Check (not EVC_Radio_Info.TSR_Inhibited
+             and then EVC_Track_Description.TSR_Count = 1,
+             "TSR inhibition at the border: still deleted over a roll-back "
+             & "behind the border, the next group's revocable TSR taken; "
+             & "TSRs" & Natural'Image (EVC_Track_Description.TSR_Count));
+   end Scenario_TSR_Inhibition_Border;
 
 end EVC_Test_Authority;

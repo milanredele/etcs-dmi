@@ -79,6 +79,11 @@ package EVC_Test_Authority is
    --  TSR is taken; entering SR deletes it (4.10.1.3), the session with
    --  its RBC terminated too (3.11.5.14 a); not taken in level 1 (R [2])
    procedure Scenario_TSR_Inhibition;
+   --  3.11.5.14 b): the inhibition stored with an RBC transition order
+   --  (packet 131) is deleted when the max safe front end crosses the
+   --  RBC/RBC border, the session with its RBC still established; the
+   --  deletion kept over a roll-back behind the border
+   procedure Scenario_TSR_Inhibition_Border;
    --  Message 34 referring to the group 10 of country 123: the display
    --  from Begin_M to Begin_M + Len_M metres beyond it
    function TAF_Message (Begin_M, Len_M : Natural)
