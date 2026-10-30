@@ -69,6 +69,13 @@ package EVC_Test_Sessions is
 
    --  5.4.1.4: the session established at desk opening terminated
    procedure Scenario_Session_Desk_Opening;
+
+   --  5.6.4.2, 5.6.4.3: the report of the mode change to SH repeated
+   --  without the RBC's order to terminate, three times 15 s apart
+   --  (A.3.1), the session terminated 15 s after the last; 5.11.4.1.1,
+   --  5.11.4.1.2: the report of PT the same without message 6, none
+   --  repeated once message 6 is received
+   procedure Scenario_Mode_Report_Repeated;
    --  3.12.3.5: message 158 at the driver's acknowledgement of a text
    --  message with a request to report it, to the RBC of the request
    procedure Scenario_Text_Ack_Report;

@@ -1501,6 +1501,16 @@ is
             Reports.Request;
          end if;
       end;
+      --  5.6.4.3, 5.11.4.1.2: the report of SH or PT without the RBC's
+      --  reply after its repetitions
+      declare
+         Failed : R.Session_Ref_T;
+      begin
+         Reports.Supervise_Mode_Report (Ctx.Now_Ms, Failed);
+         if Failed /= R.No_Session then
+            Terminate_Session (Session_T (Failed), Ctx.Now_Ms);
+         end if;
+      end;
       Reports.Evaluate (SoM => Mission.Reporting, Mode => Ctx.Mode);
       Reports.Request_Balise_Errors (In_L2);
       Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill, In_L2);

@@ -16016,3 +16016,37 @@ passed; the baseline re-recorded for that sequence alone. Row A.3.4.1.3
 Table (column k) noted with the unit and the scenario (no row
 A.3.4.1.2 k) exists in the matrix); triage S7e2edbdf's 3050600_06 line
 marked fixed.
+
+**The mode change report repeated and the session terminated (B788
+done).** 5.6.4.2 (SH): "no order to terminate the session is received
+from the RBC within a fixed waiting time ... after reporting the mode
+change, the report shall be repeated"; 5.6.4.3: after the defined
+number of repetitions and the waiting time from the last without a
+reply, "terminate the communication session". 5.11.4.1.1 / 5.11.4.1.2
+say the same of the report of PT (5.11.2.2 A115: "which shall
+acknowledge the mode report (Recognition of exit from TR)", S120 waits
+for it). A.3.1: 3 repetitions excluding the first sending, 15 s before
+each. The claim held at the source: `EVC_Sessions.Reports.Mode_Changed`
+set the report due once, nothing watched it. Built:
+`EVC_Sessions.Reports.Supervise_Mode_Report` (called by
+`EVC_Sessions.Evaluate` before `Reports.Evaluate`): `Mode_Changed` arms
+the watch for a reported change to SH or PT (any other reported change
+ends it); `Produce` starts it when that report goes to the supervising
+RBC's established session (decision: not sent, no session established,
+nothing to watch: "in case a communication session is established");
+the reply ends it: for SH the session no longer Established (the RBC's
+order to terminate, 3.5.5.1 a), or any loss), for PT also message 6
+(`EVC_Radio.Trip_Exit_Recognised`); without it the report 136 is sent
+again to that session 15 s after the latest sending, three times, and
+15 s after the third the session is given back to
+`EVC_Sessions.Evaluate`, which terminates it (`Terminate_Session`, 156).
+The driver is not informed (the clauses say so only for the request for
+shunting, 5.6.4.1.2). Scenario
+`EVC_Test_Sessions.Scenario_Mode_Report_Repeated`: SH by the
+acknowledged mode proposal in level 2 (5.6.2.2 A095): three 136 at 15,
+30, 45 s, the session established at 59 s, terminated with 156 by 61 s;
+PT without message 6: the same; PT with message 6 (`PT_L2_At_S150`): no
+repetition, the session kept; three checks failed before the fix. Rows
+5.6.4.2, 5.6.4.3, 5.11.4.1.1, 5.11.4.1.2 done (`@req` on
+`Supervise_Mode_Report`). Runner: 0 movements (1178 / 1052 / 960,
+steps unchanged).

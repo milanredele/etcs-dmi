@@ -347,6 +347,7 @@ begin
    Scenario_Report_Reversing;
    Scenario_Session_Sleeping;
    Scenario_Session_Desk_Opening;
+   Scenario_Mode_Report_Repeated;
    Scenario_Text_Ack_Report;
    Scenario_Train_Integrity;
    --  phase E6: Supervised Manoeuvre, the safe consist length
