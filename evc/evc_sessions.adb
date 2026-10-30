@@ -30,6 +30,7 @@ package body EVC_Sessions
                                    Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code, Mode_Session,
                                    Mode_Capped, Sleeping, Desk_Was_Open,
+                                   SH_Failed_Seen,
                                    Contact_Tripped,
                                    In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
@@ -158,6 +159,8 @@ is
    Sleeping     : Boolean := False;
    --  5.4.1.4: a desk was open in the last cycle
    Desk_Was_Open : Boolean := False;
+   --  Take_SH_Request_Failed's Failed of the last cycle
+   SH_Failed_Seen : Boolean := False;
    --  3.16.3.4: the reaction of T_NVCONTACT triggered in this cycle
    Contact_Tripped : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
@@ -566,6 +569,7 @@ is
       Mode_Capped := False;
       Sleeping := False;
       Desk_Was_Open := False;
+      SH_Failed_Seen := False;
       Contact_Tripped := False;
       Ref_On := False;
       Ref_Ms := 0;
@@ -1529,6 +1533,19 @@ is
    begin
       Network.Desk_Closed_In_SoM;
    end Desk_Closed_In_SoM;
+
+   --  @req 5.6.4.1.2
+   procedure Take_SH_Request_Failed (Failed : Boolean;
+                                     Now    : EVC_Radio.Time_Ms_T)
+   is
+      Sv : constant R.Session_Ref_T := R.Supervising;
+   begin
+      if Failed and then not SH_Failed_Seen and then Sv /= R.No_Session
+      then
+         Terminate_Session (Session_T (Sv), Now);
+      end if;
+      SH_Failed_Seen := Failed;
+   end Take_SH_Request_Failed;
 
    procedure Mode_Changed (From, To : Mode_T) is
    begin

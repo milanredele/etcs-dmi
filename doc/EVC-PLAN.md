@@ -16050,3 +16050,35 @@ repetition, the session kept; three checks failed before the fix. Rows
 5.6.4.2, 5.6.4.3, 5.11.4.1.1, 5.11.4.1.2 done (`@req` on
 `Supervise_Mode_Report`). Runner: 0 movements (1178 / 1052 / 960,
 steps unchanged).
+
+**The termination after the request for shunting (B789 narrowed).**
+5.6.4.1.2: after the repetitions of the "Request for Shunting" and the
+waiting time from the last without a reply, the on-board "shall inform
+the driver and shall terminate the communication session". The claim
+held: `EVC_Radio_Authority` repeats message 130 and latches
+`SH_Request_Failed` (the driver informed), nothing in `EVC_Sessions`
+read it. Where `EVC_Sessions.Evaluate` would read it: it cannot,
+`EVC_Stored_Information` withs `EVC_Sessions` and the authority's spec
+withs `EVC_Stored_Information` (a circular dependency when tried). Built
+instead: `EVC_Sessions.Take_SH_Request_Failed (Failed, Now)`, called by
+`EVC_Core.Modes.Evaluate_Radio` right after
+`EVC_Radio_Authority.Evaluate`, terminates the session with the
+Supervising RBC (the request's addressee, 5.6.2.2 A045) at the rise of
+the latched flag (`SH_Failed_Seen`), 156 by `Terminate_Session`.
+Scenario `EVC_Test_Sessions.Scenario_SH_Request_Failed`: SR in level 2
+by the start of mission, Shunting selected, no answer: the request fails
+and the session is terminated with 156 between 59 and 62 s (four
+sendings 15 s apart and the waiting time); failed before the fix (the
+flag set, the session kept). Row 5.6.4.1.2 done. Runner: 1178 / 1052 /
+960 unchanged, steps 210011 -> 210026 passed (15 steps after a
+sequence's first failure; which sequence was not traced). Left of B789:
+the scenario of the shunting procedure of level 2 to the RBC's order to
+terminate (5.6.2.2 A095, S100, A115).
+
+Edits outside the named places: `EVC_Core.Modes.Evaluate_Radio` (the
+call of `Take_SH_Request_Failed`, the authority's state not nameable in
+`EVC_Sessions`), the column k block's call being the named one; the
+Global of `EVC_Core.Modes.Evaluate_Modes_And_Levels` (In_Out
+`EVC_Sessions.State`). Backlog: B2721, B2700, B788 done; B789
+narrowed; no new line. Commits: B2721 with B2700; B788; B789's
+5.6.4.1.2.

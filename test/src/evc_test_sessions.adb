@@ -1872,6 +1872,40 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Mode_Report_Repeated;
 
+   procedure Scenario_SH_Request_Failed is
+      use type EVC_Core.Time_Ms_T;
+      Start : EVC_Core.Time_Ms_T;
+      Ended : Boolean := False;
+      Gone  : EVC_Core.Time_Ms_T := 0;
+   begin
+      --  SR in level 2 at standstill, the session with RBC 300
+      --  established; the driver selects Shunting (message 130, 5.6.2.2
+      --  A045), the RBC never answers
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Send (Action (7));
+      Start := EVC_Core.Time_Ms;
+      while EVC_Core.Time_Ms - Start < 65_000 and then not Ended loop
+         Stand;
+         Ended := R.Info (1).State = R.Terminating
+           and then (for some J in 1 .. Radio_Outputs =>
+                       Is_Message (J, 156));
+         Gone := EVC_Core.Time_Ms - Start;
+      end loop;
+      Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_SR)
+             and then EVC_Radio_Authority.SH_Request_Failed
+             and then Ended and then Gone in 59_000 .. 62_000,
+             "SH request failed: 130 unanswered after three repetitions, "
+             & "the request failed and the session terminated, 156 "
+             & "(5.6.4.1.2) at" & Gone'Image & " ms "
+             & EVC_Radio_Authority.SH_Request_Failed'Image & Ended'Image);
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_SH_Request_Failed;
+
    ---------------------------------------------------------------------
    --  Phase 3 (e5/session-4): the position reports of 3.6.5
    ---------------------------------------------------------------------

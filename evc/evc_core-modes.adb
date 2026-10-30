@@ -131,6 +131,9 @@ is
           Train_Data_Unacked => EVC_Sessions.Train_Data_Awaited,
           TAF_Confirmed =>
             EVC_Driver_Requests.Selected (EVC_Driver_Requests.TAF_Yes)));
+      --  5.6.4.1.2: the session after the request for shunting failed
+      EVC_Sessions.Take_SH_Request_Failed
+        (EVC_Radio_Authority.SH_Request_Failed, Radio_Context.Now_Ms);
    end Evaluate_Radio;
 
    procedure Radio_Mode_Changed (From, To : Mode_T) is
