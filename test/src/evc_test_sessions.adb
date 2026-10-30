@@ -1787,6 +1787,125 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Desk_Opening;
 
+   procedure Scenario_Mode_Report_Repeated is
+      use type EVC_Core.Time_Ms_T;
+      T0    : EVC_Core.Time_Ms_T := 0;
+      Sent  : Natural := 0;
+      Times : array (1 .. 4) of EVC_Core.Time_Ms_T := (others => 0);
+      Ended : Boolean := False;
+
+      --  stand for Ms, counting the reports 136 to session 1 and their
+      --  times from T0, and whether the session left Established with
+      --  its 156
+      procedure Watch (Ms : EVC_Core.Time_Ms_T) is
+         Start : constant EVC_Core.Time_Ms_T := EVC_Core.Time_Ms;
+      begin
+         while EVC_Core.Time_Ms - Start < Ms loop
+            Stand;
+            if (for some J in 1 .. Radio_Outputs => Is_Message (J, 136))
+            then
+               Sent := Sent + 1;
+               if Sent <= Times'Last then
+                  Times (Sent) := EVC_Core.Time_Ms - T0;
+               end if;
+            end if;
+            Ended := Ended
+              or else (R.Info (1).State = R.Terminating
+                       and then (for some J in 1 .. Radio_Outputs =>
+                                   Is_Message (J, 156)));
+         end loop;
+      end Watch;
+
+      function Image return String is
+        (Sent'Image & " at" & Times (1)'Image & Times (2)'Image
+         & Times (3)'Image & Times (4)'Image & " ended " & Ended'Image);
+   begin
+      --  SH in level 2 by the acknowledged mode proposal: the report of
+      --  the mode change sent in that cycle (5.6.2.2 A095)
+      Scenario_SoM_L2_Mode_Proposal_SH;
+      T0 := EVC_Core.Time_Ms;
+      Watch (59_000);
+      Check (Sent = 3 and then Times (1) in 14_500 .. 16_000
+             and then Times (2) in 29_500 .. 31_000
+             and then Times (3) in 44_500 .. 46_000
+             and then not Ended and then R.Info (1).State = R.Established,
+             "mode report: the report of SH repeated three times 15 s "
+             & "apart without the RBC's order to terminate (5.6.4.2, A.3.1)"
+             & Image);
+      Watch (2_000);
+      Check (Sent = 3 and then Ended,
+             "mode report: no reply 15 s after the last repetition, the "
+             & "session terminated, 156 (5.6.4.3)" & Image);
+      --  PT in level 2 without message 6: the report of PT repeated, the
+      --  session terminated (5.11.2.2 A115, S120)
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_TR, EVC_Modes.L2);
+      Stand;
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      T0 := EVC_Core.Time_Ms;
+      Sent := 0;
+      Times := (others => 0);
+      Ended := False;
+      Watch (61_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_PT and then Sent = 3
+             and then Times (1) in 14_500 .. 16_000
+             and then Times (3) in 44_500 .. 46_000 and then Ended,
+             "mode report: the report of PT repeated three times without "
+             & "message 6, the session terminated 15 s after the last "
+             & "(5.11.4.1.1, 5.11.4.1.2)" & Image);
+      --  message 6 received: no repetition
+      PT_L2_At_S150;
+      T0 := EVC_Core.Time_Ms;
+      Sent := 0;
+      Times := (others => 0);
+      Ended := False;
+      Watch (61_000);
+      Check (Times (1) not in 14_500 .. 16_000 and then not Ended
+             and then R.Info (1).State = R.Established,
+             "mode report: message 6 received, the report of PT not "
+             & "repeated, the session kept (5.11.4.1.1)" & Image);
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Mode_Report_Repeated;
+
+   procedure Scenario_SH_Request_Failed is
+      use type EVC_Core.Time_Ms_T;
+      Start : EVC_Core.Time_Ms_T;
+      Ended : Boolean := False;
+      Gone  : EVC_Core.Time_Ms_T := 0;
+   begin
+      --  SR in level 2 at standstill, the session with RBC 300
+      --  established; the driver selects Shunting (message 130, 5.6.2.2
+      --  A045), the RBC never answers
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Send (Action (7));
+      Start := EVC_Core.Time_Ms;
+      while EVC_Core.Time_Ms - Start < 65_000 and then not Ended loop
+         Stand;
+         Ended := R.Info (1).State = R.Terminating
+           and then (for some J in 1 .. Radio_Outputs =>
+                       Is_Message (J, 156));
+         Gone := EVC_Core.Time_Ms - Start;
+      end loop;
+      Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_SR)
+             and then EVC_Radio_Authority.SH_Request_Failed
+             and then Ended and then Gone in 59_000 .. 62_000,
+             "SH request failed: 130 unanswered after three repetitions, "
+             & "the request failed and the session terminated, 156 "
+             & "(5.6.4.1.2) at" & Gone'Image & " ms "
+             & EVC_Radio_Authority.SH_Request_Failed'Image & Ended'Image);
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_SH_Request_Failed;
+
    ---------------------------------------------------------------------
    --  Phase 3 (e5/session-4): the position reports of 3.6.5
    ---------------------------------------------------------------------

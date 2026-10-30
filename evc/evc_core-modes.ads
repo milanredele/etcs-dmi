@@ -33,7 +33,8 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Position.State,
-                                EVC_Stored_Information.State)),
+                                EVC_Stored_Information.State,
+                                EVC_Sessions.State)),
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old

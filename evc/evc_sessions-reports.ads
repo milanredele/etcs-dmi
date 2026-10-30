@@ -4,7 +4,9 @@
 --  and as the position report parameters of packet 58 ask (3.6.5.1.5,
 --  3.6.5.1.7), and the deletion of those parameters on entering level 1
 --  (4.9.1.3). Entry points, numbered as in EVC_Sessions: Take_Message,
---  Evaluate, Mode_Changed, Produce (Request: the integrity reports).
+--  Evaluate, Mode_Changed, Produce (Request: the integrity reports;
+--  Supervise_Mode_Report before Evaluate: the report of SH or PT awaiting
+--  the RBC's reply, 5.6.4.2, 5.11.4.1.1).
 --
 --  A private child of EVC_Sessions, its state a part of the parent's.
 --  EVC_Position computes what the position knows (Report_Triggers:
@@ -92,6 +94,19 @@ is
    --  @req 5.11.2.2 A030, 5.11.2.2 A115
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T)
      with Global => (In_Out => State);
+
+   --  5.6.4.2, 5.11.4.1.1: the report of the mode change to SH or to PT
+   --  sent to the supervising RBC's established session awaits the RBC's
+   --  reply (for SH its order to terminate the session, the session no
+   --  longer established; for PT message 6, the exit from TR recognised);
+   --  without it the report is repeated at the next Produce after the
+   --  fixed waiting time of A.3.1 (15 s), three times. Failed: the session
+   --  still without the reply the waiting time after the last repetition,
+   --  to terminate (5.6.4.3, 5.11.4.1.2), No_Session else
+   --  @req 5.6.4.2, 5.6.4.3, 5.11.4.1.1, 5.11.4.1.2
+   procedure Supervise_Mode_Report (Now    : EVC_Radio.Time_Ms_T;
+                                    Failed : out EVC_Radio.Session_Ref_T)
+     with Global => (In_Out => State, Input => EVC_Radio.State);
 
    --  4.5.2: the change From -> To is reported (Mode_Changed's rule)
    function Mode_Reported (From, To : EVC_Modes.Mode_T) return Boolean is

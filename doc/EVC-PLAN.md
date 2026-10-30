@@ -16271,3 +16271,112 @@ B2660 done.
 Backlog: B2680, B2660 done; no new line. Edits outside the named units:
 none (`common/dmi_protocol.ads` at waiting 1's comment, as named).
 Commits: B2680; the s10 golden; B2660.
+### The sessions' remaining procedures: the one-radio choice at a desk closure, the mode change report repeated, the termination after the shunting request (e6/sessions-rest) (2026-10-30)
+
+**The one-radio choice deleted at a desk closure (B2721 with B2700
+done).** A.3.4.1.2 k) is "driver closes the desk during SoM"; A.3.4's
+column k gives "Mission performed with only one radio system" D (the
+Driver ID TBR; the Radio Network information, the radio system used and
+the RBC contact information U). The claim held at the source:
+`EVC_Sessions.Network`'s `One_Radio` was cleared only in `Clear`
+(power-up), and the column k block of
+`EVC_Core.Modes.Evaluate_Modes_And_Levels` (`EVC_Mission.Desk_Closed_In_SoM`)
+deleted the other rows. Built: `EVC_Sessions.Desk_Closed_In_SoM`, called
+from that block, gives `EVC_Sessions.Network.Desk_Closed_In_SoM`, which
+deletes the choice. Traced after the deletion alone: the reopened start
+of mission reaches D7 -> S4 again at the Driver ID's revalidation
+(`EVC_Sessions.Mission`: Idle at the desk closure, Decided with
+`Awaiting_Network` at the revalidation), but the wait of S4 had timed
+out in the ended start of mission (`Timed_Out`, entry 33 at 65.0 s), so
+no hour glass, no new A42 and no S5: the driver stuck at the Main
+window. Decision (the S4 time of B2700): E72 is "a sufficient time ...
+elapsed since it has sent the latest GSM-R Radio Network registration
+order", and 3.5.6.1 orders none at a desk opening, so the time is not
+restarted; the wait's outcome belonged to the start of mission that
+ended (5.4.3.2.1 "The desk is closed"), so it is watched again (the
+flag `Rewatch`, applied by `Supervise_Wait` once `In_SoM`, the step of
+the last cycle, has fallen); the new S4 then goes to A42 at once when
+the time has elapsed (the unit's earlier decision: "a start of mission
+reaching S4 after the time fails at once"): MSG_ONBOARD waiting 1 for
+one cycle, entry 33 again, A43 -> S5, the DMI's D9 opens the Mission
+with one radio system window with no value. Scenario
+`EVC_Test_Network.Scenario_Network_One_Radio_Desk_Closed` (3050600_06's
+path: S4 by D7 without a contact, both systems, FRMCS not registered,
+entry 33, 'Yes', the desk closed: the choice gone (Radio_Bits < 64);
+reopened, the Driver ID entered: the hour glass seen, entry 33 again,
+the wait ended, the choice not restored); before the fix it failed two
+checks. Runner: 3050600_06 SV30 failed 73 -> failed 72 (Sc1b91892,
+triaged s076: the sequence expects a new 40 s wait, the hour glass at
+73, "A timer expires" at 75; ours opens S5 before step 72's Main
+window), steps 80 to 85 pass now (S5 again, 'Yes', the Radio data and
+RBC data windows); 1178 / 1052 / 960 unchanged, steps 210005 -> 210011
+passed; the baseline re-recorded for that sequence alone. Row A.3.4.1.3
+Table (column k) noted with the unit and the scenario (no row
+A.3.4.1.2 k) exists in the matrix); triage S7e2edbdf's 3050600_06 line
+marked fixed.
+
+**The mode change report repeated and the session terminated (B788
+done).** 5.6.4.2 (SH): "no order to terminate the session is received
+from the RBC within a fixed waiting time ... after reporting the mode
+change, the report shall be repeated"; 5.6.4.3: after the defined
+number of repetitions and the waiting time from the last without a
+reply, "terminate the communication session". 5.11.4.1.1 / 5.11.4.1.2
+say the same of the report of PT (5.11.2.2 A115: "which shall
+acknowledge the mode report (Recognition of exit from TR)", S120 waits
+for it). A.3.1: 3 repetitions excluding the first sending, 15 s before
+each. The claim held at the source: `EVC_Sessions.Reports.Mode_Changed`
+set the report due once, nothing watched it. Built:
+`EVC_Sessions.Reports.Supervise_Mode_Report` (called by
+`EVC_Sessions.Evaluate` before `Reports.Evaluate`): `Mode_Changed` arms
+the watch for a reported change to SH or PT (any other reported change
+ends it); `Produce` starts it when that report goes to the supervising
+RBC's established session (decision: not sent, no session established,
+nothing to watch: "in case a communication session is established");
+the reply ends it: for SH the session no longer Established (the RBC's
+order to terminate, 3.5.5.1 a), or any loss), for PT also message 6
+(`EVC_Radio.Trip_Exit_Recognised`); without it the report 136 is sent
+again to that session 15 s after the latest sending, three times, and
+15 s after the third the session is given back to
+`EVC_Sessions.Evaluate`, which terminates it (`Terminate_Session`, 156).
+The driver is not informed (the clauses say so only for the request for
+shunting, 5.6.4.1.2). Scenario
+`EVC_Test_Sessions.Scenario_Mode_Report_Repeated`: SH by the
+acknowledged mode proposal in level 2 (5.6.2.2 A095): three 136 at 15,
+30, 45 s, the session established at 59 s, terminated with 156 by 61 s;
+PT without message 6: the same; PT with message 6 (`PT_L2_At_S150`): no
+repetition, the session kept; three checks failed before the fix. Rows
+5.6.4.2, 5.6.4.3, 5.11.4.1.1, 5.11.4.1.2 done (`@req` on
+`Supervise_Mode_Report`). Runner: 0 movements (1178 / 1052 / 960,
+steps unchanged).
+
+**The termination after the request for shunting (B789 narrowed).**
+5.6.4.1.2: after the repetitions of the "Request for Shunting" and the
+waiting time from the last without a reply, the on-board "shall inform
+the driver and shall terminate the communication session". The claim
+held: `EVC_Radio_Authority` repeats message 130 and latches
+`SH_Request_Failed` (the driver informed), nothing in `EVC_Sessions`
+read it. Where `EVC_Sessions.Evaluate` would read it: it cannot,
+`EVC_Stored_Information` withs `EVC_Sessions` and the authority's spec
+withs `EVC_Stored_Information` (a circular dependency when tried). Built
+instead: `EVC_Sessions.Take_SH_Request_Failed (Failed, Now)`, called by
+`EVC_Core.Modes.Evaluate_Radio` right after
+`EVC_Radio_Authority.Evaluate`, terminates the session with the
+Supervising RBC (the request's addressee, 5.6.2.2 A045) at the rise of
+the latched flag (`SH_Failed_Seen`), 156 by `Terminate_Session`.
+Scenario `EVC_Test_Sessions.Scenario_SH_Request_Failed`: SR in level 2
+by the start of mission, Shunting selected, no answer: the request fails
+and the session is terminated with 156 between 59 and 62 s (four
+sendings 15 s apart and the waiting time); failed before the fix (the
+flag set, the session kept). Row 5.6.4.1.2 done. Runner: 1178 / 1052 /
+960 unchanged, steps 210011 -> 210026 passed (15 steps after a
+sequence's first failure; which sequence was not traced). Left of B789:
+the scenario of the shunting procedure of level 2 to the RBC's order to
+terminate (5.6.2.2 A095, S100, A115).
+
+Edits outside the named places: `EVC_Core.Modes.Evaluate_Radio` (the
+call of `Take_SH_Request_Failed`, the authority's state not nameable in
+`EVC_Sessions`), the column k block's call being the named one; the
+Global of `EVC_Core.Modes.Evaluate_Modes_And_Levels` (In_Out
+`EVC_Sessions.State`). Backlog: B2721, B2700, B788 done; B789
+narrowed; no new line. Commits: B2721 with B2700; B788; B789's
+5.6.4.1.2.

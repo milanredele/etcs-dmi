@@ -213,6 +213,23 @@ is
                      Input  => EVC_Mission.State),
           Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
 
+   --  The driver closed the desk during the start of mission
+   --  (EVC_Mission.Desk_Closed_In_SoM, A.3.4.1.2 k): A.3.4 column k's
+   --  mission with only one radio system deleted (EVC_Sessions.Network)
+   procedure Desk_Closed_In_SoM
+     with Global => (In_Out => State),
+          Post => Has_Released = Has_Released'Old;
+
+   --  After the authority's cycle: Failed is
+   --  EVC_Radio_Authority.SH_Request_Failed (the request for shunting
+   --  without the RBC's answer after its repetitions, latched until the
+   --  next request); at its rise the session with the Supervising RBC the
+   --  request went to is terminated (5.6.4.1.2)
+   procedure Take_SH_Request_Failed (Failed : Boolean;
+                                     Now    : EVC_Radio.Time_Ms_T)
+     with Global => (In_Out => (State, EVC_Radio.State)),
+          Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
+
    --  8. The messages and requests of the cycle (EVC_Radio.Send)
    --  @req 3.5.5.3, 3.16.3.5.3
    procedure Produce (Ctx : EVC_Radio.Context_T)

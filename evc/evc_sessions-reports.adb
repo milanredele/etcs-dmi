@@ -23,7 +23,9 @@ package body EVC_Sessions.Reports
        Refined_State => (State => (P58, P58_Ref, P58_Held, Due,
                                    Was_Up, Last_Level,
                                    Level_Seen, N_Sent, N_Params,
-                                   Error_Due, Error_Code, TRN_Due))
+                                   Error_Due, Error_Code, TRN_Due,
+                                   Watch, Watch_Mode, Watch_S, Watch_At,
+                                   Watch_Reps, Repeat_Due))
 is
    package R renames EVC_Radio;
    use type R.Session_Ref_T;
@@ -57,6 +59,21 @@ is
    --  the train running number to send with the next report to the
    --  supervising RBC (3.18.4.5.4)
    TRN_Due    : Boolean := False;
+   --  5.6.4.2, 5.11.4.1.1 (Supervise_Mode_Report): the report of SH or
+   --  PT to send (Armed) or sent and awaiting the reply (Running), its
+   --  session, the time of its latest sending, the repetitions made
+   type Watch_T is (Off, Armed, Running);
+   Watch      : Watch_T := Off;
+   Watch_Mode : Mode_T := M_SH;
+   Watch_S    : R.Session_T := R.Session_T'First;
+   Watch_At   : R.Time_Ms_T := 0;
+   --  A.3.1: "Repetition of radio messages (i.e. excluding the first
+   --  sending)" 3 times, "Waiting time before radio message repetition"
+   --  15 s
+   Repetitions : constant := 3;
+   Repeat_Ms   : constant := 15_000;
+   Watch_Reps : Natural range 0 .. Repetitions := 0;
+   Repeat_Due : Boolean := False;
 
    function Reports_Sent return Natural is (N_Sent)
      with Refined_Global => N_Sent;
@@ -84,6 +101,12 @@ is
       Error_Due := (others => 0);
       Error_Code := (others => 0);
       TRN_Due := False;
+      Watch := Off;
+      Watch_Mode := M_SH;
+      Watch_S := R.Session_T'First;
+      Watch_At := 0;
+      Watch_Reps := 0;
+      Repeat_Due := False;
    end Clear;
 
    --  3.6.5.1.5, 3.6.5.1.7 (decision 4): the last packet 58 of the
@@ -211,7 +234,39 @@ is
       if Mode_Reported (From, To) then
          Due := True;
       end if;
+      --  a report of another mode ends the watch of the one before
+      if Mode_Reported (From, To) and then To in M_SH | M_PT then
+         Watch := Armed;
+         Watch_Mode := To;
+      else
+         Watch := Off;
+      end if;
    end Mode_Changed;
+
+   procedure Supervise_Mode_Report (Now    : EVC_Radio.Time_Ms_T;
+                                    Failed : out EVC_Radio.Session_Ref_T)
+   is
+   begin
+      Failed := R.No_Session;
+      Repeat_Due := False;
+      if Watch /= Running then
+         return;
+      end if;
+      if R.Info (Watch_S).State /= R.Established
+        or else (Watch_Mode = M_PT and then R.Trip_Exit_Recognised)
+      then
+         Watch := Off;
+      elsif Now >= Watch_At and then Now - Watch_At >= Repeat_Ms then
+         if Watch_Reps < Repetitions then
+            Watch_Reps := Watch_Reps + 1;
+            Watch_At := Now;
+            Repeat_Due := True;
+         else
+            Watch := Off;
+            Failed := R.Session_Ref_T (Watch_S);
+         end if;
+      end if;
+   end Supervise_Mode_Report;
 
    --  8.6.6: message 136 with packet 0, or packet 1 when the LRBG is a
    --  single group without co-ordinate system (3.6.5.1.2 i, 3.4.2.3.3)
@@ -317,16 +372,31 @@ is
       for S in R.Session_T loop
          pragma Loop_Invariant (True);
          if ((Due and then (Sv = R.Session_Ref_T (S) or else Also (S)))
-             or else Forced (S) or else Error_Due (S) > 0)
+             or else Forced (S) or else Error_Due (S) > 0
+             or else (Repeat_Due and then Watch = Running
+                      and then EVC_Ports."=" (Watch_S, S)))
            and then R.Info (S).State = R.Established
          then
+            --  5.6.4.2, 5.11.4.1.1: the report of SH or PT watched
+            if Due and then Watch = Armed and then Sv = R.Session_Ref_T (S)
+            then
+               Watch := Running;
+               Watch_S := S;
+               Watch_At := Ctx.Now_Ms;
+               Watch_Reps := 0;
+            end if;
             Send_136 (S, Ctx, Error_Due (S) > 0, Error_Code (S));
             if Error_Due (S) > 0 then
                Error_Due (S) := Error_Due (S) - 1;
             end if;
          end if;
       end loop;
+      --  not sent: no session established to watch (5.6.4.2)
+      if Watch = Armed then
+         Watch := Off;
+      end if;
       Due := False;
+      Repeat_Due := False;
    end Produce;
 
    procedure Produce_Text_Acks (Ctx : EVC_Radio.Context_T) is

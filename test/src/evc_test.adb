@@ -347,6 +347,8 @@ begin
    Scenario_Report_Reversing;
    Scenario_Session_Sleeping;
    Scenario_Session_Desk_Opening;
+   Scenario_Mode_Report_Repeated;
+   Scenario_SH_Request_Failed;
    Scenario_Text_Ack_Report;
    Scenario_Train_Integrity;
    --  phase E6: Supervised Manoeuvre, the safe consist length
@@ -370,6 +372,7 @@ begin
    Scenario_Network_S4_Timeout;
    Scenario_Network_FRMCS;
    Scenario_Network_S4_Without_Contact;
+   Scenario_Network_One_Radio_Desk_Closed;
    Scenario_Network_Type_At_S3;
    Scenario_Network_Radio_Order;
    Scenario_Network_Level_1;

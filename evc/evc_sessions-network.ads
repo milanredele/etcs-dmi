@@ -99,6 +99,17 @@ is
                   and then EVC_Radio.Train_Data_Acknowledged
                            = EVC_Radio.Train_Data_Acknowledged'Old;
 
+   --  A.3.4.1.2 k): the driver closed the desk during the start of
+   --  mission. A.3.4 column k deletes the mission with only one radio
+   --  system (5.4.3.2 S5); the Radio Network information, the radio
+   --  system used and the RBC contact information are unchanged. Decision:
+   --  a wait of S4 that timed out belonged to the start of mission that
+   --  ended (5.4.3.2.1), so it is watched again from the latest order kept
+   --  (3.5.6.1 orders none at desk opening): a start of mission reaching
+   --  S4 again after the time of A.3.1 goes to A42 at once (E71, E72)
+   procedure Desk_Closed_In_SoM
+     with Global => (In_Out => State);
+
    --  The mode of the on-board changed to To (the third filter of 4.8);
    --  the recognition of the exit from TR ends (EVC_Radio)
    procedure Mode_Changed (To : Mode_T)
