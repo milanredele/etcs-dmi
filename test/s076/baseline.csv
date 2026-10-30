@@ -2285,7 +2285,7 @@ Subset-076-6-3_5040300_21_v400_SV21,blocked,80,E5-radio
 Subset-076-6-3_5040300_21_v400_SV30,blocked,80,E5-radio
 Subset-076-6-3_5040300_22_v400_SV30,blocked,68,E5-radio
 Subset-076-6-3_5040300_23_v400_SV30,blocked,82,unclassified
-Subset-076-6-3_5040300_24_v400_SV30,failed,102,S322852a4
+Subset-076-6-3_5040300_24_v400_SV30,passed,0,-
 Subset-076-6-3_5040300_25_v400_SV30,failed,100,Sfb725745
 Subset-076-6-3_5040500_01_v400_SV21,blocked,72,E5-radio
 Subset-076-6-3_5040500_01_v400_SV22,blocked,72,E5-radio

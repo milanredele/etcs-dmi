@@ -16184,3 +16184,90 @@ M_TRACKCOND=0101; 4080454_01 step 125, every packet 68 is M_TRACKCOND
 tightness area in any of them: one s076 line before the family line
 `~track condition`, which is noted. No code change, the runner not
 moved. S82c622ac (the LX status shown) not taken.
+### The DMI's return to the Radio data window after the network type's wait, the s10 golden, the consist heading (e6/dmi-d10) (2026-10-30)
+
+**B2680, Table 49 S3-4 E5 -> A41 -> D10 after the on-board's wait:
+built in the DMI.** DMI 11.7.2.4 (Table 49): S3-4 "If the driver enters
+FRMCS or FRMCS+GSM-R while FRMCS is installed on-board, and the FRMCS
+on-board registration is not registered to the FRMCS Radio Network (E5),
+the process shall go to A41. Otherwise (E6) ... back to S3-1"; A41 the
+text message, "The procedure shall go to D10"; D10 "If the stored Radio
+Network type is FRMCS+GSM-R while both radio systems are installed
+on-board, the procedure shall go back to S3-1. Otherwise, the procedure
+shall go to S10". The claims at the source: the on-board reports the
+type's wait as MSG_ONBOARD waiting 1, the same value as the S4 wait;
+the radio byte already carries the stored type (bits 0-1), the systems
+installed (bits 2-3) and the FRMCS registration (bit 4), so the DMI
+knows D10's condition from the on-board; the DMI already took D10 at
+the entry (`FRMCS_Registration_Missing` and `Both_Radio_Systems` of the
+entered type: S10 at once with FRMCS alone, the Radio data window kept
+with both systems); `Onboard_State_Changed` then replaced the Radio
+data window by the Main window for the hour glass and left the Main
+window open at the wait's end (`Waiting_Kind` Radio_Network,
+`D9_Pending` false): the backlog line held. Decision (who tells): no
+protocol change; the on-board tells the DMI the state (the radio byte),
+and the DMI keeps the window the wait interrupted: a waiting 1 that
+begins with the Radio data window on top (only after the type entry
+with both systems: the S4 wait begins in the Main window, A31's wait is
+waiting 2) records where to come back (`Radio_Data_Resume`: in the
+Start Up dialogue sequence or over the Main window, Table 50 S5-4 E1 ->
+A6 -> D9 alike); at its end the Radio data window comes back when the
+radio byte says FRMCS registered (a registration in time, E6's S3-1) or
+FRMCS+GSM-R stored with both systems (D10 -> S3-1), the Main window
+stays otherwise (S10). The alternative, a new waiting value from
+`EVC_Core.Outputs`, needs an accessor of `EVC_Sessions.Network`
+(private) in `EVC_Sessions`, which is not this package's unit. From the
+driver's seat: after "FRMCS network registration failed" the driver is
+back in the Radio data window where they entered the type. The protocol
+comment of waiting 1 says so. Scenario
+`DMI_Test_Windows.Scenario_Network_Type_Wait` (MSG_ONBOARD raw: S3-1
+with both systems, FRMCS+GSM-R entered, waiting 1, the system status
+message, waiting 0; then a registration in time; then FRMCS alone):
+before the fix 3 checks failed (D10 -> S3-1 twice, [Close] disabled),
+after it none. Goldens added: `network_type_wait_main` (the Main
+window, every button disabled, the hour glass after its title) and
+`network_type_wait_radio_data` (the Radio data window, 'Radio network
+type', 'GSM-R network ID' and 'Mission with one radio system' enabled,
+'Contact last RBC', 'Use short number' and 'Enter RBC data' disabled,
+"FRMCS network registration failed" in the message area);
+`golden_review.py --intent`: both as intended. `dmi_fuzz` raised 0.
+The runner: 5040300_24 SV30 failed 102 -> passed; signature S322852a4
+has no sequence left (its triage line says so); 0 regressions (1179 /
+1051 / 960). DMI 11.7.2.4 D10 noted here (the DMI has no matrix).
+B2680 done.
+
+**The s10 golden (review 57, item 2's remark): renamed to S20.**
+5.4.3.2 D11 "When the session is open, the process shall go to D15,
+otherwise it shall go to S10", D15 "If the ERTMS/ETCS on-board equipment
+has already received the Train Data acknowledgment from the RBC, the
+process shall go to S20, otherwise it shall go to S11": the case of
+`DMI_Test_Windows.Scenario_Override_Selectable` named S10 drove
+MSG_ONBOARD session 2 (a session exists) and rbc bit 0 (Train Data
+acknowledged), which is S20; the remark held. The golden
+`override_eoa_s10` is renamed `override_eoa_s20` (the same digest: the
+Override window, EOA enabled), the check's text says S20. A real S10
+case is added first (session 0, rbc 0, national bit 4 set): the
+Override window opens on F2 with EOA enabled, and its picture was
+verified equal to the S20 one (a temporary comparison against the S20
+golden passed): the Override window shows nothing of the session, so
+S10 has a check and no golden of its own. The Override window opened at
+S10 then stays open through S11 (EOA disabled, `override_eoa_s11`
+unchanged) and S20 (enabled). `golden_review.py --intent`: the rename,
+both groups as intended (identical pictures).
+
+**B2660, `Consist_Step`'s heading: fixed.** DMI 15.1.1.5 Table 68, the
+row "Safe consist length no longer available" (4.4.21.1.12): "Message
+displayed for 30 s (if 3.14.1.7.6 fulfilled beforehand or if brake
+command reason revoked as per 4.12.1.2 beforehand), 3.14.1.7.6 (if
+message displayed for 30 s beforehand), Brake command reason revoked
+...": the later of the two. `DMI_System_Status` does that
+(`SS_Safe_Consist_Length` with `End_Event => After_30s`: the end the
+EVC sends is held until 30 s from the start). The heading of
+`EVC_Procedures.Consist_Step` said "30 s from the start whichever comes
+first"; it now says the later of the end sent and 30 s. The claim held;
+comment only, no behaviour change, `comment_check.py --check` clean.
+B2660 done.
+
+Backlog: B2680, B2660 done; no new line. Edits outside the named units:
+none (`common/dmi_protocol.ads` at waiting 1's comment, as named).
+Commits: B2680; the s10 golden; B2660.

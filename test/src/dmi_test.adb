@@ -79,6 +79,7 @@ begin
    DMI_Test_Windows.Scenario_Enabling_Conditions;
    DMI_Test_Windows.Scenario_Override_Selectable;
    DMI_Test_Windows.Scenario_Waiting_Window;
+   DMI_Test_Windows.Scenario_Network_Type_Wait;
    DMI_Test_Data_Entry.Scenario_Entry_Mechanics;
    DMI_Test_Data_Entry.Scenario_Validation_Window;
    DMI_Test_Data_Entry.Scenario_Data_Checks;

@@ -4,6 +4,7 @@
 with DMI_Buttons;
 with DMI_Data_Format;
 with DMI_Driver_Data;
+with DMI_Protocol;
 with DMI_Radio_Data;
 with DMI_Sounds;
 with DMI_Test_Support;
@@ -821,8 +822,9 @@ package body DMI_Test_Windows is
                         V_Release => 0, V_Sbi => 0, V_Wsl => 0,
                         D_Target => 0, Monitoring => 0, Dial_Range => 1,
                         Vrelease_Exists => False);
-      --  S11: the session open, the Train Data sent, not acknowledged
-      Send_Onboard_Raw (Data_All, 2, 0, Standing, NV_Adh, 0, 0, 0);
+      --  S10 (5.4.3.2 D11): level 2, no session open, the on-board
+      --  takes the override
+      Send_Onboard_Raw (Data_All, 0, 0, Standing, NV_Adh or Ovr_OK, 0, 0, 0);
       Step;
       Drain_Sounds;
       Press (610, 90);                          -- F2: Override window
@@ -830,15 +832,26 @@ package body DMI_Test_Windows is
       Check (DMI_Windows.Is_Open
              and then DMI_Windows."=" (DMI_Windows.Top,
                                        DMI_Windows.W_Override),
-             "S11: the Override window is open");
+             "S10: the Override window is open");
+      --  the picture is that of S20 below: the Override window shows
+      --  nothing of the session, so S10 has no golden of its own
+      Check (EOA_Enabled, "5.4.5.3 a): EOA at S10, the on-board takes it");
+      --  S11: the session open, the Train Data sent, not acknowledged
+      Send_Onboard_Raw (Data_All, 2, 0, Standing, NV_Adh, 0, 0, 0);
+      Step;
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows."=" (DMI_Windows.Top,
+                                       DMI_Windows.W_Override),
+             "S11: the Override window stays open");
       Check (not EOA_Enabled,
              "5.4.5.3 a): no EOA at S11, the on-board refuses it");
       Check_Frame ("override_eoa_s11");
-      --  S10: the Train Data acknowledged, the on-board takes it
+      --  S20 (5.4.3.2 D15): the session open and the Train Data
+      --  acknowledged, the on-board takes it
       Send_Onboard_Raw (Data_All, 2, 1, Standing, NV_Adh or Ovr_OK, 0, 0, 0);
       Step;
-      Check (EOA_Enabled, "5.4.5.3 a): EOA at S10, the on-board takes it");
-      Check_Frame ("override_eoa_s10");
+      Check (EOA_Enabled, "5.4.5.3 a): EOA at S20, the on-board takes it");
+      Check_Frame ("override_eoa_s20");
       --  S21: 'Start' selected, the MA requested and awaited (MSG_ONBOARD
       --  waiting 3): DMI_Windows.Onboard_State_Changed closes the Override
       --  window and shows the Main window with every button disabled and
@@ -958,6 +971,98 @@ package body DMI_Test_Windows is
       Drain_Outbox;
       Drain_Sounds;
    end Scenario_Waiting_Window;
+
+   --  The wait for the FRMCS registration that the Radio network type
+   --  entry begins (Table 49 S3-4 E5, the hour glass of the Main window:
+   --  MSG_ONBOARD waiting 1), and its end: A41 -> D10, back to S3-1 the
+   --  Radio data window when the stored type is FRMCS+GSM-R with both
+   --  radio systems installed, S10 the Main window otherwise; a
+   --  registration in time ends the wait in S3-1 as E6 does
+   procedure Scenario_Network_Type_Wait is
+      use type Interfaces.Unsigned_8;
+      --  the Driver ID is valid once entered, the level is not
+      Data_ID : constant Win_U8 := 16#01#;
+      --  FRMCS not registered, a GSM-R Mobile Terminal registered
+      Both_GSMR  : constant Win_U8 := Win_GSMR or Win_Both or Win_GSMR_Reg;
+      Both_Mixed : constant Win_U8 :=
+        Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg;
+      Only_FRMCS : constant Win_U8 := Win_FRMCS_GSMR or Win_Only_FRMCS;
+
+      procedure Radio (R : Win_U8; Waiting : Win_U8 := 0;
+                       Data : Win_U8 := Data_ID or 16#04#) is
+      begin
+         Win_Onboard (Data => Data, SOM => 2, Radio => R,
+                      Waiting => Waiting,
+                      Train => Win_Standing or Win_Position);
+      end Radio;
+
+      --  S0 -> S1 -> S2 -> S3-1 with the radio byte R, then S3-4: the
+      --  driver enters FRMCS+GSM-R
+      procedure Enter_Type (R : Win_U8) is
+      begin
+         Reset;
+         Win_At_Standstill;
+         Win_Onboard (Data => 0, SOM => 0, Radio => R);
+         Send_Mode_Level (Mode => 1, Level => 0); -- SB, level unknown
+         Win_Onboard (Data => 0, SOM => 2, Radio => R);
+         Press (385, 240); Press (487, 90);    -- Driver ID 1
+         Radio (R, Data => Data_ID);
+         Choose_Level (2);
+         Send_Mode_Level (Mode => 1, Level => 5);
+         Radio (R);
+         Win_Menu (5);
+         Key (2);                                  -- FRMCS+GSM-R
+         Enter_Single;
+      end Enter_Type;
+   begin
+      -- both systems installed: D10 is S3-1, taken at the entry
+      Enter_Type (Both_GSMR);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 S3-4 E5 (both systems): the Radio data window");
+      Radio (Both_Mixed, Waiting => 1);
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then DMI_Windows.Waiting_Displayed,
+             "the FRMCS registration awaited: the Main window with all "
+             & "buttons disabled and ST05 (11.2.1.6)");
+      Step;
+      Check_Frame ("network_type_wait_main");
+      -- A41: the text message is the EVC's; the wait ends
+      Send_System_Status (DMI_Protocol.SS_FRMCS_Registration_Failed, 0);
+      Radio (Both_Mixed, Waiting => 0);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up
+             and then not DMI_Windows.Waiting_Displayed,
+             "Table 49 A41 -> D10: FRMCS+GSM-R stored, both systems "
+             & "installed -> S3-1, the Radio data window");
+      Check (not DMI_Windows.Close_Enabled,
+             "11.7.2.2: [Close] is disabled in S3-1 again");
+      Step;
+      Check_Frame ("network_type_wait_radio_data");
+
+      -- the FRMCS registration in time: no A41, back to S3-1 (E6)
+      Enter_Type (Both_GSMR);
+      Radio (Both_Mixed, Waiting => 1);
+      Radio (Both_Mixed or Win_FRMCS_Reg, Waiting => 0);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 S3-4: the FRMCS registration in time -> S3-1");
+
+      -- FRMCS alone: D10 is S10, taken at the entry; the wait over the
+      -- Main window ends in it
+      Enter_Type (Only_FRMCS);
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.In_Start_Up,
+             "Table 49 S3-4 E5 (FRMCS alone): D10 -> S10 at the entry");
+      Radio (Only_FRMCS, Waiting => 1);
+      Radio (Only_FRMCS, Waiting => 0);
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.Waiting_Displayed,
+             "Table 49 A41 -> D10 (FRMCS alone) -> S10: the Main window "
+             & "stays");
+      Drain_Outbox;
+      Drain_Sounds;
+   end Scenario_Network_Type_Wait;
 
    ---------------------------------------------------------------------
    -- Input field mechanics of a data entry window (audit WIN-4:
