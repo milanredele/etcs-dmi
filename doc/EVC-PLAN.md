@@ -16006,3 +16006,20 @@ for a session already Terminating, so the SV30 session seems to have
 left Established before step 89, not seen in the trace. 3150100_09 / _11
 keep the family line's s076 reading. The family line
 `~expect RTM message: 156 not sent` stays, noted.
+
+**S3372f797, the air conditioning announcement not shown (12
+sequences): left at the bound, the trace not concluded.** Read at
+5180200_01 SV30 step 106: message 24 of step 102 (packet 68,
+D_TRACKCOND 1100 m from NID_LRBG 1048577 = BG1d at 100 m, so the start
+at 1200 m, L_TRACKCOND 300 m, M_TRACKCOND 0011 air tightness, 5.18.6)
+is given at x = 1073 m where the sequence says 1000 m (the 5 s timer of
+step 99 drove the train on); our point C is the start less the larger
+of 10 s at the current speed and 100 m (`EVC_Track_Conditions`
+`Announce_Time_Ms`, `Announce_Min_Cm`), about 1003 m at 71 km/h, and
+`EVC_Track_Conditions.Phases` announces a condition received past its
+point C (`Max_F >= D - Lead`); yet the symbol is not shown from the
+step's reach-point (x = 1087 m) to the window's end (x = 1179 m). Not
+determined: whether the packet 68 was stored (its LRBG at that time)
+or the DMI symbol of 5.18.6.2.2 (automatic or by the driver) differs
+from the one the runner judges. 3070300_03, 4080454_01, 5180700_01 not
+traced. S82c622ac (the LX status shown) not taken.
