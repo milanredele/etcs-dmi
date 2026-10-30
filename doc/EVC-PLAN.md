@@ -16043,3 +16043,20 @@ S10 has a check and no golden of its own. The Override window opened at
 S10 then stays open through S11 (EOA disabled, `override_eoa_s11`
 unchanged) and S20 (enabled). `golden_review.py --intent`: the rename,
 both groups as intended (identical pictures).
+
+**B2660, `Consist_Step`'s heading: fixed.** DMI 15.1.1.5 Table 68, the
+row "Safe consist length no longer available" (4.4.21.1.12): "Message
+displayed for 30 s (if 3.14.1.7.6 fulfilled beforehand or if brake
+command reason revoked as per 4.12.1.2 beforehand), 3.14.1.7.6 (if
+message displayed for 30 s beforehand), Brake command reason revoked
+...": the later of the two. `DMI_System_Status` does that
+(`SS_Safe_Consist_Length` with `End_Event => After_30s`: the end the
+EVC sends is held until 30 s from the start). The heading of
+`EVC_Procedures.Consist_Step` said "30 s from the start whichever comes
+first"; it now says the later of the end sent and 30 s. The claim held;
+comment only, no behaviour change, `comment_check.py --check` clean.
+B2660 done.
+
+Backlog: B2680, B2660 done; no new line. Edits outside the named units:
+none (`common/dmi_protocol.ads` at waiting 1's comment, as named).
+Commits: B2680; the s10 golden; B2660.

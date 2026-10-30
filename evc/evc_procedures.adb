@@ -1590,8 +1590,10 @@ is
    --  (Consist_SB) and the driver informed, DMI Table 68 "Safe consist
    --  length no longer available"; its end is sent when the brake is
    --  released by the shortening at standstill (3.14.1.7.6), at once with
-   --  the start when the train was at standstill; the DMI keeps it 30 s
-   --  from the start whichever comes first (its row's end conditions).
+   --  the start when the train was at standstill; the DMI ends the
+   --  message at the later of that end and 30 s from the start (its
+   --  row's end conditions: 30 s when 3.14.1.7.6 came before, the end
+   --  when the 30 s came before).
    --  Decision: the loss at standstill sends the start and the end in the
    --  same cycle, there being no brake reason to revoke
    --  @req 4.4.21.1.12
