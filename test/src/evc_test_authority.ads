@@ -107,4 +107,8 @@ package EVC_Test_Authority is
    --  at 100 m announcing level 2 at 400 m, passed
    procedure Start_L2_Announced;
 
+   --  3.6.3.1.3: packets 57 and 63 by the train orientation
+   procedure Scenario_Parameters_Direction;
+   procedure Scenario_SR_List_Direction;
+
 end EVC_Test_Authority;

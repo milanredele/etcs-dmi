@@ -1911,9 +1911,11 @@ package body EVC_Test_Sessions is
    ---------------------------------------------------------------------
 
    --  Message 24 referred to the group NID_BG of country 123 with packet
-   --  58: every T_CYC s, no distance period, M_LOC (7.5.1.69)
+   --  58: every T_CYC s, no distance period, M_LOC (7.5.1.69), valid
+   --  for Q_DIR
    function Report_Parameters (NID_BG : Natural; T_Cyc : Natural;
-                               M_LOC  : Natural) return Byte_Array
+                               M_LOC  : Natural;
+                               Q_DIR  : Natural := 2) return Byte_Array
    is
       P  : ETCS_Track_Packets.P58.Packet_T;
       W  : Writer_T;
@@ -1924,7 +1926,7 @@ package body EVC_Test_Sessions is
       V (5) := 123;
       V (6) := Unsigned_64 (NID_BG);
       Start_Message (W, MCat.Track_M24, V);
-      P.Q_DIR := 2;
+      P.Q_DIR := ETCS_Variables.Q_DIR_T (Q_DIR);
       P.Q_SCALE := 1;
       P.T_CYCLOC := ETCS_Variables.T_CYCLOC_T (T_Cyc);
       P.D_CYCLOC := 32_767;    -- 7.5.1.18: no distance period
@@ -3306,5 +3308,30 @@ package body EVC_Test_Sessions is
              and then No_Session_With (500),
              "order rows: in PS the same (4.8.4 [8], 4.4.20.1.13)");
    end Scenario_Session_Order_Rows;
+
+   --  3.6.3.1.3: packet 58 (7.4.2.15) valid for the reverse direction of
+   --  the LRBG of its message only is not for this train and is ignored;
+   --  valid for the nominal direction it is taken
+   procedure Scenario_Report_Parameters_Direction is
+      N : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 300));
+      Run_X (35_000);
+      Establish (1);
+      Stand;
+      N := EVC_Sessions.Report_Parameters_Taken;
+      Give_Radio_Message (1, Report_Parameters (20, 5, 2, Q_DIR => 0));
+      Stand_X (1_000);
+      Check (EVC_Sessions.Report_Parameters_Taken = N,
+             "reports: packet 58 with Q_DIR reverse ignored (3.6.3.1.3, "
+             & "7.5.1.103)");
+      Give_Radio_Message (1, Report_Parameters (20, 5, 2, Q_DIR => 1));
+      Stand_X (1_000);
+      Check (EVC_Sessions.Report_Parameters_Taken = N + 1,
+             "reports: packet 58 valid for the nominal direction of the "
+             & "LRBG taken (3.6.3.1.3)");
+   end Scenario_Report_Parameters_Direction;
 
 end EVC_Test_Sessions;

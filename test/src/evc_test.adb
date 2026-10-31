@@ -335,6 +335,7 @@ begin
    Scenario_Session_Stamp_Increment;
    Scenario_Session_NVCONTACT_Values;
    Scenario_Session_Order_Rows;
+   Scenario_Report_Parameters_Direction;
    Scenario_SoM_L2_Mode_Proposal_LS;
    Scenario_SoM_L2_Override;
    Scenario_SoM_L2_Override_Before_S10;
@@ -435,6 +436,8 @@ begin
    Scenario_TAF_Roll_Back;
    Scenario_TSR_Inhibition;
    Scenario_TSR_Inhibition_Border;
+   Scenario_Parameters_Direction;
+   Scenario_SR_List_Direction;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Order_With_L1_MA;

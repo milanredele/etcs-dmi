@@ -173,6 +173,7 @@ is
              | EVC_Modes.M_IS);
 
    --  3.6.5.1.4, 3.6.5.1.5, 4.9.1.3
+   --  @req 3.6.3.1.3
    procedure Evaluate (SoM : Boolean; Mode : EVC_Modes.Mode_T) is
       T     : constant EVC_Position.Triggers_T :=
         EVC_Position.Report_Triggers;
@@ -188,8 +189,12 @@ is
       end if;
       --  4.8.4: taken in the mode of the cycle that received them
       --  (SUBSET-076 4080428_01: given in SH, not applied in the SB of
-      --  the next session, step 134)
-      if P58_Held and then Parameters_Accepted (Mode) then
+      --  the next session, step 134); 3.6.3.1.3: only when valid for the
+      --  train orientation relative to the LRBG of its message (its
+      --  Q_DIR), the packet alone ignored otherwise
+      if P58_Held and then Parameters_Accepted (Mode)
+        and then EVC_Position.Radio_Valid_For (P58_Ref, P58.Q_DIR)
+      then
          EVC_Position.Set_Report_Parameters (P58, P58_Ref, OK);
          if OK then
             Bump (N_Params);

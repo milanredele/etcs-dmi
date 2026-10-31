@@ -121,4 +121,7 @@ package EVC_Test_Sessions is
    --  4.8.3 [14], [15], 4.8.4 [8]
    procedure Scenario_Session_Order_Rows;
 
+   --  3.6.3.1.3: packet 58 by the train orientation
+   procedure Scenario_Report_Parameters_Direction;
+
 end EVC_Test_Sessions;

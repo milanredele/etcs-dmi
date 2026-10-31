@@ -449,6 +449,7 @@ package body EVC_Test_Authority is
    begin
       NV.T_NVCONTACT := 10;   -- s
       NV.M_NVCONTACT := 1;    -- the service brake
+      P57.Q_DIR := 1;
       P57.T_MAR := 255;
       P57.T_TIMEOUTRQST := 1023;
       P57.T_CYCRQST := 4;
@@ -507,6 +508,7 @@ package body EVC_Test_Authority is
       Timed.L_SECTION_List (1).Has_T_SECTIONTIMER := True;
       Timed.L_SECTION_List (1).T_SECTIONTIMER := 30;
       Timed.L_SECTION_List (1).D_SECTIONTIMERSTOPLOC := 250;
+      P57.Q_DIR := 1;
       P57.T_MAR := 255;
       P57.T_TIMEOUTRQST := 10;
       P57.T_CYCRQST := 4;
@@ -603,6 +605,7 @@ package body EVC_Test_Authority is
       X   : Integer_64 := 11_000;
       Got : Boolean := False;
    begin
+      P57.Q_DIR := 1;
       P57.T_MAR := 2;
       P57.T_TIMEOUTRQST :=
         ETCS_Variables.T_TIMEOUTRQST_No_MA_Request_Triggering;
@@ -1181,11 +1184,13 @@ package body EVC_Test_Authority is
 
    --  Message 2, the SR authorisation, referring to the group NID_BG of
    --  country 123: D_SR metres (D_SR_Infinite: none), with packet 63
-   --  listing the groups List of country 123 when With_63
+   --  listing the groups List of country 123 when With_63, valid for
+   --  Q_DIR
    function SR_Message (NID_BG  : Natural;
                         D_SR_M  : Natural;
                         With_63 : Boolean := False;
-                        List    : Nat_List := (1 .. 0 => 0))
+                        List    : Nat_List := (1 .. 0 => 0);
+                        Q_DIR   : ETCS_Variables.Q_DIR_T := 1)
      return Byte_Array
    is
       W  : Writer_T;
@@ -1200,6 +1205,7 @@ package body EVC_Test_Authority is
       V (8) := Unsigned_64 (D_SR_M);
       Start_Message (W, MCat.Track_M2, V);
       if With_63 then
+         P.Q_DIR := Q_DIR;
          P.N_ITER := ETCS_Variables.N_ITER_T (List'Length);
          for I in List'Range loop
             P.Q_NEWCOUNTRY_List (I - List'First + 1).NID_BG :=
@@ -2728,5 +2734,62 @@ package body EVC_Test_Authority is
              & "behind the border, the next group's revocable TSR taken; "
              & "TSRs" & Natural'Image (EVC_Track_Description.TSR_Count));
    end Scenario_TSR_Inhibition_Border;
+
+   --  3.6.3.1.3: packet 57 (7.4.2.14) valid for the reverse direction of
+   --  the LRBG of its message only is not for this train and is ignored,
+   --  the MA of the message taken; valid for both directions it is taken
+   procedure Scenario_Parameters_Direction is
+      P57 : T57.Packet_T;
+   begin
+      P57.T_MAR := 20;
+      P57.T_TIMEOUTRQST := 10;
+      P57.T_CYCRQST := 4;
+      P57.Q_DIR := 0;
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((300, 400), 600), Stamp,
+                        With_57 => True, P57 => P57));
+      Stand_X (200);
+      Check (EVC_Movement_Authority.MA.Present
+             and then not EVC_Radio_Info.MAR_Known,
+             "packet 57 with Q_DIR reverse ignored, the MA of its message "
+             & "taken (3.6.3.1.3, 7.5.1.103)");
+      P57.Q_DIR := 2;
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((300, 400), 600), Stamp,
+                        With_57 => True, P57 => P57));
+      Stand_X (200);
+      Check (EVC_Radio_Info.MAR_Known
+             and then EVC_Radio_Info.T_MAR_Ms = 20_000,
+             "packet 57 valid for both directions taken, T_MAR 20 s "
+             & "(3.6.3.1.3)");
+   end Scenario_Parameters_Direction;
+
+   --  3.6.3.1.3: packet 63 (7.4.2.16) valid for the reverse direction of
+   --  the LRBG of its message only is ignored: the SR authorisation of
+   --  message 2 taken without a list; valid for both directions taken
+   procedure Scenario_SR_List_Direction is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 300));
+      Establish;
+      Run_X (15_000);
+      Give_Radio_Message
+        (1, SR_Message (10, 32767, With_63 => True, List => (1 => 20),
+                        Q_DIR => 0));
+      Stand_X (200);
+      Check (RA.RBC_SR_Given and then not RA.In_SR_List ((123, 20)),
+             "packet 63 with Q_DIR reverse ignored, the SR authorisation "
+             & "of message 2 taken without a list (3.6.3.1.3)");
+      Give_Radio_Message
+        (1, SR_Message (10, 32767, With_63 => True, List => (1 => 20),
+                        Q_DIR => 2));
+      Stand_X (200);
+      Check (RA.In_SR_List ((123, 20)),
+             "packet 63 valid for both directions taken (3.6.3.1.3)");
+   end Scenario_SR_List_Direction;
 
 end EVC_Test_Authority;

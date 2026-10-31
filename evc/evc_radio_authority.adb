@@ -621,12 +621,16 @@ is
    end Note_Level;
 
    --  3.8.2.1.2, 3.8.2.1.4: packet 57 of the last message, the new MA
-   --  request parameters (taken whatever its Q_DIR: they concern the
-   --  train, not a direction); C, the message's context: a level 1
-   --  entered before the message is judged first (Note_Level)
-   --  @req 3.8.2.1.4
+   --  request parameters; C, the message's context: a level 1 entered
+   --  before the message is judged first (Note_Level). 3.6.3.1.3: only
+   --  a packet valid for the train orientation relative to the LRBG of
+   --  the message (its Q_DIR, 7.5.1.103) is taken, the packet alone
+   --  ignored otherwise ("other information shall be ignored": the rest
+   --  of the message is judged by its own packets); with the
+   --  orientation not known it is taken (EVC_Position.Radio_Valid_For)
+   --  @req 3.8.2.1.4, 3.6.3.1.3
    procedure Take_Parameters (C : EVC_Radio_Acceptance.Context_T)
-     with Global => (Input  => EVC_Received.Store,
+     with Global => (Input  => (EVC_Received.Store, EVC_Position.State),
                      In_Out => (Params, Params_Level, Params_Seen))
    is
       pragma Warnings
@@ -643,7 +647,9 @@ is
          then
             EVC_Received.Open_Message_Packet (I, R);
             ETCS_Track_Packets.P57.Decode (R, P, OK);
-            if OK then
+            if OK
+              and then EVC_Position.Radio_Valid_For (LRBG_Of_Last, P.Q_DIR)
+            then
                Params := (Known         => True,
                           T_MAR         => P.T_MAR,
                           T_TIMEOUTRQST => P.T_TIMEOUTRQST,
@@ -697,11 +703,14 @@ is
    --  list of expected balise groups in SR (7.4.2.16), replacing the
    --  stored one; an empty list lets no group pass. A group's country is
    --  the one of the item before it, the first the LRBG's of the message
-   --  (Q_NEWCOUNTRY 0). Taken whatever its Q_DIR: the groups are those
-   --  the train may pass (a decision)
-   --  @req 4.4.11.1.3 c)
+   --  (Q_NEWCOUNTRY 0). 3.6.3.1.3: taken only when valid for the train
+   --  orientation relative to the LRBG of the message (its Q_DIR), as
+   --  packet 57 of Take_Parameters; the packet alone ignored otherwise,
+   --  the authorisation of the message then without a list
+   --  @req 4.4.11.1.3 c), 3.6.3.1.3
    procedure Take_SR_List
-     with Global => (Input => EVC_Received.Store, In_Out => SR_Auth)
+     with Global => (Input  => (EVC_Received.Store, EVC_Position.State),
+                     In_Out => SR_Auth)
    is
       pragma Warnings
         (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
@@ -717,7 +726,9 @@ is
          then
             EVC_Received.Open_Message_Packet (I, R);
             ETCS_Track_Packets.P63.Decode (R, P, OK);
-            if OK then
+            if OK
+              and then EVC_Position.Radio_Valid_For (LRBG_Of_Last, P.Q_DIR)
+            then
                C := LRBG_Of_Last.NID_C;
                SR_Auth.List_Known := True;
                SR_Auth.List_N := 0;
