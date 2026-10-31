@@ -16959,3 +16959,109 @@ in the same trace, the 129 sent to session 1 every 15 s from 201200 to
 411200 ms (15 sendings) is a candidate for `EVC_Sessions`. Backlog:
 B2920. Brief premises wrong: none. The review took about 118 tool calls
 of 130, past the bound of 100 (item 8 finished at about 106).
+
+### E5 integration after the fifty-ninth round, the twenty-seventh of E6 (2026-10-31)
+
+Merged: e6/frmcs-wait (the two decisions of 2026-10-30 built: B2720,
+`EVC_Sessions.Network.Power_Up` sets `FRMCS_At` at the power-up where
+FRMCS is installed and the first report replaces it (E71's "detection as
+connected" is the report), `Supervise_Wait` bounds `Type_Wait` and
+`FRMCS_Watch` by it without the `FRMCS_Seen` guard: A41 and A42 come 40 s
+after the power-up when no report came; a sixth case of `Scenario_
+Network_Type_At_S3` (the type entered 10 s after the power-up) and a
+no-report S4 case of `Scenario_Network_FRMCS`; B2681, packets 57 and 63
+in `EVC_Radio_Authority.Take_Parameters` / `Take_SR_List` and packet 58
+at its call in `EVC_Sessions.Reports.Evaluate` judged by `EVC_Position.
+Radio_Valid_For` with the message's LRBG, the packet alone ignored, three
+scenarios; a side effect named: three older authority scenarios' packet
+57 records carried Q_DIR 0, reverse, by default and were set nominal;
+B844 closed: the 5.4.3.2 rows A41, D7, D8, D9 and S5 count FRMCS, a D9 /
+S5 case added; A43's report at E17 not built, B2840), e6/sessions-shunting
+(B789 closed: `Scenario_Shunting_L2_Terminated`, without a mission 130,
+28, SH, 136, S100 and the order's 156, with a mission in SR D040 to
+A100, 150 then 136 then the order's 156; the brief's step labels were
+wrong, A045 is the request and A095 the report; B781's 6th bullet over a
+reverse movement (`Scenario_Handover_Roll_Back`, no defect: `EVC_
+Position.Evaluate_Border` disables each item in the cycle it fires) and
+the relocations of the texts, the TAF and the MA timers (three
+scenarios, no defect); nothing in evc/), e6/lx-rest (B2822 closed, no
+on-board defect at 5160000_01: the LX restriction leaves V_MRSP at the
+LX end for the min safe front end, 3.13.7.2 adds the train length to the
+SSP, ASP and TSR only; the review's "70 at 1548 m" was the Permitted
+speed locked towards LX2's temporary EOA by 3.13.10.4.8.1; the early
+indication at 1465 m is the bench's train at brake percentage 109
+against the sequence's 1695 m, model, B2880; S82c622ac by cause:
+4080300_15 (a packet 88 after a packet 136 taken as non-infill in level
+0 where 4.8.3's Infill row rejects it, B2881), 4080300_21 (4.8.3 [17]
+applied to the SM authorisation only while message 133 is
+unacknowledged, B2882), 5160000_06 and 9990400_18 s076 with ERA's PDFs
+read; B781's 11th bullet over a relocation, `Scenario_LX_Relocated`, no
+defect), e5/runner-defects (B2821 and B2800 closed: a message 38 whose
+L_MESSAGE is not 7 blocked as S076-defect in `S076_Run.Radio_Input`, 634
+38s in SV30, 3 with 10: 3130700_07 blocked at 65 instead of failed at 91,
+the others unmoved (the brief's premise about 4080421_03 wrong: its 38
+is at step 207, after its step 97); the repetition steps: an RTM
+expectation is matched by a sending no earlier step matched (64
+remembered) and waits up to 61 s after a matched one (16 s failed
+4100103_21 / _40 and 9990500_09), an ODO input at the same place keeps
+the radio window; 4100103_26 moved from failed 159 to blocked 162 in
+three versions, 3150100_01 SV30 from 102 to 101 (B2860, overturned by
+the review below); Seabc1f7c: 3120300_03 model (B2862), 4080427_01 and
+6060500_04 onboard with the cause not found (B2861), four SV21 sequences
+not traced), and e5/review-59 (the eighth blind review, below).
+
+The review (e5/review-59, 120 calls, 6.2 USD, its bound passed at 100
+for the eighth item): eight items, all reached, fully blind; 7 agreed, 1
+disagreed, 0 undecided. Disagreed (B2920): 3150100_01 SV30 step 92: the
+runner gives session 2's message 38 only at step 94, 227 s after the
+159, because the optional step 88 drives the train 586 m first; ours
+repeats the 159, terminates session 2 by 3.5.3.7.4.1 and asks for a new
+connection the runner never completes, so at step 92 it is connected to
+the Handing Over RBC alone and its 136 to session 1 alone is right by
+3.15.1.3.4; step 92 then passes wrongly on a periodic 136 matched by
+number, not by session (the author's B2860 blamed the on-board). A side
+observation written into the line: message 129 repeated to session 1
+every 15 s, fifteen times, after the 129 to session 2. A remark without
+a line: two comments of `EVC_Sessions.Network` call the registration
+order "A43". Eight rounds of reviews: 68 items, 62 agreed, 9 disagreed,
+4 undecided; 20 lines, of which 7 became fixes; 45.9 USD.
+
+Verification of the merged tree: one chain run, all green: `test/check.sh`
+ok; the full proof 13684 checks, none unproved, margin 47726 steps;
+cross build and stack 32768 B budget, margin 6160 B; wasm and both
+smokes 0 failures; the runner 1185 / 1045 / 960 -> 1185 / 1041 / 964 (the
+movements above), 0 regressions against the merged baseline, no
+signature untriaged. The merge: frmcs-wait and the review fast-forwarded;
+sessions-shunting conflicted on the two shared test packages and the
+scenario calls (both tails kept) and on the EFS index (regenerated);
+lx-rest and runner-defects on the backlog (three-way by id; B781's two
+"left" summaries joined into one) and the plan.
+
+Costs (doc/ROUNDS.csv): 32.5 USD with the review (26.4 for the four
+packages, 6.2 the review), 12 of 12 package items done, 3 of 26 brief
+premises wrong (4080421_03's 38 after its failure; the 5.6.2.2 step
+labels; the review's reading of 1548 m), no agent over budget, no
+resumption, two agents past their bound with the third item in hand
+(133, 130). Lessons: a trace agent's "the on-board" verdict on a radio
+step needs the session named (a 136 matched by number alone passed step
+92 of 3150100_01 and the review found the runner's 38 late); a scenario
+record's default Q_DIR 0 is reverse (three scenarios tested nothing
+about it until the direction judgement made them fail); the step labels
+of a procedure table are read from the page, not from memory.
+
+The matrix: clauses left 71 -> 62 (todo 2, partial 60): the 5.4.3.2 rows
+A41, D7, D9, S5, 3.6.3.1.3, the 5.6.2.2 rows, A.3.5.1's 9th and 12th
+bullets done (done 2068 -> 2077). Open items: doc/BACKLOG.csv (36 open
+after this round; 8 added of which 1 by the review, 7 closed). Next:
+B2920 with B2860 (the runner gives a session's 38 right after its 159
+and matches an RTM expectation by the session the step names; then
+3150100_01's trip at 101; the 129 repeated on the wrong session to
+check in `EVC_Sessions`), B2881 and B2882 (the acceptance: infill after
+a packet 136 in level 0; 4.8.3 [17] while message 133 is
+unacknowledged), B2861 (the plain text not sent at 4080427_01 and
+6060500_04: the cause), B2840 (A43's report at E17), B2880 (the bench's
+train for sequences without a workbook), Seabc1f7c's four SV21
+sequences, the two "A43" comments, B781's rest (the 6th bullet's
+relocation, the stop of the 3rd, the LS profile of the 4th); the user's
+decisions B1060, B1340; the review again (eight items, readings first,
+no backlog read).
