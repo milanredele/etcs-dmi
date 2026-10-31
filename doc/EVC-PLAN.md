@@ -16573,3 +16573,81 @@ for S3 and S4 alike (the paper's choice C; the reviewer's A41 at once
 not followed); (2) B2681: packets 57, 58 and 63 are judged by the train
 orientation like 64, no exception. Both are build items of the next
 round.
+
+### The FRMCS wait's 40 s from the power-up, packets 57, 58 and 63 by the train orientation, the FRMCS rows of 5.4.3.2 re-read (e6/frmcs-wait) (2026-10-31)
+
+Three items of the user's decisions of 2026-10-30 and B844's rest, all
+done; the runner moved nothing (1185 / 1045 / 960, steps 210077 passed,
+before and after each item, 0 regressions, 0 improvements).
+
+**B2720, the FRMCS wait with no report (5.4.3.2 S3 E4 -> A41, S4 E71
+-> A42, A.3.1 40 s).** The claim held at the source:
+`EVC_Sessions.Network.Supervise_Wait` ended `Type_Wait` 40 s after
+`FRMCS_At` only once `FRMCS_Seen`, and `FRMCS_Watch` (S4 with FRMCS the
+only system for the type) was armed only by `Take_FRMCS`'s first
+report; with FRMCS installed and never reporting both waits had no end
+(the new cases failed before the fix: A41 not at 45 s, A42 never).
+Built as decided: `EVC_Sessions.Network.Power_Up (Now)` sets `FRMCS_At`
+to the power-up's time and arms `FRMCS_Watch` where FRMCS is installed
+(`Systems` not GSM-R only) and has not reported yet; `Take_FRMCS`'s
+first report replaces the time (decision written in the heading: the
+report is E71's "detection as connected", so the 40 s then count from
+it; a failure already declared, `FRMCS_Out`, is not watched again);
+`Supervise_Wait` bounds `Type_Wait` by `FRMCS_At` without the
+`FRMCS_Seen` guard (its Global no longer reads `FRMCS_Seen`). Cases:
+`Scenario_Network_Type_At_S3`'s sixth (both systems, FRMCS+GSM-R, no
+FRMCS report, the type FRMCS entered 10 s after the power-up: the hour
+glass, then entry 33 and D8 at 39 to 41 s from the power-up, so 30 s
+after the entry, which tells (C) from a count from the entry) and
+`Scenario_Network_FRMCS`'s no-report case (FRMCS alone, the type FRMCS,
+S4 reached: A42 entry 33 at 39 to 41 s from the power-up). Rows A41
+and S4 noted with the decision. 5040300_23 / _24 / _25, 3050600_xx and
+4100103_15 did not move: their FRMCS on-board reports at once.
+
+**B2681, packets 57, 58 and 63 by the train orientation (3.6.3.1.3,
+7.5.1.103).** The claim held: `EVC_Radio_Authority.Take_Parameters`
+(57) and `Take_SR_List` (63) took their packet whatever its Q_DIR, and
+`EVC_Sessions.Reports.Evaluate` passed packet 58 to
+`EVC_Position.Set_Report_Parameters` with `P58_Ref` (the message's
+NID_C / NID_LRBG) and no Q_DIR. Built: both authority procedures judge
+by `EVC_Position.Radio_Valid_For (LRBG_Of_Last, P.Q_DIR)` (their Global
+grown by `EVC_Position.State`); packet 58 at its call in
+`EVC_Sessions.Reports.Evaluate` by `Radio_Valid_For (P58_Ref,
+P58.Q_DIR)`, chosen there because Evaluate already reads
+`EVC_Position.State` and `Set_Report_Parameters`'s contract stays as
+it is. 3.6.3.1.3 says "other information shall be ignored": the packet
+alone is ignored, the rest of the message judged by its own packets
+(the MA of message 3 with a reverse 57 taken; message 2 with a reverse
+63 gives its SR authorisation without a list). Scenarios, each failing
+before the fix: `Scenario_Parameters_Direction` and
+`Scenario_SR_List_Direction` (`EVC_Test_Authority`, `SR_Message` given
+a Q_DIR), `Scenario_Report_Parameters_Direction` (`EVC_Test_Sessions`,
+`Report_Parameters` given a Q_DIR): reverse ignored, both directions
+or nominal taken. A side effect: the packet 57 data of
+`Scenario_Contact_Shortening`, `Scenario_MA_Request` and
+`Scenario_MA_Request_Perturbation` carried Q_DIR 0 (the record's
+default, reverse), which the fix then ignored: set to 1. Row 3.6.3.1.3
+noted, `@req 3.6.3.1.3` on the three.
+
+**B844's rest, the FRMCS rows of 5.4.3.2 re-read (PDF pages 13 to
+16).** A41: `Supervise_Wait`, FRMCS counted (`FRMCS_Reg`), the
+no-report wait bounded by B2720. D7: `EVC_Sessions.Network.Ready_For`
+(FRMCS alone: `FRMCS_Registered`; both systems: both, or either once
+one radio is elected; GSM-R alone: a mobile), FRMCS counted by the RTM
+port's events 7 / 8: done. D8: after A41, S3 again with both systems
+and FRMCS+GSM-R, S10 otherwise: done already. D9: the wait ends at A42
+and the on-board tells the DMI the registrations (MSG_ONBOARD radio
+bits 4 FRMCS and 5 GSM-R), by which the DMI goes to S5 when either is
+registered, S10 otherwise: done, a case added to
+`Scenario_Network_FRMCS` (both systems, FRMCS registered, no GSM-R
+mobile: entry 34 alone, bits FRMCS 1 / GSM-R 0, then S5 E8 makes the
+set-up ready); it passed at once, no on-board change. S5: the choice
+counts FRMCS in `Ready_For` with `One_Radio`: done (the old note "S5
+reached only with FRMCS registered" predated the port's FRMCS
+events). A43: the one gap: at S3 E17 (one radio elected) the on-board
+shows nothing, A43 asks entry 33 or 34 for the system not registered
+unless A29 or A41 showed it; more than a few lines (the state of what
+was shown since S3): B2840. Rows D7, D9, S5 done, A43 narrowed to
+B2840; B844 done.
+
+Backlog: B2720, B2681, B844 done; B2840 new.

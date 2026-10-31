@@ -2711,8 +2711,8 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Mobile terminal registered
-clause E4 partial 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.1
-clause E4 partial 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.2
+clause E4 done 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.1
+clause E4 done 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.2
 step Mobile terminal registered
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D7

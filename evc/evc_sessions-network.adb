@@ -494,7 +494,7 @@ is
    --  "FRMCS network registration failed" (FRMCS_Failed, entry 33),
    --  then D8: S3 again (the stored type FRMCS+GSM-R with both
    --  systems installed) or S10, the wait ended either way
-   --  @req 5.4.3.2 A42, 5.4.3.2 S4, 5.4.3.2 A41
+   --  @req 5.4.3.2 A42, 5.4.3.2 S4, 5.4.3.2 A41, 5.4.3.2 D9
    procedure Supervise_Wait (Now          : R.Time_Ms_T;
                              In_SoM       : Boolean;
                              Failed       : in out Boolean;
@@ -615,6 +615,7 @@ is
    --  3.5.6.7 a) to d) (decision 5)
    --  3.5.6.7 a) to d) for the Radio Network type T, GSMR telling
    --  whether a GSM-R Mobile Terminal is registered to the network
+   --  @req 5.4.3.2 D7
    function Ready_For (T : EVC_Config.Network_Type_T; GSMR : Boolean)
      return Boolean
    is

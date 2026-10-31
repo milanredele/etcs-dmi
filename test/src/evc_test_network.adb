@@ -324,6 +324,44 @@ package body EVC_Test_Network is
              and then EVC_Core.Time_Ms - Start in 39_000 .. 41_000,
              "S4 E71 -> A42 with no FRMCS report: 40 s after the power-up "
              & "(A.3.1), entry 33, the wait ended");
+      --  both systems, FRMCS registered and no GSM-R mobile: E72 -> A42
+      --  for GSM-R alone, D9 -> S5 told to the DMI by the radio bits
+      --  (FRMCS registered, GSM-R not), S5 E8: the mission with one radio
+      --  system lets the FRMCS registration alone allow the set-up
+      Auto_Register := False;
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000,
+          Systems => EVC_Config.Both_Systems,
+          Default_Type => EVC_Config.FRMCS_GSMR,
+          Default_MN => 16#262FFF#));
+      EVC_Test_Modes.Start_E4;
+      Give_Radio_Event (1, FRMCS_Registered);
+      Start := EVC_Core.Time_Ms;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry);
+      Check (Waiting = 1 and then not EVC_Sessions.Network_Ready,
+             "both systems, FRMCS registered, no GSM-R mobile: S4 waits "
+             & "(E62)");
+      while EVC_Core.Time_Ms - Start < 45_000
+        and then not GSMR_Shown
+      loop
+         Stand;
+         GSMR_Shown := Status_Shown
+                         (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+      end loop;
+      Check (GSMR_Shown and then Waiting = 0
+             and then not Status_Shown
+                            (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0)
+             and then EVC_Sessions.Radio_Bits / 16 mod 4 = 1,
+             "S4 E72 -> A42: GSM-R network registration failed alone, "
+             & "entry 34; D9: the radio bits tell FRMCS registered, GSM-R "
+             & "not (the DMI's S5)" & EVC_Sessions.Radio_Bits'Image);
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (7, 1)));
+      Check (EVC_Sessions.Network_Ready,
+             "S5 E8: the mission with one radio system elected, the FRMCS "
+             & "registration alone allows the set-up (3.5.6.7 c))");
+      Auto_Register := True;
       --  GSM-R alone: the FRMCS reports are not judged
       EVC_Config.Set_Radio_For_Test
         ((Sessions => 1, Engine_Id => 76_000,
