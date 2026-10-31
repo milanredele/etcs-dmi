@@ -1843,6 +1843,99 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Track_Condition_Relocated;
 
+   --  A.3.5.1 11th bullet over a relocation: a level crossing not
+   --  protected from 280 to 296 m of the group 10 (380 to 396 m, V_LX
+   --  20 km/h, stopping not required), its start substituted by its speed
+   --  restriction (5.16.3.2) and its end passed by the min safe front end
+   --  before the group 20 is read by the over-read; the relocation on the
+   --  group 20 puts the min safe front end in rear of the end again: the
+   --  substitution not reverted (no temporary EOA, no trip), the status
+   --  and the restriction back as A.3.5.1.1 2nd example says (5.16.1.5),
+   --  ended again by the forward movement (Lay_Relocating)
+   procedure Scenario_LX_Relocated is
+      LX      : T88.Packet_T;
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      Changes : Natural := 0;
+      Temps   : Natural := 0;
+      X       : Integer_64;
+      Gap     : Integer_64;
+
+      function LX_Shown return Boolean is
+        (for some I in 1 .. SI.Track_Cond_Count =>
+           SI.Track_Cond_List (I).Kind = 38);
+
+      function LX_In_MRSP return Boolean is
+        (for some K in 1 .. SI.Current.MRSP.Count =>
+           SI.Current.MRSP.Segments (K).Speed = 555);
+
+      procedure Step_Counted is
+      begin
+         Step_X (50);
+         if EVC_Core.Mode /= M_FS then
+            Changes := Changes + 1;
+         end if;
+         if SI.Current.Temporary.Present then
+            Temps := Temps + 1;
+         end if;
+      end Step_Counted;
+   begin
+      Lay_Relocating;
+      LX.Q_DIR := 1;
+      LX.Q_SCALE := 1;
+      LX.NID_LX := 4;
+      LX.D_LX := 280;
+      LX.L_LX := 16;
+      LX.Q_LXSTATUS := 1;
+      LX.Has_V_LX := True;
+      LX.V_LX := 4;
+      LX.Q_STOPLX := 0;
+      Carry (1, 1, LX);
+      Lay_Run;
+      while not TD.LX (1).Released and then Train_Cm < 38_000 loop
+         Step_Counted;
+      end loop;
+      X := Train_Cm;
+      Step_Counted;
+      Check (TD.LX (1).Released and then X < 38_000
+             and then not SI.Current.Temporary.Present and then LX_In_MRSP
+             and then LX_Shown,
+             "LX relocated: substituted by the LX speed restriction before "
+             & "the start (5.16.3.2), at" & X'Image);
+      Temps := 0;
+      Changes := 0;
+      while LX_Shown and then Train_Cm < 41_000 loop
+         Step_Counted;
+      end loop;
+      X := Train_Cm;
+      Check (not LX_Shown and then Natural (Pos.SOLR.Id.NID_BG) = 10,
+             "LX relocated: the status ended by the min safe front end past "
+             & "the end before the group 20 (5.16.1.5), at" & X'Image);
+      while Natural (Pos.SOLR.Id.NID_BG) /= 20 and then Train_Cm < 41_000
+      loop
+         Step_Counted;
+      end loop;
+      Step_Counted;
+      Gap := Min_X (TD.LX (1).Finish)
+        - Integer_64 (SI.Current.Train.Min_Safe_Front);
+      Check (Natural (Pos.SOLR.Id.NID_BG) = 20 and then Gap > 0
+             and then LX_Shown and then LX_In_MRSP
+             and then TD.LX (1).Released and then Temps = 0
+             and then Changes = 0,
+             "LX relocated: the min safe front end in rear of the end by"
+             & Gap'Image & " cm after the relocation on the group 20, the "
+             & "status and the restriction back (A.3.5.1.1), no temporary "
+             & "EOA (A.3.5.1 11th bullet), got " & LX_Shown'Image & " "
+             & LX_In_MRSP'Image & Temps'Image & Changes'Image);
+      while Train_Cm < 42_000 loop
+         Step_Counted;
+      end loop;
+      Check (not LX_Shown and then Temps = 0 and then Changes = 0,
+             "LX relocated: forward past the end again, the status ended, "
+             & "no temporary EOA, no trip, got" & Temps'Image
+             & Changes'Image);
+      Speed_Cms := Saved;
+   end Scenario_LX_Relocated;
+
    --  3.12.2.3, 3.12.2.3.1, 3.12.2.4, 3.13.1.5: the route suitability
    --  data compared with the Train Data; the closest unsuitable
    --  location the temporary EOA and SvL; a change of the Train Data

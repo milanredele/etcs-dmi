@@ -194,6 +194,7 @@ begin
    Scenario_LX_Roll_Back;
    Scenario_Mode_Profile_Relocated;
    Scenario_Track_Condition_Relocated;
+   Scenario_LX_Relocated;
    Scenario_Route_Suitability;
    Scenario_Rear_Deletion;
    Scenario_Snapshot_Seams;
