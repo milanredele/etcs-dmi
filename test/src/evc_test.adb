@@ -438,6 +438,7 @@ begin
    Scenario_TSR_Inhibition;
    Scenario_TSR_Inhibition_Border;
    Scenario_Text_Relocated;
+   Scenario_TAF_Relocated_In_Rear;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Order_With_L1_MA;
