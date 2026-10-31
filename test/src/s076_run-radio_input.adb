@@ -353,6 +353,21 @@ begin
                     & " bits for L_MESSAGE"
                     & Natural'Image (L_Message (Msg))
                     & " (truncated in the extraction)");
+      elsif Seq.Messages (Msg).NID = 38 and then L_Message (Msg) /= 7 then
+         --  8.7.16: message 38 is NID_MESSAGE, L_MESSAGE, T_TRAIN and
+         --  M_ACK, 51 bits in 7 bytes; a 38 of another length is the
+         --  layout of system version 2 (NID_LRBG after M_ACK, 75 bits,
+         --  L_MESSAGE 10), which the on-board refuses (8.4.4.2.1, M_ERROR
+         --  3), so the session established report stays unacknowledged
+         --  and the session ends 30 s later (3.5.3.7.4.1), failing a
+         --  later step for the sequence's data. Only the SV30 corpus
+         --  carries 38s: 631 of 7 bytes and 3 of 10 (3130700_07 step 65,
+         --  3130700_08 step 68, 4080421_03 step 207; ERA's step lists
+         --  give the same fields), each blocked here
+         return NJ (R_S076_Defect, "RTM message 38 with L_MESSAGE"
+                    & Natural'Image (L_Message (Msg))
+                    & " (8.7.16: 7 bytes; the layout of system version 2,"
+                    & " with NID_LRBG)");
       end if;
       declare
          M     : Message_T renames Seq.Messages (Msg);

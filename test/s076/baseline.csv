@@ -672,7 +672,7 @@ Subset-076-6-3_3130700_06_v400_SV22,passed,0,-
 Subset-076-6-3_3130700_06_v400_SV30,passed,0,-
 Subset-076-6-3_3130700_07_v400_SV21,passed,0,-
 Subset-076-6-3_3130700_07_v400_SV22,passed,0,-
-Subset-076-6-3_3130700_07_v400_SV30,failed,91,S185bee31
+Subset-076-6-3_3130700_07_v400_SV30,blocked,65,S076-defect
 Subset-076-6-3_3130700_08_v400_SV21,blocked,54,S076-defect
 Subset-076-6-3_3130700_08_v400_SV22,blocked,54,S076-defect
 Subset-076-6-3_3130700_08_v400_SV30,blocked,54,S076-defect
