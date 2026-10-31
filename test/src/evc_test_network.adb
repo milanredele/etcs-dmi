@@ -304,6 +304,26 @@ package body EVC_Test_Network is
       Check (EVC_Sessions.Network_Ready,
              "both systems: both registered, the set-up allowed "
              & "(3.5.6.7 b))");
+      --  FRMCS alone and no report from it since the power-up: the time
+      --  of A.3.1 counts from the power-up (S4 E71 -> A42), not never
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, Systems => EVC_Config.FRMCS_Only,
+          Default_Type => EVC_Config.FRMCS, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Start := EVC_Core.Time_Ms;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry);
+      Check (Waiting = 1 and then not EVC_Sessions.Network_Ready,
+             "FRMCS alone, no report since the power-up: S4 waits");
+      while EVC_Core.Time_Ms - Start < 38_000 loop
+         Stand;
+      end loop;
+      Await_FRMCS_Failure;
+      Check (Shown and then not GSMR_Shown and then Waiting = 0
+             and then EVC_Core.Time_Ms - Start in 39_000 .. 41_000,
+             "S4 E71 -> A42 with no FRMCS report: 40 s after the power-up "
+             & "(A.3.1), entry 33, the wait ended");
       --  GSM-R alone: the FRMCS reports are not judged
       EVC_Config.Set_Radio_For_Test
         ((Sessions => 1, Engine_Id => 76_000,
@@ -540,6 +560,41 @@ package body EVC_Test_Network is
                             (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0),
              "S3 E4: the FRMCS registration achieved within the time: the "
              & "wait ends, no A41");
+      --  FRMCS installed and no report from it since the power-up, the
+      --  type entered 10 s after the power-up: the time of A.3.1 counts
+      --  from the power-up, A41 at 40 s from it, not never
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000,
+          Systems => EVC_Config.Both_Systems,
+          Default_Type => EVC_Config.FRMCS_GSMR,
+          Default_MN => 16#262FFF#));
+      EVC_Test_Modes.Start_E4;
+      Start := EVC_Core.Time_Ms;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      while EVC_Core.Time_Ms - Start < 10_000 loop
+         Stand;
+      end loop;
+      Send (Type_Entry (1));
+      Check (Waiting = 1 and then EVC_Sessions.SoM_Awaiting_Registration,
+             "S3 E4, no FRMCS report since the power-up: FRMCS entered, "
+             & "the registration awaited (hour glass)");
+      Shown := False;
+      Early := False;
+      while EVC_Core.Time_Ms - Start < 45_000 loop
+         Stand;
+         Shown := Status_Shown
+                    (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+         Early := Early or else (Shown and then Waiting = 1);
+         exit when Shown;
+      end loop;
+      Waited := EVC_Core.Time_Ms - Start;
+      Check (Shown and then not Early and then Waiting = 0
+             and then not EVC_Sessions.SoM_Awaiting_Registration
+             and then Waited in 39_000 .. 41_000,
+             "S3 E4 -> A41 with no FRMCS report: 40 s after the power-up "
+             & "(A.3.1), entry 33, D8, the wait ended; at" & Waited'Image
+             & " ms");
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_Type_At_S3;
 

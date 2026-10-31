@@ -68,8 +68,8 @@ is
    Trip_Pending : Boolean := False;
    --  3.5.6.1.3: the FRMCS on-board's latest report, whether it reported
    --  since the power-up and when first (its detection as connected,
-   --  5.4.3.2 S4 E71), the wait for it watched, the time of A.3.1
-   --  elapsed without its registration
+   --  5.4.3.2 S4 E71; the power-up's time until it reports), the wait
+   --  for it watched, the time of A.3.1 elapsed without its registration
    FRMCS_Reg    : Boolean := False;
    FRMCS_Seen   : Boolean := False;
    FRMCS_At     : R.Time_Ms_T := 0;
@@ -185,10 +185,13 @@ is
 
    procedure Take_FRMCS (Registered : Boolean; Now : EVC_Radio.Time_Ms_T) is
    begin
+      --  the first report is the detection as connected (S4 E71): the
+      --  time of A.3.1 counts from it, replacing the power-up's; a
+      --  failure already declared (FRMCS_Out) is not watched again
       if not FRMCS_Seen then
          FRMCS_Seen := True;
          FRMCS_At := Now;
-         FRMCS_Watch := True;
+         FRMCS_Watch := not FRMCS_Out;
       end if;
       if Registered then
          --  E61: the wait ends, the failure of A42 is over
@@ -364,17 +367,27 @@ is
 
    --  3.5.6.1 a), 3.5.6.3, 3.5.6.4: at the first cycle after the
    --  power-up, the defaults of the configuration where nothing was
-   --  memorized, and the registration ordered (decision 3)
+   --  memorized, and the registration ordered (decision 3). FRMCS
+   --  installed and not reported yet: decision: the time of A.3.1
+   --  counts from the power-up (Now), the earliest moment the FRMCS
+   --  on-board can be detected (3.5.6.1.3: it reports as soon as it is
+   --  powered-up), so that the waits of 5.4.3.2 S3 (A41) and S4 (E71,
+   --  A42) end with no report ever; its first report replaces it
+   --  (Take_FRMCS)
    --  @req 3.5.6.1 a), 3.5.6.3, 3.5.6.4
-   procedure Power_Up
-     with Global => (In_Out => (R.State, Due),
+   procedure Power_Up (Now : R.Time_Ms_T)
+     with Global => (In_Out => (R.State, Due, FRMCS_At, FRMCS_Watch),
                      Output => (Systems, Def_MN),
-                     Input  => (Reg, EVC_Config.State))
+                     Input  => (Reg, FRMCS_Seen, EVC_Config.State))
    is
       C : constant EVC_Config.Radio_Config_T := EVC_Config.Current_Radio;
       N : R.Network_T := R.Network;
    begin
       Systems := C.Systems;
+      if not FRMCS_Seen and then Systems /= EVC_Config.GSMR_Only then
+         FRMCS_At := Now;
+         FRMCS_Watch := True;
+      end if;
       Def_MN := ETCS_Variables.NID_MN_T (C.Default_MN);
       if not N.Type_Known then
          N.Net_Type := C.Default_Type;
@@ -470,7 +483,8 @@ is
    --  system not registered. S4 is a step of the start of mission
    --  (In_SoM): outside it the watch goes on silently, so that a start
    --  of mission reaching S4 after the time fails at once (the time
-   --  counts from the latest order, or from the FRMCS detection).
+   --  counts from the latest order, or from the FRMCS detection, the
+   --  power-up while the FRMCS on-board has not reported: Power_Up).
    --  S3 -> A41 (Type_Wait): decision: "not registered" is read as the
    --  registration considered failed, the time of A.3.1 since the
    --  FRMCS detection elapsed without it (A41 informs that it "has
@@ -487,8 +501,8 @@ is
                              FRMCS_Failed : in out Boolean)
      with Global => (In_Out => (Watching, Timed_Out, FRMCS_Watch,
                                 FRMCS_Out, Type_Wait, Rewatch),
-                     Input  => (Order_At, Reg, FRMCS_Reg, FRMCS_Seen,
-                                FRMCS_At, Systems, One_Radio, R.State))
+                     Input  => (Order_At, Reg, FRMCS_Reg, FRMCS_At,
+                                Systems, One_Radio, R.State))
    is
       T     : constant EVC_Config.Network_Type_T := R.Network.Net_Type;
       Alone : constant Boolean :=
@@ -512,7 +526,7 @@ is
       if Type_Wait then
          if FRMCS_Reg then
             Type_Wait := False;
-         elsif FRMCS_Seen and then Now >= FRMCS_At
+         elsif Now >= FRMCS_At
            and then Now - FRMCS_At >= Registration_Time_Ms
          then
             Type_Wait := False;
@@ -569,7 +583,7 @@ is
       end if;
       if not Started then
          Started := True;
-         Power_Up;
+         Power_Up (Now);
       end if;
       if Ordered then
          Ordered := False;
