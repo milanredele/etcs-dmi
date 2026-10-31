@@ -16573,3 +16573,74 @@ for S3 and S4 alike (the paper's choice C; the reviewer's A41 at once
 not followed); (2) B2681: packets 57, 58 and 63 are judged by the train
 orientation like 64, no exception. Both are build items of the next
 round.
+
+### The shunting procedure of level 2 to the RBC's order, the handover border over a reverse movement, the relocations of the texts, the TAF and the MA timers (e6/sessions-shunting) (2026-10-31)
+
+**5.6.2.2 to the RBC's order to terminate (B789 done).** The brief's
+premise mixed two steps: A045 is the request for shunting (130), A095
+the report of the mode change; S100 waits for the order to terminate,
+5.6.4.2 names no acknowledgement of the report (only its repetitions,
+built by e6/sessions-rest). D040 splits the procedure: without a mission
+D080 -> A095 -> S100 -> A115; with a mission A100, the End of Mission
+procedure, whose 5.5.3.1.3 step 2 is message 150 and 5.5.3.1.4 steps 3
+and 4 the RBC's order and the termination. Scenario
+`EVC_Test_Sessions.Scenario_Shunting_L2_Terminated`: SB at S20 of the
+level 2 start of mission (no mission), Shunting selected: 130 in the
+cycle of the selection, message 28 answering its stamp, SH, then 136;
+the session kept 5 s with no 156 (S100); packet 42 Q_RBC 0 in message 24
+(3.5.5.1 a)): 156, the session ended after message 39, SH kept. With a
+mission (SR by the start of mission): 130, 28, SH, 150 (the End of
+Mission count up by one), then 136 (3.6.5.1.4 b), the mode changed),
+the order, 156. Every check passed on master: no defect. Rows 5.6.2.2
+A095, A115, D080, S100 done.
+
+**A.3.5.1 6th bullet over a reverse movement (B781 narrowed).** The
+claim held: no scenario moved back over the border. At the source,
+`EVC_Position.Evaluate_Border` invalidates each border item (1 the max
+safe front end, 2 the min safe rear end) in the cycle it fires, so
+`Report_Triggers.Border_Front` and `Border_Rear` fire once per border,
+and `EVC_Sessions.Handover.Evaluate` acts only on them. Scenario
+`EVC_Test_Handover.Scenario_Handover_Roll_Back` on the track of
+`Scenario_Handover_Rear_Report` (the border at 300 m, RBC 400
+accepting), 50 cm a cycle: the front past the border once (400
+supervising, the session with 300 kept); 1.5 m back (under D_NVROLL) and
+5 m forward: no second crossing, the roles unchanged; the rear past it
+once, the same roll back: no second crossing, no 156; RBC 300's order:
+one 156; a roll back and forward: no second 156, no connection request
+to 300. No defect; the row stays partial for a relocation back over the
+border.
+
+**A.3.5.1 3rd, 9th and 12th bullets over a relocation (B781
+narrowed).** The track of `Scenario_Mode_Profile_Relocated` (the group
+10 at 100 m linking the group 20 at 300 m, Q_LOCACC 12 m, the odometer
+over-reading 2 % from 150 m, so the group 20 is read about 6 m late and
+the front ends go 6 m back), in level 2 for the radio's texts and TAF
+(`EVC_Test_Authority.Lay_Relocating_L2`) and by balise for the MA
+(`EVC_Test_Profiles`). The positions are measured from the position
+report (D_LRBG, with L_DOUBTOVER for the max safe front end, the group
+20 counted at its linked 300 m): the estimated front end reaches
+311 m of the group 10 before the group 20 becomes the SOLR, below 309 m
+after; the max safe front end 323 m before, 318 m after. Hence the
+locations: the text from 309 m (`Scenario_Text_Relocated`: shown before
+the group 20, the estimated front end in rear of the start after it,
+forward again: shown, no second display, no record); the track ahead
+free request from 309 m over 100 m in SR
+(`Scenario_TAF_Relocated_In_Rear`, the name apart from
+`EVC_Test_Position.Scenario_TAF_Relocated`, the window following the
+LRBG: shown in every cycle, never withdrawn); the End Section timer
+starting 320 m from the group 10, 380 m in rear of the EOA at 700 m
+(`Scenario_MA_Timers_Relocated`: started before the group 20, the max
+safe front end at 318 m after, the timer running with the same start
+and neither restarted nor stopped). A first try at 318 m left the max
+safe front end at the start after the relocation (318 m, not in rear):
+a geometry of the scenario, not a defect. No defect in the three; rows
+A.3.5.1 9th and 12th bullets done, the 3rd partial (the stop over a
+relocation left).
+
+Backlog: B789 done; B781 narrowed (left: the relocation for the 6th and
+11th bullets, the stop of the 3rd over a relocation, the LS profile of
+the 4th); no new line. Runner: 1185 / 1045 / 960 after each item, 0
+regressions, 0 improvements (no change under evc/). No edit outside
+the test packages, the matrix, the backlog and the EFS frames. Commits:
+B789; the 6th bullet; the text; the TAF; the MA timers with this
+subsection.

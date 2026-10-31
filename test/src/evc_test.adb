@@ -197,6 +197,7 @@ begin
    Scenario_Route_Suitability;
    Scenario_Rear_Deletion;
    Scenario_Snapshot_Seams;
+   Scenario_MA_Timers_Relocated;
    Check (Encodes_OK, "E3: every telegram of the track encoded");
    Scenario_SDM_Precision;
    Scenario_SDM_Gamma;

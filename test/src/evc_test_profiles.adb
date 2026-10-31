@@ -2007,5 +2007,80 @@ package body EVC_Test_Profiles is
              & "stored information: CSM at 100 km/h");
    end Scenario_Snapshot_Seams;
 
+   --  A.3.5.1 12th bullet over a relocation: Lay_Relocating's track with
+   --  an MA of 500 + 200 m from the group 10 whose End Section timer (20
+   --  s, 3.8.4.1.1) starts 380 m in rear of the EOA, 320 m from the group
+   --  10; the max safe front end starts it before the group 20 is read,
+   --  the relocation on the group 20 puts that end in rear of the start
+   --  location (the position report's D_LRBG + L_DOUBTOVER); forward
+   --  again: the timer running with the same start, neither restarted nor
+   --  stopped
+   procedure Scenario_MA_Timers_Relocated is
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      M       : T12.Packet_T := MA_Of ((500, 200));
+      Started : Unsigned_64;
+      Front   : Integer_64;
+
+      --  the max safe front end in cm from the group 10 as the position
+      --  report gives it, the group 20 counted at its linked 300 m
+      function Max_From_10 return Integer_64 is
+         D : constant Integer_64 :=
+           Integer_64 (Pos.Position_Report (EVC_Core.Mode, L1).D_LRBG)
+           + Integer_64 (Pos.Position_Report (EVC_Core.Mode, L1).L_DOUBTOVER);
+         S : constant Integer_64 :=
+           (case Natural (Pos.Position_Report (EVC_Core.Mode, L1).Q_SCALE) is
+               when 0 => 10, when 1 => 100, when others => 1000);
+      begin
+         return D * S
+           + (if Natural (Pos.SOLR.Id.NID_BG) = 20 then 30_000 else 0);
+      end Max_From_10;
+
+      function Running return Boolean is
+        (MAu.MA.End_Timer.Running and then not MAu.MA.Withdrawn);
+   begin
+      Start_X;
+      Speed_Cms := 500;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 300), (1 => 20), Locacc => 12)));
+      Add_Group (Group (20, 400));
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      M.Q_ENDTIMER := 1;
+      M.Has_T_ENDTIMER := True;
+      M.T_ENDTIMER := 20;
+      M.D_ENDTIMERSTARTLOC := 380;
+      Carry (1, 1, M);
+      Lay_Run;
+      while not Running and then Train_Cm < 41_000 loop
+         Step_X (50);
+      end loop;
+      Started := MAu.MA.End_Timer.Started;
+      Front := Max_From_10;
+      Check (Running and then Natural (Pos.SOLR.Id.NID_BG) = 10
+             and then Front >= 32_000,
+             "MA timers relocated: the End Section timer started before the "
+             & "group 20 is read, the max safe front end at" & Front'Image
+             & " cm from the group 10");
+      while Natural (Pos.SOLR.Id.NID_BG) /= 20 and then Train_Cm < 41_000
+      loop
+         Step_X (50);
+      end loop;
+      Front := Max_From_10;
+      Check (Natural (Pos.SOLR.Id.NID_BG) = 20 and then Front < 32_000
+             and then Running and then MAu.MA.End_Timer.Started = Started,
+             "MA timers relocated: the max safe front end in rear of the "
+             & "start location after the relocation on the group 20 "
+             & "(3.6.4.2.5 a)), the timer kept (A.3.5.1 12th bullet), at"
+             & Front'Image & " cm");
+      while Train_Cm < 42_000 loop
+         Step_X (50);
+      end loop;
+      Check (Running and then MAu.MA.End_Timer.Started = Started,
+             "MA timers relocated: forward over the start location again, "
+             & "the End Section timer neither restarted nor stopped "
+             & "(A.3.5.1 12th bullet, 3.8.4.1.1)");
+      Speed_Cms := Saved;
+   end Scenario_MA_Timers_Relocated;
+
 
 end EVC_Test_Profiles;
