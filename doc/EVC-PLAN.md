@@ -16867,3 +16867,95 @@ as no sub-condition, which would start the text at step 44, yet step 46
 passes "not displayed": the decoding of packet 72 from X = 2 to trace).
 Not traced: 3120300_05, 4080100_05, 4080300_04, 4080403_01 (SV21). No
 code change for it. Backlog B2860 to B2862.
+
+### Review of the fifty-ninth round: eight verdicts re-derived blind (e5/review-59) (2026-10-31)
+
+Each verdict below was written from the clause, the data and the trace
+before the author's record was read. All eight items were taken; the
+trace of item 7 used a temporary print of the RTM outputs in
+`S076_Bench.Observe_RTM`, not committed.
+
+1. The FRMCS wait. Mine: by the decision of 2026-10-30, the type entered
+   10 s after the power-up with no report waits (hour glass) and A41
+   comes 40 s after the power-up; the first report is the detection of
+   E71: registered ends the wait (E61, no A41), not registered restarts
+   the 40 s from it. A43 (S3 E17, FRMCS+GSM-R with both installed, one
+   registered) informs of the failed registration of the system not
+   registered unless A29 or A41 already showed it, then S5.
+   `Power_Up`, `Take_FRMCS` and the `Type_Wait` part of `Supervise_Wait`
+   do that; A43 is not built (`One_Radio` only relaxes the watch).
+   Author (e6/frmcs-wait): the same, A43 left as B2840. Agree. Remark
+   without a line: two comments of `evc_sessions-network.adb` (in the
+   heading of `Supervise_Wait`'s neighbour and in `Produce`) name the
+   registration order "A43", which is the informing row.
+2. Packets 57, 58 and 63. Mine: Q_DIR 0 reverse, 1 nominal, 2 both
+   (7.5.1.103); 3.6.3.1.3 ignores the information, i.e. the packet, the
+   rest of the message judged by its own packets; a record left at the
+   generated default Q_DIR 0 is reverse. `Contact_Shortening`,
+   `MA_Request` and `MA_Request_Perturbation` set no Q_DIR before the
+   round (reverse, taken while no check existed); they test T_MAR and
+   T_NVCONTACT, so nominal is the right repair, not a hidden change.
+   Author: the same. Agree.
+3. Shunting in level 2. Mine: without a mission 130 with the position
+   report (A045), 28 (E090), SH, the mode change reported by 136 (A095),
+   the session kept until packet 42 Q_RBC 0 (S100), 156 (A115); with a
+   mission 130, 28, SH, 150 (A100, 5.5.3.1.3 step 2), the order and 156
+   (5.5.3.1.4 steps 3, 4). No message acknowledges the mode change
+   report; 5.6.4.2 repeats it. Author (e6/sessions-shunting): the same,
+   with a 136 after the 150 (3.6.5.1.4 b), which the clauses allow.
+   Agree.
+4. A.3.5.1 over a reverse movement and a relocation. Mine: the border
+   passed by the max safe front end, then by the min safe rear end,
+   each reported once, the Handing Over RBC's termination once, neither
+   reverted nor repeated nor re-established; a text, a track ahead free
+   request and an End Section timer kept as they are over a relocation
+   back in rear of their start. `Evaluate_Border` invalidates each
+   border item when it fires. Author: the same, no defect, B781
+   narrowed. Agree.
+5. The LX restriction's end. Mine: at the LX end location (5.16.1.3);
+   3.13.7.2 compensates the train length for the SSP, ASP and TSR only;
+   a relocation that puts the min safe front end back in rear of the
+   end brings the status and the restriction back (A.3.5.1.1 2nd
+   example) without a temporary EOA (11th bullet). `Speed_Elements`
+   ends the element at the end, `Build_LX_Indications` recomputes
+   against it every cycle. Author (e6/lx-rest): the same. Agree.
+6. S82c622ac. Mine: 4080300_15 step 61, BG2d in level 0 carries 136
+   then 88: the 88 is infill information (8.4.1.4.4), rejected in level
+   0 without exception (4.8.3, Level Crossing information, Infill: R);
+   ours takes every balise packet as non-infill and stores it by [1].
+   4080300_21 step 127: the 133 sent at 83500 ms is not acknowledged
+   when message 24 brings the 88 at 84000 ms: 4.8.3 [17] rejects it,
+   `EVC_Radio_Acceptance.First_Filter` applies [17] to no row of the
+   general message. Both the on-board. Author: the same (B2881, B2882).
+   Agree.
+7. 3150100_01 step 92. Mine: session 2 is established at 186200 ms
+   (3.5.3.7 d) but its 38 never comes in time: 159 repeated at 201200
+   ms, the session terminated at 216200 ms (3.5.3.7.4.1), a new
+   connection request at 276200 ms the runner never completes; at
+   356200 ms ours is connected to the Handing Over RBC only, so the 136
+   to session 1 alone is right (3.15.1.3.4). The runner gives the 38 of
+   step 94 at 413700 ms, 227 s after the 159, behind the optional step
+   88, which ran the antenna 586 m in 170 s; and it passes step 92 on a
+   periodic 136 to session 1 at 413400 ms because it matches by the
+   number, not the session. The 61 s of `Wait_Limit` is for the 156
+   only (t0 + 60 s, right); repetitions wait by `Repeat_Due`; step 92's
+   57 s was the default window. The trip before 101 follows the lost
+   session 2; its exact cause not traced. Author (e5/runner-defects):
+   the on-board, B2860 (session 2 "established since 186400 ms"), the
+   trip S1531c721 onboard. Disagree: B2920.
+8. Seabc1f7c. Mine: 4080427_01 step 70, packet 73 starting at the group
+   (D_TEXTDISPLAY 0), 100 m, no mode or level sub-condition, no
+   confirmation: shown from 350 m, ours sends none; 6060500_04 step 52,
+   a 2.1 trackside's packet 72 starting at level 4, which 6.6.3.2.3
+   [22] translates to level 2, ending at level 2 too (the transition
+   that starts it must not end it): shown in level 2 from 200 m, ours
+   sends none. The data as read in the scn files; both the on-board,
+   cause not found. Author: the same, B2861. Agree.
+
+Counts: 8 items, 7 agreed (1 to 6, 8), 1 disagreed (7), 0 undecided.
+My calls: 7 the runner (the 38 given right after its 159, the RTM
+expectations matched by session), then re-run and judge the trip;
+in the same trace, the 129 sent to session 1 every 15 s from 201200 to
+411200 ms (15 sendings) is a candidate for `EVC_Sessions`. Backlog:
+B2920. Brief premises wrong: none. The review took about 118 tool calls
+of 130, past the bound of 100 (item 8 finished at about 106).
