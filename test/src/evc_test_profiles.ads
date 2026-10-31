@@ -32,5 +32,8 @@ package EVC_Test_Profiles is
       procedure Scenario_Route_Suitability;
       procedure Scenario_Rear_Deletion;
       procedure Scenario_Snapshot_Seams;
+      --  A.3.5.1 12th bullet over a relocation: the End Section timer's
+      --  start location passed, the relocation puts the front in rear of it
+      procedure Scenario_MA_Timers_Relocated;
 
 end EVC_Test_Profiles;

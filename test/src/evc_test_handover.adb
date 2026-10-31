@@ -803,4 +803,122 @@ package body EVC_Test_Handover is
              & Integer_64'Image (Doubt));
    end Scenario_Handover_Rear_Report;
 
+   --  A.3.5.1 6th bullet with Scenario_Handover_Rear_Report's track (the
+   --  border at 300 m, 200 m from group 10, RBC 400 accepting): the max
+   --  safe front end passes the border (3.6.5.1.4 k), 3.15.1.3.1 b): the
+   --  report to both RBCs, the switch to 400 (3.15.1.3.5)); a roll back
+   --  1.5 m in rear of the border (under D_NVROLL) and 5 m forward: no
+   --  second crossing, 400 still supervising, the session with 300 kept;
+   --  then the min safe rear end passes it (3.6.5.1.4 e), 3.15.1.3.1 c));
+   --  a roll back 1.5 m and forward: no second crossing; RBC 300's order
+   --  to terminate (3.15.1.3.8 a)): 156 once; a roll back and forward: no
+   --  second 156, the session with 300 not established again
+   procedure Scenario_Handover_Roll_Back is
+      Saved  : constant Unsigned_16 := Speed_Cms;
+      Front  : Natural := 0;
+      Rear   : Natural := 0;
+      Ends   : Natural := 0;
+      Opened : Natural := 0;
+      X      : Integer_64;
+
+      --  one cycle of Step cm, counting the crossings, the 156 and the
+      --  requests to set up a connection to session 1
+      procedure Go (Step : Integer_64) is
+      begin
+         Seen := EVC_Position.No_Triggers;
+         Step_X (Step);
+         if Seen.Border_Front then
+            Front := Front + 1;
+         end if;
+         if Seen.Border_Rear then
+            Rear := Rear + 1;
+         end if;
+         Ends := Ends + Sent (156, 1);
+         for I in 1 .. Radio_Outputs loop
+            if Radio_Output (I).Request and then Radio_Output (I).Session = 1
+            then
+               Opened := Opened + 1;
+            end if;
+         end loop;
+      end Go;
+
+      --  back 1.5 m from X and forward to 5 m past it
+      procedure Roll is
+      begin
+         while Train_Cm > X - 150 loop
+            Go (-50);
+         end loop;
+         while Train_Cm < X + 500 loop
+            Go (50);
+         end loop;
+      end Roll;
+
+      function Image return String is
+        (" front" & Front'Image & " rear" & Rear'Image & " 156" & Ends'Image
+         & " opened" & Opened'Image & " supervising"
+         & R.Session_Ref_T'Image (R.Supervising) & " 300 "
+         & R.Session_State_T'Image (R.Info (1).State) & " at"
+         & Integer_64'Image (Train_Cm));
+   begin
+      Speed_Cms := 500;
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Run_X (25_000);
+      while Front = 0 and then Train_Cm < 40_000 loop
+         Go (50);
+      end loop;
+      X := Train_Cm;
+      Go (50);
+      Check (Front = 1 and then R.Supervising = 2
+             and then R.Info (1).State = R.Established
+             and then R.Info (2).State = R.Established,
+             "handover roll back: the front past the border, 400 "
+             & "supervises, the session with 300 kept" & Image);
+      Roll;
+      Check (Front = 1 and then Rear = 0 and then R.Supervising = 2
+             and then R.Info (1).State = R.Established
+             and then R.Info (2).State = R.Established,
+             "handover roll back: 1.5 m in rear of the border and forward "
+             & "again, the crossing neither reverted nor taken twice "
+             & "(A.3.5.1 6th bullet)" & Image);
+      while Rear = 0 and then Train_Cm < 100_000 loop
+         Go (50);
+      end loop;
+      X := Train_Cm;
+      Check (Rear = 1 and then Ends = 0
+             and then R.Info (1).State = R.Established,
+             "handover roll back: the rear past the border, the session "
+             & "with 300 kept until its order" & Image);
+      Roll;
+      Check (Rear = 1 and then Ends = 0 and then R.Supervising = 2
+             and then R.Info (1).State = R.Established,
+             "handover roll back: the rear 1.5 m in rear of the border and "
+             & "forward again, no second crossing (A.3.5.1 6th bullet)"
+             & Image);
+      Give_Radio_Message (1, M24 (20, False, 0, 300));
+      Go (50);
+      Go (50);
+      X := Train_Cm;
+      Check (Ends = 1 and then R.Info (1).State /= R.Established,
+             "handover roll back: RBC 300's order to terminate, 156 "
+             & "(3.15.1.3.8 a)" & Image);
+      Roll;
+      Check (Ends = 1 and then Opened = 0
+             and then R.Info (1).State not in R.Established
+             and then R.Supervising = 2
+             and then R.Info (2).State = R.Established,
+             "handover roll back: after the termination a roll back and "
+             & "forward, no second 156, the session with 300 not opened "
+             & "again (A.3.5.1 6th bullet)" & Image);
+      Speed_Cms := Saved;
+   end Scenario_Handover_Roll_Back;
+
 end EVC_Test_Handover;

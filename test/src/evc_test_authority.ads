@@ -84,6 +84,12 @@ package EVC_Test_Authority is
    --  RBC/RBC border, the session with its RBC still established; the
    --  deletion kept over a roll-back behind the border
    procedure Scenario_TSR_Inhibition_Border;
+   --  A.3.5.1 3rd bullet over a relocation: a text's start passed, the
+   --  relocation on a linked group puts the front end in rear of it
+   procedure Scenario_Text_Relocated;
+   --  A.3.5.1 9th bullet over a relocation: the track ahead free request's
+   --  beginning passed, the relocation puts the front end in rear of it
+   procedure Scenario_TAF_Relocated_In_Rear;
    --  Message 34 referring to the group 10 of country 123: the display
    --  from Begin_M to Begin_M + Len_M metres beyond it
    function TAF_Message (Begin_M, Len_M : Natural)

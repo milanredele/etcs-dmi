@@ -197,6 +197,7 @@ begin
    Scenario_Route_Suitability;
    Scenario_Rear_Deletion;
    Scenario_Snapshot_Seams;
+   Scenario_MA_Timers_Relocated;
    Check (Encodes_OK, "E3: every telegram of the track encoded");
    Scenario_SDM_Precision;
    Scenario_SDM_Gamma;
@@ -350,6 +351,7 @@ begin
    Scenario_Session_Desk_Opening;
    Scenario_Mode_Report_Repeated;
    Scenario_SH_Request_Failed;
+   Scenario_Shunting_L2_Terminated;
    Scenario_Text_Ack_Report;
    Scenario_Train_Integrity;
    --  phase E6: Supervised Manoeuvre, the safe consist length
@@ -391,6 +393,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Contact;
    EVC_Test_Handover.Scenario_Handover_Rear_Border;
    EVC_Test_Handover.Scenario_Handover_Rear_Report;
+   EVC_Test_Handover.Scenario_Handover_Roll_Back;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;
@@ -438,6 +441,8 @@ begin
    Scenario_TSR_Inhibition_Border;
    Scenario_Parameters_Direction;
    Scenario_SR_List_Direction;
+   Scenario_Text_Relocated;
+   Scenario_TAF_Relocated_In_Rear;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Order_With_L1_MA;
