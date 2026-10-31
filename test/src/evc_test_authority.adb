@@ -2729,4 +2729,90 @@ package body EVC_Test_Authority is
              & "TSRs" & Natural'Image (EVC_Track_Description.TSR_Count));
    end Scenario_TSR_Inhibition_Border;
 
+   --  A relocation in rear of a location passed (A.3.5.1, 3.6.4.2.5 a)) in
+   --  level 2, EVC_Test_Profiles.Scenario_Mode_Profile_Relocated's track:
+   --  the group 10 at 100 m links the group 20 at 300 m (Q_LOCACC 12 m),
+   --  the session established, with With_MA an MA of 3000 m from the RBC,
+   --  else SR; from 150 m the odometer over-reads by 2 % without a
+   --  confidence interval of its own, so the group 20 is read 6 m beyond
+   --  its linked location and its reading puts the front ends 6 m back
+   procedure Lay_Relocating_L2 (With_MA : Boolean) is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 300), (1 => 20), Locacc => 12)));
+      Add_Group (Group (20, 400));
+      Establish;
+      Run_X (11_000);
+      if With_MA then
+         Give_Radio_Message (1, MA_Message (10, MA_Of ((1 => 3000)), Stamp));
+      else
+         EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      end if;
+      Stand_X (100);
+      Run_X (15_000);
+      Error_Per_Mille := 20;
+      Bound_Per_Mille := 0;
+   end Lay_Relocating_L2;
+
+   --  The SOLR's group
+   function SOLR_Group return Natural is
+     (Natural (EVC_Position.SOLR.Id.NID_BG));
+
+   --  The estimated front end in cm from the group 10 as the position
+   --  report gives it (D_LRBG), the group 20 counted at its linked 300 m
+   function Front_From_10 return Integer_64 is
+      P : constant Integer_64 :=
+        Integer_64 (EVC_Position.Position_Report (EVC_Core.Mode, L2).D_LRBG);
+      S : constant Integer_64 :=
+        (case Natural (EVC_Position.Position_Report
+                         (EVC_Core.Mode, L2).Q_SCALE) is
+            when 0 => 10, when 1 => 100, when others => 1000);
+   begin
+      return P * S + (if SOLR_Group = 20 then 30_000 else 0);
+   end Front_From_10;
+
+   --  A.3.5.1 3rd bullet over a relocation: the text from 309 m of the
+   --  group 10, shown when the estimated front end passes its start before
+   --  the group 20 is read; the relocation on the group 20 puts that front
+   --  end in rear of the start; forward over it again: the text neither
+   --  removed nor shown a second time, no record of the texts
+   procedure Scenario_Text_Relocated is
+      M     : Natural := 0;
+      Front : Integer_64;
+   begin
+      Lay_Relocating_L2 (With_MA => True);
+      Give_Radio_Message (1, Text_At_Message (10, 309));
+      Stand_X (100);
+      while EVC_Text_Messages.Displayed = 0 and then Train_Cm < 41_000 loop
+         Run_X (Train_Cm + 50, 50);
+      end loop;
+      Front := Front_From_10;
+      Check (EVC_Text_Messages.Displayed = 1 and then SOLR_Group = 10
+             and then Front >= 30_900,
+             "text relocated: shown at its start before the group 20 is "
+             & "read, the front at" & Front'Image & " cm from the group 10");
+      while SOLR_Group /= 20 and then Train_Cm < 41_000 loop
+         Run_X (Train_Cm + 50, 50);
+         M := M + EVC_Text_Messages.Event_Count;
+      end loop;
+      Front := Front_From_10;
+      Check (SOLR_Group = 20 and then Front < 30_900
+             and then EVC_Text_Messages.Displayed = 1 and then M = 0,
+             "text relocated: the estimated front end in rear of the start "
+             & "after the relocation on the group 20 (3.6.4.2.5 a)), still "
+             & "shown, not reverted (A.3.5.1 3rd bullet), the front at"
+             & Front'Image & " cm, records" & M'Image);
+      while Train_Cm < 42_000 loop
+         Run_X (Train_Cm + 50, 50);
+         M := M + EVC_Text_Messages.Event_Count;
+      end loop;
+      Check (EVC_Text_Messages.Displayed = 1 and then M = 0
+             and then EVC_Core.Mode = M_FS,
+             "text relocated: forward over the start again, not shown a "
+             & "second time, no record of the texts (A.3.5.1 3rd bullet), "
+             & "got" & M'Image);
+   end Scenario_Text_Relocated;
+
 end EVC_Test_Authority;
