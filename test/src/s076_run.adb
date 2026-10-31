@@ -141,6 +141,50 @@ package body S076_Run is
 
    function W (K : Positive) return String is (Word (Line, K));
 
+   --  The RTM sendings an expectation of the sequence has matched (the
+   --  session, the message, the bench time), the last Max_Matched of
+   --  them: an expected message is matched by a sending no earlier step
+   --  matched, so a repetition step needs its own sending (5060400_01
+   --  steps 120, 122, 124: the mode change report 136 repeated 15 s
+   --  apart, A.3.1, 5.6.4.2)
+   type Sending_T is record
+      Session : Natural := 0;
+      Code    : Natural := 0;
+      At_Ms   : Unsigned_64 := 0;
+   end record;
+   Max_Matched : constant := 64;
+   type Sendings_T is array (1 .. Max_Matched) of Sending_T;
+   Matched      : Sendings_T;
+   Matched_Last : Natural range 0 .. Max_Matched := 0;
+   --  set while a JRU record 10 is judged by its RTM message (JRU_Sent):
+   --  the record of a sending an RTM step matched; nothing is marked
+   Judging_JRU  : Boolean := False;
+
+   function Was_Matched (R : B.Radio_Out_T) return Boolean is
+     (for some M of Matched =>
+        M.Code = R.Code and then M.Code /= 0 and then M.At_Ms = R.At_Ms
+        and then M.Session = R.Session);
+
+   --  When the window lists a sending of message Nid an earlier step
+   --  matched, the step expects a repetition of it: the bench time by
+   --  which it is due, the latest such sending and 61 s; 0 when there is
+   --  none. Decision: 61 s and not A.3.1's 15 s with a second, because
+   --  a repetition's time is not always 15 s: the MA request repeated
+   --  "after 60s" without T_CYCRQST (4100103_21 step 148, 4100103_40
+   --  step 140) and 9990500_09 step 87 fail with 16 s
+   function Repeat_Due (Nid : String) return Unsigned_64 is
+      Due : Unsigned_64 := 0;
+   begin
+      for I in 1 .. B.Radio_Count loop
+         if not B.Radio (I).Is_Request and then Img (B.Radio (I).Code) = Nid
+           and then Was_Matched (B.Radio (I))
+         then
+            Due := Unsigned_64'Max (Due, B.Radio (I).At_Ms + 61_000);
+         end if;
+      end loop;
+      return Due;
+   end Repeat_Due;
+
    --  The cycles an expectation may wait for. SUBSET-026 3.5.7.2, Table 2
    --  [2], A.3.1: "Connection Lost/Set-Up failed" shows when the 45 s
    --  "connection status" timer expires; the sequences let that time pass
@@ -155,14 +199,23 @@ package body S076_Run is
    --  (6060500_10 step 99 after the 159 of step 97, 5060400_01 step 126
    --  "T_TRAIN=t0+60s"), so its expectation waits 61 s (in the corpus
    --  of 2026-10-30 it moves no sequence alone: those two wait for the
-   --  terminations of 5.6.4.1.2 and 5.6.4.3)
-   function Wait_Limit return Natural is
+   --  terminations of 5.6.4.1.2 and 5.6.4.3). A repetition of a message
+   --  (Repeat_Due) is waited for until it is due, from the Used cycles
+   --  the window has waited already (5060400_01 steps 120, 122, 124
+   --  in one window, 15 s apart)
+   function Wait_Limit (Used : Natural) return Natural is
      (if Same (W (3), "status-symbol") and then Same (W (4), "displayed")
         and then Has (W (5), "Connection-Lost")
       then 46_000 / B.Cycle_Ms
       elsif Same (W (2), "RTM") and then Same (W (3), "message")
         and then Line.Count = 4 and then W (4) = "156"
       then 61_000 / B.Cycle_Ms
+      elsif Same (W (2), "RTM") and then Same (W (3), "message")
+        and then Line.Count >= 4 and then Repeat_Due (W (4)) > 0
+      then Used + Natural ((Repeat_Due (W (4))
+                            - Unsigned_64'Min (B.Now_Ms,
+                                               Repeat_Due (W (4))))
+                           / Unsigned_64 (B.Cycle_Ms))
       else Wait_Cycles);
 
    ---------------------------------------------------------------------
@@ -4636,7 +4689,9 @@ package body S076_Run is
       Load_Line (To_Text ("expect RTM " & (if Positive then "" else "no-")
                           & "message " & To_String (Nid)
                           & To_String (Packets) & To_String (Fields)));
+      Judging_JRU := True;
       J := Radio_Expect (St);
+      Judging_JRU := False;
       Load_Line (St.Line);
       if Head and then J.Verdict = Passed then
          declare
@@ -7026,6 +7081,8 @@ package body S076_Run is
       Hold_Number := 0;
       Hold_Mode := False;
       Hold_Asked := (others => -1);
+      Matched := (others => <>);
+      Matched_Last := 0;
       Outcome := Seq_Passed;
       Outcome_Step := 0;
       Outcome_Index := 0;
@@ -7159,7 +7216,8 @@ package body S076_Run is
                   --  after it, most before it)
                   B.New_Window
                     (Keep_Radio =>
-                       (W (2) = "RTM" and then W (3) = "message"
+                       ((W (2) = "ODO"
+                         or else (W (2) = "RTM" and then W (3) = "message"))
                         and then I > 1
                         and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm)
                        or else Redelivered (I)
@@ -7276,7 +7334,7 @@ package body S076_Run is
                else
                   Note_Curve_Ref (I);
                   J := Expect (St);
-                  while J.Verdict = Failed and then Wait_Used < Wait_Limit
+                  while J.Verdict = Failed and then Wait_Used < Wait_Limit (Wait_Used)
                     and then not Next_Group_Reached (I)
                   loop
                      Wait_Cycle;
@@ -7343,7 +7401,7 @@ package body S076_Run is
                   declare
                      C : Judgement_T := Columns (I);
                   begin
-                     while C.Verdict = Failed and then Wait_Used < Wait_Limit
+                     while C.Verdict = Failed and then Wait_Used < Wait_Limit (Wait_Used)
                        and then not Next_Group_Reached (I)
                      loop
                         Wait_Cycle;
