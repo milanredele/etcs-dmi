@@ -403,8 +403,8 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case Change the mode and verify it is reported
-clause E4 partial 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095
-clause E4 partial 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095.1
+clause E4 done 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095
+clause E4 done 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095.1
 step Change the mode and verify it is reported
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A095
@@ -1278,7 +1278,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 0
-clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 done 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level 0
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
@@ -1286,7 +1286,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L0
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.NoProcedure
 case Level 1
-clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 done 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
@@ -1294,7 +1294,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.NoProcedure
 case Level 2
-clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.1
+clause E4 done 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.1
 step Level 2
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1302,7 +1302,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A095
 case Level 3
-clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 done 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level 3
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1310,7 +1310,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L3
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A095
 case Level NTC
-clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 done 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level NTC
 sub Sub-step1
 efs: Kernel.Level.Value.Value <- LevelEnum.LNTC
@@ -1820,10 +1820,10 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case Receive order to terminate the communication session
-clause E4 partial 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100
-clause E4 partial 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100.1
-clause E4 partial 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115
-clause E4 partial 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115.1
+clause E4 done 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100
+clause E4 done 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100.1
+clause E4 done 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115
+clause E4 done 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115.1
 step Receive order to terminate the communication session
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.S100

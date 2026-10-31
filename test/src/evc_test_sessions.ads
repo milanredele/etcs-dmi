@@ -120,5 +120,9 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_NVCONTACT_Values;
    --  4.8.3 [14], [15], 4.8.4 [8]
    procedure Scenario_Session_Order_Rows;
+   --  5.6.2.2 in level 2 to the RBC's order to terminate: the request for
+   --  shunting, SH authorised, the mode change reported (no mission) or
+   --  the End of Mission (a mission), the session terminated on the order
+   procedure Scenario_Shunting_L2_Terminated;
 
 end EVC_Test_Sessions;

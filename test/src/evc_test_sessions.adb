@@ -3307,4 +3307,138 @@ package body EVC_Test_Sessions is
              "order rows: in PS the same (4.8.4 [8], 4.4.20.1.13)");
    end Scenario_Session_Order_Rows;
 
+   --  5.6.2.2 in level 2, Shunting selected at standstill with the session
+   --  with RBC 300 established: the request for shunting (130, A045),
+   --  "SH authorised" (28, E090), SH (A050); without a mission (SB at S20
+   --  of the start of mission) D040 -> D080 -> A095: the mode change
+   --  reported (136), S100: the session kept until the RBC's order to
+   --  terminate (packet 42 Q_RBC 0 in message 24, 3.5.5.1 a)), A115: 156;
+   --  with a mission (SR) D040 -> A100: the End of Mission procedure
+   --  (5.5.2.3.1, 5.5.3.1.3 step 2: message 150; 5.5.3.1.4 steps 3, 4: the
+   --  RBC's order, 156)
+   procedure Scenario_Shunting_L2_Terminated is
+      use type EVC_Core.Time_Ms_T;
+      Log   : array (1 .. 24) of Natural := (others => 0);
+      Count : Natural := 0;
+
+      --  stand for Ms, appending the messages 130, 136, 150 and 156 sent
+      --  to session 1 in their order
+      procedure Watch (Ms : EVC_Core.Time_Ms_T) is
+         Start : constant EVC_Core.Time_Ms_T := EVC_Core.Time_Ms;
+      begin
+         while EVC_Core.Time_Ms - Start < Ms loop
+            Stand;
+            for J in 1 .. Radio_Outputs loop
+               for NID of Nat_List'(130, 136, 150, 156) loop
+                  if Is_Message (J, NID) and then Count < Log'Last then
+                     Count := Count + 1;
+                     Log (Count) := NID;
+                  end if;
+               end loop;
+            end loop;
+         end loop;
+      end Watch;
+
+      --  the position in the log of the first NID from From on, 0 if none
+      function First (NID : Natural; From : Positive := 1) return Natural is
+      begin
+         for I in From .. Count loop
+            if Log (I) = NID then
+               return I;
+            end if;
+         end loop;
+         return 0;
+      end First;
+
+      function Image return String is
+         S : String (1 .. 4 * Log'Length) := (others => ' ');
+      begin
+         for I in 1 .. Count loop
+            S (4 * I - 3 .. 4 * I) := Log (I)'Image;
+         end loop;
+         return " sent:" & S (1 .. 4 * Count);
+      end Image;
+
+      --  message 28 answering the latest request for shunting, LRBG 10
+      function SH_Authorised return Byte_Array is
+         W : Writer_T;
+         V : ETCS_Message.Value_Array := (others => 0);
+      begin
+         V (3) := Now_T;
+         V (5) := 123;
+         V (6) := 10;
+         V (7) := Unsigned_64 (EVC_Radio_Authority.SH_Request_Stamp);
+         Start_Message (W, MCat.Track_M28, V);
+         return Message_Bytes (W);
+      end SH_Authorised;
+
+      --  Shunting selected at standstill, granted; the log from there on
+      --  (the request goes out in the cycle of the selection)
+      procedure Shunting_Granted is
+         Before : constant Natural := EVC_Radio_Authority.SH_Requests_Sent;
+      begin
+         Count := 0;
+         Send (Action (7));
+         if EVC_Radio_Authority.SH_Requests_Sent > Before then
+            Count := 1;
+            Log (1) := 130;
+         end if;
+         Watch (1_000);
+         Give_Radio_Message (1, SH_Authorised);
+         Watch (500);
+      end Shunting_Granted;
+
+      EoM : Natural;
+      Req : Natural;
+   begin
+      --  without a mission: SB at S20
+      SoM_L2_At_S20;
+      Shunting_Granted;
+      Req := First (130);
+      Check (EVC_Core.Mode = EVC_Modes.M_SH and then Req > 0
+             and then First (136, Req + 1) > 0
+             and then First (156) = 0
+             and then R.Info (1).State = R.Established,
+             "shunting L2: no mission, 130 (A045), SH authorised (E090, "
+             & "A050), the mode change reported (D080, A095)" & Image);
+      Watch (5_000);
+      Check (First (156) = 0 and then R.Info (1).State = R.Established,
+             "shunting L2: S100, the session kept while the RBC's order is "
+             & "awaited" & Image);
+      Give_Radio_Message (1, Terminate_Order (10));
+      Watch (1_000);
+      Check (First (156) > 0 and then R.Info (1).State = R.Terminating,
+             "shunting L2: the RBC's order to terminate, 156 (A115)"
+             & Image);
+      Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
+      Watch (1_000);
+      Check (R.Info (1).State /= R.Established
+             and then EVC_Core.Mode = EVC_Modes.M_SH,
+             "shunting L2: the session ended, SH kept (A115 END)" & Image);
+
+      --  with a mission: SR by the start of mission
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      EoM := EVC_Sessions.EoM_Sent;
+      Shunting_Granted;
+      Req := First (130);
+      Check (EVC_Core.Mode = EVC_Modes.M_SH and then Req > 0
+             and then First (150, Req + 1) > 0
+             and then EVC_Sessions.EoM_Sent = EoM + 1
+             and then First (156) = 0
+             and then R.Info (1).State = R.Established,
+             "shunting L2: a mission, 130, SH authorised, the End of "
+             & "Mission reported (D040, A100, 5.5.3.1.3)" & Image);
+      Give_Radio_Message (1, Terminate_Order (10));
+      Watch (1_000);
+      Check (First (156) > 0 and then R.Info (1).State = R.Terminating,
+             "shunting L2: the RBC's order to terminate after the End of "
+             & "Mission, 156 (5.5.3.1.4 steps 3, 4)" & Image);
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Shunting_L2_Terminated;
+
 end EVC_Test_Sessions;
