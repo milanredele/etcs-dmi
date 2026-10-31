@@ -16807,3 +16807,63 @@ Backlog: B2822 closed, B2880 (runner), B2881 and B2882 (onboard) added,
 B781 narrowed. No change in evc/, so no proof run; the runner unmoved
 (1185 / 1045 / 960). Edits outside the units: none (`S076_Bench`
 carried a temporary print during the traces, reverted).
+### The runner's defects and gaps: the message 38 of the SV2 layout blocked, the repetition steps timed, the plain text message not sent (e5/runner-defects) (2026-10-31)
+
+**B2821, the message 38 of the SV2 layout: blocked as S076-defect.**
+The review's cause held at the trace and in ERA's PDF of 3130700_07
+SV30: step 65's message 38 is NID_MESSAGE, L_MESSAGE 10, T_TRAIN, M_ACK,
+NID_LRBG 5767169 (75 bits; ERA: "Message 38 - Initiation of a
+Communication Session"), where 8.7.16 has 51 bits in 7 bytes; the JRU's
+error record is in the window of step 65 at 44200 ms. `S076_Run.
+Radio_Input` blocks a message 38 whose L_MESSAGE is not 7, from the
+step's data. Corpus: 634 messages 38, all in SV30, 631 of 7 bytes and 3
+of 10: 3130700_07 step 65 (failed at 91, now blocked at 65: the one
+movement), 3130700_08 step 68 (already blocked at 54), 4080421_03 step
+207 (fails first at 97 by Sc3626e09; the brief's "blocked at its 38
+step instead of failed at 97" did not hold). B2821 and B2800 done (no
+on-board defect); the S185bee31 onboard line narrowed.
+
+**The repetition steps timed.** The runner passed 5060400_01 SV30 steps
+120, 122, 124 on the first 136 (76300 ms) because every candidate of
+the window was open to every step. Now a positive RTM expectation is
+matched by a sending no earlier step matched (`S076_Run.Matched`, the
+session, the message and the bench time of the last 64; marked in
+`Radio_Expect.Message`, not by the JRU 10 judgement that re-reads the
+RTM message, `Judging_JRU`), and a step whose message the window lists
+already matched waits for the repetition up to 61 s after it
+(`Repeat_Due`, `Wait_Limit (Used)`; the wait's own cycles let the 15 s
+pass, no timer step). 5060400_01 passes on the sendings at 91300,
+106300, 121300 ms and the 156 at 136300 ms (the pass text now names the
+sending's time and session). Decision: 61 s, not A.3.1's 15 s and a
+second: with 16 s, 4100103_21 / _40 (three versions, the MA request
+repeated "after 60s") and 9990500_09 (SV21, SV22) failed. The matching
+alone moved 4080428_01 (three versions) to step 80: step 78 at 250 m
+expects the 136 "Now" of packet 58 (M_LOC 000, 7.5.1.69, sent at 57900
+ms upon the message 24 of step 71) and step 80 the one at D_LOC (66300
+ms), but the reach-point input of step 76 at the same 250 m opened a
+window without the first; an ODO input at the place of the step before
+now keeps the radio messages listed like an RTM one (4080428_01 back at
+its baseline step; 4100103_26, three versions, improved from 159 to a
+block at 162 by it: its 136 at 116900 ms at 700 m kept for step 159).
+One regression, explained: 3150100_01 SV30 102 -> 101: step 92 expects
+the 136 to the Accepting RBC (3.15.1.3.4); ours sends it to session 1
+only (356200 ms) while session 2 is established since 186400 ms
+(3.5.3.7 d): B2860 onboard; the runner, not per session, passes step 92
+on a later 136 to session 1 at 413400 ms and the 57 s run ends in the
+trip before step 101 (S1531c721, an onboard line). The runner: 1185 /
+1044 / 961 -> 1185 / 1041 / 964.
+
+**Seabc1f7c, the plain text message not sent (11 sequences): by cause,
+three traced at SV30.** The runner (model, B2862): 3120300_03 step 62,
+the text started at the group's reading in the window of step 59 and
+the ODO input of step 61 at the same 400 m opened a new window;
+"displayed" is judged by a sending of the window only. Ours, cause not
+found (B2861): 4080427_01 step 70 (packet 73 with a location start only
+and Q_TEXTDISPLAY 1; M_LEVELTEXTDISPLAY 4 is "none" in 7.5.1.66 and
+`EVC_Text_Messages` reads it so; none sent at 359 to 399 m) and
+6060500_04 step 52 (packet 72 of a 2.1 trackside, start level 4, which
+6.6.3.2.3 [22] translates to level 2; none sent in L2 FS; ours reads 4
+as no sub-condition, which would start the text at step 44, yet step 46
+passes "not displayed": the decoding of packet 72 from X = 2 to trace).
+Not traced: 3120300_05, 4080100_05, 4080300_04, 4080403_01 (SV21). No
+code change for it. Backlog B2860 to B2862.

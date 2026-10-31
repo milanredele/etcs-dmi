@@ -362,6 +362,10 @@ function Radio_Expect (St : Step_T) return Judgement_T is
            and then not (Neg and then B.Radio (I).At_Ms
                                       < Unsigned_64'Max (B.Window_Ms,
                                                          Group_Input_Ms))
+           --  a sending an earlier step matched is no candidate
+           --  (S076_Run.Matched)
+           and then (Neg or else Judging_JRU
+                     or else not Was_Matched (B.Radio (I)))
          then
             if Neg then
                return Check (False, "RTM no message " & Nid, "sent");
@@ -369,8 +373,18 @@ function Radio_Expect (St : Step_T) return Judgement_T is
             declare
                J : constant Judgement_T := One (Nid, I);
             begin
-               if J.Verdict = Passed then
+               if J.Verdict = Passed and then Judging_JRU then
                   return J;
+               elsif J.Verdict = Passed then
+                  Matched_Last := Matched_Last mod Max_Matched + 1;
+                  Matched (Matched_Last) :=
+                    (Session => B.Radio (I).Session,
+                     Code    => B.Radio (I).Code,
+                     At_Ms   => B.Radio (I).At_Ms);
+                  return Pass ("RTM message " & Nid & " sent at t="
+                               & Unsigned_64'Image (B.Radio (I).At_Ms)
+                               & " ms (session"
+                               & Natural'Image (B.Radio (I).Session) & ")");
                elsif not Seen then
                   First := J;
                   Seen := True;
