@@ -203,7 +203,7 @@ accident.
 | **E5 Radio, level 2** | Session management, MA request and update, co-operative shortening, emergency messages, position reports, handover, radio data consistency, SoM in L2, RBC simulator in `sim/` | 3.5, 3.8 (except 3.8.4), 3.10, 3.15.1, 3.16.3, 5.15 | L |
 | **E6 Special functions and data** | Non-leading engines, splitting and joining, TAF, big metal mass, VBC, advance route information, system version, national values, train data and data view, balise consistency, juridical data port | 3.15 (rest), 3.16 (except 3.16.3), 3.17, 3.18, 3.20, A.3.2 | L |
 | **E7 Compatibility** | Older system versions X = 1 and X = 2; Euroloop and radio infill if wanted | 6, 3.9 | L, deferrable |
-| **E8 Hercules** | TMS570LC43x LaunchPad, `gnat_arm_elf` with a light runtime for TMS570 (bb-runtimes), RTI timer executive, ESM and lockstep fault reporting, DMI link over Ethernet with CRC and sequence numbers, memory and timing measurements | — | L |
+| **E8 Hercules** | TMS570LC43x LaunchPad, `gnat_arm_elf` with a light runtime for TMS570 (bb-runtimes), RTI timer executive, ESM and lockstep fault reporting, DMI link over Ethernet with CRC and sequence numbers, a battery-backed real-time clock on the board (the TMS570 has none on chip; the UTC source of `EVC_Core.Set_UTC`, 3.18.5.1, decided 2026-10-31), memory and timing measurements | — | L |
 
 Level 1 is drivable at the end of E4, level 2 at the end of E5. E1 and E2
 are independent and can run as parallel branches, like the P4 branches of
@@ -17065,3 +17065,27 @@ sequences, the two "A43" comments, B781's rest (the 6th bullet's
 relocation, the stop of the 3rd, the LS profile of the 4th); the user's
 decisions B1060, B1340; the review again (eight items, readings first,
 no backlog read).
+
+Decided by the user on 2026-10-31, after the paper "Three decisions"
+(e6/protocol-decisions) and its elaboration: (1) B1060 and B1340 rest on
+one reading of 3.18.5.1: "each ERTMS/ETCS on-board equipment shall be
+able to provide the date and time in UTC and Local Time" makes the
+calendar clock part of the on-board, so a battery-backed real-time clock
+belongs to the package (on the target an RTC on the board, read by the
+port into `Set_UTC` at the power-up; the E8 row of §3 names it), and
+UTC is known from the first cycle after a power-up. (2) B1060: a cover's
+end is stored in UTC and judged against the clock (the paper's choice
+b); the time left stays the fallback for a clock that reports nothing.
+(3) B1340: the on-board itself tells the local time from its clock and
+the geographic region, not from an offset given by the port (the paper's
+recommendation not followed). The coordinator's reading of the shape,
+to be checked by the builder: the region is the NID_C of the last balise
+group read, kept over No Power with the position; an installation table
+of the configuration image maps NID_C to a time zone rule (the standard
+offset and the summer-time rule, none or the EU rule); the local time is
+UTC plus the rule's offset for the date, computed each cycle for the
+status message's seconds and the text messages' stamps; UTC shown while
+no region is known; the juridical data stay UTC (3.18.5.2). Both are
+build items of a coming round (one package: the clock, the cover's end,
+the local time, the image's format version).
+
