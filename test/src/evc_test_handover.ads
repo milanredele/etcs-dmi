@@ -60,5 +60,8 @@ package EVC_Test_Handover is
    --  3.6.5.1.4 e), 3.15.1.3.1 c), 3.15.1.3.4: the report in the cycle
    --  the min safe rear end passes the border, to both RBCs
    procedure Scenario_Handover_Rear_Report;
+   --  A.3.5.1 6th bullet: the border passed by the front, then by the
+   --  rear, each followed by a roll back in rear of it and forward again
+   procedure Scenario_Handover_Roll_Back;
 
 end EVC_Test_Handover;
