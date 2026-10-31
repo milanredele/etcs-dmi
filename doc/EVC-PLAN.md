@@ -16573,3 +16573,90 @@ for S3 and S4 alike (the paper's choice C; the reviewer's A41 at once
 not followed); (2) B2681: packets 57, 58 and 63 are judged by the train
 orientation like 64, no exception. Both are build items of the next
 round.
+
+### The level crossings' remaining items: the restriction's end and the indication point at 5160000_01, S82c622ac by cause, the LX over a relocation (e6/lx-rest) (2026-10-31)
+
+**B2822, 5160000_01 SV30 step 55: no on-board defect.** Traced with a
+per-cycle print of the bench (position, displayed Permitted speed,
+monitoring, target, planning ceiling, the LX symbol; not committed); the
+sequence has no curves block, so `curve_probe.py` is not for it. The
+data: BG2d at 450 m, LX1 1250 to 1450 m (V_LX 70 km/h), LX2 2250 to
+2350 m (V_LX 60 km/h), both not protected, stopping not required.
+(a) The restriction's end: the planning ceiling, which is V_MRSP over
+the min to the max safe front end (3.13.7.2), is 70 km/h up to the
+estimated front end 1465 m and 120 km/h from 1471 m, the cycle where
+the min safe front end passes LX1's end at 1450 m (the runner's
+min-safe-front-end point 1450 m is reached at 1471 m): the LX
+restriction ends at the LX end location (5.16.1.3); 3.13.7.2 compensates
+the train length for the SSP, ASP and TSR only. The review's 70 km/h at
+1548 m is the displayed Permitted speed in target speed monitoring
+towards LX2's temporary EOA (target 0 at 757 m from 1471 m), held at its
+value of ceiling speed monitoring by the lock of 3.13.10.4.8.1 / A.3.10
+(`EVC_SDM.Show_Driver`) until the curve falls under it 587 m before the
+target (1639 m). (b) The indication point: LX2's temporary EOA becomes
+the MRDT at 1465 m, 763 m before its start at 69 km/h, by our Indication
+limit for the bench's train (brake percentage 109: the sequence has no
+workbook and ERA's PDF gives no braking data); the sequence has 1695 m
+(max safe front end, 555 m before). LX1 shows the same ratio: ours the
+MRDT on reading BG2d (456 m, at 79 km/h already past its Indication
+limit), the sequence 583 m (667 m before 1250 m). The runner's train
+brakes longer than the one of ERA's tool: triage `model`, B2880
+(runner: a brake percentage fitted per sequence, or the step judged on
+the train's own MRDT, to decide). B2822 closed.
+
+**S82c622ac's other sequences, by cause** (each traced at SV30 to its
+step; the SV21 and SV22 versions fail at the same steps):
+- 4080300_15 step 61, E7: BG2d at 150 m in level 0, level 1 announced
+  by BG1d (D_LEVELTR 250), carries packet 136 then packet 88 (400 to
+  500 m, stopping required): infill information, which 4.8.3 rejects in
+  level 0 (row Level Crossing information, From RBC No, Infill: R, no
+  exception [1]). Ours takes every balise information as non-infill
+  (`EVC_Acceptance`'s header) and stores it by [1]: after the
+  transition at 250 m the LX start is a temporary EOA from 256 m and the
+  status is shown at 380 m. B2881 (onboard: the infill rows of 4.8.3 in
+  `EVC_Acceptance`; the infill reference of 3.9 stays E7).
+- 4080300_21 step 127, onboard: in SM in level 2 the Safe consist
+  length information for SM (message 133, step 122) is unacknowledged
+  when message 24 brings a packet 88 (step 124); 4.8.3 [17] rejects it,
+  ours takes it (`EVC_Radio_Acceptance.First_Filter` applies [17] to the
+  SM authorisation only, [3] to the MA family only; [17] is in 12 rows
+  of the table). B2882, not built (not my unit).
+- 5160000_06 step 92, s076 (ERA's PDF read): LX2 (BG3d 600 m + D_LX 700,
+  L_LX 100, V_LX 75 km/h, stopping not required) is the MRDT at 1376 m
+  in the sequence, past its own start at 1300 m. The train at 40 km/h
+  under V_LX is substituted at the Permitted speed supervision limit for
+  V_LX (5.16.3.2; ours before 1215 m, its 75 km/h in the planning
+  ceiling from there) and the driver informed then (5.16.1.4 b)), so
+  the status continues past LX1's end at 1200 m.
+- 9990400_18 step 81, s076 (ERA's PDF read): the LX is 650 to 1100 m
+  (BG5d 600 m + D_LX 50, L_LX 450); the step expects the symbol removed
+  at 725 m where its own comment says the min safe front end is in rear
+  of the LX end: 5.16.1.5 keeps it, and A.3.4.1.3 keeps the level
+  crossing information (U) over the MA shortened at step 73 and extended
+  at step 76.
+The triage: four lines S82c622ac (model, E7, onboard, s076) after
+S3372f797's; the family line `~track condition` left as it is.
+
+**B781, the 11th bullet over a relocation: no defect.**
+`EVC_Test_Profiles.Scenario_LX_Relocated` on `Lay_Relocating` (the group
+10 at 100 m linking the group 20 at 300 m further, the odometer
+over-reading 2 %): a level crossing not protected from 380 to 396 m of
+the track (D_LX 280, L_LX 16 from the group 10, V_LX 20 km/h, stopping
+not required), the train at 18 km/h. Substituted before its start
+(5.16.3.2), the status ended by the min safe front end past the end
+before the group 20 is read; the relocation on the group 20 puts the min
+safe front end in rear of the end again (the same geometry as
+`Scenario_Mode_Profile_Relocated`): no temporary EOA again, no mode
+change (the substitution is kept, `EVC_Track_Description.Release_LX`),
+the status and the LX restriction back, as A.3.5.1.1's second example
+reads ("the relocation brings back the min safe front end in rear of an
+unprotected LX end location: ... display again the unprotected LX
+status"), ended again by the forward movement. Four checks, passing
+without a change in evc/ (no defect to fail on). B781 narrowed.
+
+Matrix: 5.16.1.3, .4, .5 and 3.13.10.4.2 re-read, done and right by the
+trace; the 5.16.1.5 note and the A.3.5.1 note name the new scenario.
+Backlog: B2822 closed, B2880 (runner), B2881 and B2882 (onboard) added,
+B781 narrowed. No change in evc/, so no proof run; the runner unmoved
+(1185 / 1045 / 960). Edits outside the units: none (`S076_Bench`
+carried a temporary print during the traces, reverted).
