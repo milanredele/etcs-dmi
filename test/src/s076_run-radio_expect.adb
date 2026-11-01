@@ -39,7 +39,6 @@ with ETCS_Variables;
 
 separate (S076_Run)
 function Radio_Expect (St : Step_T) return Judgement_T is
-   pragma Unreferenced (St);   -- the expectations are not per session
    use type EVC_Ports.RTM_Request_T;
    use type ETCS_Message.Status_T;
    Kind : constant String := W (3);
@@ -346,7 +345,9 @@ function Radio_Expect (St : Step_T) return Judgement_T is
 
    --  Every message Nid of the window is a candidate: the first that
    --  meets the expectation passes it, else the first one's failure
-   --  (a 136 by its period may come before the one of the event)
+   --  (a 136 by its period may come before the one of the event); only
+   --  those of the session the step's comment names (Named_Session),
+   --  not for a JRU record judged by its message
    function Message (Nid : String) return Judgement_T is
       First : Judgement_T;
       Seen  : Boolean := False;
@@ -354,8 +355,12 @@ function Radio_Expect (St : Step_T) return Judgement_T is
       if Nid = "153" then
          return NJ (R_Radio_Infill, "RTM message 153 (radio infill request)");
       end if;
+      Expect_Session :=
+        (if Judging_JRU then 0 else Named_Session (Image (St.Comment)));
       for I in 1 .. B.Radio_Count loop
          if not B.Radio (I).Is_Request and then Img (B.Radio (I).Code) = Nid
+           and then (Expect_Session = 0
+                     or else B.Radio (I).Session = Expect_Session)
            --  B270: a message sent before the window's input (kept listed
            --  for the positive expectations, Keep_Radio) is no answer to
            --  it: 4080428_01 step 134, the 136 of step 129 before the 38
@@ -394,6 +399,11 @@ function Radio_Expect (St : Step_T) return Judgement_T is
       end loop;
       if Neg then
          return Check (True, "RTM no message " & Nid, "sent");
+      elsif not Seen and then Expect_Session > 0 then
+         return Fail (Nid & " not sent to session"
+                      & Natural'Image (Expect_Session) & " ("
+                      & (if Expect_Session = RBC_Accepting then "Accepting"
+                         else "Handing Over") & " RBC)");
       elsif not Seen then
          return Fail (Nid & " not sent");
       end if;
