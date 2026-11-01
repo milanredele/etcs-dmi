@@ -17384,3 +17384,124 @@ the TMS570LC4357 has no calendar clock on chip (the RTI counts the
 running time); a battery-backed RTC on the board, read once by the port
 at the power-up into `Set_UTC`, the RTI the time after it, is the E8 row
 of section 3; the RTC's choice, its driver and its check: B2982.
+
+### Review of the sixtieth round: eight verdicts re-derived blind (e5/review-60) (2026-11-01)
+
+Each verdict below was written from the clause, the data and the trace
+before the author's record was read. Items 1 to 7 were taken, item 8 was
+not (the bound of 100 calls came after item 7). The trace of item 7 used
+a temporary print of the sessions' roles and states in
+`S076_Bench.Observe_RTM`, not committed.
+
+1. The infill information. Mine: 4.8.3 has 19 rows with filled Infill
+   cells, all R, R, A, R [1] in levels 0, NTC, 1, 2 (the SRSR A [18] and
+   the MA A [4] in level 1). The level 0 and NTC cells carry no [1] or
+   [2], so a 136 then an 88 read in level 0 with level 1 announced is
+   rejected, not stored. A row whose Infill sub-row is empty gives no
+   verdict, and judging it by its non-infill row is a fair decision
+   (7.4.2.32: the 136 is a location reference for what follows). After a
+   136 in level 2, the level transition order is R [1], i.e. stored when
+   level 1 is announced. `Infill_Packet` (a 136 valid for the direction,
+   earlier in the telegram), `Infill_Accepts` and `Level_Stores` give
+   that, except the level transition order's [1], which is dropped by a
+   stated decision, and [18], which is not applied. Author
+   (e6/acceptance-rows): the same, with B2961 for [18] and the packets
+   that units take. Agree. A remark without a line: `Has_Infill_Row`
+   covers 16 of the 19 rows; packet 44 (data outside ERTMS/ETCS, Infill
+   R, R, A, R [1]) has no kind and B2961 does not name it.
+2. Footnote [17]. Mine: 12 rows carry it in level 2 (the author's 12).
+   It is not on the MA, the SM refused or the shorten MA rows. 4.8.1 and
+   Figure 3 filter information, so [17] and [3] act per packet. A
+   message 24 with an 88 in SM level 2 while the 133 is unacknowledged:
+   the 88 is rejected, and after message 7 it is taken. SM refused is
+   message 5 (the brief's "message 4 (SM refused)": 4 is the SM
+   authorisation): it is accepted without [17] and answers the request.
+   A message 4 rejected by [17] counts as not received, so the request
+   still waits. `Take_Answer` and `Consist_Rejected` do that.
+   `General_Taken` applies the filter to the message as a whole: a [17]
+   packet beside a taken packet goes along with it. Author: the same,
+   B2962. Agree.
+3. The clock. Mine: once the clock reports at the power-up, a one-day
+   cover set before two days without power is deleted (3.15.9.5 b), the
+   user's decision of UTC). Without a clock, the time with power on is a
+   declared fallback. When no group has been read, or the NID_C is in no
+   zone, the specification says nothing and UTC is a fair fallback
+   (`Local_Seconds`). By hand, the EU summer time runs from 31 March to
+   27 October in 2024 and from 29 March to 25 October in 2026, 01:00
+   UTC. `EU_Summer_Time` (31 March = day 89 plus the leap day, 31
+   October 214 days later, the last Sunday by (N + 6) mod 7) gives the
+   same dates. Checked by evaluating the formula, and the scenario's
+   instants 765162000, 828061200 and 846205200 are those dates at 01:00.
+   Author (e6/clock): the same. Agree.
+4. A43 and the 129. Mine: at E17 with GSM-R registered and FRMCS not,
+   A43 shows the FRMCS failure (entry 33). After A41 in the same start
+   of mission it is not shown again, A41 -> D8 -> S3 -> E17 being the
+   path the clause is written for. "Already displayed" spans the start
+   of mission in progress. The Told flags are set from every Failed and
+   cleared at the power-up, on leaving SB and at a desk closure during
+   the start of mission. The text names only A29 and A41, while ours
+   also counts A42, a small widening the author states. The 129: no
+   clause orders its repetition (3.18.3.4.1 the RBC acknowledges,
+   3.18.3.4.2 resent after a lost connection, 3.15.1.3.3 to the
+   Accepting RBC once). Every repetition the specification does order
+   (3.15.1.3.9, 5.6.4.1.1, 5.10.3.x) uses A.3.1's three repetitions 15 s
+   apart. My recommendation: three times, then left. Author
+   (e6/texts-a43): A43 the same, the 129 left as the decision B3001
+   with the same alternative. Agree (the recommendation goes to B3001).
+5. The runner's sessions. Mine: the session is established for the
+   on-board at the 32 (3.5.3.7 d)), and without a 38 the 159 is repeated
+   once and the session is then terminated (3.5.3.7.4, .4.1). So the
+   on-board is right, and a faithful runner gives the laboratory's 38
+   as the answer to its 159 within the waiting time, keeping the steps
+   in order. An expectation "to the Accepting RBC" is matched by
+   session. `Hold_Answer` fires 14 s after the question, the latest
+   admissible time, and `Named_Session` takes the first RBC named in the
+   comment. The unnamed timer is taken from the step before only when
+   the timer step has neither a name nor a comment: narrow and sound.
+   Author (e5/runner-sessions): the same. Agree.
+6. 3150100_06 step 105 and 4080100_04 step 122. Mine: both sequences
+   follow the same pattern. The max safe front end is reported to both
+   RBCs (260400 / 106700 ms) and the switch follows. Then a group at
+   the border (BG2d step 102 / BG3d step 119) carries packet 131 with
+   D_RBCTR 0 for the same RBC 1616, which now supervises. From then on
+   ours reports to session 2 only (268200 and 284900 ms in _06), and at
+   the min safe rear end it sends no 136 to session 1, although that
+   session stays up until 308100 ms. 3.15.1.3.1 c) and 3.15.1.3.4 want
+   that report, 3.15.1.3.2.2 replaces the order and 3.15.1.3.2.3 does
+   not apply (same RBC). The cause, read in the code: on the fresh D 0
+   order, `EVC_Sessions.Handover.Apply_Order` deletes the border and
+   sets `Single` (decision 5), and `Evaluate` switches at once. `Switch`
+   then takes `Old_S` from the supervising session 2, so session 1 is no
+   longer reported to and the rear has no border. The on-board. Author:
+   the on-board, B2941, cause not given. Agree; the cause is in this
+   paragraph.
+7. 9990500_09 SV21 step 87 and 3150100_01 SV30 step 102. 9990500_09,
+   mine: at 318800 ms session 1 supervises, session 2 is Accepting and
+   both are established (an SV 2.x RBC sends no 38, 6.5.1.6.9). The 136
+   to session 1 is 28 bytes against 24 for the plain reports, i.e. an
+   error report (packet 4) of `EVC_Sessions.Reports`, which goes to the
+   supervising session only. BG3d is read 1250 m past the LRBG BG2d,
+   against D_LINK 1400 and Q_LOCACC 60 in the data (the comment says
+   D_LINK 1000 with the group at d0 + 900 m "inside the expectation
+   window"). Ours took it as detected in rear of the window (3.16.2.3.1
+   a)), whereas the laboratory relocates and sends an ordinary report to
+   both. So this is a linking verdict, not a choice of destination:
+   ours or the sequence's data, undecided. A second point: the error
+   report goes to the supervising RBC only, while 3.15.1.3.4 sends the
+   position reports to both. Author: the on-board, B2942 ("the 136 of
+   BG3d to the Handing Over RBC only, 3.15.1.3.4"). Disagree on the
+   cause: B3020. 3150100_01, mine: the Accepting RBC's packet 74 of
+   step 98 (357400 ms: D_TEXTDISPLAY 32767, mode 15, level 4,
+   L_TEXTDISPLAY 32767, no confirmation) is kept by 3.15.1.3.6 and
+   should be shown once that RBC supervises (3.15.1.3.5, the switch
+   after 416000 ms). Ours shows none by 424700 ms. The on-board. Author:
+   the on-board, B2940. Agree.
+8. 4080300_15 step 109, 4080300_21 and 4080420_03: not taken.
+
+Counts: 7 items taken, 6 agreed (1 to 6, with 7's 3150100_01), 1
+disagreed (7's 9990500_09), 0 undecided; item 8 left. My calls: B2941
+can start from the cause in item 6; B2942 is first a linking question
+(the window of BG3d against the data, then the error report's
+destination); B3001 three repetitions. Backlog: B3020. Brief premises
+wrong: "message 4 (SM refused)" (4 is the SM authorisation, 5 is SM
+refused). The review took about 112 tool calls of 130.
