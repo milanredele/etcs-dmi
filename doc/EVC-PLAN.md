@@ -17148,3 +17148,15 @@ window). 6060500_04 (three versions, B2861) carries packet 72 in a
 2.1 balise group in all three: the same cause; B2861 narrowed to
 4080427_01. One triage line `E7` with the five families; no code
 change.
+
+**4100103_26's block at 162.** Step 162 is "A timer expires" with no
+name and no comment, blocked as a runner gap ("timer without a name",
+`S076_Run`'s timer judgement); step 161's comment names it: "The
+Onboard does not emit a Position reports after T_CYCLOC" (the 10 s of
+the packet 58 given before the power-off, deleted in NP). A timer
+without a name or a comment is now the one the step before names in its
+comment. Corpus: 4100103_26 alone moves (three versions, blocked 162 ->
+failed 163, Sb83b2c65): step 163 at 800 m expects no 136 with packet 0
+and finds one sent in its window, not shown by the window's DEBUG list
+(B2944, runner, to trace). S13c9beb3's note says the sequence left it.
+The runner: 1179 / 1050 / 961.

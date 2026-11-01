@@ -2150,6 +2150,19 @@ package body S076_Run is
             exit;
          end if;
       end loop;
+      --  A timer without a name or a comment is the one the step before
+      --  names in its comment (4100103_26 step 162 after step 161's
+      --  "does not emit a Position reports after T_CYCLOC")
+      if Name = "" and then Chosen = 0 and then Image (St.Comment) = ""
+        and then Cur > 1
+      then
+         for I in Known'Range loop
+            if Has (Image (Seq.Steps (Cur - 1).Comment), K (I)) then
+               Chosen := I;
+               exit;
+            end if;
+         end loop;
+      end if;
       --  A timer without a name whose comment gives its duration runs
       --  that long (3080200_04 step 72: "The train stops before the EOA
       --  and 255 seconds have passed since the MA request was sent")
