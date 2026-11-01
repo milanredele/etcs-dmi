@@ -17089,3 +17089,91 @@ no region is known; the juridical data stay UTC (3.18.5.2). Both are
 build items of a coming round (one package: the clock, the cover's end,
 the local time, the image's format version).
 
+
+### The on-board's clock: a cover's end in UTC, the local time from the clock and the region with the image's format version 3, the hosts and the target's RTC (e6/clock) (2026-11-01)
+
+Three items of the user's decision of 2026-10-31 (3.18.5.1: the calendar
+clock is part of the on-board), all done; the claims of the brief
+checked at the source first.
+
+**B1060, a VBC's end on the clock (3.15.9.5 b), 3.15.9.6, T_VBC
+7.5.1.154.1: 0 to 255 days of 24 hours).** At the source:
+`EVC_Core.Set_UTC` gives the UTC at the on-board time 0, `Start`
+(Initialise and Power_Up) forgets it; `EVC_VBC.Expire (Now_Ms)` was called
+once a cycle from `EVC_Core.Inputs.Take_VBC_Requests`, before the driver's
+Set VBC and the telegrams (trackside's `Order` comes from
+`EVC_Stored_Information`, later in the cycle). Built: `Cover_T.End_UTC`
+(Unsigned_64 seconds since 2000, 0 when the clock was unknown at the set:
+the brief's Unsigned_32 would do, the 64 bits spare the proof any
+overflow reasoning for 16 + 10 covers of 8 bytes more); decision: `Expire
+(Now_Ms, UTC_Known, UTC_Now)` keeps the clock of the cycle in the store's
+state and `Put` (the driver's `Set` and trackside's `Order`) takes the end
+from it, so the call of `Order` in `EVC_Stored_Information` (not a unit of
+this package) is unchanged; a cover whose end is known is deleted once the
+clock reports a UTC at or past it, otherwise when its time left with power
+on is over (the fallback: a cover set without the clock, a clock that
+reports nothing); the time left still counts down while the end judges;
+`Clear` and `Restore` forget the clock, so the first cycle after a
+power-up judges with the clock the port gave. `EVC_Retained` unchanged in
+shape (`Kept_T.VBC` is `EVC_VBC.Kept_T`, a memory of the host, no byte
+image). Scenario `vbc_clock`: a cover of one day set with UTC
+2026-01-01, the power-up with the UTC two days later: deleted at once
+(failed before the fix); the power-up without the clock: kept. Row
+3.15.9.5 b) done. Runner: 0 movements (the runner's bench gives the same
+fixed instant after every power-up, so its covers keep their time left).
+
+**B1340, the local time (3.18.5.1, 3.18.5.2).** At the source: the region
+needs no new accessor: `EVC_Position.LRBG` is kept over No Power
+(`Restore`'s postcondition: valid with the kept identity), so the LRBG's
+NID_C is known from the power-up when the position is. The hosts: no host
+encodes an image but the runner's bench (`S076_Bench.Install_Train`, a
+gamma train, now `Encode_V3`); the hosted port loads a file of any
+version; the bench page and the wasm bench run `EVC_Config.Default`. The
+zone table (decision, the shape): `EVC_Config.Config_T.Zones`, at most 8
+zones of a NID_C range (first .. last), a standard offset of -720 .. 840
+min and a summer-time rule, none or EU (the last Sunday of March 01:00
+UTC to the last Sunday of October 01:00 UTC, +60 min); the first zone
+holding the NID_C applies; `Valid` adds first <= last. The calendar:
+`EVC_Config.EU_Summer_Time (UTC)`: the day from the seconds since
+2000-01-01 (a Saturday, so day N is (N + 6) mod 7 days after a Sunday),
+the year by four years in 1461 days corrected by one step either way
+(exact to 2136, the end of an Unsigned_32 of seconds), the days before a
+year by the Gregorian rule, the 31st of March at day 89 (+1 in a leap
+year) and of October 214 days later, the last Sunday on or before each;
+integers only, proved. The image's format version 3 (`Encode_V3`): the
+version 2 image with 57 bytes of zones (a count, 8 entries of u16 first,
+u16 last, u16 offset + 720, u8 rule) between the train and the CRC
+(`Max_Image_Length` 1305, version 2 keeps 1248); `Decoded` accepts 1 to 3,
+1 and 2 without zones (`Get_Tail`, `Get_Zones`); `Encode` stays the 36
+bytes of version 1 (its fixed type `Image_T`), not version 3 as the brief
+read. `EVC_Core.Outputs.Local_Seconds (Ms)`: UTC + the offset of the
+LRBG's zone; UTC without an LRBG or a zone; the on-board clock without
+UTC; computed where the time of day is sent (MSG_STATUS, the text
+messages' stamps, their resending after the DMI's hello from the time
+they were shown) rather than into a state of the cycle, so the Tick and
+its postcondition are untouched; `EVC_Core.Local_Time` its accessor. The
+juridical data stay UTC (`EVC_Outbox.Build_JRU`). Scenarios
+`config_zones` (version 3 round trips, a lambda and a gamma train;
+version 2 without zones; five refused fields; the 2024 and 2026 summer
+time boundaries to the second) and `local_time` (zone +60 EU in January
++60, in July +120, a zone -300, no zone UTC, no UTC the on-board clock:
+four of five failed before the fix). Rows 3.18.5.1, 3.18.5.2 done.
+Goldens unchanged (the bench's reference is midnight and its
+configuration has no zone, so the time of day is the one it was);
+runner 0 movements. B2980 (tooling): `test/tools/evc_config.py` knows
+versions 1 and 2 only.
+
+**The hosts and the target.** The bench page and the wasm bench
+(`Sim_Onboard_Env.Reset`) and the runner's bench (after `Initialise` and
+after `Power_Up`) give the fixed 2026-01-01 00:00:00 UTC: deterministic,
+right for the tests and the goldens. The hosted port (`ports/hosted/evc.adb`)
+gave the host's clock once a minute starting after the first cycle, so
+the first cycle ran on the bench's reference: it now gives it after
+`Reset`, before the first cycle (the port resets the environment once,
+at its start). The
+browser's clock for the wasm bench is not built (an import of the module
+and the page, the smoke test kept on the reference): B2981. The target:
+the TMS570LC4357 has no calendar clock on chip (the RTI counts the
+running time); a battery-backed RTC on the board, read once by the port
+at the power-up into `Set_UTC`, the RTI the time after it, is the E8 row
+of section 3; the RTC's choice, its driver and its check: B2982.
