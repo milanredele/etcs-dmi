@@ -380,6 +380,7 @@ begin
    Scenario_Network_Type_At_S3;
    Scenario_Network_Radio_Order;
    Scenario_Network_Level_1;
+   Scenario_Network_A43_One_Radio;
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;

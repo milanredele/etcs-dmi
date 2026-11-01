@@ -753,4 +753,78 @@ package body EVC_Test_Network is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_Level_1;
 
+   procedure Scenario_Network_A43_One_Radio is
+      use type EVC_Core.Time_Ms_T;
+      Start  : EVC_Core.Time_Ms_T;
+      Shown  : Boolean := False;
+      GSMR   : Boolean := False;
+      Again  : Boolean := False;
+
+      --  the driver's Radio Network type FRMCS+GSM-R (DMI Table 43b,
+      --  kind 6 of MSG_DRIVER_DATA)
+      Type_Both : constant Byte_Array :=
+        Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (6, 2));
+      --  'Yes' to the mission with only one radio system (DMI 11.3.16,
+      --  kind 7 of MSG_DRIVER_DATA, the choice byte 1)
+      One_Radio : constant Byte_Array :=
+        Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (7, 1));
+
+      --  both systems, the stored type FRMCS+GSM-R, the GSM-R mobile
+      --  registered (Auto_Register), FRMCS reported not registered at
+      --  Start; the Driver ID, then level 2: S3 (the contact unknown)
+      procedure To_S3 is
+      begin
+         EVC_Config.Set_Radio_For_Test
+           ((Sessions => 1, Engine_Id => 76_000,
+             Systems => EVC_Config.Both_Systems,
+             Default_Type => EVC_Config.FRMCS_GSMR,
+             Default_MN => 16#262FFF#));
+         EVC_Test_Modes.Start_E4;
+         Give_Radio_Event (1, FRMCS_Not_Registered);
+         Start := EVC_Core.Time_Ms;
+         Send (Text_Entry (0, "1234"));
+         Send (Action (11, 5));
+      end To_S3;
+   begin
+      To_S3;
+      Input (DMI, One_Radio);
+      Stand;
+      Shown := Status_Shown (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+      GSMR := Status_Shown (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+      for I in 1 .. 5 loop
+         Stand;
+         Again := Again
+           or else Status_Shown
+                     (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+      end loop;
+      Check (Shown and then not GSMR and then not Again
+             and then EVC_Sessions.Radio_Bits >= 64,
+             "5.4.3.2 S3 E17 -> A43: the mission with one radio system "
+             & "elected, FRMCS not registered and no A41 at this S3: FRMCS "
+             & "network registration failed (entry 33) once, not the GSM-R "
+             & "one " & Shown'Image & GSMR'Image & Again'Image
+             & EVC_Sessions.Radio_Bits'Image);
+
+      --  A41 first (S3 E4, the time of A.3.1 elapsed), D8 -> S3, then E17
+      To_S3;
+      Send (Type_Both);
+      Shown := False;
+      while EVC_Core.Time_Ms - Start < 45_000 loop
+         Stand;
+         Shown := Status_Shown
+                    (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0);
+         exit when Shown;
+      end loop;
+      Input (DMI, One_Radio);
+      Stand;
+      Again := Status_Shown (EVC_DMI_Port.SS_FRMCS_Registration_Failed, 0)
+        or else Status_Shown (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+      Check (Shown and then not Again
+             and then EVC_Sessions.Radio_Bits >= 64,
+             "5.4.3.2 A43: entry 33 already displayed through A41 at this "
+             & "start of mission: the choice of one radio system taken, "
+             & "the entry not shown again " & Shown'Image & Again'Image);
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_A43_One_Radio;
+
 end EVC_Test_Network;

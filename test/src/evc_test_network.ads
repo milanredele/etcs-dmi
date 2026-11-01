@@ -53,4 +53,9 @@ package EVC_Test_Network is
    --  re-entered: the Radio Network taken, the RBC contact not
    procedure Scenario_Network_Level_1;
 
+   --  5.4.3.2 S3 E17 -> A43: the mission with only one radio system
+   --  elected at S3, the system not registered reported to the driver
+   --  (entry 33 or 34) once, unless A29 or A41 already displayed it
+   procedure Scenario_Network_A43_One_Radio;
+
 end EVC_Test_Network;

@@ -17,7 +17,8 @@ package body EVC_Sessions.Network
                                    Timed_Out, Mode_Now, Exit_Seen,
                                    Trip_Stamp, Trip_Pending, FRMCS_Reg,
                                    FRMCS_Seen, FRMCS_At, FRMCS_Watch,
-                                   FRMCS_Out, Type_Wait, Rewatch))
+                                   FRMCS_Out, Type_Wait, Rewatch,
+                                   GSMR_Told, FRMCS_Told))
 is
 
    package R renames EVC_Radio;
@@ -82,6 +83,17 @@ is
    --  failed (A41)
    Type_Wait    : Boolean := False;
 
+   --  5.4.3.2 A43: "GSM-R network registration failed" (entry 34) and
+   --  "FRMCS network registration failed" (entry 33) shown to the driver
+   --  in the start of mission in progress (A29, A41 or A42: Evaluate's
+   --  Failed and FRMCS_Failed). Decision: "if not already displayed
+   --  through A29 or A41" is read for the start of mission from its S3
+   --  on, S3 re-entered from D8 included (A41 -> D8 -> S3 -> E17 does not
+   --  repeat it); a start of mission left (SB left) or restarted (the
+   --  desk closed during it) and the power-up forget them
+   GSMR_Told    : Boolean := False;
+   FRMCS_Told   : Boolean := False;
+
    --  5.4.3.2 S4, its time out: SUBSET-026 A.3.1 (page 218), "Time from
    --  the latest Radio Network registration order to a Mobile Terminal
    --  after which the registration is considered as failed": 40 s
@@ -114,6 +126,8 @@ is
       FRMCS_Out := False;
       Type_Wait := False;
       Rewatch := False;
+      GSMR_Told := False;
+      FRMCS_Told := False;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -313,6 +327,8 @@ is
          if To /= M_SB then
             --  the start of mission left: no S3 to return to
             Type_Wait := False;
+            GSMR_Told := False;
+            FRMCS_Told := False;
          end if;
       end if;
       Mode_Now := To;
@@ -400,17 +416,22 @@ is
    end Power_Up;
 
    --  3.18.4.3.6, 5.4.3.2 S3 / S5: the driver's Radio Network type,
-   --  GSM-R network and mission with only one radio system
+   --  GSM-R network and mission with only one radio system. S3 E17 ->
+   --  A43: the mission with only one radio system elected in the start
+   --  of mission (SB), both systems installed, the stored type
+   --  FRMCS+GSM-R and one system registered: the other one's failure
+   --  shown (FRMCS_Failed, entry 33, or Failed, entry 34) unless already
+   --  shown in this start of mission (FRMCS_Told, GSMR_Told)
    --  @req 3.5.6.1 b), 3.18.4.3.6, 3.18.4.3.6.1 a), 3.18.4.3.6.1 b)
    --  @req 3.18.4.3.6.3 a), 3.18.4.3.6.3 b), 5.4.3.2 A29
    --  @req 5.4.3.2 D8, 5.4.3.2 S3, 5.4.5.3 j) 2nd bullet
-   --  @req 5.4.3.2 S5
-   procedure Driver_Entries (Stop, Failed : in out Boolean)
+   --  @req 5.4.3.2 S5, 5.4.3.2 A43
+   procedure Driver_Entries (Stop, Failed, FRMCS_Failed : in out Boolean)
      with Global => (In_Out => (R.State, Due, One_Radio, Awaiting,
                                 Type_Wait),
                      Output => List_Now,
                      Input  => (Reg, Systems, Def_MN, FRMCS_Reg, Mode_Now,
-                                DR.State))
+                                GSMR_Told, FRMCS_Told, DR.State))
    is
       N  : R.Network_T := R.Network;
       B  : EVC_Bytes.Byte;
@@ -441,6 +462,16 @@ is
       end if;
       if DR.Entered (DR.One_Radio_System) then
          One_Radio := DR.Data_Byte (DR.One_Radio_System) = 1;
+         if One_Radio and then Mode_Now = M_SB
+           and then Systems = EVC_Config.Both_Systems
+           and then N.Net_Type = EVC_Config.FRMCS_GSMR
+           and then FRMCS_Reg /= GSMR_Registered
+         then
+            FRMCS_Failed := FRMCS_Failed
+              or else (not FRMCS_Reg and then not FRMCS_Told);
+            Failed := Failed
+              or else (not GSMR_Registered and then not GSMR_Told);
+         end if;
       end if;
       if DR.Entered (DR.GSMR_Network) then
          --  3.18.4.3.6.1 b): the driver elects to modify the network
@@ -567,6 +598,8 @@ is
    begin
       One_Radio := False;
       Rewatch := True;
+      GSMR_Told := False;
+      FRMCS_Told := False;
    end Desk_Closed_In_SoM;
 
    procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
@@ -589,8 +622,10 @@ is
          Ordered := False;
          Apply_Order (Ord_Type, Ord_MN);
       end if;
-      Driver_Entries (Stop, Failed);
+      Driver_Entries (Stop, Failed, FRMCS_Failed);
       Supervise_Wait (Now, In_SoM, Failed, FRMCS_Failed);
+      GSMR_Told := GSMR_Told or else Failed;
+      FRMCS_Told := FRMCS_Told or else FRMCS_Failed;
    end Evaluate;
 
    --  3.5.6.5 b) c), 3.5.6.6: a mobile whose session is not Idle waits
