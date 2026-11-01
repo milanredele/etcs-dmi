@@ -17133,3 +17133,18 @@ B2860 dropped (not ours), S1531c721's 3150100_01 line now `model`.
 `DEBUG=1` lists the window's RTM sendings (message or request, session,
 time) under the JRU records. The runner: 1185 / 1041 / 964 -> 1179 /
 1047 / 964.
+
+**Seabc1f7c's SV21 sequences: E7, with 6060500_04.** 3120300_05 (step
+51), 4080100_05 (85), 4080300_04 (64), 4080403_01 (96) fail in SV21
+only; their SV22 and SV30 variants pass. The SV21 files carry the
+plain text as packet 72 (a trackside of M_VERSION 2.1; the levels in
+the 2.x coding, 3 level 2, 5 no limit), the others as packet 73 with
+the same values. 6.6.5.2.3 has the on-board take packet 72 as 73 with
+the levels translated by 6.6.3.2.3 [22]; both rows are deferred to E7
+in the matrix and packet 72 is not in the on-board's language
+(`etcs_language.toml` defines 73 only): the text is never taken. Not
+the window (B2862's cause: none of them shows a text in an earlier
+window). 6060500_04 (three versions, B2861) carries packet 72 in a
+2.1 balise group in all three: the same cause; B2861 narrowed to
+4080427_01. One triage line `E7` with the five families; no code
+change.
