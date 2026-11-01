@@ -17505,3 +17505,118 @@ can start from the cause in item 6; B2942 is first a linking question
 destination); B3001 three repetitions. Backlog: B3020. Brief premises
 wrong: "message 4 (SM refused)" (4 is the SM authorisation, 5 is SM
 refused). The review took about 112 tool calls of 130.
+
+### E5 integration after the sixtieth round, the twenty-eighth of E6 (2026-11-01)
+
+Merged: e6/texts-a43 (B2861 dropped: 4080427_01's text is the sequence's
+data, BG101d's linking announces BG2 at 250 m and the group at 350 m is
+rejected by 3.4.4.4.3.2, so neither the text nor the 136 at the group
+comes (the brief's "cause not found in evc/" was the runner agent's
+claim); 6060500_04 and the four SV21 sequences of Seabc1f7c are E7, a
+2.1 trackside's packet 72 is not in the on-board's language; B2840: A43
+at E17, entry 33 or 34 for the system not registered unless told since
+S3 (`GSMR_Told` / `FRMCS_Told`, cleared at the power-up, when SB is
+left and at a desk closure in the start of mission),
+`Scenario_Network_A43_One_Radio`; the 129 repeated: `EVC_Sessions.
+Mission.Evaluate_TD` repeated the Accepting RBC's train data on the
+supervising session every 15 s, fifteen times at 3150100_01: now only
+on the session that awaits them (B3000, B2943), `Scenario_Handover_
+Train_Data_Once`; B3001 for the user: the 129 is repeated until
+acknowledged with no limit where A.3.1 gives three repetitions),
+e5/runner-sessions (B2920 / B2860: the reviewer's verdict held,
+`S076_Run.Hold_Answer` stopped at the first positive RTM expectation so
+the Accepting RBC's 38 came 227 s late; the bench now holds a 38 past
+the on-board's messages (496 of 639 held) and RTM expectations are
+matched by the session the step's comment names (`Named_Session`);
+3150100_01 SV30 passes steps 92 and 101 (the trip was the runner's) and
+fails at 102 like its twins (B2940: the Accepting RBC's packet 74 not
+shown after the switch); the per-session matching uncovered steps that
+had passed on a 136 to the other RBC: 3150100_06, 4080100_03 / _04 (no
+report to the Handing Over RBC when the min safe rear end passes the
+border, Se1820110, B2941) and 9990500_09 (Sd077284a, B2942, overturned
+by the review); a timer step with no name runs the timer the step
+before names (4100103_26 to 163, B2944)), e6/acceptance-rows (B2881:
+the packets after a packet 136 in their telegram are infill (8.4.1.4.4)
+and judged by the Infill sub-rows, 16 kinds all R R A R [1]
+(`EVC_Acceptance.Context_T.Infill` from `EVC_Stored_Information.
+Take_Group`), `Scenario_Infill_Rejected`, 4080300_15 from step 61 to
+109 (B2960: footnote [3]'s second bullet, a message after changed train
+data sent and unacknowledged); B2882: the premise "the context carries
+the 133 state" was wrong, no such field existed and the SM
+authorisation's [17] had never fired; `Consist_Unacked` from
+`EVC_Sessions.SM_Consist_Awaited`, the twelve level 2 rows rejected at
+message level in `EVC_Radio_Authority.General_Taken`, a rejected SM
+answer no longer ends the request, `Scenario_SM_Consist_Rejects`,
+4080300_21 and 4080420_03 SV30 passed; B2961 (the Infill sub-rows of
+the packets their own units take) and B2962 ([17] and [3] per message
+not per packet) left; two comments naming A43 corrected), and e6/clock
+(the decisions of 2026-10-31 built: B1060, `EVC_VBC.Cover_T.End_UTC`,
+`Expire` deletes a cover whose end is known and passed, the time left
+the fallback, the vbc_clock scenario over a power cycle; B1340, the
+time zones of the configuration image (eight, a NID_C range, the
+standard offset, `No_Summer` or `EU_Summer`) at format version 3
+(`Encode_V3`; the brief's "Encode writes 3" was wrong, `Encode` is the
+fixed version 1 image), `EVC_Config.EU_Summer_Time` in integers (the
+last Sunday on or before 31 March and 31 October, 01:00 UTC; the
+reviewer's hand dates of 2024 and 2026 agree), `EVC_Core.Outputs.
+Local_Seconds` for the status message and the text stamps from the
+LRBG's zone, UTC without a zone, the on-board clock without UTC; the
+hosted port gives UTC before the first cycle; B2980 (the image tool at
+version 3), B2981 (the browser's clock for the wasm bench), B2982 (the
+board's RTC for E8); no golden and no sequence moved), and e5/review-60
+(the ninth blind review, below).
+
+The review (e5/review-60, 110 calls, 7.1 USD, its bound at 100 after
+the seventh item; the eighth not taken): 6 agreed, 1 disagreed, 0
+undecided. Disagreed (B3020): 9990500_09 SV21 step 87: the author's
+"136 to the Handing Over RBC only" is an error report (28 bytes, packet
+4) rightly sent to the supervising session; the step's cause is a
+linking verdict: BG3d read 1250 m past the LRBG where packet 5 announces
+it at D_LINK 1400 with Q_LOCACC 60, ours rejecting it as in rear of its
+window (3.16.2.3.1 a)) while the laboratory relocates; ours or the
+sequence's data, ERA's PDF to check. The review also found B2941's cause
+by reading: `EVC_Sessions.Handover.Apply_Order` on a packet 131 with
+D_RBCTR 0 for the RBC already supervising deletes the border and
+`Switch` takes the Handing Over session as the old one, so no report
+reaches it at the rear's crossing. It recommends for B3001 three
+repetitions of the 129 then stop. One premise of its brief was wrong
+(the SM refusal is message 5, not 4). Nine rounds of reviews: 75 items,
+68 agreed, 10 disagreed, 4 undecided; 21 lines, of which 8 became fixes
+(B2920 this round); 53.0 USD.
+
+Verification of the merged tree: two chain runs (after three packages,
+then after the clock), all green: `test/check.sh` ok; the full proof
+13858 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6056 B (104 B less: the zone table); wasm and
+both smokes 0 failures; the runner 1185 / 1041 / 964 -> 1181 / 1048 /
+961 (the movements above), 0 regressions against the merged baseline,
+no signature untriaged. The merge: texts-a43 fast-forwarded; the three
+others conflicted on the backlog (three-way by id) and the plan, the
+runner's on the Seabc1f7c triage (texts-a43's per-sequence lines kept);
+the baselines of the runner and the acceptance packages auto-merged and
+matched the merged tree. The round started a day late: an Xcode update
+blocked git and the SDK until the user accepted its licence.
+
+Costs (doc/ROUNDS.csv): 44.3 USD with the review (37.2 for the four
+packages, 7.1 the review), 12 of 12 package items done, 3 of 27 brief
+premises wrong (the 133 state's field; `Encode`'s version; the plain
+text's "cause not found"), no agent over budget, no resumption, three
+agents past their bound with an item in hand (145, 145, 157) and one of
+them taking a third item after it. Lessons: the per-session matching of
+radio expectations turned three "passed" sequences into on-board
+findings: a passed step is only as good as the runner's judgement; a
+footnote that "exists" in the filter may have no state behind it (the
+[17] field): a scenario per footnote, run before the fix; the tally
+drifts when Edits are not counted, three agents said so.
+
+The matrix: clauses left 62 -> 58 (todo 2, partial 56): 5.4.3.2 A43,
+3.15.9.5 b), 3.18.5.1, 3.18.5.2 done (done 2077 -> 2081). Open items:
+doc/BACKLOG.csv (40 open after this round; 14 added of which 1 by the
+review, 10 closed). Next: B2941 (the handover's border deleted by a
+packet 131 for the supervising RBC: the review's cause), B2940 (the
+Accepting RBC's text after the switch), B3020 (9990500_09: the linking
+window over 1250 m, ERA's PDF), B2960 ([3]'s second bullet), B2962 ([17]
+and [3] per packet), B2961 (the Infill sub-rows of packets 5, 138, 139),
+B2944 (4100103_26 step 163), B2980 (the image tool at version 3), the
+user's decision B3001; the review again (eight items, readings first,
+no backlog read).
