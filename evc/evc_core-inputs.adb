@@ -427,7 +427,8 @@ is
                            and then EVC_Levels.Announced_Level = L2,
        Order_In_Message => False,
        Order_Pending    => EVC_Levels.Order_Pending,
-       Unlinked_Group   => False));
+       Unlinked_Group   => False,
+       Infill           => False));
 
    function Ordered_Context return EVC_Acceptance.Context_T is
      ((Mode             => Current_Mode,
@@ -440,6 +441,7 @@ is
        L2_Announced     => False,
        Order_In_Message => True,
        Order_Pending    => True,
-       Unlinked_Group   => False));
+       Unlinked_Group   => False,
+       Infill           => False));
 
 end EVC_Core.Inputs;
