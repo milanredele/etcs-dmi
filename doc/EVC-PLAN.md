@@ -17620,3 +17620,12 @@ and [3] per packet), B2961 (the Infill sub-rows of packets 5, 138, 139),
 B2944 (4100103_26 step 163), B2980 (the image tool at version 3), the
 user's decision B3001; the review again (eight items, readings first,
 no backlog read).
+
+Decided by the user on 2026-11-01, after the ninth review's
+recommendation: B3001, the Validated Train Data message is sent once and
+repeated three times 15 s apart when the RBC does not acknowledge it,
+four sendings in all (A.3.1's bound for radio messages), then left to
+the session's supervision. A build item of the next round
+(`EVC_Sessions.Mission.Evaluate_TD` with `Max_Repeats`, a case counting
+the four sendings).
+
