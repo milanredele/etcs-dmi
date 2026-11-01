@@ -403,6 +403,7 @@ begin
    EVC_Test_VBC.Scenario_VBC_Driver;
    EVC_Test_VBC.Scenario_VBC_Rooms;
    EVC_Test_VBC.Scenario_VBC_Cover;
+   EVC_Test_VBC.Scenario_VBC_Clock;
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;

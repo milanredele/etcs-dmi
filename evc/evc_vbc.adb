@@ -5,13 +5,18 @@ with ETCS_Bits;
 
 package body EVC_VBC
   with SPARK_Mode => On,
-       Refined_State => (State => (Store, Last_Ms, Due))
+       Refined_State => (State => (Store, Last_Ms, UTC_Known_Now, UTC_Now_S,
+                                   Due))
 is
 
    Store   : Cover_List_T := (others => (others => <>));
    --  the clock of the last Expire (0 after Clear and Restore: the clock
    --  of EVC_Core starts again at the power-up)
    Last_Ms : Unsigned_64 := 0;
+   --  the calendar clock of the last Expire, when it reported (unknown
+   --  after Clear and Restore)
+   UTC_Known_Now : Boolean := False;
+   UTC_Now_S     : Unsigned_64 := 0;
    --  the store changed since the DMI's list was sent
    Due     : Boolean := False;
 
@@ -76,6 +81,8 @@ is
    begin
       Store := (others => (others => <>));
       Last_Ms := 0;
+      UTC_Known_Now := False;
+      UTC_Now_S := 0;
       --  the DMI starts with no VBC listed
       Due := False;
    end Clear;
@@ -85,8 +92,11 @@ is
    --  slot while the room of Origin is not full, else ignored
    procedure Put
      (Origin : Origin_T; NID_C : NID_C_T; Marker : NID_VBCMK_T; T : T_VBC_T)
-   with Global => (In_Out => (Store, Due))
+   with Global => (Input  => (UTC_Known_Now, UTC_Now_S),
+                   In_Out => (Store, Due))
    is
+      End_UTC : constant Unsigned_64 :=
+        (if UTC_Known_Now then UTC_Now_S + Unsigned_64 (T) * Day_S else 0);
       Room : constant Natural :=
         (case Origin is
             when Driver    => Driver_Max,
@@ -101,7 +111,8 @@ is
          then
             Store (I) :=
               (Used => True, NID_C => NID_C, Marker => Marker, T_VBC => T,
-               Left => Unsigned_64 (T) * Day_Ms, Origin => Store (I).Origin);
+               Left => Unsigned_64 (T) * Day_Ms, End_UTC => End_UTC,
+               Origin => Store (I).Origin);
             Due := True;
             return;
          elsif not Store (I).Used and then Free = 0 then
@@ -111,7 +122,8 @@ is
       if Free in Store'Range and then Count_Of (Origin) < Room then
          Store (Free) :=
            (Used => True, NID_C => NID_C, Marker => Marker, T_VBC => T,
-            Left => Unsigned_64 (T) * Day_Ms, Origin => Origin);
+            Left => Unsigned_64 (T) * Day_Ms, End_UTC => End_UTC,
+            Origin => Origin);
          Due := True;
       end if;
    end Put;
@@ -141,22 +153,32 @@ is
       end loop;
    end Remove;
 
-   procedure Expire (Now_Ms : Unsigned_64) is
+   procedure Expire (Now_Ms    : Unsigned_64;
+                     UTC_Known : Boolean := False;
+                     UTC_Now   : Unsigned_64 := 0)
+   is
       Elapsed : constant Unsigned_64 :=
         (if Now_Ms >= Last_Ms then Now_Ms - Last_Ms else 0);
    begin
       for I in Store'Range loop
          pragma Loop_Invariant (True);
          if Store (I).Used then
-            if Store (I).Left <= Elapsed then
+            if (if UTC_Known and then Store (I).End_UTC /= 0
+                then Store (I).End_UTC <= UTC_Now
+                else Store (I).Left <= Elapsed)
+            then
                Store (I) := (others => <>);
                Due := True;
+            elsif Store (I).Left <= Elapsed then
+               Store (I).Left := 0;
             else
                Store (I).Left := Store (I).Left - Elapsed;
             end if;
          end if;
       end loop;
       Last_Ms := Now_Ms;
+      UTC_Known_Now := UTC_Known;
+      UTC_Now_S := (if UTC_Known then UTC_Now else 0);
    end Expire;
 
    procedure Check_Country (NID_C : NID_C_T) is
@@ -238,6 +260,8 @@ is
    begin
       Store := K.Covers;
       Last_Ms := 0;
+      UTC_Known_Now := False;
+      UTC_Now_S := 0;
       Due := (for some C of Store => C.Used);
    end Restore;
 

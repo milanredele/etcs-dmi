@@ -24,4 +24,10 @@ package EVC_Test_VBC is
    --  3.15.9.5 d) a group of another country deletes it
    procedure Scenario_VBC_Cover;
 
+   --  3.15.9.5 b), 3.18.5.1: the validity period is calendar time on the
+   --  on-board's clock; a cover of one day set with UTC known is deleted
+   --  at the power-up two days later; without the clock after the
+   --  power-up the time left with power on is the fallback
+   procedure Scenario_VBC_Clock;
+
 end EVC_Test_VBC;

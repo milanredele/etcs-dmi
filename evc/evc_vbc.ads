@@ -53,14 +53,17 @@ is
    VBC_Max       : constant := Driver_Max + Trackside_Max;
 
    --  One cover: its identity, T_VBC as it was given (for the DMI's set
-   --  code), the time of its period left, in ms, and the room it takes
+   --  code), the time of its period left with power on, in ms, the end
+   --  of its period on the calendar clock, UTC seconds since 2000-01-01
+   --  (0: the clock was unknown at its set), and the room it takes
    type Cover_T is record
-      Used   : Boolean := False;
-      NID_C  : NID_C_T := 0;
-      Marker : NID_VBCMK_T := 0;
-      T_VBC  : T_VBC_T := 0;
-      Left   : Unsigned_64 := 0;
-      Origin : Origin_T := Driver;
+      Used    : Boolean := False;
+      NID_C   : NID_C_T := 0;
+      Marker  : NID_VBCMK_T := 0;
+      T_VBC   : T_VBC_T := 0;
+      Left    : Unsigned_64 := 0;
+      End_UTC : Unsigned_64 := 0;
+      Origin  : Origin_T := Driver;
    end record;
 
    type Cover_List_T is array (1 .. VBC_Max) of Cover_T;
@@ -70,8 +73,9 @@ is
       Covers : Cover_List_T := (others => (others => <>));
    end record;
 
-   --  T_VBC in ms (24 hours a step)
+   --  T_VBC in ms and in s (24 hours a step)
    Day_Ms : constant := 24 * 3_600_000;
+   Day_S  : constant := 24 * 3_600;
 
    --  The covers stored, of both rooms (the DMI's list)
    function Count return Natural
@@ -139,9 +143,20 @@ is
      with Global => (In_Out => State),
           Post => not Covers (NID_C, Marker);
 
-   --  The clock of the cycle: the periods count down from the last call
+   --  The clock of the cycle: the on-board time Now_Ms and, when the
+   --  calendar clock reports, the UTC now in seconds since 2000-01-01.
+   --  The periods count down from the last call; a cover whose end is
+   --  known is deleted once the clock is past it, else when its time
+   --  left with power on is over. A cover set from this call on takes
+   --  its end from this clock.
+   --  Decision (3.15.9.5 b), 3.18.5.1): the validity period is calendar
+   --  time, so the time without power counts when the clock reports at
+   --  the power-up; the time left with power on is the fallback for a
+   --  cover set without the clock and for a clock that reports nothing.
    --  @req 3.15.9.5 b)
-   procedure Expire (Now_Ms : Unsigned_64)
+   procedure Expire (Now_Ms    : Unsigned_64;
+                     UTC_Known : Boolean := False;
+                     UTC_Now   : Unsigned_64 := 0)
      with Global => (In_Out => State);
 
    --  A consistent balise group message of country NID_C: the covers of
