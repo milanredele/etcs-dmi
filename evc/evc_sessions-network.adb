@@ -503,9 +503,10 @@ is
    --  without it: A42, the driver informed ("GSM-R network registration
    --  failed", entry 34), then D9 -> S10 (decision: the on-board ends
    --  the wait of S4, MSG_ONBOARD waiting 1, and the set-up request
-   --  stays due under 3.5.6.7; the driver's new network is A43's
-   --  restart, the next order watched again). FRMCS the only system
-   --  for the stored type: its registration ends the watch (E61), the
+   --  stays due under 3.5.6.7; the driver's new network is S3's
+   --  registration order again, the next order watched again). FRMCS
+   --  the only system for the stored type: its registration ends the
+   --  watch (E61), the
    --  time since its detection as connected elapsed without it (E71):
    --  A42, "FRMCS network registration failed" (FRMCS_Failed, entry
    --  33). Both systems: both registered end the watch (E62; either,
@@ -636,7 +637,8 @@ is
          pragma Loop_Invariant (True);
          if Due (S) and then R.Info (S).State = R.Idle then
             R.Request_Registration (S, N.NID_MN);
-            --  5.4.3.2 S4: the latest order, watched from now (A43)
+            --  5.4.3.2 S3: the registration ordered; S4: the time since
+            --  the latest order, watched from now
             Order_At := Now;
             Watching := True;
             Timed_Out := False;

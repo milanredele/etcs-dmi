@@ -213,7 +213,10 @@ is
    begin
       Matched := Req.Pending and then Req.Sent and then S = Req.Session
         and then Kind in Track_M4 | Track_M5
-        and then EVC_Received.Last_Field (7) = Unsigned_64 (Req.Stamp);
+        and then EVC_Received.Last_Field (7) = Unsigned_64 (Req.Stamp)
+        --  4.8.3 [17]: an SM authorisation while a message 133 is not
+        --  acknowledged is rejected, the request still awaiting its answer
+        and then not (Kind = Track_M4 and then Consist_Awaited);
       Refused := Matched and then Kind = Track_M5;
       if Refused then
          SCL.Period := False;

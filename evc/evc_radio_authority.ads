@@ -197,6 +197,9 @@ is
       Train_Data_Valid   : Boolean := False;
       TRN_Valid          : Boolean := False;
       Train_Data_Unacked : Boolean := False;
+      --  4.8.3 [17]: a Safe consist length information for SM (message
+      --  133) sent and not acknowledged
+      Consist_Unacked    : Boolean := False;
       --  3.15.5.3: the driver acknowledged the track ahead free request
       TAF_Confirmed      : Boolean := False;
       --  4.6.3 [11]: the speed and distance monitoring of the cycle is

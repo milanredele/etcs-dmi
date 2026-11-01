@@ -129,6 +129,7 @@ is
           --  second bullet (values changed) is taken as any Train Data
           --  sent again: the on-board does not compare the four values
           Train_Data_Unacked => EVC_Sessions.Train_Data_Awaited,
+          Consist_Unacked => EVC_Sessions.SM_Consist_Awaited,
           TAF_Confirmed =>
             EVC_Driver_Requests.Selected (EVC_Driver_Requests.TAF_Yes)));
       --  5.6.4.1.2: the session after the request for shunting failed

@@ -1,5 +1,6 @@
 with EVC_Test_Support;  use EVC_Test_Support;
 with ETCS_Track_Packets.P41;
+with ETCS_Track_Packets.P136;
 with ETCS_Track_Packets.P46;
 with ETCS_Variables;
 with EVC_Bytes;
@@ -1277,5 +1278,51 @@ package body EVC_Test_Modes is
              & "(4.6.3 [26], 4.4.20.1.6), the function ended (4.4.20.1.7); "
              & "no MSG_MODE_LEVEL: the DMI has no PS");
    end Scenario_E4_Continue_Shunting;
+
+   --  4.8.3, the rows "From RBC: No, Infill" (SUBSET-076 4080300_15 step
+   --  61): level 0 in UN, the group 10 at 50 m announces level 1 at
+   --  250 m; the group 20 at 100 m carries a packet 88 after a packet 136
+   --  in its telegram (8.4.1.4.4: infill information), which the row
+   --  Level Crossing information rejects in level 0 without exception
+   --  (Infill: R); the same packet without the packet 136 is kept in the
+   --  transition buffer (non-infill: R [1] [2], 4.8.3 [1])
+   procedure Scenario_Infill_Rejected is
+      procedure Run (With_136 : Boolean) is
+         P : ETCS_Track_Packets.P136.Packet_T;
+         W : EVC_Test_Support.Writer_T;
+         OK : Boolean;
+      begin
+         Start_X;
+         EVC_Core.Set_Mode_For_Test (M_UN, L0);
+         Add_Group (Group (10, 50));
+         Carry (Track_N, 0, Sim_Telegrams.Level_Order (2, 250, 0));
+         Add_Group (Group (20, 100));
+         if With_136 then
+            P.Q_DIR := 2;
+            P.NID_BG := 30;
+            ETCS_Track_Packets.P136.Encode (P, W, OK);
+            Finish_Carry (Track_N, 0, W, OK);
+         end if;
+         Carry (Track_N, 0,
+                Sim_Telegrams.Level_Crossing
+                  (5, 300, 100, Guarded => False, Kmh => 0, Stop => True,
+                   L_Stop_M => 20));
+         Run_X (12_000);
+      end Run;
+   begin
+      Run (With_136 => True);
+      Check (SI.Balise_Buffered = 0
+             and then SI_Seen (SI.Info_Group, SI.Change_Filtered) = 1
+             and then SI_Detail (SI.Info_Group, SI.Change_Filtered) = 88,
+             "acceptance: a packet 88 after a packet 136 in its telegram "
+             & "is infill information, rejected in level 0 with level 1 "
+             & "announced (4.8.3 Level Crossing information, Infill: R)");
+      Run (With_136 => False);
+      Check (SI.Balise_Buffered = 1
+             and then SI_Seen (SI.Info_Group, SI.Change_Filtered) = 0,
+             "acceptance: the packet 88 without a packet 136 is kept in "
+             & "the transition buffer in level 0 with level 1 announced "
+             & "(4.8.3 [1])");
+   end Scenario_Infill_Rejected;
 
 end EVC_Test_Modes;

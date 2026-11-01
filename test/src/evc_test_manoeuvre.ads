@@ -47,5 +47,6 @@ package EVC_Test_Manoeuvre is
    --  4.4.21.1.13, 4.4.8.1.4: the TIU output "ready for remote shunting"
    --  with the engine orientation against the MA's direction
    procedure Scenario_SM_Remote_Shunting;
+   procedure Scenario_SM_Consist_Rejects;
 
 end EVC_Test_Manoeuvre;

@@ -532,7 +532,8 @@ is
    --  message may have changed it)
    function Acceptance (Ctx              : Mode_Context_T;
                         Linked           : Boolean;
-                        Order_In_Message : Boolean)
+                        Order_In_Message : Boolean;
+                        Infill           : Boolean := False)
      return EVC_Acceptance.Context_T
    is (EVC_Acceptance.Context_T'
          (Mode             => Ctx.Mode,
@@ -548,7 +549,8 @@ is
                                           EVC_Modes.L2),
           Order_In_Message => Order_In_Message,
           Order_Pending    => EVC_Levels.Order_Pending,
-          Unlinked_Group   => not Linked))
+          Unlinked_Group   => not Linked,
+          Infill           => Infill))
      with Global => (EVC_Levels.State, EVC_Train_Data.State);
 
    --  4.8.1.3.1: the level before the level transition orders of the
@@ -572,12 +574,13 @@ is
                                 Ctx              : Mode_Context_T;
                                 Linked           : Boolean;
                                 Order_In_Message : Boolean;
-                                Prior            : Prior_T)
+                                Prior            : Prior_T;
+                                Infill           : Boolean)
      return EVC_Acceptance.Context_T
      with Global => (EVC_Levels.State, EVC_Train_Data.State)
    is
       Now : constant EVC_Acceptance.Context_T :=
-        Acceptance (Ctx, Linked, Order_In_Message);
+        Acceptance (Ctx, Linked, Order_In_Message, Infill);
       Before : EVC_Acceptance.Context_T := Now;
    begin
       if Prior.Valid = Now.Level_Valid
@@ -1374,6 +1377,20 @@ is
       end case;
    end Dispatch;
 
+   --  8.4.1.4.4: packet P of taken telegram J is infill information, a
+   --  packet 136 valid for the train's direction coming before it in the
+   --  telegram ("which part of that telegram is to be considered as part
+   --  of the infill information"; 8.4.1.3.1: the packets following it)
+   function Infill_Packet (J, P : Positive; Tk : EVC_Position.Taken_T)
+     return Boolean
+   is (for some Q in 1 .. P - 1 =>
+         EVC_Position.Taken_Entry (J, Q).Kind = ETCS_Catalogue.Track_P136
+         and then EVC_Position.Valid_For
+                    (EVC_Position.Taken_Entry (J, Q).Q_DIR,
+                     Tk.Group.Orientation, Tk.T))
+     with Global => EVC_Position.State,
+          Pre    => P <= EVC_Position.Taken_Packet_Count (J);
+
    --  4.8: the filters, then the packet to its store
    --  @req 3.7.2.3, 4.8.2.1, 4.8.2.1 a), 4.8.2.1 b), 4.8.2.1 d), 4.8.2.1 e)
    --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [4]
@@ -1392,7 +1409,8 @@ is
                           Has_41      : Boolean;
                           Now_Ms      : Unsigned_64;
                           Set_Open    : in out Boolean;
-                          Prior       : Prior_T)
+                          Prior       : Prior_T;
+                          Infill      : Boolean)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -1411,7 +1429,8 @@ is
          Reason => "the reader of one packet is not used after it");
       R  : Reader_T;
       A  : constant EVC_Acceptance.Context_T :=
-        Message_Acceptance (Info_Of (K), Ctx, Linked, Has_41, Prior);
+        Message_Acceptance (Info_Of (K), Ctx, Linked, Has_41, Prior,
+                            Infill);
    begin
       --  4.8.3 [1], 4.8.5.1: level 1 information in
       --  level 0 or 2 with level 1 announced, kept in the group's set of
@@ -1766,7 +1785,8 @@ is
                   then
                      Take_Packet (K, J, P, M, T, Train, MA_Accepted, Ctx,
                                   Tk.Group.Linked, Has_41, Now_Ms,
-                                  Set_Open, Prior);
+                                  Set_Open, Prior,
+                                  Infill_Packet (J, P, Tk));
                   end if;
                end;
             end loop;

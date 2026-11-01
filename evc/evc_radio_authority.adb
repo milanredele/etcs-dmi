@@ -1000,11 +1000,15 @@ is
    end Take_SM_Authorisation;
 
    --  A general message (24): one of its packets is taken through the
-   --  stored information in the context C (Take_Message)
+   --  stored information in the context C (Take_Message); a packet of a
+   --  row with [17] is not while a message 133 is not acknowledged
    function General_Taken (C : EVC_Radio_Acceptance.Context_T)
      return Boolean is
      (for some I in 1 .. EVC_Received.Last_Packet_Count =>
-          EVC_Received.Last_Packet_Kind (I)
+        not EVC_Radio_Acceptance.Consist_Rejected
+              (EVC_Received.Last_Packet_Kind (I), C)
+        and then
+        (EVC_Received.Last_Packet_Kind (I)
             in ETCS_Catalogue.Track_P73
                | ETCS_Catalogue.Track_P74
                | ETCS_Catalogue.Track_P79
@@ -1031,7 +1035,7 @@ is
                      in ETCS_Catalogue.Track_P51
                       | ETCS_Catalogue.Track_P52
                    and then EVC_Radio_Acceptance.Level_2_Track_Filter
-                              (C) = EVC_Radio_Acceptance.Accepted))
+                              (C) = EVC_Radio_Acceptance.Accepted)))
      with Global => EVC_Received.Store;
 
    procedure Take_Message (S         : EVC_Radio.Session_T;
@@ -1617,6 +1621,7 @@ is
                                 and then EVC_Levels.Announced_Level = L2,
           Train_Data_Unacked => Facts.Train_Data_Unacked
                                 and then not TD_Acked,
+          Consist_Unacked    => Facts.Consist_Unacked,
           Trip_Exit_Known    => Exit_Recognised,
           Cab_Active         => Facts.Cab_Active,
           Train_Data_Valid   => Facts.Train_Data_Valid,

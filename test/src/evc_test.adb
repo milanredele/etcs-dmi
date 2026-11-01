@@ -291,6 +291,7 @@ begin
    Scenario_E4_Odometer_Failure;
    Scenario_E4_Desk_Closed;
    Scenario_E4_Continue_Shunting;
+   Scenario_Infill_Rejected;
    Scenario_E5P_JRU_Records;
    Scenario_E5P_JRU_Bodies;
    Scenario_JRU_Inputs;
@@ -367,6 +368,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Post_Trip;
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
+   EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;

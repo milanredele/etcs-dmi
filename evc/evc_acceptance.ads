@@ -3,9 +3,10 @@
 --  SUBSET-026 4.8: the first filter of Figure 3 by the level and the
 --  origin (4.8.3, the rows "From RBC: No, non-infill") and the third
 --  filter by the mode (4.8.4), as tables. The RBC information is
---  EVC_Radio_Acceptance's; the infill information (3.9, the infill
---  location reference) is not taken by this on-board, so every balise
---  information is non-infill here.
+--  EVC_Radio_Acceptance's. The infill information of a balise group
+--  (the packets after a packet 136 in their telegram, 8.4.1.4.4) is
+--  judged by the rows "From RBC: No, Infill" (Context.Infill); its
+--  location reference (3.9) is not taken by this on-board.
 --
 --  The information of a group message is evaluated in the order of
 --  EVC_Stored_Information (the level transition orders first, 4.8.1.3);
@@ -123,12 +124,39 @@ is
       Order_Pending    : Boolean := False;
       --  4.8.3 [16]: the group is marked as unlinked
       Unlinked_Group   : Boolean := False;
+      --  4.8.3, the rows "From RBC: No, Infill": the information follows
+      --  a packet 136 in its balise telegram (8.4.1.4.4)
+      Infill           : Boolean := False;
    end record;
+
+   --  4.8.3: the kinds whose row has an Infill sub-row (the other rows
+   --  leave it empty: such information is judged by its non-infill row)
+   function Has_Infill_Row (I : Info_T) return Boolean is
+     (I in Linking | Signalling_Speed | Movement_Authority
+         | Gradient_Profile | International_SSP | Axle_Load_Profile
+         | Level_Order | TSR | Route_Suitability | Adhesion
+         | Track_Conditions | Big_Metal_Masses | Braking_Distance
+         | Level_Crossing | Reversing_Area | Reversing_Supervision);
+
+   --  4.8.3, the Infill sub-rows: each reads R, R, A, R [1] in levels 0,
+   --  NTC, 1 and 2 (the signalling related speed restriction A [18] in
+   --  level 1: [18], a restriction of zero rejected, is not applied).
+   --  The packets the units take themselves (5, 138, 139) are judged by
+   --  their non-infill rows there. Decision: the [1] of the level
+   --  transition order's sub-row is not taken (an order is not kept in
+   --  the transition buffer): rejected in level 2.
+   --  @req 4.8.3.1.1 Table
+   function Infill_Accepts (I : Info_T; L : Level_T; C : Context_T)
+     return Boolean
+   is (L = L1
+       or else (L = L2 and then C.L1_Announced and then I /= Level_Order));
 
    --  4.8.3: the first filter in the level L
    function Level_Accepts (I : Info_T; L : Level_T; C : Context_T)
      return Boolean
-   is (case I is
+   is (if C.Infill and then Has_Infill_Row (I) then Infill_Accepts (I, L, C)
+       else
+       (case I is
           when National_Values | Big_Metal_Masses => True,
           when Linking | Signalling_Speed | Movement_Authority
              | Gradient_Profile | International_SSP | Axle_Load_Profile
@@ -165,7 +193,7 @@ is
           when Reversing_Area | Reversing_Supervision =>
              L = L1 or else C.L1_Announced,
           --  4.8.3: A [9] A [9] A [9] R
-          when Track_Ahead_Free_L2 => L /= L2 and then C.L2_Announced);
+          when Track_Ahead_Free_L2 => L /= L2 and then C.L2_Announced));
 
    --  4.8.3 [13]: the danger for SH information in level 0 or NTC is
    --  rejected unless its group also gives an immediate level transition
@@ -270,13 +298,18 @@ is
    --  L (0, NTC or 2), by the rows and columns that carry it (Adhesion
    --  and Level Crossing not in level 2: R and A there; TSR, its
    --  revocation, the default gradient, packet 79 and the texts only in
-   --  NTC). Every case is one Level_Accepts accepts (the exception taken
-   --  at once by the units that keep no buffer, see the header).
+   --  NTC; the infill information in level 2 only, the level transition
+   --  order apart). Every case is one Level_Accepts accepts (the
+   --  exception taken at once by the units that keep no buffer, see the
+   --  header).
    --  @req 4.4.19.1.4.2 c), 4.8.3.1.1 Table-footnote [1]
    function Level_Stores (I : Info_T; L : Level_T; C : Context_T)
      return Boolean
    is (C.L1_Announced and then L /= L1
        and then
+       (if C.Infill and then Has_Infill_Row (I)
+        then L = L2 and then I /= Level_Order
+        else
        (case I is
            when Linking | Signalling_Speed | Movement_Authority
               | Gradient_Profile | International_SSP | Axle_Load_Profile
@@ -289,7 +322,7 @@ is
            when Adhesion | Level_Crossing => L /= L2,
            when TSR | TSR_Revocation | Default_Gradient
               | Geographical_Position | Text_Message => L = NTC,
-           when others => False));
+           when others => False)));
 
    --  4.8.3, 4.8.5.1: the first filter's third verdict, "stored in the
    --  transition buffer" (the third filter applies when the set is
