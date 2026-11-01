@@ -196,6 +196,28 @@ is
       end if;
    end Show_Trackside_Malfunction;
 
+   --  @req 3.18.5.1, 3.18.5.2
+   function Local_Seconds (Ms : Unsigned_64) return Unsigned_64 is
+      UTC  : constant Unsigned_64 := Unsigned_64 (UTC_Seconds) + Ms / 1000;
+      LRBG : constant EVC_Location.Anchor_T := EVC_Position.LRBG;
+      Zone : EVC_Config.Zone_Offset_T;
+   begin
+      if not UTC_Known then
+         return Ms / 1000;
+      elsif not LRBG.Valid or else UTC > Unsigned_64 (Unsigned_32'Last) then
+         return UTC;
+      end if;
+      Zone := EVC_Config.Zone_Offset
+        (EVC_Config.Current_Zones, LRBG.Id.NID_C, Unsigned_32 (UTC));
+      if not Zone.Found then
+         return UTC;
+      elsif Zone.Minutes >= 0 then
+         return UTC + Unsigned_64 (Zone.Minutes) * 60;
+      else
+         return UTC - Unsigned_64'Min (UTC, Unsigned_64 (-Zone.Minutes) * 60);
+      end if;
+   end Local_Seconds;
+
    procedure Send_Mode_Level is
    begin
       if Has_Mode_Code (Current_Mode) then
@@ -226,7 +248,7 @@ is
    end Send_Mode_Level;
 
    procedure Send_Procedure_Messages is
-      Seconds : constant Unsigned_64 := Unsigned_64 (Clock_Ms) / 1000;
+      Seconds : constant Unsigned_64 := Local_Seconds (Unsigned_64 (Clock_Ms));
    begin
       for I in 1 .. EVC_Procedures.Status_Event_Count loop
          declare
@@ -296,7 +318,7 @@ is
                O : constant EVC_Text_Messages.Output_T :=
                  EVC_Text_Messages.Shown_Output (Slot);
                Seconds : constant Unsigned_64 :=
-                 EVC_Text_Messages.Shown_Ms (Slot) / 1000;
+                 Local_Seconds (EVC_Text_Messages.Shown_Ms (Slot));
                F : Frame_Buffer_T;
                L : Natural;
             begin
@@ -434,7 +456,7 @@ is
       if EVC_Position.Geo_Known then
          EVC_Outbox.Put
            (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
-                               Unsigned_64 (Clock_Ms) / 1000,
+                               Local_Seconds (Unsigned_64 (Clock_Ms)),
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
                                Unsigned_32 (Tun.Distance_M), Radio,
@@ -443,7 +465,7 @@ is
       elsif Geo_Sent or else Changed then
          EVC_Outbox.Put
            (DMI, Status_Frame (Geo_Unknown,
-                               Unsigned_64 (Clock_Ms) / 1000,
+                               Local_Seconds (Unsigned_64 (Clock_Ms)),
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
                                Unsigned_32 (Tun.Distance_M), Radio,

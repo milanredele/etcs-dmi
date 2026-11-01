@@ -258,7 +258,7 @@ package body EVC_Test_Config is
              & "the fields refused, bad length");
       Field (6, (37, 0), CFG.Bad_Length, "length 37");
       Field (6, (16#E1#, 16#04#), CFG.Bad_Length, "length 1249");
-      Field (4, (3, 0), CFG.Bad_Version, "format version 3");
+      Field (4, (4, 0), CFG.Bad_Version, "format version 4");
       All_OK := True;
       for K in 0 .. L - 1 loop
          if Status_Of (Img (1 .. K)) /= CFG.Truncated then
@@ -273,7 +273,7 @@ package body EVC_Test_Config is
       --  the longest: every curve at 8 steps, the sets, the combinations
       CFG.Encode_V2 (C, Gamma_Sample (True, True, 8), Img, L);
       D := CFG.Decoded (Img);
-      Check (L = CFG.Max_Image_Length and then D.Status = CFG.Accepted
+      Check (L = CFG.Max_Image_V2_Length and then D.Status = CFG.Accepted
              and then D.Config = C,
              "config image v2: the longest image, 1248 bytes, accepted");
       EVC_Core.Configure (Img);
@@ -945,5 +945,98 @@ package body EVC_Test_Config is
       EVC_Core.Initialise;
       EVC_Core.Configure (CFG.Encode (CFG.Default));
    end Scenario_Config_Behaviour;
+
+   procedure Scenario_Config_Zones is
+      C   : CFG.Config_T := CFG.Default;
+      G   : constant CFG.Gamma_T := Gamma_Sample (False, False);
+      Img : CFG.Max_Image_T;
+      L   : Natural;
+      D   : CFG.Decoded_T;
+      X   : SIn.Train_Data_Extra_T;
+      Z   : CFG.Zone_Offset_T;
+      --  the offset of the zones' count byte
+      Z0  : Natural;
+      use type CFG.Zone_Table_T;
+      use type CFG.Fixed_Train_T;
+
+      --  the image of version 3 with Value at Offset (resealed) has
+      --  status Want
+      procedure Field (Offset : Natural; Value : Byte_Array;
+                       Want   : CFG.Status_T; What : String)
+      is
+         I : Byte_Array := Img (1 .. L);
+      begin
+         I (Offset + 1 .. Offset + Value'Length) := Value;
+         Check (Status_Of (Resealed_V2 (I, L)) = Want,
+                "config zones: " & What & " "
+                & CFG.Status_T'Image (Status_Of (Resealed_V2 (I, L))));
+      end Field;
+   begin
+      C.Zones.Count := 2;
+      C.Zones.Zones (1) := (First => 200, Last => 210, Offset_Min => 60,
+                            Summer => CFG.EU_Summer);
+      C.Zones.Zones (2) := (First => 300, Last => 300, Offset_Min => -300,
+                            Summer => CFG.No_Summer);
+      CFG.Encode_V3 (C, CFG.No_Gamma, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      Check (L = 38 + CFG.Zone_Image_Length
+             and then Img (1 .. 8) = (16#45#, 16#56#, 16#43#, 16#46#,
+                                      3, 0, Byte (L), 0)
+             and then D.Status = CFG.Accepted and then D.Config = C,
+             "config zones: an image of version 3 of a lambda train, the "
+             & "zones between the train and the CRC, gives the "
+             & "configuration back");
+      Z0 := L - 4 - CFG.Zone_Image_Length;
+      Check (Img (Z0 + 1 .. Z0 + 15)
+               = (2, 200, 0, 210, 0, 12, 3, 1, 44, 1, 44, 1, 164, 1, 0),
+             "config zones: the count, then NID_C first and last, the "
+             & "offset + 720 min and the rule of each zone");
+      Field (Z0, (1 => 9), CFG.Bad_Field, "more than 8 zones refused");
+      Field (Z0 + 3, (100, 0), CFG.Bad_Field,
+             "a zone ending before its start refused");
+      Field (Z0 + 3, (0, 4), CFG.Bad_Field, "NID_C 1024 refused");
+      Field (Z0 + 5, (25, 6), CFG.Bad_Field,
+             "an offset beyond UTC+14:00 refused");
+      Field (Z0 + 7, (1 => 2), CFG.Bad_Field, "an unknown rule refused");
+      Field (Z0, (1 => 0), CFG.Accepted, "no zone accepted");
+
+      CFG.Encode_V2 (C, CFG.No_Gamma, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      Check (L = 38 and then D.Status = CFG.Accepted
+             and then D.Config.Zones = CFG.No_Zones
+             and then D.Config.Train = C.Train,
+             "config zones: an image of version 2 has no zone");
+
+      C.Train.Model := SIn.Gamma;
+      CFG.Encode_V3 (C, G, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      CFG.Load (Img (1 .. L));
+      CFG.Gamma_Extra (X);
+      Check (D.Status = CFG.Accepted and then D.Config = C
+             and then CFG.Current = C and then X = G.Extra,
+             "config zones: a gamma train of version 3 loads its train "
+             & "and its zones");
+      CFG.Load (CFG.Encode (CFG.Default));
+
+      --  the EU summer time of 2026 (29 March, 25 October) and of the
+      --  leap year 2024 (31 March), at 01:00 UTC, seconds since 2000
+      Check (not CFG.EU_Summer_Time (828_061_199)
+             and then CFG.EU_Summer_Time (828_061_200)
+             and then CFG.EU_Summer_Time (846_205_199)
+             and then not CFG.EU_Summer_Time (846_205_200)
+             and then not CFG.EU_Summer_Time (765_161_999)
+             and then CFG.EU_Summer_Time (765_162_000)
+             and then not CFG.EU_Summer_Time (0)
+             and then not CFG.EU_Summer_Time (Unsigned_32'Last),
+             "config zones: the EU summer time from the last Sunday of "
+             & "March to the last Sunday of October at 01:00 UTC");
+      Z := CFG.Zone_Offset (C.Zones, 210, 836_179_200);
+      Check (Z.Found and then Z.Minutes = 120
+             and then CFG.Zone_Offset (C.Zones, 300, 836_179_200).Minutes
+                      = -300
+             and then not CFG.Zone_Offset (C.Zones, 211, 836_179_200).Found,
+             "config zones: the offset of the zone of a NID_C on 1 July "
+             & "2026, the summer time added by the EU rule only");
+   end Scenario_Config_Zones;
 
 end EVC_Test_Config;

@@ -15,6 +15,11 @@ package EVC_Test_Core is
       procedure Scenario_Valid_Inputs;
       procedure Scenario_Isolation;
       procedure Scenario_Time;
+      --  3.18.5.1, 3.18.5.2: the local time of the driver from the
+      --  calendar clock and the zone of the LRBG's country (EVC_Config's
+      --  zones, the EU summer time), UTC without a zone, the on-board
+      --  clock without UTC
+      procedure Scenario_Local_Time;
       procedure Scenario_Outbox;
       procedure Scenario_Failure;
       procedure Scenario_End_To_End;

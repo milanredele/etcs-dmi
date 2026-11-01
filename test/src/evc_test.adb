@@ -244,6 +244,8 @@ begin
    Scenario_Config_Image;
    Scenario_Config_Core;
    Scenario_Config_Behaviour;
+   Scenario_Config_Zones;
+   EVC_Test_Core.Scenario_Local_Time;
    Scenario_JRU_Format;
    Scenario_JRU_On_Board;
    Scenario_JRU_Entry_Type;

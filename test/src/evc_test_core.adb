@@ -11,7 +11,10 @@ with DMI_Train_Types;
 with Display.Screen.Files;
 with Display.Screen;
 with EVC_Bytes;
+with ETCS_Variables;
+with EVC_Config;
 with EVC_Core;
+with EVC_Position;
 with EVC_DMI_Port;
 with EVC_Driver;
 with EVC_Mock;
@@ -471,6 +474,66 @@ package body EVC_Test_Core is
       Check (Parsed and then DMI_Mode_Byte = 1,
              "time: still SB on the DMI");
    end Scenario_Time;
+
+   procedure Scenario_Local_Time is
+      package CFG renames EVC_Config;
+      use type CFG.Config_T;
+      use type ETCS_Variables.NID_C_T;
+      --  2026-01-01 and 2026-07-01 00:00:00 UTC, seconds since 2000
+      UTC_Jan : constant := 820_540_800;
+      UTC_Jul : constant := 836_179_200;
+      C   : CFG.Config_T := CFG.Default;
+      Img : CFG.Max_Image_T;
+      L   : Natural;
+      type Case_T is (Winter, Summer, West, No_Zone, No_UTC);
+      NID : constant array (Case_T) of ETCS_Variables.NID_C_T :=
+        (Winter | Summer | No_UTC => 205, West => 300, No_Zone => 124);
+      --  the local time expected after the UTC, minutes
+      Offset : constant array (Case_T) of Integer :=
+        (Winter => 60, Summer => 120, West => -300, No_Zone | No_UTC => 0);
+      Want : Unsigned_64;
+   begin
+      C.Zones.Count := 2;
+      C.Zones.Zones (1) := (First => 200, Last => 210, Offset_Min => 60,
+                            Summer => CFG.EU_Summer);
+      C.Zones.Zones (2) := (First => 300, Last => 300, Offset_Min => -300,
+                            Summer => CFG.No_Summer);
+      CFG.Encode_V3 (C, CFG.No_Gamma, Img, L);
+      for K in Case_T loop
+         EVC_Core.Initialise;
+         EVC_Core.Configure (Img (1 .. L));
+         EVC_Core.Tick (100);
+         Take;
+         Start_X;
+         Country (1) := NID (K);
+         EVC_Core.Set_Mode_For_Test (M_SR, L1);
+         Stand_X (100);
+         if K /= No_UTC then
+            EVC_Core.Set_UTC (if K = Summer then UTC_Jul else UTC_Jan);
+         end if;
+         Add_Group (Group (1, 50));
+         Run_X (10_000);
+         Want := Unsigned_64 (EVC_Core.Time_Ms) / 1000;
+         if K /= No_UTC then
+            Want := Want + (if K = Summer then UTC_Jul else UTC_Jan);
+         end if;
+         Want := (if Offset (K) >= 0 then Want + Unsigned_64 (Offset (K)) * 60
+                  else Want - Unsigned_64 (-Offset (K)) * 60);
+         Check (EVC_Core.Configuration = C
+                and then EVC_Position.LRBG.Valid
+                and then EVC_Position.LRBG.Id.NID_C = NID (K)
+                and then EVC_Core.Local_Time = Want,
+                "local time, " & Case_T'Image (K) & ": the time of day "
+                & "shown is the UTC of the clock and the offset of the "
+                & "LRBG's zone (3.18.5.1, 3.18.5.2), got"
+                & Unsigned_64'Image (EVC_Core.Local_Time) & " want"
+                & Unsigned_64'Image (Want));
+      end loop;
+      EVC_Core.Initialise;
+      EVC_Core.Configure (CFG.Encode (CFG.Default));
+      EVC_Core.Tick (100);
+      Take;
+   end Scenario_Local_Time;
 
    --  The outbox: nobody takes the outputs, it fills and drops whole
    --  records; small buffers get whole records only

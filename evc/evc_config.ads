@@ -73,7 +73,7 @@
 --               16#CBF4_3926#)
 --  The bytes after the length are ignored: a block of flash larger than
 --  the image can be handed over whole. A later format gets a new
---  version; versions 1 and 2 are accepted, the version decides the
+--  version; versions 1, 2 and 3 are accepted, the version decides the
 --  length.
 --
 --  The byte image, format version 2 (Encode_V2): the bytes 0 to 31 of
@@ -127,6 +127,19 @@
 --  step open ended (3.13.2.2.3.1.3, .4); 1 + 4 n bytes. A field out of
 --  its range or a count out of its range is Bad_Field; fields that end
 --  before or run past the CRC are Bad_Length.
+--
+--  The byte image, format version 3 (Encode_V3): the image of version 2
+--  (the version 3, the length L, 95 to Max_Image_Length 1305) with the
+--  zones (Zone_Table_T) between the train and the CRC, Zone_Image_Length
+--  (57) bytes at L - 61:
+--     1   the count of zones                0 .. 8
+--   8 x 7 the zones, the first ones counted, the others 0 and not read:
+--     2   the first NID_C u16                 0 .. 1023
+--     2   the last NID_C u16                  first .. 1023
+--     2   the standard offset u16, minutes    0 .. 1560 (UTC-12:00
+--         + 720                                 .. UTC+14:00)
+--     1   the summer-time rule                0 none, 1 EU
+--  A version 1 or 2 image has no zone (UTC is the local time).
 --
 --  The state: the configuration in use (Current, the Default until an
 --  image is loaded), whether an image was loaded, the images refused,
@@ -297,6 +310,34 @@ is
 
    Default_Radio : constant Radio_Config_T := (others => <>);
 
+   --  The time zones of the installation, by the country or region of
+   --  the last relevant balise group (NID_C): the local time of the
+   --  driver is UTC plus the zone's standard offset, plus 60 min while
+   --  its summer-time rule applies; EU_Summer from the last Sunday of
+   --  March 01:00 UTC to the last Sunday of October 01:00 UTC.
+   --  Decision (3.18.5.1, 3.18.5.2: "date and time in UTC and Local
+   --  Time", the local time presented to the driver): the on-board tells
+   --  the local time from its calendar clock and the region, the zones
+   --  an engineering value of the installation; the first zone whose
+   --  range holds the NID_C applies
+   --  @req 3.18.5.1
+   Zone_Max : constant := 8;
+   type Summer_Rule_T is (No_Summer, EU_Summer);
+   --  the standard offset to UTC, minutes (UTC-12:00 .. UTC+14:00)
+   subtype Zone_Offset_Min_T is Integer range -720 .. 840;
+   type Zone_T is record
+      First      : NID_C_T := 0;
+      Last       : NID_C_T := 0;
+      Offset_Min : Zone_Offset_Min_T := 0;
+      Summer     : Summer_Rule_T := No_Summer;
+   end record;
+   type Zone_List_T is array (1 .. Zone_Max) of Zone_T;
+   type Zone_Table_T is record
+      Count : Natural range 0 .. Zone_Max := 0;
+      Zones : Zone_List_T := (others => (others => <>));
+   end record;
+   No_Zones : constant Zone_Table_T := (others => <>);
+
    type Config_T is record
       Supervision      : Onboard_Config_T;
       Antenna_To_Cab_A : Antenna_Offset_T := 300;
@@ -305,6 +346,8 @@ is
       Train            : Fixed_Train_T;
       --  (see Radio_Config_T)
       Radio            : Radio_Config_T;
+      --  (see Zone_Table_T)
+      Zones            : Zone_Table_T;
    end record;
 
    --  3.13.2.2.6.1 Table 3: the interface I is a possibility for the
@@ -322,8 +365,10 @@ is
    --  allows
    --  @req 3.13.2.2.6.1 Table 3
    function Valid (C : Config_T) return Boolean is
-     (for all B in Special_Brake_T =>
-        Table_3 (B, C.Supervision.Special_Brakes (B)));
+     ((for all B in Special_Brake_T =>
+         Table_3 (B, C.Supervision.Special_Brakes (B)))
+      and then (for all I in 1 .. C.Zones.Count =>
+                  C.Zones.Zones (I).First <= C.Zones.Zones (I).Last));
 
    --  The distance from the end of the engine the orientation S points
    --  to, to the antenna (3.6.1.3.4)
@@ -358,12 +403,13 @@ is
       Antenna_To_Cab_A => 300,
       Antenna_To_Cab_B => 1_700,
       Train            => Default_Fixed_Train,
-      Radio            => Default_Radio);
+      Radio            => Default_Radio,
+      Zones            => No_Zones);
 
    --  The byte image
 
-   --  the highest format version accepted (1 and 2 are)
-   Format_Version : constant := 2;
+   --  the highest format version accepted (1, 2 and 3 are)
+   Format_Version : constant := 3;
    --  version 1: its length and the bytes its CRC covers
    Image_Length   : constant := 36;
    CRC_Offset     : constant := 32;
@@ -372,7 +418,12 @@ is
    --  gamma train with every step function at 8 steps, the normal
    --  service sets and the models by combination)
    Min_Image_V2_Length : constant := 38;
-   Max_Image_Length    : constant := 1_248;
+   Max_Image_V2_Length : constant := 1_248;
+   --  version 3: the train of version 2, then the zones (a count, then
+   --  Zone_Max entries of 7 bytes)
+   Zone_Image_Length   : constant := 1 + 7 * Zone_Max;
+   Min_Image_V3_Length : constant := Min_Image_V2_Length + Zone_Image_Length;
+   Max_Image_Length    : constant := Max_Image_V2_Length + Zone_Image_Length;
    subtype Max_Image_T is Byte_Array (1 .. Max_Image_Length);
 
    --  the braking models of a gamma train (3.13.2.2.3, 3.13.2.2.9,
@@ -398,9 +449,9 @@ is
      (Accepted,
       Truncated,           -- shorter than its header or its length
       Bad_Magic,
-      Bad_Version,         -- a format version other than 1 and 2
+      Bad_Version,         -- a format version other than 1 to 3
       --  the length field is not that of the version, or the fields of
-      --  version 2 do not end at the CRC
+      --  version 2 or 3 do not end at the CRC
       Bad_Length,
       Bad_CRC,
       Bad_Field,           -- a field out of its range
@@ -442,7 +493,35 @@ is
                         G      : Gamma_T;
                         Image  : out Max_Image_T;
                         Length : out Natural)
-     with Post => Length in Min_Image_V2_Length .. Max_Image_Length;
+     with Post => Length in Min_Image_V2_Length .. Max_Image_V2_Length;
+
+   --  The image of format version 3 of C, G as Encode_V2, and the zones
+   --  of C (Decoded gives C back, and a load G, when C is valid and G
+   --  within the ranges of the layout above)
+   procedure Encode_V3 (C      : Config_T;
+                        G      : Gamma_T;
+                        Image  : out Max_Image_T;
+                        Length : out Natural)
+     with Post => Length in Min_Image_V3_Length .. Max_Image_Length;
+
+   --  The calendar of the zones
+
+   --  The EU summer time at the instant UTC, seconds since 2000-01-01
+   --  00:00:00 UTC (a Saturday; the Gregorian calendar): from the last
+   --  Sunday of March 01:00 UTC to the last Sunday of October 01:00 UTC
+   function EU_Summer_Time (UTC : Unsigned_32) return Boolean;
+
+   --  The offset of the local time to UTC, minutes, in the zone of the
+   --  country or region NID_C at the instant UTC; not Found when no zone
+   --  of Z holds NID_C
+   subtype Local_Offset_Min_T is Integer range -720 .. 900;
+   type Zone_Offset_T is record
+      Found   : Boolean := False;
+      Minutes : Local_Offset_Min_T := 0;
+   end record;
+   function Zone_Offset (Z     : Zone_Table_T;
+                         NID_C : NID_C_T;
+                         UTC   : Unsigned_32) return Zone_Offset_T;
 
    --  The configuration in use
 
@@ -452,6 +531,10 @@ is
 
    --  the radio part of Current, without copying the
    --  whole configuration
+   function Current_Zones return Zone_Table_T
+     with Global => State,
+          Post => Current_Zones'Result = Current.Zones;
+
    function Current_Radio return Radio_Config_T
      with Global => State,
           Post => Current_Radio'Result = Current.Radio;

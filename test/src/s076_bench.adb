@@ -999,7 +999,7 @@ package body S076_Bench is
          if not Service_On then
             C.Supervision.SB_Failure_Time_Ms := 60_000;
          end if;
-         EVC_Config.Encode_V2 (C, G, Img, Len);
+         EVC_Config.Encode_V3 (C, G, Img, Len);
          EVC_Core.Configure (Img (1 .. Len));
       elsif Gamma_Installed then
          EVC_Core.Configure (EVC_Config.Encode (EVC_Config.Default));
