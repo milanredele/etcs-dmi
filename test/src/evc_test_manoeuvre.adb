@@ -8,6 +8,10 @@ with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P41;
+with Sim_Telegrams;
+with EVC_Track_Description;
+with ETCS_Track_Packets.P88;
+with ETCS_Track_Packets.P65;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P12;
 with ETCS_Variables;
@@ -1032,6 +1036,10 @@ package body EVC_Test_Manoeuvre is
       --  402): the Train Data no longer valid (3.18.3.5 a)
       EVC_Core.Set_Mode_For_Test (M_SB, L2);
       EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      --  the message 133 of the change acknowledged: 4.8.3 [17] would
+      --  reject the SM authorisation below
+      T := Wait_For (MCat.Train_M133, 300);
+      Give_Radio_Message (1, Consist_Ack (T));
       Stand_X (300);
       Check (EVC_Core.Mode = M_SB and then not EVC_Train_Data.Valid
              and then Widened (100, 200),
@@ -1186,5 +1194,74 @@ package body EVC_Test_Manoeuvre is
              & "(4.4.8.1.4, SUBSET-034 2.2.6):" & Integer'Image (R)
              & " mode " & Mode_T'Image (EVC_Core.Mode));
    end Scenario_SM_Remote_Shunting;
+
+   --  4.8.3 [17] (SUBSET-076 4080300_21 steps 122 to 127): in SM in level
+   --  2, a message 133 sent and not acknowledged, a general message with
+   --  a level crossing (packet 88, the row Level Crossing information,
+   --  level 2: A [3] [17]) or a TSR (packet 65, A [3] [17]) rejected;
+   --  after the acknowledgement (message 7, 3.18.3.10.1) both taken
+   procedure Scenario_SM_Consist_Rejects is
+      T : Unsigned_64;
+      function General (With_LX : Boolean) return Byte_Array is
+         W  : Writer_T;
+         V  : ETCS_Message.Value_Array := (others => 0);
+         OK : Boolean;
+      begin
+         V (3) := Now_Stamp;
+         V (5) := 123;
+         V (6) := 10;
+         Start_Message (W, MCat.Track_M24, V);
+         if With_LX then
+            ETCS_Track_Packets.P88.Encode
+              (Sim_Telegrams.Level_Crossing
+                 (7, 300, 20, Guarded => False, Kmh => 20, Stop => True,
+                  L_Stop_M => 30), W, OK);
+         else
+            ETCS_Track_Packets.P65.Encode
+              (Sim_Telegrams.TSR (3, 300, 100, 40), W, OK);
+         end if;
+         Check (OK, "SM consist: packet encoded");
+         return Message_Bytes (W);
+      end General;
+      function LX_Stored return Boolean is
+        (for some I in 1 .. EVC_Track_Description.Max_LX =>
+           EVC_Track_Description.LX_Item (I).Used);
+   begin
+      --  the change of the safe consist length sent in SB (3.18.3.10),
+      --  then SM
+      Start_L2_SM;
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 500, 498, 502));
+      T := Wait_For (MCat.Train_M133, 1_000);
+      EVC_Core.Set_Mode_For_Test (M_SM, L2);
+      Stand_X (300);
+      Give_Radio_Message (1, General (With_LX => True));
+      Stand_X (300);
+      Give_Radio_Message (1, General (With_LX => False));
+      Stand_X (300);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Awaited
+             and then not LX_Stored
+             and then EVC_Track_Description.TSR_Count = 0,
+             "SM consist: message 133 sent, not acknowledged: the level "
+             & "crossing and the TSR of a general message rejected (4.8.3 "
+             & "[17]):" & Unsigned_64'Image (T) & " "
+             & Boolean'Image (EVC_Sessions.SM_Consist_Awaited) & " "
+             & Boolean'Image (LX_Stored)
+             & Natural'Image (EVC_Track_Description.TSR_Count));
+      Give_Radio_Message (1, Consist_Ack (T));
+      Stand_X (300);
+      Give_Radio_Message (1, General (With_LX => True));
+      Stand_X (300);
+      Give_Radio_Message (1, General (With_LX => False));
+      Stand_X (300);
+      Check (not EVC_Sessions.SM_Consist_Awaited and then LX_Stored
+             and then EVC_Track_Description.TSR_Count = 1,
+             "SM consist: after the acknowledgement the level crossing and "
+             & "the TSR taken (4.8.3 [17]): "
+             & Boolean'Image (EVC_Sessions.SM_Consist_Awaited) & " "
+             & Boolean'Image (LX_Stored)
+             & Natural'Image (EVC_Track_Description.TSR_Count));
+   end Scenario_SM_Consist_Rejects;
 
 end EVC_Test_Manoeuvre;

@@ -61,7 +61,9 @@ is
    --  4.8.4 [14], S050 E115 / E215: message 4 or 5 (Kind) of session S
    --  answers the pending request when its second T_TRAIN is the time
    --  stamp of the request (Matched); Refused: message 5, the driver to
-   --  be told (A220); one not matched is not taken, nor its packet 45
+   --  be told (A220); one not matched is not taken, nor its packet 45;
+   --  message 4 is not matched while a message 133 is not acknowledged
+   --  (4.8.3 [17])
    --  @req 4.8.4.2 Table-footnote [13], 4.8.4.2 Table-footnote [14]
    procedure Take_Answer (S       : EVC_Radio.Session_T;
                           Kind    : Message_Kind_T;

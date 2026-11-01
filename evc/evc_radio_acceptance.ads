@@ -16,6 +16,10 @@
 --      transition buffer of 4.8.5 (EVC_Radio_Authority).
 --    4.8.3 [3] rejected while Train Data sent to the RBC are not
 --      acknowledged (Context.Train_Data_Unacked).
+--    4.8.3 [17] rejected while a Safe consist length information for
+--      SM (message 133) sent is not acknowledged
+--      (Context.Consist_Unacked): the SM authorisation here, the
+--      packets of a general message by Consist_Rejected.
 --    4.8.3 [4] (the SSP and gradient cover the MA): 3.7.2.3 in
 --      EVC_Stored_Information; [5] (emergency stops not revoked):
 --      3.10.2.4 in EVC_Radio_Authority.
@@ -90,6 +94,8 @@ is
       L2_Announced       : Boolean := False;
       --  4.8.3 [3]
       Train_Data_Unacked : Boolean := False;
+      --  4.8.3 [17]: message 133 sent and not acknowledged (message 7)
+      Consist_Unacked    : Boolean := False;
       --  4.8.4 [1], [2], [4], [11]
       Trip_Exit_Known    : Boolean := False;
       Cab_Active         : Boolean := False;
@@ -106,7 +112,8 @@ is
    --  The rows "Movement authority (SM Authorisation)" (A [4] [5] [17]:
    --  [4] the stored information's 3.7.2.3, [5] the emergency stops of
    --  EVC_Radio_Authority, [17] no message 133 is sent) and "SM refused"
-   --  (A): level 2 accepts, without [3]
+   --  (A): level 2 accepts, without [3]; the SM authorisation rejected
+   --  while a message 133 sent is not acknowledged ([17])
    --  @req 4.8.3.1.1 Table-footnote [17]
    function First_Filter (I : Info_T; C : Context_T) return Verdict_T
    is (if I = Other then Accepted
@@ -121,6 +128,8 @@ is
                 | SH_Refused | SH_Authorised | TAF_Request
              and then C.Train_Data_Unacked
           then Rejected                                           -- [3]
+          elsif I = SM_Authorisation and then C.Consist_Unacked
+          then Rejected                                           -- [17]
           else Accepted)
        elsif I in Movement_Authority | Conditional_Stop | Unconditional_Stop
          and then C.L2_Announced
@@ -175,6 +184,32 @@ is
          (if C.Train_Data_Unacked then Rejected else Accepted)   -- [3]
        elsif C.L2_Announced then Stored                         -- [2]
        else Rejected);
+
+   --  4.8.3, the rows whose level 2 cell (From RBC: Yes) carries [17],
+   --  by their packets: Linking (5), Gradient Profile (21), International
+   --  SSP (27), Axle Load speed profile (51), Temporary Speed Restriction
+   --  (65) and its Revocation (66), Route Suitability Data (70), RBC
+   --  Transition Order (131), Track Conditions excluding big metal
+   --  masses (39, 40, 68, 69), Track condition big metal masses (67),
+   --  Level Crossing information (88); the twelfth, the SM
+   --  authorisation, is a message (First_Filter)
+   function Consist_Row (P : ETCS_Catalogue.Packet_Kind_T) return Boolean
+   is (P in ETCS_Catalogue.Track_P5 | ETCS_Catalogue.Track_P21
+          | ETCS_Catalogue.Track_P27 | ETCS_Catalogue.Track_P51
+          | ETCS_Catalogue.Track_P65 | ETCS_Catalogue.Track_P66
+          | ETCS_Catalogue.Track_P70 | ETCS_Catalogue.Track_P131
+          | ETCS_Catalogue.Track_P39 | ETCS_Catalogue.Track_P40
+          | ETCS_Catalogue.Track_P68 | ETCS_Catalogue.Track_P69
+          | ETCS_Catalogue.Track_P67 | ETCS_Catalogue.Track_P88);
+
+   --  4.8.3 [17] "rejected if a Safe consist length information for SM
+   --  message has been sent to the RBC and the corresponding
+   --  acknowledgment has not been received yet in the ongoing mission",
+   --  for packet P of a general message on a row of Consist_Row
+   --  @req 4.8.3.1.1 Table-footnote [17]
+   function Consist_Rejected (P : ETCS_Catalogue.Packet_Kind_T;
+                              C : Context_T) return Boolean
+   is (C.Consist_Unacked and then Consist_Row (P));
 
    --  4.8.4 [1], the rows A [1] of PT: "for level 2: only if following
    --  the reception of the information "Recognition of Exit from TR

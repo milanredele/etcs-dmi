@@ -368,6 +368,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Post_Trip;
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
+   EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;
