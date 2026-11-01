@@ -23,6 +23,8 @@ is
      with Refined_Global => Cfg;
    function Current_Radio return Radio_Config_T is (Cfg.Radio)
      with Refined_Global => Cfg;
+   function Current_Zones return Zone_Table_T is (Cfg.Zones)
+     with Refined_Global => Cfg;
    function Loaded return Boolean is (Is_Loaded)
      with Refined_Global => Is_Loaded;
    function Rejections return Natural is (Refused)
@@ -295,7 +297,60 @@ is
    --  The length L is that of an image of the format Version
    function Length_OK (Version, L : Natural) return Boolean is
      (if Version = 1 then L = Image_Length
-      else L in Min_Image_V2_Length .. Max_Image_Length);
+      elsif Version = 2 then L in Min_Image_V2_Length .. Max_Image_V2_Length
+      else L in Min_Image_V3_Length .. Max_Image_Length);
+
+   --  The zones of an image of format version 3 at Offset: the count,
+   --  then Zone_Max entries of a u16 first NID_C, a u16 last NID_C, a
+   --  u16 standard offset + 720 minutes and a u8 summer-time rule (0
+   --  none, 1 EU); the entries after the count are not read
+   procedure Get_Zones (Bytes  : Byte_Array;
+                        Offset : Natural;
+                        Z      : out Zone_Table_T;
+                        S      : out Field_Status_T)
+     with Global => null,
+          Pre  => Bytes'Length >= Zone_Image_Length
+                  and then Offset <= Bytes'Length - Zone_Image_Length,
+          Post => (if S = Accepted
+                   then (for all I in 1 .. Z.Count =>
+                           Z.Zones (I).First <= Z.Zones (I).Last))
+   is
+      N : constant Byte := Bytes (Bytes'First + Offset);
+   begin
+      Z := No_Zones;
+      S := Accepted;
+      if N > Zone_Max then
+         S := Bad_Field;
+         return;
+      end if;
+      for I in 1 .. Natural (N) loop
+         declare
+            P    : constant Positive := Bytes'First + Offset + 1 + 7 * (I - 1);
+            Lo   : constant Unsigned_16 := Get_U16 (Bytes, P);
+            Hi   : constant Unsigned_16 := Get_U16 (Bytes, P + 2);
+            Off  : constant Unsigned_16 := Get_U16 (Bytes, P + 4);
+            Rule : constant Byte := Bytes (P + 6);
+         begin
+            if Hi > 1_023 or else Lo > Hi or else Off > 1_560
+              or else Rule > 1
+            then
+               Z := No_Zones;
+               S := Bad_Field;
+               return;
+            end if;
+            Z.Zones (I) :=
+              (First      => NID_C_T (Lo),
+               Last       => NID_C_T (Hi),
+               Offset_Min => Integer (Off) - 720,
+               Summer     => (if Rule = 1 then EU_Summer else No_Summer));
+            Z.Count := I;
+         end;
+         pragma Loop_Invariant
+           (Z.Count = I
+            and then (for all J in 1 .. I =>
+                        Z.Zones (J).First <= Z.Zones (J).Last));
+      end loop;
+   end Get_Zones;
 
    --  The train of an image of format version 2 of length L into T: the
    --  model, the special brakes, the gamma train (its status) or the CRC
@@ -322,6 +377,33 @@ is
             elsif L /= Min_Image_V2_Length then Bad_Length
             else Accepted);
    end Get_Train;
+
+   --  The train of an image of format version 2 or 3 of length L, and
+   --  the zones of version 3 between the train and the CRC
+   procedure Get_Tail (Bytes   : Byte_Array;
+                       Version : Natural;
+                       L       : Natural;
+                       T       : in out Fixed_Train_T;
+                       Z       : out Zone_Table_T;
+                       S       : out Field_Status_T)
+     with Global => null,
+          Pre  => Version in 2 .. 3 and then L <= Bytes'Length
+                  and then Length_OK (Version, L),
+          Post => (if S = Accepted
+                   then (for all I in 1 .. Z.Count =>
+                           Z.Zones (I).First <= Z.Zones (I).Last))
+   is
+   begin
+      Z := No_Zones;
+      if Version = 2 then
+         Get_Train (Bytes, L, T, S);
+      else
+         Get_Train (Bytes, L - Zone_Image_Length, T, S);
+         if S = Accepted then
+            Get_Zones (Bytes, L - 4 - Zone_Image_Length, Z, S);
+         end if;
+      end if;
+   end Get_Tail;
 
    function Decoded (Bytes : Byte_Array) return Decoded_T is
       R : Decoded_T := (Status => Truncated, Config => Default);
@@ -426,8 +508,8 @@ is
 
       --  the train of version 2: the model, the special brakes, the gamma
       --  train or the CRC
-      if Version = 2 then
-         Get_Train (Bytes, L, C.Train, R.Status);
+      if Version >= 2 then
+         Get_Tail (Bytes, Version, L, C.Train, C.Zones, R.Status);
          if R.Status /= Accepted then
             return R;
          end if;
@@ -511,13 +593,13 @@ is
                   Size  : Positive;
                   V     : Natural)
      with Global => null,
-          Pre  => Size <= 2 and then Pos <= Max_Image_Length - 4,
-          Post => Pos in Pos'Old .. Max_Image_Length - 4
+          Pre  => Size <= 2 and then Pos <= Max_Image_V2_Length - 4,
+          Post => Pos in Pos'Old .. Max_Image_V2_Length - 4
    is
       W : constant Unsigned_64 :=
         Unsigned_64 (Natural'Min (V, (if Size = 1 then 255 else 65_535)));
    begin
-      if Pos + Size > Max_Image_Length - 4 then
+      if Pos + Size > Max_Image_V2_Length - 4 then
          return;
       end if;
       Image (Pos + 1) := Byte_Of (W, 0);
@@ -532,14 +614,14 @@ is
                         Pos   : in out Natural;
                         C     : Decel_Curve_T)
      with Global => null,
-          Pre  => Pos <= Max_Image_Length - 4,
-          Post => Pos in Pos'Old .. Max_Image_Length - 4
+          Pre  => Pos <= Max_Image_V2_Length - 4,
+          Post => Pos in Pos'Old .. Max_Image_V2_Length - 4
    is
       Start : constant Natural := Pos;
    begin
       Put (Image, Pos, 1, C.Count);
       for K in 1 .. C.Count loop
-         pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+         pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
          Put (Image, Pos, 2, C.Steps (K).Speed);
          Put (Image, Pos, 2, C.Steps (K).Decel);
       end loop;
@@ -550,26 +632,26 @@ is
                                Pos   : in out Natural;
                                X     : Train_Data_Extra_T)
      with Global => null,
-          Pre  => Pos <= Max_Image_Length - 4,
-          Post => Pos in Pos'Old .. Max_Image_Length - 4
+          Pre  => Pos <= Max_Image_V2_Length - 4,
+          Post => Pos in Pos'Old .. Max_Image_V2_Length - 4
    is
       Start : constant Natural := Pos;
    begin
       for C in Brake_Combination_T loop
-         pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+         pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
          Put_Curve (Image, Pos, X.A_Emergency_Combination (C));
       end loop;
       for C in Brake_Combination_T loop
-         pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+         pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
          Put_Curve (Image, Pos, X.A_Service_Combination (C));
       end loop;
       for C in Combination_T loop
-         pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+         pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
          Put (Image, Pos, 2, X.T_Emergency_Combination (C).React);
          Put (Image, Pos, 2, X.T_Emergency_Combination (C).Build_Up);
       end loop;
       for C in Combination_T loop
-         pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+         pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
          Put (Image, Pos, 2, X.T_Service_Combination (C).React);
          Put (Image, Pos, 2, X.T_Service_Combination (C).Build_Up);
       end loop;
@@ -582,8 +664,8 @@ is
                         Pos   : in out Natural;
                         X     : Train_Data_Extra_T)
      with Global => null,
-          Pre  => Pos <= Max_Image_Length - 4,
-          Post => Pos in Pos'Old .. Max_Image_Length - 4
+          Pre  => Pos <= Max_Image_V2_Length - 4,
+          Post => Pos in Pos'Old .. Max_Image_V2_Length - 4
    is
       Start : constant Natural := Pos;
       Sets  : constant Boolean :=
@@ -592,14 +674,14 @@ is
            or else X.Normal_Service_P (N).Count > 0);
    begin
       for EBCL in 0 .. 9 loop
-         pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+         pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
          for K in 1 .. Max_Curve_Steps loop
-            pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+            pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
             Put (Image, Pos, 2, X.Kdry_Rst (EBCL) (K));
          end loop;
       end loop;
       for K in 1 .. Max_Curve_Steps loop
-         pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+         pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
          Put (Image, Pos, 2, X.Kwet_Rst (K));
       end loop;
       Put_Curve (Image, Pos, X.Kn_Plus);
@@ -610,11 +692,11 @@ is
          Put (Image, Pos, 2, X.A_SB01);
          Put (Image, Pos, 2, X.A_SB12);
          for N in 0 .. 2 loop
-            pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+            pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
             Put_Curve (Image, Pos, X.Normal_Service_G (N));
          end loop;
          for N in 0 .. 2 loop
-            pragma Loop_Invariant (Pos in Start .. Max_Image_Length - 4);
+            pragma Loop_Invariant (Pos in Start .. Max_Image_V2_Length - 4);
             Put_Curve (Image, Pos, X.Normal_Service_P (N));
          end loop;
       end if;
@@ -662,6 +744,116 @@ is
       end loop;
    end Encode_V2;
 
+   procedure Encode_V3 (C      : Config_T;
+                        G      : Gamma_T;
+                        Image  : out Max_Image_T;
+                        Length : out Natural)
+   is
+      Pos : Natural;
+      CRC : Unsigned_32;
+   begin
+      Encode_V2 (C, G, Image, Length);
+      --  the zones in place of the CRC of version 2
+      Pos := Length - 4;
+      Image (5) := 3;
+      Image (Pos + 1 .. Pos + Zone_Image_Length) := (others => 0);
+      Image (Pos + 1) := Byte (C.Zones.Count);
+      for I in 1 .. C.Zones.Count loop
+         pragma Loop_Invariant (True);
+         declare
+            Z : Zone_T renames C.Zones.Zones (I);
+            P : constant Natural := Pos + 1 + 7 * (I - 1);
+            O : constant Unsigned_64 := Unsigned_64 (Z.Offset_Min + 720);
+         begin
+            Image (P + 1) := Byte_Of (Unsigned_64 (Z.First), 0);
+            Image (P + 2) := Byte_Of (Unsigned_64 (Z.First), 1);
+            Image (P + 3) := Byte_Of (Unsigned_64 (Z.Last), 0);
+            Image (P + 4) := Byte_Of (Unsigned_64 (Z.Last), 1);
+            Image (P + 5) := Byte_Of (O, 0);
+            Image (P + 6) := Byte_Of (O, 1);
+            Image (P + 7) := (if Z.Summer = EU_Summer then 1 else 0);
+         end;
+      end loop;
+      Pos := Pos + Zone_Image_Length;
+      Length := Pos + 4;
+      Image (7) := Byte_Of (Unsigned_64 (Length), 0);
+      Image (8) := Byte_Of (Unsigned_64 (Length), 1);
+      CRC := CRC_32 (Image (1 .. Pos));
+      for N in 0 .. 3 loop
+         pragma Loop_Invariant (True);
+         Image (Pos + 1 + N) := Byte_Of (Unsigned_64 (CRC), N);
+      end loop;
+   end Encode_V3;
+
+   --  The years of the clock: the seconds since 2000 of an Unsigned_32
+   --  end in 2136
+   subtype Year_T is Natural range 2000 .. 2137;
+
+   --  The days from 2000-01-01 to the first of January of Y: the leap
+   --  years from 2000 to Y - 1 (every fourth, not a hundredth, a
+   --  four hundredth)
+   function Days_Before_Year (Y : Year_T) return Natural is
+     (365 * (Y - 2000) + (Y - 2000 + 3) / 4 - (Y - 2000 + 99) / 100
+      + (Y - 2000 + 399) / 400)
+     with Global => null;
+
+   function Leap (Y : Year_T) return Boolean is
+     (Y mod 4 = 0 and then (Y mod 100 /= 0 or else Y mod 400 = 0))
+     with Global => null;
+
+   --  The year of the day Days since 2000-01-01: the estimate of four
+   --  years in 1461 days is exact up to 2100 and one day late at most
+   --  after it, which one step either way corrects
+   function Year_Of (Days : Natural) return Year_T
+     with Global => null,
+          Pre  => Days <= 49_710
+   is
+      Y : Year_T := 2000 + (4 * Days) / 1461;
+   begin
+      if Y > 2000 and then Days_Before_Year (Y) > Days then
+         Y := Y - 1;
+      end if;
+      if Y < Year_T'Last and then Days_Before_Year (Y + 1) <= Days then
+         Y := Y + 1;
+      end if;
+      return Y;
+   end Year_Of;
+
+   function EU_Summer_Time (UTC : Unsigned_32) return Boolean is
+      Days   : constant Natural := Natural (UTC / 86_400);
+      Y      : constant Year_T := Year_Of (Days);
+      --  the 31st of March and of October, days since 2000-01-01
+      Mar_31 : constant Natural :=
+        Days_Before_Year (Y) + 89 + (if Leap (Y) then 1 else 0);
+      Oct_31 : constant Natural := Mar_31 + 214;
+      --  the last Sunday on or before them: 2000-01-01 was a Saturday,
+      --  so the day N is (N + 6) mod 7 days after a Sunday
+      Start  : constant Unsigned_64 :=
+        Unsigned_64 (Mar_31 - (Mar_31 + 6) mod 7) * 86_400 + 3_600;
+      Stop   : constant Unsigned_64 :=
+        Unsigned_64 (Oct_31 - (Oct_31 + 6) mod 7) * 86_400 + 3_600;
+   begin
+      return Unsigned_64 (UTC) >= Start and then Unsigned_64 (UTC) < Stop;
+   end EU_Summer_Time;
+
+   function Zone_Offset (Z     : Zone_Table_T;
+                         NID_C : NID_C_T;
+                         UTC   : Unsigned_32) return Zone_Offset_T
+   is
+   begin
+      for I in 1 .. Z.Count loop
+         pragma Loop_Invariant (True);
+         if NID_C in Z.Zones (I).First .. Z.Zones (I).Last then
+            return (Found   => True,
+                    Minutes => Z.Zones (I).Offset_Min
+                      + (if Z.Zones (I).Summer = EU_Summer
+                           and then EU_Summer_Time (UTC)
+                         then 60 else 0));
+         end if;
+      end loop;
+      return (Found => False, Minutes => 0);
+   end Zone_Offset;
+
    --  The configuration in use
 
    procedure Count_Refusal
@@ -686,6 +878,12 @@ is
          return;
       end if;
       L := Natural (Get_U16 (Bytes, Bytes'First + 6));
+      --  the zones of version 3 between the train and the CRC
+      if Get_U16 (Bytes, Bytes'First + 4) = 3
+        and then L >= Min_Image_V3_Length
+      then
+         L := L - Zone_Image_Length;
+      end if;
       if L in Min_Image_V2_Length .. Bytes'Length then
          Get_Gamma (Bytes, L - 4, Gam, S);
          if S /= Accepted then

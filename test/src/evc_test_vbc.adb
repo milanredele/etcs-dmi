@@ -246,4 +246,35 @@ package body EVC_Test_VBC is
       V.Clear;
    end Scenario_VBC_Cover;
 
+   procedure Scenario_VBC_Clock is
+      --  2026-01-01 00:00:00 UTC, seconds since 2000-01-01
+      UTC_0 : constant Unsigned_32 := 820_540_800;
+      Days_2 : constant Unsigned_32 := 2 * 86_400;
+   begin
+      for With_Clock in Boolean loop
+         EVC_Test_Modes.Start_E4;
+         EVC_Core.Set_UTC (UTC_0);
+         --  NID_VBCMK 5, NID_C 123, T_VBC 1 (DMI 11.3.12.5)
+         Input (DMI, VBC_Entry (8, 5 + 123 * 64 + 1 * 65_536));
+         Stand;
+         Check (V.Covers (123, 5), "vbc clock: a cover of one day set");
+         EVC_Core.Power_Up;
+         if With_Clock then
+            EVC_Core.Set_UTC (UTC_0 + Days_2);
+         end if;
+         Stand;
+         if With_Clock then
+            Check (not V.Covers (123, 5),
+                   "vbc clock: two days later by the clock at the "
+                   & "power-up, the period of one day has elapsed and the "
+                   & "cover is deleted (3.15.9.5 b), 3.18.5.1)");
+         else
+            Check (V.Covers (123, 5),
+                   "vbc clock: no clock after the power-up, the time "
+                   & "left with power on keeps the cover");
+         end if;
+         V.Clear;
+      end loop;
+   end Scenario_VBC_Clock;
+
 end EVC_Test_VBC;

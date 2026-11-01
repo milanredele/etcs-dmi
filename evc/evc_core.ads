@@ -113,6 +113,16 @@ is
    function Time_Ms return Time_Ms_T
      with Global => State;
 
+   --  The local time of the driver now (3.18.5.1, 3.18.5.2), seconds
+   --  since 2000-01-01 00:00:00 of the local calendar: UTC from the
+   --  calendar clock (Set_UTC) plus the offset of the installation's
+   --  time zone of the country or region of the LRBG (EVC_Config's
+   --  zones); UTC while no zone holds it or no LRBG is known; the
+   --  on-board clock since time 0 while UTC is unknown. The time of day
+   --  of MSG_STATUS and of the text messages
+   function Local_Time return Interfaces.Unsigned_64
+     with Global => (State, EVC_Position.State, EVC_Config.State);
+
    --  The driver isolated the on-board (a MSG_DRIVER_ACTION 20 on the
    --  DMI port) since the last cycle: 4.6.3 condition [1] holds at the
    --  next Tick

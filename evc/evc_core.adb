@@ -106,6 +106,9 @@ is
 
    function Time_Ms return Time_Ms_T is (Clock_Ms);
 
+   function Local_Time return Unsigned_64 is
+     (Local_Seconds (Unsigned_64 (Clock_Ms)));
+
    function Isolation_Requested return Boolean is
      (EVC_Driver_Requests.Isolation_Latched);
 

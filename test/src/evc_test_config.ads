@@ -10,5 +10,8 @@ package EVC_Test_Config is
       procedure Scenario_Config_Image;
       procedure Scenario_Config_Core;
       procedure Scenario_Config_Behaviour;
+      --  3.18.5.1: the zones of the image of format version 3, the
+      --  calendar of the EU summer time
+      procedure Scenario_Config_Zones;
 
 end EVC_Test_Config;

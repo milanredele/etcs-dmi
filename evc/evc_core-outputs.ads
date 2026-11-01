@@ -11,6 +11,13 @@ private package EVC_Core.Outputs
   with SPARK_Mode => On
 is
 
+   --  The local time at the on-board time Ms, seconds since 2000-01-01
+   --  00:00:00 of the local calendar, for the time of day the driver is
+   --  shown (MSG_STATUS, the text messages)
+   function Local_Seconds (Ms : Unsigned_64) return Unsigned_64
+     with Global => (UTC_Known, UTC_Seconds, EVC_Position.State,
+                     EVC_Config.State);
+
    --  8a. JRU: the mode changed since the last report (event 1); the
    --  events of the levels (5.10, event 40) and of the mission (5.4,
    --  5.5, event 41) of the cycle
@@ -81,7 +88,9 @@ is
    --  place of the cycle's starts of a text, then the system status
    --  messages the on-board sees displayed (Resend_Status_Entries)
    procedure Send_Procedure_Messages
-     with Global => (Input  => (Clock_Ms, EVC_Procedures.State,
+     with Global => (Input  => (Clock_Ms, UTC_Known, UTC_Seconds,
+                                EVC_Position.State, EVC_Config.State,
+                                EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_Sessions.State,
                                 EVC_Radio_Authority.State,
@@ -94,7 +103,8 @@ is
    --  awaited, so that the brake of 3.12.3.4.7 is released by the
    --  driver of the restarted DMI
    procedure Resend_Texts
-     with Global => (Input  => EVC_Text_Messages.State,
+     with Global => (Input  => (UTC_Known, UTC_Seconds, EVC_Position.State,
+                                EVC_Config.State, EVC_Text_Messages.State),
                      In_Out => EVC_Outbox.Queue);
 
    --  DMI MSG_DMI_HELLO: the start of every entry displayed at the end of
@@ -132,8 +142,9 @@ is
    --  @req 3.5.7.1, 5.22.4.1
    procedure Send_Status (D                : EVC_Procedures.Brake_Demand_T;
                           Text_SB, Text_EB : Boolean)
-     with Global => (Input  => (Current_Mode, Clock_Ms, Brake_Output,
-                                SDM_Result, EVC_Levels.State,
+     with Global => (Input  => (Current_Mode, Clock_Ms, UTC_Known,
+                                UTC_Seconds, EVC_Config.State,
+                                Brake_Output, SDM_Result, EVC_Levels.State,
                                 EVC_Procedures.State,
                                 EVC_Stored_Information.State,
                                 EVC_Position.State, EVC_Sessions.State),

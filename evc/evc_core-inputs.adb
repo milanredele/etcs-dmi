@@ -336,7 +336,11 @@ is
       NID_C : Unsigned_64;
       Marker : Unsigned_64;
    begin
-      EVC_VBC.Expire (Unsigned_64 (Clock_Ms));
+      EVC_VBC.Expire
+        (Now_Ms    => Unsigned_64 (Clock_Ms),
+         UTC_Known => UTC_Known,
+         UTC_Now   =>
+           Unsigned_64 (UTC_Seconds) + Unsigned_64 (Clock_Ms) / 1000);
       if Entered (Set_VBC) then
          Code := VBC_Code (Set_VBC);
          NID_C := Unsigned_64 (Shift_Right (Code, 6) and 16#3FF#);

@@ -174,6 +174,10 @@ begin
       return;
    end if;
    Sim_Onboard_Env.Reset;
+   --  the host's clock from the first cycle on (3.18.5.1), in place of
+   --  the bench's fixed reference that Reset gives
+   Give_UTC;
+   UTC_Countdown := 60_000 / Period;
 
    Create_Socket (Client);
    Address.Addr := Inet_Addr ("127.0.0.1");

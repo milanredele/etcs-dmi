@@ -123,8 +123,8 @@ is
    --  mission where the DMI offers them (DMI Table 36 #5, #6).
    --  @req 3.15.9.2, 3.15.9.5 c)
    procedure Take_VBC_Requests
-     with Global => (Input  => (Clock_Ms, Current_Mode,
-                                EVC_Driver_Requests.State),
+     with Global => (Input  => (Clock_Ms, UTC_Known, UTC_Seconds,
+                                Current_Mode, EVC_Driver_Requests.State),
                      In_Out => (EVC_VBC.State, EVC_Outbox.Queue));
 
    --  1. Read the ports: take the inputs latched since the last cycle,
@@ -133,7 +133,8 @@ is
    --  the stamp of their balise, to the position
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
-                                Latched_SCL, Clock_Ms, Current_Mode,
+                                Latched_SCL, Clock_Ms, UTC_Known,
+                                UTC_Seconds, Current_Mode,
                                 EVC_Odometry.State, Latched_TIU_Value,
                                 Latched_TIU_Known, Latched_Events),
                      Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
