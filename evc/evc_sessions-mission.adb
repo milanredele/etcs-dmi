@@ -445,11 +445,13 @@ is
    --  Data (not while the start of mission sends its report, decision
    --  2), when the driver validates them in a session, again after a
    --  connection lost before the acknowledgement (3.18.3.4.2) and every
-   --  Repeat_Ms until acknowledged (decision 4); the acknowledgement is
-   --  forgotten with the session
+   --  Repeat_Ms until acknowledged (decision 4), by the supervising
+   --  session only: the set sent to the Accepting RBC (3.15.1.3.3) is
+   --  repeated once that RBC supervises, never to the Handing Over RBC;
+   --  the acknowledgement is forgotten with the session
    procedure Evaluate_TD (Ctx : R.Context_T)
      with Global => (In_Out => (TD_Due, TD_Awaited, Was_Up, R.State),
-                     Input  => (TD_Since, Step, EVC_Train_Data.State,
+                     Input  => (TD_Since, TD_S, Step, EVC_Train_Data.State,
                                 EVC_Mission.State))
    is
       Sv    : constant R.Session_Ref_T := R.Supervising;
@@ -475,7 +477,7 @@ is
                    and then (TD_Awaited
                              or else not R.Train_Data_Acknowledged))
                   or else EVC_Mission.Train_Data_Validated
-                  or else (TD_Awaited
+                  or else (TD_Awaited and then Sv = R.Session_Ref_T (TD_S)
                            and then Elapsed (TD_Since, Ctx.Now_Ms)
                                       >= Repeat_Ms))
       then

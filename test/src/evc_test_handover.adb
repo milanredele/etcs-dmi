@@ -921,4 +921,79 @@ package body EVC_Test_Handover is
       Speed_Cms := Saved;
    end Scenario_Handover_Roll_Back;
 
+   procedure Scenario_Handover_Train_Data_Once is
+      use type ETCS_Message.Status_T;
+      M      : ETCS_Message.Message_T;
+      St     : ETCS_Message.Status_T;
+      V      : ETCS_Message.Value_Array := (others => 0);
+      Acked  : Boolean := False;
+      To_Old : Natural := 0;
+      To_New : Natural := 0;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      --  3.5.3.7 b to e for session 1, the Train Data sent after its
+      --  message 32 and acknowledged (message 8)
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      V (3) := Now_T;
+      V (7) := 48;
+      Give_Radio_Message (1, Message_Of (MCat.Track_M32, V));
+      Stand;
+      for C in 1 .. 5 loop
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, St);
+            if St = ETCS_Message.Accepted
+              and then M.Kind = MCat.Train_M129
+              and then Radio_Output (N).Session = 1
+            then
+               V (3) := Now_T;
+               V (7) := M.Values (3);
+               Acked := True;
+            end if;
+         end loop;
+         exit when Acked;
+         Stand;
+      end loop;
+      if Acked then
+         Give_Radio_Message (1, Message_Of (MCat.Track_M8, V));
+         Stand;
+      end if;
+      V := (others => 0);
+      V (3) := Now_T;
+      Give_Radio_Message (1, Message_Of (MCat.Track_M38, V));
+      Stand;
+      Acked := Acked and then not EVC_Sessions.Train_Data_Awaited;
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      To_New := EVC_Sessions.Train_Data_Sent;
+      Establish (2);
+      Check (Acked and then R.Accepting = 2 and then R.Supervising = 1
+             and then EVC_Sessions.Train_Data_Sent = To_New + 1,
+             "handover, Train Data: the 129 to the Accepting RBC once its "
+             & "session is established (3.15.1.3.3), none awaited from the "
+             & "Handing Over RBC before " & Acked'Image);
+      --  no acknowledgement from the Accepting RBC: 45 s, then its
+      --  session lost, 30 s more
+      To_New := 0;
+      for C in 1 .. 750 loop
+         if C = 450 then
+            Give_Radio_Event (2, Connection_Lost);
+         end if;
+         Stand;
+         To_Old := To_Old + Sent (129, 1);
+         To_New := To_New + Sent (129, 2);
+      end loop;
+      Check (To_Old = 0 and then R.Supervising = 1,
+             "handover, Train Data: the Accepting RBC's set not sent to "
+             & "the Handing Over RBC, which acknowledged its own "
+             & "(3.15.1.3.3, 3.18.3.4), before and after the Accepting "
+             & "session's end; 129 to session 1:" & To_Old'Image
+             & ", to session 2:" & To_New'Image);
+   end Scenario_Handover_Train_Data_Once;
+
 end EVC_Test_Handover;

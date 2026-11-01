@@ -396,6 +396,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Rear_Border;
    EVC_Test_Handover.Scenario_Handover_Rear_Report;
    EVC_Test_Handover.Scenario_Handover_Roll_Back;
+   EVC_Test_Handover.Scenario_Handover_Train_Data_Once;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;

@@ -64,4 +64,10 @@ package EVC_Test_Handover is
    --  rear, each followed by a roll back in rear of it and forward again
    procedure Scenario_Handover_Roll_Back;
 
+   --  3.15.1.3.3, 3.18.3.4: the Train Data to the Accepting RBC sent
+   --  once its session is established, not repeated to the Handing
+   --  Over RBC that acknowledged its own, also after the Accepting
+   --  session's end
+   procedure Scenario_Handover_Train_Data_Once;
+
 end EVC_Test_Handover;

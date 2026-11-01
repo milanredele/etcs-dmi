@@ -17089,3 +17089,73 @@ no region is known; the juridical data stay UTC (3.18.5.2). Both are
 build items of a coming round (one package: the clock, the cover's end,
 the local time, the image's format version).
 
+
+### The plain text not sent at 4080427_01 and 6060500_04, the report of A43 at the one-radio choice, the message 129 repeated (e6/texts-a43) (2026-11-01)
+
+**Seabc1f7c by sequence (B2861 dropped, no on-board defect).**
+4080427_01 (SV22, SV30) step 70: the linking of BG101d at 50 m
+(packet 5: D_LINK 50, 150, 400, 650 for BG1 to BG4, Q_LOCACC 10 m for
+BG2) announces BG2 at 250 m, consistent with BG3d at 650 m and BG4d at
+1300 m; ERA's step list (PDF step 67, "Distance 350.00 m") gives BG2d
+at 350 m. Its location reference comes after its expectation window
+(250 +- 10 m) is no longer supervised, so 3.4.4.4.3.2 rejects its
+message, packet 73 included; ours does (`EVC_Position.Decide_Linking`,
+"announced before"): neither the text (step 70) nor the position
+report at the group (step 72; the one at BG1d at 100 m was sent, step
+50). The text's conditions (D_TEXTDISPLAY 0, L_TEXTDISPLAY 100, level
+4 and mode 15 not used, Q_TEXTDISPLAY 1) are read right by
+`EVC_Text_Messages.Conditions` and `Evaluate`. Triage `s076`.
+6060500_04 (SV21, SV22, SV30) step 52: BG2d is an M_VERSION 2.1
+trackside with packet 72; by 6.6.5.2.3 / 6.6.3.2.3 [22] it becomes a
+packet 73 with start level 3 (level 2). Ours takes packets 73 and 74
+only (`EVC_Text_Messages.Take_Groups`), the translation of chapter 6 is
+deferred (row 6.6.3.2.3 Table-footnote [22], E7): the packet 72 is
+ignored, which is also why step 46 ("not displayed") passes. The four
+SV21 sequences of the signature (3120300_05, 4080100_05, 4080300_04,
+4080403_01) carry packet 72 as well (not traced step by step). Triage
+`E7`. No scenario: no code change.
+
+**5.4.3.2 A43 (B2840 done).** At S3 E17 (the mission with only one
+radio system elected in SB, both systems installed, the stored type
+FRMCS+GSM-R, one system registered) `EVC_Sessions.Network.Driver_Entries`
+reports the system not registered, FRMCS network registration failed
+(entry 33) or GSM-R network registration failed (entry 34), through
+the outs of A41 and A29 (`Evaluate`'s FRMCS_Failed / Failed), unless
+that entry was shown in the start of mission in progress
+(`GSMR_Told`, `FRMCS_Told`, set by `Evaluate` from any Failed /
+FRMCS_Failed, i.e. A29, A41 or A42). Decision: "if not already
+displayed through A29 or A41" is read for the start of mission from
+its S3 on, S3 re-entered from D8 included (A41 -> D8 -> S3 -> E17 does
+not repeat it); SB left, a desk closure during the start of mission
+(`Desk_Closed_In_SoM`) and the power-up (`Clear`) forget it. A GSM-R
+registration failure shown by `EVC_Sessions` on the port's event 6 is
+not counted (not A29 / A41). From the driver's seat: the entry says
+why the mission goes on with one system. `evc_test`
+Scenario_Network_A43_One_Radio (entry 33 once at E17 with no A41 yet;
+not again after A41 at the same start of mission; the first case
+failed before the fix). Row 5.4.3.2 A43 done with `@req`. No sequence
+moved (3050600_xx as before).
+
+**The 129 repeated to the Handing Over RBC (B3000 done).** Traced at
+3150100_01 SV30 with a temporary print of the RTM outputs: 129 to the
+Accepting RBC's session 2 at 186200 ms (3.15.1.3.3), then 129 to
+session 1 every 15 s from 201200 to 411200 ms (15 sendings), also
+after session 2's termination at 216200 ms. Cause:
+`EVC_Sessions.Mission.Send_TD` to session 2 set the acknowledgement
+awaited from it (TD_S 2); `Evaluate_TD`'s 15 s repetition made it due
+and `Produce` sent it to the supervising session, the Handing Over RBC
+that had acknowledged its own set (message 8, step 58). Fix: the timed
+repetition only when the session awaited is the supervising one (the
+Accepting RBC's set repeated once it supervises, never to the Handing
+Over RBC). `evc_test` Scenario_Handover_Train_Data_Once (5 sendings to
+session 1 in 75 s before the fix, 0 after). No sequence moved
+(3150100_01 step 92 still passes on the periodic 136, B2920 the
+runner's). Left (B3001, decision): the 129 repeated every 15 s until
+acknowledged with no limit (decision 4 of `Evaluate_TD`) against A.3.1's
+three repetitions of a radio message.
+
+Edits beyond `Driver_Entries` and the train data: `EVC_Sessions.Mission.Evaluate_TD`
+(the repetition's owner, one condition), and in `EVC_Sessions.Network`
+the two flags' lines in `Clear`, `Mode_Changed`, `Desk_Closed_In_SoM`,
+`Evaluate` and the Refined_State; the bench's print was temporary and
+reverted. Backlog: B2861 dropped, B2840 and B3000 done, B3001 open.
