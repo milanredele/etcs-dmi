@@ -17089,3 +17089,72 @@ no region is known; the juridical data stay UTC (3.18.5.2). Both are
 build items of a coming round (one package: the clock, the cover's end,
 the local time, the image's format version).
 
+
+### The acceptance table's rows left: the infill information after packet 136, footnote [17] across the level 2 cells, two comments (e6/acceptance-rows) (2026-11-01)
+
+Three items, all done.
+
+- B2881, the Infill sub-rows of 4.8.3. The claim held at the source:
+  4080300_15 step 61, BG2d carries packet 136 then packet 88; 8.4.1.4.4
+  ("each packet 136 indicates which part of that telegram is to be
+  considered as part of the infill information") and 8.4.1.3.1 ("the
+  packets following packet 136") make the 88 infill information; the
+  row Level Crossing information reads, From RBC No, Infill: R, R, A,
+  R [1] (levels 0, NTC, 1, 2), no exception in level 0. The table
+  printed: 16 of our kinds have an Infill sub-row (linking, signalling
+  related speed restriction, MA, gradient, international SSP, axle
+  load, level transition order, TSR, route suitability, adhesion, track
+  conditions, big metal masses, PBD, level crossing, the two reversing
+  rows), every one R, R, A, R [1] (the SRSR's A [18] in level 1); the
+  others leave it empty. Built: `EVC_Acceptance.Context_T.Infill`,
+  `Has_Infill_Row`, `Infill_Accepts`, `Level_Stores` (the [1] of an
+  Infill sub-row only in level 2); the flag set by
+  `EVC_Stored_Information.Infill_Packet` (a packet 136 valid for the
+  train's direction before the packet in its taken telegram) through
+  `Take_Packet` and `Message_Acceptance`. Decisions: a kind without an
+  Infill sub-row is judged by its non-infill row after a 136; the level
+  transition order's [1] in level 2 is not taken (an order is not kept
+  in the transition buffer). `evc_test Scenario_Infill_Rejected` (level
+  0, level 1 announced at 250 m, a group with 136 then 88: rejected, not
+  buffered; without the 136: buffered), failing without the flag.
+  4080300_15 SV21, SV22, SV30 61 -> 109 (S82c622ac): step 102's message
+  24 with packet 88 comes after Train Data changed and sent (129) and
+  before their acknowledgement; 4.8.3 [3] second bullet rejects it, ours
+  takes it (the four values are not compared): B2960. Left: the packets
+  5, 138, 139 taken by their units and [18]: B2961.
+- B2882, [17] across the level 2 cells. The table printed: 12 rows carry
+  [17] in their level 2 cell (From RBC: Yes): linking, MA (SM
+  authorisation), gradient, international SSP, axle load, TSR, TSR
+  revocation, route suitability, RBC transition order, track conditions
+  excluding big metal masses, big metal masses, level crossing; the
+  line's list held. Footnote [17]: "rejected if a Safe consist length
+  information for SM message has been sent to the RBC and the
+  corresponding acknowledgment has not been received yet in the ongoing
+  mission". The premise "the Context carrying the 133 state" did not
+  hold: the radio context had no such field, so the SM authorisation's
+  [17] rejected nothing. Built: `EVC_Radio_Acceptance.Context_T.Consist_Unacked`
+  (from `EVC_Sessions.SM_Consist_Awaited`, through
+  `EVC_Radio_Authority.Facts_T.Consist_Unacked`, filled by
+  `EVC_Core.Modes`), `First_Filter` rejects the SM authorisation,
+  `Consist_Row` / `Consist_Rejected` the packets of the other rows in
+  `EVC_Radio_Authority.General_Taken`, and
+  `EVC_Sessions.Manoeuvre.Take_Answer` does not take a rejected message
+  4 as the answer (else the request ends and the next authorisation
+  finds none: 4080300_21 failed at step 116 without it).
+  `evc_test Scenario_SM_Consist_Rejects` (SM, level 2, a 133 not
+  acknowledged: a general message with packet 88 and one with packet 65
+  rejected; after message 7 both taken), failing without the row filter;
+  `Scenario_SM_Gamma` acknowledges its 133 before the SM authorisation.
+  4080300_21 SV30 127 -> passed; 4080420_03 SV30 85 -> passed (step 82:
+  a packet 5 by radio after a 133 not acknowledged, now rejected).
+  Left: the filter is by message as for [3], the RBC transition order
+  by radio: B2962.
+- The two comments of `EVC_Sessions.Network` (lines 475 and 604) named
+  A43 for the registration order; 5.4.3.2 A43 informs the driver that a
+  registration failed (then S5). The order is S3's ("the registration of
+  the GSM-R Mobile Terminal(s) to this new GSM-R Radio Network shall be
+  ordered"), the time since the latest order is watched by S4. Corrected,
+  no code.
+
+Runner: 1187 passed, 1039 failed, 964 blocked (5 sequences moved, 0
+regressions). Backlog: B2881, B2882 closed; B2960, B2961, B2962 added.
