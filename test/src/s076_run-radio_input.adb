@@ -276,6 +276,9 @@ begin
    if Same (Kind, "connect") then
       --  a new connection: a new session, whose time stamps start again
       RBC_Stamp_Given := False;
+      --  a handover's Accepting RBC: set up while the other has a
+      --  connection (S076_Run.Named_Session)
+      RBC_Accepting := (if RBC_Alive (3 - S) then S else 0);
       RBC_Alive (S) := True;
       RBC_Current := S;
       Event (EVC_Ports.Connection_Set_Up);

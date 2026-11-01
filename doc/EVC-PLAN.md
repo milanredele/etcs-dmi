@@ -17089,3 +17089,47 @@ no region is known; the juridical data stay UTC (3.18.5.2). Both are
 build items of a coming round (one package: the clock, the cover's end,
 the local time, the image's format version).
 
+
+### The runner's sessions: the message 38 given with its 159, the RTM expectations matched by session, 3150100_01 re-traced, Seabc1f7c's SV21 sequences, 4100103_26 (e5/runner-sessions) (2026-11-01)
+
+**B2920 with B2860: the reviewer's verdict held.** Re-run on master,
+3150100_01 SV30: session 2's 155 at 185900 ms, its 32 at 186400, 159
+and 129 at 186200; `S076_Run.Hold_Answer` did not hold the 38 of step
+94 because its scan stopped at the first positive RTM expectation
+(step 84's 129), and the optional step 88 drove the antenna from 800 to
+1386 m (the packet 58 location, D_LOC 1300 from the LRBG) in 170 s, so
+ours repeated the 159 and terminated session 2 (3.5.3.7.4, .4.1). (a)
+The 38 is now held past the expectations of the on-board's messages
+other than a repeated 159 or a 156 (what the 38's absence brings): by
+3.5.3.7 d) the session is established for the on-board at the 32, so
+nothing it sends waits for the 38. Decision: the bench holds the
+sequence's 38 (given 14 s after the 159, at 200200 ms here) rather
+than pulling its step forward, so the steps keep their order and
+windows. Corpus: 639 inputs of a 38, 92 held by the old scan, 496 by
+the new (a static count, `obj/count38.py`); one sequence moved in the
+full run (3150100_01 SV30, 101 -> 102): elsewhere the 38's step comes
+within the 14 s and gives it at once, as before. (b) An RTM
+expectation is matched at the session its comment names as the
+destination ("(Accepting)", "To the Handing Over RBC", "is sent to the
+Accepting RBC": `S076_Run.Named_Session`; the Accepting RBC is the
+session whose connection was set up while the other had one,
+`RBC_Accepting`), by the number alone when it names none or no
+handover was seen; `Repeat_Due` waits for a repetition at that session
+only. (c) Step 92 passes on session 2's 136 at 356200 ms (3.15.1.3.4),
+step 101 passes (the trip is gone), the sequence fails at step 102 as
+SV21 and SV22 do (S776cef6c, B2940: the Accepting RBC's packet 74, with
+no start sub-condition, is not shown after the switch at 1600 m).
+Movements of (b), all a step the number alone passed on a 136 to the
+other session, explained at the trace and re-recorded: 3150100_06
+(passed -> 105), 4080100_04 (passed -> 122), 4080100_03 (130 -> 113),
+three versions each: no 136 to the Handing Over RBC when the min safe
+rear end passes the border after the switch (Se1820110, B2941);
+9990500_09 SV21 / SV22 (101 -> 87): connected to both RBCs, the 136 of
+BG3d goes to the Handing Over RBC only (Sd077284a, B2942); 3110500_03
+(three versions) the same step 86 under a new text. The reviewer's
+side observation holds with the 38 given: the 129 repeated every 15 s
+on the supervising session to the end of the run (B2943). B2920 done,
+B2860 dropped (not ours), S1531c721's 3150100_01 line now `model`.
+`DEBUG=1` lists the window's RTM sendings (message or request, session,
+time) under the JRU records. The runner: 1185 / 1041 / 964 -> 1179 /
+1047 / 964.

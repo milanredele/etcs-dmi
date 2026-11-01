@@ -165,6 +165,52 @@ package body S076_Run is
         M.Code = R.Code and then M.Code /= 0 and then M.At_Ms = R.At_Ms
         and then M.Session = R.Session);
 
+   --  The session of the Accepting RBC: the one whose connection was set
+   --  up while the other session had one (Radio_Input), 0 before a
+   --  handover. The RTM expectation being judged is for the session
+   --  Expect_Session, 0 for any (Radio_Expect sets it, Repeat_Due reads
+   --  it).
+   RBC_Accepting  : Natural range 0 .. 2 := 0;
+   Expect_Session : Natural range 0 .. 2 := 0;
+
+   --  The session an RTM expectation's comment names as the message's
+   --  destination: "To both RBCs (Accepting)", "To the Handing Over
+   --  RBC", "is sent to the Accepting RBC" (in the corpus of 2026-11-01,
+   --  the comment of a step "expect RTM message" names the RBC so, and
+   --  "the position report parameters valid for the Handing Over RBC"
+   --  names no destination); the first such name in the comment counts.
+   --  0, matched by the number alone, when it names neither or no
+   --  handover was seen. 3150100_01 step 92 expects the 136 of
+   --  3.15.1.3.4 at the Accepting RBC and passed on a later 136 to the
+   --  Handing Over RBC by its number alone.
+   function Named_Session (Comment : String) return Natural is
+      C : constant String := Up (Comment);
+      --  the first place one of the three forms of RBC Name is at
+      function First (Name : String) return Natural is
+         Places : constant array (1 .. 3) of Natural :=
+           (Ada.Strings.Fixed.Index (C, "(" & Name & ")"),
+            Ada.Strings.Fixed.Index (C, "TO " & Name),
+            Ada.Strings.Fixed.Index (C, "TO THE " & Name));
+         Least : Natural := 0;
+      begin
+         for P of Places loop
+            if P > 0 and then (Least = 0 or else P < Least) then
+               Least := P;
+            end if;
+         end loop;
+         return Least;
+      end First;
+      Acc : constant Natural := First ("ACCEPTING");
+      Ho  : constant Natural := First ("HANDING OVER");
+   begin
+      if RBC_Accepting = 0 or else (Acc = 0 and then Ho = 0) then
+         return 0;
+      elsif Ho = 0 or else (Acc > 0 and then Acc < Ho) then
+         return RBC_Accepting;
+      end if;
+      return 3 - RBC_Accepting;
+   end Named_Session;
+
    --  When the window lists a sending of message Nid an earlier step
    --  matched, the step expects a repetition of it: the bench time by
    --  which it is due, the latest such sending and 61 s; 0 when there is
@@ -178,6 +224,8 @@ package body S076_Run is
       for I in 1 .. B.Radio_Count loop
          if not B.Radio (I).Is_Request and then Img (B.Radio (I).Code) = Nid
            and then Was_Matched (B.Radio (I))
+           and then (Expect_Session = 0
+                     or else B.Radio (I).Session = Expect_Session)
          then
             Due := Unsigned_64'Max (Due, B.Radio (I).At_Ms + 61_000);
          end if;
@@ -3088,6 +3136,15 @@ package body S076_Run is
    --  time ends; the answer's step then passes as given earlier, or gives
    --  it at once if the hold has not fired. Decision: the other answers
    --  (8 to 129, 24 to 132) have no waiting time that ends the session.
+   --  The 38 is held past the expectations of the on-board's messages
+   --  too, other than a repeated 159 or a 156 (what its absence brings,
+   --  3.5.3.7.4 and .4.1): the session is established for the on-board
+   --  at the 32 (3.5.3.7 d), so what it sends in it does not wait for the
+   --  38, while the sequence lists the 38 after them (3150100_01 step 94,
+   --  after the 136s of steps 90 and 92 and the optional step 88 that
+   --  drives the train 586 m: the 38 came 227 s after the 159). Decision:
+   --  the bench holds the sequence's 38 rather than pulling its step
+   --  forward, so the steps keep their order and their windows.
    procedure Hold_Answer (I : Positive) is
       Ask    : constant array (1 .. 2) of Natural := (155, 159);
       Answer : constant array (1 .. 2) of String (1 .. 2) := ("32", "38");
@@ -3128,7 +3185,10 @@ package body S076_Run is
                        and then W (2) /= "DMI" and then W (2) /= "ODO"
                        and then W (2) /= "BTM" and then W (2) /= "TIU";
                      exit when St.IO /= Input and then W (2) = "RTM"
-                       and then not Starts (W (3), "no-");
+                       and then not Starts (W (3), "no-")
+                       and then not (Q = 2 and then Same (W (3), "message")
+                                     and then W (4) /= "159"
+                                     and then W (4) /= "156");
                   end;
                end loop;
             end if;
@@ -7078,6 +7138,8 @@ package body S076_Run is
       RBC_Given_Ms := 0;
       RBC_Alive := (others => False);
       RBC_Current := 1;
+      RBC_Accepting := 0;
+      Expect_Session := 0;
       Hold_Number := 0;
       Hold_Mode := False;
       Hold_Asked := (others => -1);
@@ -7475,6 +7537,16 @@ package body S076_Run is
                             & Natural'Image (B.JRU (K).B2)
                             & Natural'Image (B.JRU (K).B3)
                             & Natural'Image (B.JRU (K).B4));
+               end loop;
+               --  the window's RTM sendings: message or request, session,
+               --  bench time
+               for K in 1 .. B.Radio_Count loop
+                  Put_Line ("      rtm "
+                            & (if B.Radio (K).Is_Request then "request"
+                               else "message")
+                            & Natural'Image (B.Radio (K).Code)
+                            & " session" & Natural'Image (B.Radio (K).Session)
+                            & " at" & Unsigned_64'Image (B.Radio (K).At_Ms));
                end loop;
             end if;
             if Verbose then
