@@ -320,7 +320,16 @@ is
             then Input_Value_T
                    (EVC_Bytes.Byte'Min
                       (TIU_Value_Now (Train_Data_Entry_Type), 3))
-            else No_Value));
+            else No_Value),
+         --  SUBSET-027 4.2.4.33 to 4.2.4.37: the special and the
+         --  additional brakes' status inputs (SUBSET-034 2.3.6, 2.3.7) at
+         --  the first value received and at each change (decision: the
+         --  records name no trigger, as for 41)
+         Regenerative_Brake  => Flag (Regenerative_Brake_Active),
+         Magnetic_Shoe_Brake => Flag (Magnetic_Shoe_Brake_Active),
+         Eddy_Current_Brake  => Flag (Eddy_Current_Brake_Active),
+         EP_Brake            => Flag (EP_Brake_Active),
+         Additional_Brake    => Flag (Additional_Brake_Active));
       Changes : Input_Changes_T;
       RBC     : constant Bytes_23_T := EVC_Driver_Requests.RBC_Data;
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));

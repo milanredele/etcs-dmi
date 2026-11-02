@@ -216,7 +216,12 @@ is
          when Direction        => 39,
          when Integrity        => 50,
          when Remote_Shunting  => 51,
-         when Entry_Type       => 141);
+         when Entry_Type       => 141,
+         when Regenerative_Brake  => 133,
+         when Magnetic_Shoe_Brake => 134,
+         when Eddy_Current_Brake  => 135,
+         when EP_Brake            => 136,
+         when Additional_Brake    => 137);
 
    function Direction_Code (TIU_Value : Natural) return Input_Value_T is
      (case TIU_Value is

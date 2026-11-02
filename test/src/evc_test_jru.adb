@@ -683,4 +683,80 @@ package body EVC_Test_JRU is
       EVC_Core.Initialise;
    end Scenario_JRU_Failure;
 
+   --  SUBSET-027 4.2.4.33 to 4.2.4.37: the status of the regenerative,
+   --  magnetic shoe, eddy current and electro pneumatic brakes and of the
+   --  additional brakes (SUBSET-034 2.3.6, 2.3.7: two state inputs of the
+   --  train interface, TIU signals 7 to 11) recorded as the messages 33
+   --  to 37 (viewed as the events 133 to 137) at the first reception and
+   --  at each change, 1 active, 0 not active; none before the first
+   --  input, none while the input holds
+   procedure Scenario_JRU_Brake_Status is
+      --  the regenerative, eddy current, magnetic shoe, electro
+      --  pneumatic and additional brakes in the order of the TIU signals
+      subtype Brake_T is Positive range 1 .. 5;
+      --  the TIU signal and the message of each brake
+      Signal : constant array (Brake_T) of Byte := (7, 8, 9, 10, 11);
+      NID    : constant array (Brake_T) of Byte := (33, 35, 34, 36, 37);
+      --  the clause of the message of B
+      function Clause (B : Brake_T) return String is
+        ("4.2.4.3" & Character'Val (48 + Natural (NID (B)) mod 10));
+      --  the messages of one cycle after the input of B (none when Value
+      --  is 255) per brake, the value of the last of B
+      procedure Cycle (B : Brake_T; Value : Byte;
+                       Count : out Natural; Others_Count : out Natural;
+                       Last : out Byte)
+      is
+      begin
+         if Value /= 255 then
+            EVC_Core.Handle_Input (TIU, (Signal (B), Value));
+         end if;
+         Reset_Capture;
+         EVC_Core.Tick (100);
+         Take;
+         Count := 0;
+         Others_Count := 0;
+         Last := 255;
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = JRU then
+               for K in Brake_T loop
+                  if JRU_NID (I) = Natural (NID (K)) then
+                     if K = B then
+                        Count := Count + 1;
+                        Last := View (Payload (I)).B2;
+                        Check (View (Payload (I)).Event
+                                 = 100 + NID (K),
+                               Clause (K)
+                               & ": the view's event");
+                     else
+                        Others_Count := Others_Count + 1;
+                     end if;
+                  end if;
+               end loop;
+            end if;
+         end loop;
+      end Cycle;
+      Count, Others_Count : Natural;
+      Last : Byte;
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Set_UTC (Reference);
+      for B in Brake_T loop
+         Cycle (B, 255, Count, Others_Count, Last);
+         Check (Count = 0, Clause (B)
+                & ": no message before the first input");
+         Cycle (B, 1, Count, Others_Count, Last);
+         Check (Count = 1 and then Last = 1 and then Others_Count = 0,
+                Clause (B)
+                & ": the message at the first input, 1 active");
+         Cycle (B, 1, Count, Others_Count, Last);
+         Check (Count = 0, Clause (B)
+                & ": no message while the input holds");
+         Cycle (B, 0, Count, Others_Count, Last);
+         Check (Count = 1 and then Last = 0 and then Others_Count = 0,
+                Clause (B)
+                & ": the message at the change, 0 not active");
+      end loop;
+      Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
+   end Scenario_JRU_Brake_Status;
+
 end EVC_Test_JRU;

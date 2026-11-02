@@ -18175,3 +18175,28 @@ connected to both: decide), B3080 and B3083 (the bench's odometer
 interval, `Group_Input_Ms`), the two passes' reason (4080300_21,
 4080420_03), B781's rest; the review again (eight items, readings
 first, no backlog read).
+
+### The juridical messages left: the brake and traction statuses, the DMI symbol status from the on-board's outputs, the desk closure in TR (e6/jru-messages) (2026-11-02)
+
+- Records 33 to 37 (SUBSET-027 4.2.4.33 to .37, M_RB_STATUS,
+  M_MSB_STATUS, M_ECB_STATUS, M_EP_STATUS, M_AB_STATUS, 1 bit, 1 active):
+  the train interface reports all five brakes (`EVC_Ports.TIU_Signal_T`
+  signals 7 to 11: regenerative, eddy current, magnetic shoe, electro
+  pneumatic, additional; SUBSET-034 2.3.6, 2.3.7, two state inputs whose
+  "not active" includes "inhibited"), so the claim of the brief that a
+  brake might be missing did not hold. `EVC_JRU_Records.Input_T` gains
+  the five, written by `EVC_Core.Records.Record_Inputs_Radio_Data`
+  through `EVC_JRU_Records.Inputs`. Decision: at the first reception
+  and at each change (the records name no trigger; the other inputs of
+  the train interface, 30, 31, 32, 39, 41, 50, are recorded so); nothing
+  before the first reception (the variables have no "unknown").
+  `EVC_JRU_Messages.View` gives the events 133 to 137 (33 is the
+  configuration's event of `EVC_Ports`, 34 to 37 kept apart as 43, 44,
+  54 were). `Scenario_JRU_Brake_Status`: 10 failures before the fix, 0
+  after.
+- Record 40 (4.2.4.40, M_TRACTION_STATUS): not written. The traction
+  status is a two state input of the train interface (SUBSET-034
+  2.5.4.1) forwarded to an STM (2.5.4.2); `TIU_Signal_T` has no such
+  input and SUBSET-026 uses it nowhere: B3220.
+- SUBSET-076: 1193 / 1036 / 961 before and after, 0 regressions (no
+  step judges 33 to 37 or 40).
