@@ -18899,3 +18899,79 @@ dropped; none added.
   3rd bullet over a relocation, the LS profile of the 4th. The row
   A.3.5.1 notes the 6th bullet.
 - Not taken (the bound): the stop of the 3rd bullet over a relocation.
+### The runner's texts and chart: 3110500_03 in three versions, the group read in TR, the speed information still shown (e5/runner-chart-2) (2026-11-02)
+
+**B3244 / B3160, 3110500_03 step 98 in three versions (done; no
+defect of ours).** Traced with `VERBOSE=1 DEBUG=1` in SV30, SV21 and
+SV22 on master: in all three the Accepting RBC's message 24 of step 94
+is refused as inconsistent: JRU 13 (RADIO ERROR, M_ERROR 3) and the 136
+with packets 0 and 4 to session 2 (94900 ms in SV30, 94600 ms in SV21
+and SV22); no text is stored, so none is shown at 1890 m. SV30: the
+RBC's 32 gives M_VERSION 3.0; packet 74 carries M_LEVELTEXTDISPLAY
+101b = 5 for the start and the end condition, spare in 4.0.0 (7.5.1.66:
+0 to 3 the levels, 4 no level sub-condition, 5 to 7 spare); ERA's PDF
+of the sequence prints the same 101 b twice; `evc_s076_check` rejects
+the message (INVALID_VALUE, scn line 855); the refusal is 3.16.1.1's:
+the sequence's data (S776cef6c s076, the reviewer's reading held).
+SV21 and SV22: the RBC's 32 gives M_VERSION 2.1 / 2.2; for an RBC
+certified to 2.0 to 2.3, 6.5.2.3.9.2 makes 6.5.1.5.27.4 apply, where 5
+means the display not limited by the level (translated to 4, note
+[22]); SV21 sends the text as packet 76 (6.5.2.3.1.1.3, the fixed text
+packet of 2.0 and 2.1, undefined in 4.0.0's table 7.4.1.1, so
+`EVC_Core.Inputs.Read_Radio_Messages` counts it unknown); this on-board
+decodes the language of system version 3 only, the translation of
+chapter 6 is not built: S776cef6c E7 for SV21 and SV22 (the same family
+and step by another cause, so two lines). The line "onboard, not
+traced" of e6/reports-both rewritten; B3160 dropped, B3244 done.
+
+**Seb6766c6, the group read in TR where FS is expected (triaged by
+cause; no runner change).** Twenty sequences, eight families, each
+traced at SV30 with `DEBUG=1`. Four causes. (1) The sequence's data,
+3040200_05 (SV22, SV30) step 67: BG1d's packet 5 (read in L1 SR,
+accepted by 4.8.3, kept into FS by 4.10.1.3) announces BG3 at 700 m
+(D_LINK 50 then 600, Q_LINKREACTION 00 trip, Q_LOCACC 12), the group is
+at 500 m (ERA's PDF the same): detected in rear of its window,
+3.16.2.3.1 a), the trip of 4.6.3 [17] and the balise group error report
+at 70200 ms. (2) E7, 3110600_01 (three versions) step 82: BG6d's infill
+packet 12 (V_MAIN 0, L_ENDSECTION 0, the infill location reference BG8)
+is placed from BG6d, the group carrying it (3.6.2.3.1, 3.8.5.1.2
+deferred, as Sf619da00), so the EOA is at 2000 m and the train trips at
+2010 m; 3.11.6.5.1 puts it at the next main signal. (3) The runner's
+driver, 4080300_02 (three versions) step 176: the non-protected LX with
+Q_STOPLX 1 is a temporary EOA without release speed (3.12.5.8); step
+175's comment says the train stops in rear of it, after which 5.16.2.1
+lifts the EOA; the runner keeps 18 km/h into it (B3301, the fix left:
+a stop in the stopping area and the resumption). (4) The family's
+earlier reading, narrowed: 3040400_04, 3131050_11, 3131050_22 join a
+case whose first group lies beyond the EOA where the previous case
+leaves the train (at standstill at its EOA, in release speed
+monitoring 22 m before it, or with no L2 MA extension before the
+group); ERA's PDFs not checked, kept as model. Left to trace (B3300):
+4080436_03 and 4080443_01 trip at an immediate transition to level 2
+(D_LEVELTR 0) with an L1 MA left; not a chart cause, the trip reason
+not yet read. No sequence moved; the baseline unchanged.
+
+**S69f1f87e, the speed information still shown (triaged by cause in a
+resumption; no runner change).** Twenty-one sequences, eight families,
+each read at SV30 with our state at the step; 3131030_23 and 5080200_03
+traced with `DEBUG=1`. Two causes. (1) The runner's judgement, seven
+families (3131030_23, 3131030_24, 3160200_21, 4080418_04, 5080400_02,
+5190300_01, 9990400_44, 18 sequences): the step's text says the speed
+and distance monitoring information removed or not displayed, its
+comment names one object of it (the Time to Indication removed at the
+Indication location, 3.13.10.3.10; the MA length not updated; the former
+EOA deleted; the over-speeding warning removed), in FS, SR or UN, where
+the DMI shows the speed information whatever the object (DMI 8.2.1.5.7,
+Table 10); `S076_Run.Speed_Info_Shown` judges the whole information. Ours
+agrees with the comments where the trace shows it: 3131030_23 at 715 m
+in Indication status (step 56's JRU 20 M_SDMSUPSTAT 1 passes),
+5190300_01 at 103 km/h under 110 with the status normal. The rule (judge
+the named object, or not judged as a runner gap) moves 18 sequences
+whose new steps need tracing: B3302, not built. The family's earlier
+reading (the chart's speed above the warning) did not hold. (2) The
+sequence, 5080200_03 (three versions) step 62: the driver turned the
+speed information on in SH at step 35 (DMI 8.2.2.4, Table 15); the
+joined case of step 62 (feature 4070201, test case 37 in ERA's PDF)
+expects the permitted speed not displayed in the same SH mode after an
+override, which 4.4.8.1.10 (displayed until the driver asks to stop it)
+does not allow. No sequence moved; the baseline unchanged.
