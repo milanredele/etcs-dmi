@@ -159,11 +159,13 @@ is
      with Global => (In_Out => State);
 
    --  3.16.3.1.1.2, 3.16.4.1: an inconsistent message
-   --  received on S, reported to that RBC by packet 4 with Error
-   --  (7.5.1.64) in the message 136 of the next Produce. Decision (open
-   --  to the user): only to that RBC, also while connected to both; the
-   --  message and its time stamps belong to its session
-   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2
+   --  received on S, reported by packet 4 with Error (7.5.1.64) in the
+   --  message 136 of the next Produce once S is established: to the
+   --  sessions of that report when S is one of them, so to both RBCs
+   --  while connected to both (decision of the user: 3.15.1.3.4 makes no
+   --  exception, packet 4 names neither the message nor the RBC); to S
+   --  alone otherwise
+   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.15.1.3.4
    procedure Request_Error (S     : EVC_Radio.Session_T;
                             Error : ETCS_Variables.M_ERROR_T)
      with Global => (In_Out => State);

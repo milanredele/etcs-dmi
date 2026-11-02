@@ -96,4 +96,8 @@ package EVC_Test_Handover is
    --  balise group error reported to both
    procedure Scenario_Handover_Error_Report;
 
+   --  3.16.3.1.1.2, 3.15.1.3.4: connected to both RBCs, an inconsistent
+   --  radio message of either RBC reported to both
+   procedure Scenario_Handover_Message_Error;
+
 end EVC_Test_Handover;

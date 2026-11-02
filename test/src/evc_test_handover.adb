@@ -1263,4 +1263,48 @@ package body EVC_Test_Handover is
              & "3.15.1.3.4); to 300" & To_1'Image & ", to 400" & To_2'Image);
    end Scenario_Handover_Error_Report;
 
+   procedure Scenario_Handover_Message_Error is
+      Good : constant Byte_Array := M24 (10, True, 200, 400);
+      --  one byte more than its L_MESSAGE says: inconsistent (8.4.4.2.1,
+      --  3.16.3.1.1 c), M_ERROR 3
+      Bad  : Byte_Array (1 .. Good'Length + 1) := (others => 0);
+      To_1, To_2 : Natural;
+
+      procedure Count (From : Natural) is
+      begin
+         To_1 := 0;
+         To_2 := 0;
+         Give_Radio_Message (From, Bad);
+         for C in 1 .. 4 loop
+            Step_X (500);
+            To_1 := To_1 + Errors_To (1);
+            To_2 := To_2 + Errors_To (2);
+         end loop;
+      end Count;
+   begin
+      Bad (1 .. Good'Length) := Good;
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, Good);
+      Stand;
+      Establish (2);
+      Check (R.Accepting = 2 and then R.Info (2).State = R.Established,
+             "message error to both: connected to both RBCs");
+      Count (2);
+      Check (To_1 = 1 and then To_2 = 1,
+             "message error to both: the Accepting RBC's inconsistent "
+             & "message reported to both RBCs (3.16.3.1.1.2, 3.15.1.3.4); "
+             & "to 300" & To_1'Image & ", to 400" & To_2'Image);
+      Count (1);
+      Check (To_1 = 1 and then To_2 = 1,
+             "message error to both: the Handing Over RBC's inconsistent "
+             & "message reported to both RBCs (3.16.3.1.1.2, 3.15.1.3.4); "
+             & "to 300" & To_1'Image & ", to 400" & To_2'Image);
+   end Scenario_Handover_Message_Error;
+
 end EVC_Test_Handover;
