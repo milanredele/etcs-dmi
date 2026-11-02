@@ -18779,3 +18779,13 @@ B3160 3110500_03 with its SV21 and SV22 versions, B3245 / B3161
 9990500_09), B3180 (the Train Data acknowledgement per session), B3220,
 B3221, B781's rest; the user's decision B3162 / B3240; the review again
 (eight items, readings first, no backlog read).
+
+Decided by the user on 2026-11-02, after the eleventh review: B3162 /
+B3240, a radio message found inconsistent while the on-board is
+connected to both RBCs is reported to both (3.15.1.3.4 sends every
+position report to both and makes no exception; packet 4 carries only
+M_ERROR, so the receiving RBC cannot tell which message or which RBC it
+concerns in either reading; the SRS gives no RBC-side rule for an error
+report). The same reading as the balise group errors of B3081. A build
+item of the next round.
+
