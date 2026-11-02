@@ -17629,3 +17629,89 @@ the session's supervision. A build item of the next round
 (`EVC_Sessions.Mission.Evaluate_TD` with `Max_Repeats`, a case counting
 the four sendings).
 
+
+### The handover's border kept for the Handing Over RBC, the Accepting RBC's text at the switch, the 129's four sendings (e6/handover-border) (2026-11-02)
+
+**B2941, the border over an order for the supervising RBC (done).**
+The review's cause holds at the source. In 3150100_06 the front
+report at the border (1200 m) goes to both sessions (260400 ms), the
+switch follows, then BG2d at 1200 m (step 102) carries packet 131
+with D_RBCTR 0 for RBC 1616, the one supervising since the switch.
+`EVC_Sessions.Handover.Apply_Order` took it as a new order: it
+deleted the border (D 0) and set `Single` (decision 5, an order for
+the supervising RBC). `Evaluate` then switched at once, and `Switch`
+took `Old_S` from the supervising session 2. Session 1 lost its
+reports (the 136 at 268200 and 284900 ms went to session 2 only), and
+with the border deleted no `Border_Rear` came at step 104.
+3.15.1.3.2.2 says a new order replaces the previous one. Here the new
+order names the same pair: Accepting RBC 1616, Handing Over session
+still open. 3.15.1.3.2.3 does not apply (same Accepting RBC).
+3.15.1.3.1 c) still wants the report when the min safe rear end passes
+the announced border, and 3.15.1.3.4 the reports to both RBCs while
+both sessions are open.
+Decision 6 of `Apply_Order`: after the switch, while the Handing Over
+session is retained (`Old_S`), an order naming the supervising RBC is
+dropped. The border stays, `Single` and `Opened` stay, and no second
+`Switch` happens.
+Scenario `Handover_Order_Again` (EVC_Test_Handover): group 25 at
+310 m, past the border at 300 m, carries 131 D 0 for 400. Before the
+fix it failed twice: no report to session 1 after the group, and none
+when the rear passed. After the fix both checks pass.
+Runner: 3150100_06 and 4080100_04 pass in SV21, SV22 and SV30.
+4080100_03 goes from step 113 to step 130 (S6b9f37cf, the LSSMA of
+the joined case 4070201, triaged s076 before). 3110500_03 step 86
+stays under Se1820110: in its window no 136 goes to either session,
+a different cause, not traced. Rows 3.15.1.3.2.2 and 3.15.1.3.1 c)
+are noted; `@req 3.15.1.3.2.2` is on `Apply_Order`.
+
+**B2940, the Accepting RBC's text of 3150100_01 (done, triaged s076).**
+The release works. At the switch, `EVC_Radio_Authority.Buffer.Update`
+sets Releasing once `EVC_Radio.Handover` ends.
+`EVC_Core.Inputs.Read_Released_Messages` then gives the messages to
+the authority half, and `Evaluate_Stored_Information` calls
+`EVC_Text_Messages.Take_Radio` on the cycle's radio info.
+`Handover_Text`, with a known LRBG, passes.
+The text is lost in `Take_Radio`. The message 24 of step 98 has
+NID_LRBG 16777215 ("unknown", so no origin), and its packet 74 has
+Q_DIR 01 (nominal direction only). ERA's PDF of the sequence has the
+same values (message 24, NID_LRBG 16777215, Q_DIR 01). By 3.6.3.1.1 a)
+radio information is directional relative to its LRBG. With the LRBG
+unknown the train orientation cannot be referred to it, so 3.6.3.1.4
+rejects data valid for one direction only. The sequence expects the
+text shown at step 102: S776cef6c of 3150100_01 moves from onboard to
+s076, as Sa03cccdc did for a single group's order.
+The on-board half: a text valid for both directions, with no location
+sub-condition (D_TEXTDISPLAY and L_TEXTDISPLAY 32767), needs no
+position (3.12.3.4.3.1.3, .4), yet it was dropped for the missing
+origin.
+Decision in `Take_Radio`: without an origin, a packet 73 or 74 is
+taken when `Valid_For` accepts it (both directions only) and it has
+no distance condition. Its other packets are still not taken.
+Scenario `Handover_Text_No_LRBG`: two texts of the Accepting RBC with
+the LRBG unknown, one nominal and one both ways, stored before the
+switch. At the switch one is shown. Before the fix none was.
+Runner: 0 movements. Rows 3.6.3.1.4 and 3.15.1.3.6 are noted;
+`@req 3.6.3.1.4` is on `Take_Radio`.
+
+**B3001, the 129's four sendings (done, as the user decided on
+2026-11-01).** `EVC_Sessions.Mission.Evaluate_TD` has a counter
+`TD_Repeats` (0 .. `Max_Repeats`, 3). It is reset at a first sending:
+when the session comes up, when the driver validates the data, after
+a connection lost, and while nothing is awaited. It goes up by one
+with each repetition Repeat_Ms (15 s) apart and stops them at three.
+After that the acknowledgement is still awaited and nothing more is
+sent. The RBC's silence is left to T_NVCONTACT (3.16.3.4.1); there is
+no brake or mode action of its own.
+Scenario `Train_Data_Repeats`: no message 8. The 129s go at 100,
+15100, 30100 and 45100 ms after the 32, and none after. Before the
+fix a fifth went at 60100 ms.
+Runner: 0 movements. Row A.3.1 Table is noted; `@req A.3.1 Table` is
+on `Evaluate_TD`.
+
+Units changed: `EVC_Sessions.Handover` (Apply_Order),
+`EVC_Text_Messages` (Take_Radio), `EVC_Sessions.Mission`
+(Evaluate_TD), each proved alone. Tests: `EVC_Test_Handover` (three
+scenarios at its end, called from `evc_test.adb`). Files of record:
+B2940, B2941 and B3001 closed; triage lines Se1820110 (3150100_06
+family) and S776cef6c (3150100_01) changed; baseline re-recorded
+(9 improvements). No edit outside the units.
