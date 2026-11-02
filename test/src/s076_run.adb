@@ -2021,15 +2021,23 @@ package body S076_Run is
       return Best;
    end Timer_Seconds;
 
+   --  The expiry of the last timer run (Run_Timer): a negative radio
+   --  expectation after the timer's input judges the sendings from there
+   --  on, for one period of the timer (Radio_Expect)
+   Timer_Expiry_Ms : Unsigned_64 := 0;
+   Timer_Period_Ms : Unsigned_64 := 0;
+
    --  The timer is taken to have started when the step before ended (the
    --  time the train took to reach the step's distance counts), or at
    --  From_Ms when given (not 0)
    procedure Run_Timer (Seconds : Natural; From_Ms : Unsigned_64 := 0) is
-      Elapsed : constant Unsigned_64 :=
-        B.Time_Ms - (if From_Ms in 1 .. B.Time_Ms then From_Ms
-                     else Step_Start_Ms);
+      Start   : constant Unsigned_64 :=
+        (if From_Ms in 1 .. B.Time_Ms then From_Ms else Step_Start_Ms);
+      Elapsed : constant Unsigned_64 := B.Time_Ms - Start;
       Due     : constant Unsigned_64 := Unsigned_64 (Seconds) * 1000 + 200;
    begin
+      Timer_Expiry_Ms := Start + Unsigned_64 (Seconds) * 1000;
+      Timer_Period_Ms := Unsigned_64 (Seconds) * 1000;
       if Elapsed < Due then
          for K in 1 .. (Natural (Due - Elapsed) + B.Cycle_Ms - 1) / B.Cycle_Ms
          loop
@@ -7172,6 +7180,7 @@ package body S076_Run is
       Loc_Since := 0;
       Loc_Count := 0;
       Loc_Window := Unsigned_64'Last;
+      Timer_Expiry_Ms := 0;
       Loc_Copied := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);

@@ -17670,3 +17670,36 @@ Left: B3080 (the bench's odometer interval truncated, a runner line
 for `S076_Bench`, not this package's unit) and B3081 (a 136 carrying
 packet 4 while connected to both RBCs goes to the supervising session
 only; whether 3.15.1.3.4 covers it is to decide).
+
+**4100103_26 step 163 (B2944; Sb83b2c65).** A temporary print of the
+negative expectation's search at SV30 named the sending it found: the
+136 of 117500 ms to session 1 (24 bytes, packet 0), sent at 700 m at
+standstill 100 ms after step 161 (NOT a 136) was judged at once at
+117400 ms, inside the window that the timer input of step 162 opened
+(`Window_Ms` 117400). The DEBUG list of step 162 shows that 136 and
+nothing after it, and the judgement reads the same list: the premise
+"the list shows none" held, the 136 found is the one of 117500 ms. The
+timer (T_CYCLOC 10 s, taken from step 161's comment) started at 117400
+ms and expired at 127400 ms, while the bench drove the train from 700
+to 800 m (to 134500 ms); "no position report after T_CYCLOC" is about
+the time after the expiry. `S076_Run.Run_Timer` now records the expiry
+and the period (`Timer_Expiry_Ms`, `Timer_Period_Ms`, reset per
+sequence), and `Radio_Expect` judges a negative expectation after a
+timer input from the expiry on and watches one period of the timer
+from it. A first version without the period moved 3080200_03 too, on
+a window of 500 ms after the T_CYCRQST expiry (a vacuous pass); with
+the period its step 87 finds the 132 of 130000 ms and keeps Sc4c3a7a1.
+The corpus: 4100103_26 SV21, SV22, SV30 passed (163 -> passed), no
+other movement, 0 regressions (1181 / 1048 / 961 -> 1184 / 1045 /
+961). No 136 comes between 117500 and 137400 ms: the packet 58 of
+before the power-off is not applied, as 4.10 wants (row "Position
+Report parameters", column NP: D). Left: B3082 (the event of the 136
+of 117500 ms, 600 ms after the one of 116900 ms that step 159 matched,
+not traced) and B3083 (`Group_Input_Ms`, the other start of the same
+filter, is never reset at the start of a sequence).
+
+**The two sequences of footnote [17] (4080300_21, 4080420_03 SV30): not
+taken.** The bound of the package came during the second item; the
+check of their reason (the JRU or DEBUG line of the message rejected
+while the 133 is unacknowledged, and the step's expectation met by it)
+is left as it was in the review of the sixtieth round.
