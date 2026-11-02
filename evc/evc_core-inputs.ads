@@ -130,7 +130,11 @@ is
    --  1. Read the ports: take the inputs latched since the last cycle,
    --  parse the telegrams and radio messages (EVC_Received) and record
    --  those accepted on the JRU port; hand the telegrams accepted, with
-   --  the stamp of their balise, to the position
+   --  the stamp of their balise, to the position; in TR with the desk
+   --  closed the driver's requests of the cycle are dropped right after
+   --  they are taken, isolation excepted, so that no later step reads
+   --  them (4.4.13.1.6)
+   --  @req 4.4.13.1.6
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
                                 Latched_SCL, Clock_Ms, UTC_Known,
