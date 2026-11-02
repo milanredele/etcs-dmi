@@ -87,4 +87,9 @@ package EVC_Test_Handover is
    --  sent once and repeated three times 15 s apart, then no more
    procedure Scenario_Train_Data_Repeats;
 
+   --  3.6.5.1.4 h), 3.15.1.3.3, 3.15.1.3.4: the session with the
+   --  Accepting RBC established, its Train Data then a position report
+   --  to both RBCs
+   procedure Scenario_Handover_Session_Report;
+
 end EVC_Test_Handover;

@@ -21,7 +21,7 @@ with ETCS_Variables;         use ETCS_Variables;
 package body EVC_Sessions.Reports
   with SPARK_Mode => On,
        Refined_State => (State => (P58, P58_Ref, P58_Held, Due,
-                                   Was_Up, Last_Level,
+                                   Was_Up, Acc_Up, Last_Level,
                                    Level_Seen, N_Sent, N_Params,
                                    Error_Due, Error_Code, TRN_Due,
                                    Watch, Watch_Mode, Watch_S, Watch_At,
@@ -43,6 +43,8 @@ is
    Due        : Boolean := False;
    --  h): the supervising RBC's session was established
    Was_Up     : Boolean := False;
+   --  h): the Accepting RBC's session was established
+   Acc_Up     : Boolean := False;
    --  g): the level of the last cycle
    Last_Level : EVC_Modes.Level_T := EVC_Modes.L0;
    Level_Seen : Boolean := False;
@@ -94,6 +96,7 @@ is
       P58_Held := False;
       Due := False;
       Was_Up := False;
+      Acc_Up := False;
       Last_Level := EVC_Modes.L0;
       Level_Seen := False;
       N_Sent := 0;
@@ -172,13 +175,22 @@ is
              | EVC_Modes.M_SL | EVC_Modes.M_TR | EVC_Modes.M_SF
              | EVC_Modes.M_IS);
 
-   --  3.6.5.1.4, 3.6.5.1.5, 4.9.1.3
+   --  3.6.5.1.4, 3.6.5.1.5, 4.9.1.3. h) per session: the supervising
+   --  RBC's session established, or the Accepting RBC's (the report then
+   --  to both, 3.15.1.3.4, in the cycle of the establishment after the
+   --  Train Data of 3.15.1.3.3, which EVC_Sessions.Produce sends first)
    --  @req 3.6.3.1.3
+   --  @req 3.6.5.1.4 h), 3.15.1.3.4
    procedure Evaluate (SoM : Boolean; Mode : EVC_Modes.Mode_T) is
       T     : constant EVC_Position.Triggers_T :=
         EVC_Position.Report_Triggers;
       Level : constant EVC_Modes.Level_T := EVC_Levels.Level;
       Up    : constant Boolean := R.In_Communication;
+      Acc   : constant R.Session_Ref_T := R.Accepting;
+      --  h) per session: the Accepting RBC's session established too
+      Acc_Now : constant Boolean :=
+        Acc /= R.No_Session
+        and then R.Info (R.Session_T (Acc)).State = R.Established;
       OK    : Boolean;
    begin
       --  4.9.1.3: entering level 1 deletes the parameters
@@ -212,6 +224,8 @@ is
                  and then Level_Reported (Mode))
         or else (Up and then not Was_Up and then not SoM
                  and then Session_Reported (Mode))
+        or else (Acc_Now and then not Acc_Up
+                 and then Session_Reported (Mode))
       then
          Due := True;
       end if;
@@ -231,6 +245,7 @@ is
       Last_Level := Level;
       Level_Seen := True;
       Was_Up := Up;
+      Acc_Up := Acc_Now;
    end Evaluate;
 
    --  3.6.5.1.4 b)

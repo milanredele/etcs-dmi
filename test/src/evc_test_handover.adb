@@ -1160,4 +1160,54 @@ package body EVC_Test_Handover is
              & R.Session_State_T'Image (R.Info (1).State));
    end Scenario_Train_Data_Repeats;
 
+   procedure Scenario_Handover_Session_Report is
+      V        : ETCS_Message.Value_Array := (others => 0);
+      M        : ETCS_Message.Message_T;
+      St       : ETCS_Message.Status_T;
+      To_1     : Natural := 0;
+      To_2     : Natural := 0;
+      TD_First : Boolean := False;
+      TD_Seen  : Boolean := False;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Give_Radio_Event (2, Connection_Set_Up);
+      Stand;
+      V (3) := Now_T;
+      V (7) := 48;
+      Give_Radio_Message (2, Message_Of (MCat.Track_M32, V));
+      --  the cycles of the establishment, the train at standstill
+      for C in 1 .. 3 loop
+         Stand;
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, St);
+            if ETCS_Message."=" (St, ETCS_Message.Accepted)
+              and then Radio_Output (N).Session = 2
+            then
+               if M.Kind = MCat.Train_M129 then
+                  TD_Seen := True;
+               elsif M.Kind = MCat.Train_M136 and then To_2 = 0 then
+                  TD_First := TD_Seen;
+               end if;
+            end if;
+         end loop;
+         To_1 := To_1 + Sent (136, 1);
+         To_2 := To_2 + Sent (136, 2);
+      end loop;
+      Check (R.Accepting = 2 and then R.Info (2).State = R.Established
+             and then To_2 = 1 and then To_1 = 1 and then TD_First,
+             "session report: the Accepting RBC's session established, "
+             & "the position report sent to both RBCs once, after the "
+             & "Train Data (3.6.5.1.4 h), 3.15.1.3.3, 3.15.1.3.4); to "
+             & "300" & To_1'Image & ", to 400" & To_2'Image
+             & ", after the 129 " & TD_First'Image);
+   end Scenario_Handover_Session_Report;
+
 end EVC_Test_Handover;

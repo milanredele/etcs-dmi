@@ -18175,3 +18175,41 @@ connected to both: decide), B3080 and B3083 (the bench's odometer
 interval, `Group_Input_Ms`), the two passes' reason (4080300_21,
 4080420_03), B781's rest; the review again (eight items, readings
 first, no backlog read).
+
+### The reports to both RBCs: the establishment report for the Accepting RBC's session, the error report while connected to both, the triggers of 3.6.5.1.4 re-read (e6/reports-both) (2026-11-02)
+
+**B3140, the establishment report for the Accepting RBC's session
+(done).** The review's cause held at the source. `EVC_Sessions.Reports.
+Evaluate` raised 3.6.5.1.4 h) on `R.In_Communication` alone, the
+supervising RBC's session (`Was_Up`). In 3110500_03 SV30 the Accepting
+RBC's session is established at its message 32 (159 and 129 to session
+2 at 94000 ms, 800 m) and no 136 went to either session by 98200 ms.
+3.6.5.1.4 h) reads "A communication session is successfully
+established": any session, and 3.15.1.3.4 sends "its position reports"
+to both RBCs while connected to both. The sequence's steps 86 and 88
+expect that 136 to both ("To both RBCs (Handing Over)", "(Accepting)").
+Order: 3.15.1.3.3 wants the Train Data "as soon as" the session is
+established; `EVC_Sessions.Produce` sends the 129 before
+`Reports.Produce`, so in the cycle of the establishment the 129 goes
+first, then the 136, as the sequence's steps 80 and 86 have them.
+Built: `Evaluate` keeps `Acc_Up` (the Accepting RBC's session
+established at the last cycle); its rising edge makes the report due
+(in the modes of `Session_Reported`, 4.5.2), and `Produce` sends a due
+report to the supervising session and to `Also` (the Accepting and the
+retained Handing Over session, `EVC_Sessions.Handover.Also_Reported`),
+so to both. `Also_Reported` and `Forced_Report` unchanged.
+Scenario `Handover_Session_Report` (EVC_Test_Handover): after the order,
+the Accepting session set up and its 32 given at standstill; over three
+cycles one 136 to each session, the one to 400 after its 129. Before the
+fix: none to either (0, 0). After: 1, 1, after the 129.
+Runner: 3110500_03 SV21, SV22, SV30 move from step 86 (Se1820110) to
+step 98 (S776cef6c): steps 86 to 89 pass (the 136 to both at 94000
+ms). At step 94 the Accepting RBC's message 24 with packet 74 (NID_LRBG
+1048577, BG1d, the LRBG) is followed by a 136 with packets 0 and 4 to
+session 2 at 94900 ms, the message refused as an error, and no text is
+shown after the switch: not traced, triaged onboard with B3160. No other
+sequence moved (the handover families 3150100_xx and 4080100_xx stay
+where they were; not traced why), 0 regressions. Rows: 3.6.5.1.4
+h), 3.15.1.3.3, 3.15.1.3.4 noted; `@req 3.6.5.1.4 h), 3.15.1.3.4` on
+`Evaluate`. The proof of `evc_sessions-reports`: 86 checks, none
+unproved, margin 978 steps.

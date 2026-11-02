@@ -404,6 +404,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Order_Again;
    EVC_Test_Handover.Scenario_Handover_Text_No_LRBG;
    EVC_Test_Handover.Scenario_Train_Data_Repeats;
+   EVC_Test_Handover.Scenario_Handover_Session_Report;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;
