@@ -7181,6 +7181,10 @@ package body S076_Run is
       Loc_Count := 0;
       Loc_Window := Unsigned_64'Last;
       Timer_Expiry_Ms := 0;
+      --  the bench's clock starts again with the sequence: a group input
+      --  time left by the previous one would hide this one's sendings
+      --  from its negative expectations until the clock passes it
+      Group_Input_Ms := 0;
       Loc_Copied := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);

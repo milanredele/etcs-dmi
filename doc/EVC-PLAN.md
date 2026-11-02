@@ -18230,3 +18230,15 @@ one side by side:
 5090200_01, 5180400_01 and 3131040_98, which B620 lists as sensitive to
 the interval, do not move: the 5 % trial of B620 is not the stated 1 %.
 B3080 closed with these counts, B620's note extended, B3200 added.
+
+**The negative expectation's window start (B3083).** The premise held
+at the source: `S076_Run.Group_Input_Ms` is set at each BTM input and
+read by `Radio_Expect.Message`, where a negative expectation's sending
+counts only from the latest of `B.Window_Ms`, `Group_Input_Ms` and
+`Timer_Expiry_Ms`; `Loc_Window` and `Timer_Expiry_Ms` were reset at the
+start of a sequence, `Group_Input_Ms` was not. It is now reset with
+them. The corpus: no sequence and no step moves (1190 / 1039 / 961,
+steps 210153 passed, 12271 failed, 4120 not judged before and after),
+so no negative expectation of the corpus was judged on a value left by
+the previous sequence; the reset keeps it so for a corpus run in another
+order.
