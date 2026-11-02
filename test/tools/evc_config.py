@@ -6,6 +6,12 @@ EVC_Core.Configure loads.
   evc_config.py TEXT IMAGE        the text form TEXT to the image IMAGE
   evc_config.py --decode IMAGE    the image back to the text form (stdout)
   evc_config.py --check FILE      validate a text form or an image
+  evc_config.py --compare TEXT IMAGE [TEXT IMAGE ...]
+                                  each IMAGE is its TEXT encoded, byte
+                                  for byte, and decodes to its
+                                  configuration (test/check.sh: the
+                                  images the on-board's tests compare
+                                  with EVC_Config's encoders)
   evc_config.py --default         the text form of EVC_Config.Default
 
 The image (little endian) and its rules are those of evc/evc_config.ads:
@@ -14,7 +20,12 @@ magic "EVCF", version u16, length u16, the fields, CRC-32 of IEEE 802.3
 version 1: 36 bytes. Format version 2 (format = 2 and a [train] section
 in the text form): the bytes 0 .. 31 of version 1, the braking model and
 the special brakes the vehicle has, and for a gamma train (a [gamma]
-section) its models, factors and times; 38 to 1248 bytes. The tool
+section) its models, factors and times; 38 to 1248 bytes. Format
+version 3 (format = 3, a [train] section and 0 to 8 [[zone]] tables):
+the image of version 2 with the zones of 3.18.5.1 (the count and 8
+entries of 7 bytes) between the train and the CRC; 95 to 1305 bytes.
+The version is the one the text form names: zones need format 3, and an
+image of version 1 or 2 has none (UTC is the local time). The tool
 validates like the on-board does: every field in its range, the curves
 of their counts with the speeds rising, the fields ending at the CRC,
 and Table 3 of SUBSET-026 3.13.2.2.6.1 (magnetic shoe brake: no
@@ -37,6 +48,20 @@ CRC_OFFSET = 32
 VERSION_2 = 2
 MIN_LENGTH_2 = 38
 MAX_LENGTH_2 = 1248
+# format version 3 (EVC_Config.Encode_V3): the zones (Zone_Table_T),
+# ZONE_IMAGE_LENGTH bytes between the train and the CRC
+VERSION_3 = 3
+ZONE_IMAGE_LENGTH = 57
+ZONE_MAX = 8                        # EVC_Config.Zone_Max
+MIN_LENGTH_3 = MIN_LENGTH_2 + ZONE_IMAGE_LENGTH
+MAX_LENGTH_3 = 1305                 # EVC_Config.Max_Image_Length
+MAX_NID_C = 1023
+# the standard offset to UTC, minutes (EVC_Config.Zone_Offset_Min_T),
+# carried + 720 in a u16
+MIN_OFFSET_MIN, MAX_OFFSET_MIN = -720, 840
+# the summer-time rule, in the order of the image codes 0, 1
+SUMMER_RULES = ['none', 'eu']
+ZONE_KEYS = ['first', 'last', 'offset_min', 'summer']
 MODELS = ['lambda', 'gamma']        # byte 32 (Fixed_Train_T.Model)
 MAX_STEPS = 8                       # EVC_Supervision_Input.Max_Curve_Steps
 MAX_SPEED_CMS = 30_000              # Speed_Cms_T
@@ -160,13 +185,26 @@ to_cab_b_cm = {to_cab_b_cm}
 
 TRAIN_TEMPLATE = '''
 [train]
-# format 2 only. 3.13.2.2.3: the braking model, "lambda" (the conversion
+# format 2 and 3. 3.13.2.2.3: the braking model, "lambda" (the conversion
 # model of the brake percentage the driver enters) or "gamma" (the
 # models of the [gamma] section, installation data, 3.18.3.2 c))
 braking_model = "{braking_model}"
 # 3.13.2.2.6: the special brakes the vehicle has, of "regenerative",
 # "eddy_current", "magnetic_shoe" and "ep"
 special_brakes = {special_brakes}
+'''
+
+ZONE_TEMPLATE = '''
+[[zone]]
+# format 3 only, 3.18.5.1: the local time where the NID_C of the LRBG is
+# in first .. last (0 .. 1023; the first zone holding it applies): UTC +
+# offset_min (-720 .. 840), + 60 min in the summer time of the rule
+# "eu" (the last Sunday of March 01:00 UTC to the last Sunday of October
+# 01:00 UTC), "none" without; at most 8 zones
+first = {first}
+last = {last}
+offset_min = {offset_min}
+summer = "{summer}"
 '''
 
 GAMMA_TEMPLATE = '''
@@ -281,6 +319,26 @@ def check_train(t):
                       'names of ' + ', '.join(BRAKES))
 
 
+def check_zones(zones):
+    """The zones of the text form, as EVC_Config.Get_Zones accepts them"""
+    if not isinstance(zones, list) or len(zones) > ZONE_MAX:
+        raise Invalid(f'[[zone]]: at most {ZONE_MAX} zones')
+    for k, z in enumerate(zones):
+        check_keys(f'zone {k + 1}', z, ZONE_KEYS)
+        check_int(f'zone {k + 1} first', z['first'], MAX_NID_C)
+        check_int(f'zone {k + 1} last', z['last'], MAX_NID_C)
+        if z['first'] > z['last']:
+            raise Invalid(f'zone {k + 1}: first {z["first"]} after last '
+                          f'{z["last"]}')
+        o = z['offset_min']
+        if type(o) is not int or not MIN_OFFSET_MIN <= o <= MAX_OFFSET_MIN:
+            raise Invalid(f'zone {k + 1} offset_min = {o!r}: an integer in '
+                          f'{MIN_OFFSET_MIN} .. {MAX_OFFSET_MIN}')
+        if z['summer'] not in SUMMER_RULES:
+            raise Invalid(f'zone {k + 1} summer = {z["summer"]!r}: one of '
+                          + ', '.join(SUMMER_RULES))
+
+
 def check_gamma(g):
     optional = {'normal_service', 'by_combination'}
     if (not isinstance(g, dict) or set(g) - optional != set(GAMMA_KEYS)):
@@ -330,7 +388,7 @@ def check_gamma(g):
 
 
 def gamma_model(config):
-    return (config.get('format') == VERSION_2
+    return (config.get('format') in (VERSION_2, VERSION_3)
             and isinstance(config.get('train'), dict)
             and config['train'].get('braking_model') == 'gamma')
 
@@ -339,11 +397,14 @@ def check(config):
     """Validate a configuration of the text form (a dict as tomllib gives
     it); raise Invalid with the reason."""
     fmt = config.get('format')
-    if fmt not in (VERSION, VERSION_2):
-        raise Invalid(f'format {fmt!r}: {VERSION} or {VERSION_2}')
+    if fmt not in (VERSION, VERSION_2, VERSION_3):
+        raise Invalid(f'format {fmt!r}: {VERSION}, {VERSION_2} or '
+                      f'{VERSION_3}')
     expected = ['format'] + list(SECTIONS)
-    if fmt == VERSION_2:
+    if fmt in (VERSION_2, VERSION_3):
         expected += ['train'] + (['gamma'] if gamma_model(config) else [])
+    if fmt == VERSION_3 and 'zone' in config:
+        expected += ['zone']
     if set(config) != set(expected):
         raise Invalid('sections: expected ' + ', '.join(expected) +
                       ', got ' + ', '.join(config))
@@ -368,10 +429,12 @@ def check(config):
                                   f'in {low} .. {high}')
             elif type(v) is not bool:
                 raise Invalid(f'{section}.{key} = {v!r}: true or false')
-    if fmt == VERSION_2:
+    if fmt in (VERSION_2, VERSION_3):
         check_train(config['train'])
         if gamma_model(config):
             check_gamma(config['gamma'])
+    if fmt == VERSION_3:
+        check_zones(config.get('zone', []))
 
 
 def curve_bytes(c):
@@ -404,6 +467,18 @@ def gamma_bytes(g):
     return out
 
 
+def zone_bytes(zones):
+    """The zones in the order of Encode_V3: the count, then 8 entries of
+    first, last, offset + 720 (u16 each) and the rule (u8), the entries
+    after the count 0"""
+    out = bytes([len(zones)])
+    for z in zones:
+        out += struct.pack('<HHHB', z['first'], z['last'],
+                           z['offset_min'] - MIN_OFFSET_MIN,
+                           SUMMER_RULES.index(z['summer']))
+    return out + bytes(ZONE_IMAGE_LENGTH - len(out))
+
+
 def encode(config):
     check(config)
     fmt = config['format']
@@ -417,14 +492,17 @@ def encode(config):
         b['additional_brake_allowed'], b['regenerative_needs_catenary'],
         a['to_cab_a_cm'], a['to_cab_b_cm'], f['time_ms'], f['decel_mms2'])
     assert len(body) == CRC_OFFSET
-    if fmt == VERSION_2:
+    if fmt in (VERSION_2, VERSION_3):
         t = config['train']
         body += bytes([MODELS.index(t['braking_model']),
                        sum(1 << BRAKES.index(x) for x in t['special_brakes'])])
         if gamma_model(config):
             body += gamma_bytes(config['gamma'])
+        if fmt == VERSION_3:
+            body += zone_bytes(config.get('zone', []))
         length = len(body) + 4
-        assert MIN_LENGTH_2 <= length <= MAX_LENGTH_2
+        assert ((MIN_LENGTH_2 <= length <= MAX_LENGTH_2) if fmt == VERSION_2
+                else (MIN_LENGTH_3 <= length <= MAX_LENGTH_3))
         body = body[:6] + struct.pack('<H', length) + body[8:]
     return body + struct.pack('<I', zlib.crc32(body))
 
@@ -497,6 +575,25 @@ def decode_gamma(image, last):
     return g
 
 
+def decode_zones(image, pos):
+    """The zones of an image of version 3 at pos (EVC_Config.Get_Zones):
+    the entries after the count not read"""
+    n = image[pos]
+    if n > ZONE_MAX:
+        raise Invalid(f'a field out of its range: {n} zones')
+    zones = []
+    for k in range(n):
+        first, last, off, rule = struct.unpack_from('<HHHB', image,
+                                                    pos + 1 + 7 * k)
+        if (last > MAX_NID_C or first > last
+                or off > MAX_OFFSET_MIN - MIN_OFFSET_MIN or rule > 1):
+            raise Invalid(f'a field out of its range: zone {k + 1}')
+        zones.append({'first': first, 'last': last,
+                      'offset_min': off + MIN_OFFSET_MIN,
+                      'summer': SUMMER_RULES[rule]})
+    return zones
+
+
 def decode(image):
     """The configuration of an image, checked as EVC_Config.Decoded does
     and in its order; raise Invalid with the status it would give."""
@@ -505,10 +602,12 @@ def decode(image):
     if image[0:4] != MAGIC:
         raise Invalid('bad magic')
     version, length = struct.unpack_from('<HH', image, 4)
-    if version not in (VERSION, VERSION_2):
+    if version not in (VERSION, VERSION_2, VERSION_3):
         raise Invalid(f'bad version {version}')
     if (length != LENGTH if version == VERSION
-            else not MIN_LENGTH_2 <= length <= MAX_LENGTH_2):
+            else not MIN_LENGTH_2 <= length <= MAX_LENGTH_2
+            if version == VERSION_2
+            else not MIN_LENGTH_3 <= length <= MAX_LENGTH_3):
         raise Invalid(f'bad length {length}')
     if len(image) < length:
         raise Invalid(f'truncated: {len(image)} bytes of {length}')
@@ -537,7 +636,10 @@ def decode(image):
         'service_brake_failure': {'time_ms': t_ms, 'decel_mms2': decel},
         'antenna': {'to_cab_a_cm': ant_a, 'to_cab_b_cm': ant_b},
     }
-    if version == VERSION_2:
+    if version in (VERSION_2, VERSION_3):
+        # the train ends where the CRC is (version 2) or the zones are
+        last = length - 4 - (ZONE_IMAGE_LENGTH if version == VERSION_3
+                             else 0)
         model, has = image[32], image[33]
         if model > 1 or has > 15:
             raise Invalid('a field out of its range: the braking model or '
@@ -546,9 +648,13 @@ def decode(image):
                            'special_brakes': [x for i, x in enumerate(BRAKES)
                                               if has & (1 << i)]}
         if model == 1:
-            config['gamma'] = decode_gamma(image, length - 4)
-        elif length != MIN_LENGTH_2:
+            config['gamma'] = decode_gamma(image, last)
+        elif last != MIN_LENGTH_2 - 4:
             raise Invalid(f'bad length {length} for a lambda train')
+    if version == VERSION_3:
+        zones = decode_zones(image, length - 4 - ZONE_IMAGE_LENGTH)
+        if zones:
+            config['zone'] = zones
     try:
         check(config)
     except Invalid as e:
@@ -572,7 +678,7 @@ def text(config):
         for key, v in config[section].items():
             values[key] = ('true' if v else 'false') if type(v) is bool else v
     out = TEMPLATE.format(**values)
-    if config['format'] == VERSION_2:
+    if config['format'] in (VERSION_2, VERSION_3):
         t = config['train']
         out += TRAIN_TEMPLATE.format(
             braking_model=t['braking_model'],
@@ -592,6 +698,8 @@ def text(config):
                 out += BY_COMBINATION_TEMPLATE.format(
                     **{k: toml_list(v)
                        for k, v in g['by_combination'].items()})
+    for z in config.get('zone', []):
+        out += ZONE_TEMPLATE.format(**z)
     return out
 
 
@@ -612,6 +720,17 @@ def main(argv):
             else:
                 check(tomllib.loads(data.decode('utf-8')))
                 print(f'{argv[2]}: a valid text form')
+        elif len(argv) >= 4 and len(argv) % 2 == 0 and argv[1] == '--compare':
+            for t, i in zip(argv[2::2], argv[3::2]):
+                with open(t, 'rb') as f:
+                    config = tomllib.load(f)
+                with open(i, 'rb') as f:
+                    data = f.read()
+                if encode(config) != data:
+                    raise Invalid(f'{i} is not {t} encoded')
+                if decode(data) != config:
+                    raise Invalid(f'{i} does not decode to {t}')
+                print(f'{i}: {t} encoded, byte for byte')
         elif len(argv) == 3 and not argv[1].startswith('-'):
             with open(argv[1], 'rb') as f:
                 image = encode(tomllib.load(f))

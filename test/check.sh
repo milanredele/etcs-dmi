@@ -98,6 +98,11 @@ start evc_test 1 ./obj/evc_test
 start evc_fuzz 2 ./obj/evc_fuzz "$steps"
 start gen_language 1 python3 evc/language/gen_language.py --check
 start check_catalogue 1 python3 evc/language/check_catalogue.py
+# the configuration tool's images, which evc_test compares with the
+# encoders of EVC_Config (version 1 and version 3 with zones)
+start evc_config 2 python3 test/tools/evc_config.py --compare \
+   ports/hosted/evc.cfg test/wasm/onboard.cfg \
+   test/config/zones_v3.toml test/config/zones_v3.img
 start trace 1 python3 doc/SRS/tools/trace_subset026.py --check
 start efs_frames 1 python3 test/tools/efs_frames.py --check
 start golden_review 1 python3 test/tools/golden_review.py --check-tool

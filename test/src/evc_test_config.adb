@@ -991,6 +991,11 @@ package body EVC_Test_Config is
                = (2, 200, 0, 210, 0, 12, 3, 1, 44, 1, 44, 1, 164, 1, 0),
              "config zones: the count, then NID_C first and last, the "
              & "offset + 720 min and the rule of each zone");
+      Check (File_Bytes ("test/config/zones_v3.img")
+               = Byte_Array (Img (1 .. L)),
+             "config zones: test/config/zones_v3.img (test/tools/"
+             & "evc_config.py of test/config/zones_v3.toml) is the "
+             & "kernel's image of version 3 of these zones");
       Field (Z0, (1 => 9), CFG.Bad_Field, "more than 8 zones refused");
       Field (Z0 + 3, (100, 0), CFG.Bad_Field,
              "a zone ending before its start refused");
