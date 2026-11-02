@@ -18175,3 +18175,74 @@ connected to both: decide), B3080 and B3083 (the bench's odometer
 interval, `Group_Input_Ms`), the two passes' reason (4080300_21,
 4080420_03), B781's rest; the review again (eight items, readings
 first, no backlog read).
+
+### The acceptance's remaining items: 4080300_17's refused MA, the Infill sub-rows of the linking and the reversing packets, the Train Data state across a handover (e6/acceptance-left) (2026-11-02)
+
+- B3120 with B3060, 4080300_17 step 179 (Sf537caac). Traced with a
+  temporary print (reverted) in `EVC_Stored_Information.Take_Radio` and
+  `Store_MA` at the message 3 of step 168 (SV30, 204600 ms in our
+  clock): the slot's `Train_Data_Unacked` and `Consist_Unacked` False
+  (the 8 of step 163 was taken as the acknowledgement of the 129 of step
+  157), `Radio_Not_Taken` False for packets 15 and 80, so neither [3]
+  nor [17]; `Store_MA` rejects the MA by [4]
+  (`EVC_Track_Description.Covered` False). The Train Data change at
+  standstill of step 154 (M_LOADINGGAUGE 1 -> 2) deleted the SSP and the
+  gradient beyond the max safe front end (3.18.3.7 a), A.3.4.1.2 j),
+  A.3.4.1.3 column "e, g - j, l, m, o": Gradient Profile and
+  International SSP D[10], "beyond the current max safe front end"),
+  and the message 3 (L_ENDSECTION 3000 from BG4 at 1300 m, packet 80 LS
+  at D_MAMODE 200, packet 5) carries no packet 21 or 27; ERA's own step
+  list (the PDF of the sequence) names the same packets 15, 80 and 5.
+  The reviewer's first alternative (the acknowledgement not matched)
+  did not hold; the author's candidate ([4]) did. The on-board
+  conforms: the sequence assumes an MA that [4] refuses (an RBC would
+  answer the MA request of 3.8.2.5.1, sent at 203800 ms, with the SSP
+  and the gradient). Sf537caac triaged s076; B3060, B3120 closed. No
+  change in evc/.
+- B2961, the Infill sub-rows of the packets the units take themselves.
+  The claim held in part: in levels 1 and 2 the Infill and the
+  non-infill sub-rows of Linking, Reversing Area and Reversing
+  Supervision agree (A; R [1]), so `EVC_Position` and `EVC_Procedures`,
+  which take them in level 1, need no flag; the difference is in levels
+  0 and NTC with level 1 announced (non-infill R [1], Infill R), where
+  `EVC_Stored_Information.Keep_Unit_Packets` kept them in the balise
+  transition buffer with the context of the group. Built: each packet
+  judged with `Infill_Packet` (a packet 136 valid for the direction
+  before it in its telegram, 8.4.1.4.4), so an infill linking or
+  reversing packet is not kept. [18] is a kind of ours (packet 12's
+  V_MAIN, `EVC_Acceptance.Signalling_Speed`): applied on the value in
+  `EVC_Stored_Information.Take_MA_Packet`, an infill V_MAIN of zero
+  rejected (3.11.6.5: ignored, not a trip order of 3.11.6.4). Packet
+  44 (7.4.2.11, data for applications outside ERTMS/ETCS) has an Infill
+  sub-row but no kind here: not taken (the heading of
+  `EVC_Acceptance.Has_Infill_Row`). `evc_test Scenario_Infill_Rejected`:
+  a linking after a packet 136 in level 0 with level 1 announced not
+  kept, the same without the 136 kept; an infill packet 12 with V_MAIN
+  zero in level 1 FS no trip, the same without the 136 a trip; the two
+  infill cases failed before the fix. Runner: 3080300_01 SV21, SV22,
+  SV30 44 -> 48: BG2d (packet 136 NID_BG 3, then 21, 27, 12 with V_MAIN
+  0, "the next signal is at danger") tripped at step 44 before; now its
+  infill MA (L_ENDSECTION 20) is taken but placed from BG2d, the group
+  carrying it, where 3.6.2.3.1 and 3.8.5.1.2 refer infill data to the
+  location reference of the group at the next main signal (BG3, never
+  read, not linked by BG1d): our EOA near 170 m, the train runs to 300
+  m and trips at step 48 (Sf619da00, triaged E7: the matrix row
+  3.8.5.1.2 is deferred to E7 with infill). The matrix row 4.8.3.1.1
+  Table stays partial (B843, the session messages), its note updated;
+  B2961 closed.
+- The Train Data state across a handover (the review's remark on item
+  3). [3]'s first bullet reads "the RBC has not yet acknowledged any
+  train data in the ongoing communication session" ([17] reads "in the
+  ongoing mission"). Decision: per session, so the Accepting RBC's
+  messages on the rows with [3] are rejected from the Train Data sent to
+  it (3.15.1.3.3) until its message 8. Not built: `TD_Acked` is one
+  flag cleared only when no session is established or being
+  established, and its inputs are the supervising session's only
+  (`EVC_Radio.Train_Data_Acknowledged`, `EVC_Sessions.Train_Data_Awaited`),
+  so the acknowledgement per session needs `EVC_Sessions` (another
+  package's unit this round) and the slot's state by the message's
+  session in `EVC_Radio_Authority.Take_Message`. B3180 (onboard) with
+  both readings and the scenario to write.
+
+Runner: 1193 passed, 1036 failed, 961 blocked (3 sequences moved, 0
+regressions). Backlog: B2961, B3060, B3120 closed; B3180 added.
