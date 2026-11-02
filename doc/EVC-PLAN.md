@@ -18231,3 +18231,18 @@ first, no backlog read).
   golden, nothing removed or replaced: as intended).
 - SUBSET-076 after 21: 1193 / 1036 / 961, 0 regressions, 0
   improvements (the runner judges 21 from the DMI).
+- 4.4.13.1.6 (B015): "closing the desk in Trip mode will not cause a
+  mode change" held already (`EVC_Modes.Conditions`: TR has no
+  condition [28] to SB); the brief's premise of a missing transition
+  read the matrix note backwards. Built: "no interaction with the
+  driver ... as long as the desk is closed, except isolation": at the
+  start of `EVC_Core.Modes.Evaluate_Modes_And_Levels`, in TR with
+  `EVC_Train_Inputs.Desk_Open` false and isolation not selected, the
+  cycle's requests are dropped (`EVC_Driver_Requests.Clear`); isolation
+  selected has the first priority of 4.6.2, so nothing then needs
+  dropping. Post added: `Isolation_Selected` unchanged.
+  `Scenario_TR_Desk_Closed` (in `EVC_Test_Modes`): the trip's
+  acknowledgement with the desk closed was taken before the fix (TR ->
+  PT), refused after it, taken once the desk is open again, isolation
+  taken with the desk closed. Left: the adhesion choice, read by
+  `EVC_Stored_Information` in a step before (B3221).

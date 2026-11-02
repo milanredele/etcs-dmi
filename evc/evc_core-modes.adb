@@ -24,6 +24,12 @@ is
       NV    : constant EVC_Supervision_Input.National_Values_T :=
         EVC_National_Values.Current.Values;
    begin
+      if Current_Mode = M_TR
+        and then not EVC_Train_Inputs.Desk_Open
+        and then not EVC_Driver_Requests.Isolation_Selected
+      then
+         EVC_Driver_Requests.Clear;
+      end if;
       EVC_Levels.Evaluate
         (T            => EVC_Profiles.Origin_Table,
          C            =>

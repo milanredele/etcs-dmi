@@ -1325,4 +1325,42 @@ package body EVC_Test_Modes is
              & "(4.8.3 [1])");
    end Scenario_Infill_Rejected;
 
+   --  4.4.13.1.6: closing the desk in TR changes no mode, and no driver's
+   --  interaction is taken while it is closed (the acknowledgement of the
+   --  trip asked at standstill, 4.4.13.1.4), isolation excepted; the
+   --  desk opened again, the acknowledgement leads to PT (4.6.3 [7])
+   procedure Scenario_TR_Desk_Closed is
+      PT_Code : constant := 13;
+   begin
+      Start_E4;
+      EVC_Core.Set_Mode_For_Test (M_TR, L1);
+      Stand_X (300);
+      Check (ML (1) = TR_Code and then ML (3) = TR_Code,
+             "4.4.13.1.4: TR at standstill, the acknowledgement asked");
+      Signal (Cab_A_Active, False);
+      Stand_X (300);
+      Check (ML (1) = TR_Code,
+             "4.4.13.1.6: the desk closed in TR, no mode change");
+      Send (Ack_Of (1));
+      Stand_X (300);
+      Check (ML (1) = TR_Code,
+             "4.4.13.1.6: the trip's acknowledgement not taken while the "
+             & "desk is closed");
+      Signal (Cab_A_Active, True);
+      Stand_X (300);
+      Send (Ack_Of (1));
+      Stand_X (300);
+      Check (ML (1) = PT_Code,
+             "4.6.3 [7]: the desk opened again, the acknowledgement taken");
+      Start_E4;
+      EVC_Core.Set_Mode_For_Test (M_TR, L1);
+      Stand_X (300);
+      Signal (Cab_A_Active, False);
+      Stand_X (300);
+      Send (Isolate);
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_IS,
+             "4.4.13.1.6: isolation taken with the desk closed in TR");
+   end Scenario_TR_Desk_Closed;
+
 end EVC_Test_Modes;
