@@ -18259,3 +18259,41 @@ backwards; ours sends one to both at 382700 ms and the repetitions of
 l) and 3.15.1.3.4 noted; `@req 3.15.1.3.4` added on
 `Request_Balise_Errors`. The proof of `evc_sessions-reports`: none
 unproved, margin 1059 steps.
+
+**The triggers of 3.6.5.1.4 for the Accepting RBC's session (read, not
+run; nothing to build).** The clause has the bullets a) to l) in 4.0.0
+(the brief said a) to n)). Every trigger ours raises ends in
+`EVC_Sessions.Reports.Due` (`Evaluate`, `Mode_Changed`, `Request`) or,
+for l), in the per-session error count; `Produce` sends a due report to
+the supervising session and to `Also` (`EVC_Sessions.Handover.
+Also_Reported`: the Accepting RBC's session before the switch, the
+retained Handing Over one after it), each when established. Against
+3.15.1.3.4 ("its position reports to both", item 2's reading):
+
+| Trigger | Raised by | To the Accepting RBC while connected to both |
+|---|---|---|
+| a) standstill reached | `Evaluate` (`T.Standstill_Reached`, 4.5.2 row) | yes, `Due` -> `Also` |
+| b) mode change | `Mode_Changed` (`Mode_Reported`) | yes, `Due` -> `Also` |
+| c) integrity confirmed | `EVC_Sessions.Integrity.Evaluate` -> `Reports.Request` | yes, `Due` -> `Also` |
+| d) integrity lost | the same | yes |
+| e) RBC/RBC border, min safe rear end | `EVC_Sessions.Handover` `Req.Report` -> `Reports.Request` | yes (and 3.15.1.3.9's repetitions to the Handing Over RBC alone, `Forced_Report`, as that clause says) |
+| f) level transition border from level 2, min safe rear end | not built (row deferred) | no report at all; not a handover gap |
+| g) level change | `Evaluate` (`Level_Reported`) | yes |
+| h) session established | `Evaluate`: the supervising RBC's (`Was_Up`) and since item 1 the Accepting RBC's (`Acc_Up`) | yes (item 1) |
+| i) standstill left | `Evaluate` (`T.Standstill_Left`) | yes |
+| j) LRBG compliant group passed, no parameters | `Evaluate` (`T.LRBG_Passed`) | yes; the parameters are the Handing Over RBC's (one set, 3.15.1.3.4) |
+| k) RBC/RBC border, max safe front end | `EVC_Sessions.Handover` `Req.Report` | yes |
+| l) error of 3.16.4: balise group, odometer | `Request_Balise_Errors` -> `Produce` | yes since item 2 |
+| l) error of 3.16.4: radio message | `Request_Error (S, ...)` | to the sending RBC only, decision (a) of item 2, B3162 |
+
+No gap of a few lines is left; f) is the deferred row of the level
+transition border, not a matter of targets, so no new line.
+
+Units changed: `EVC_Sessions.Reports` (`Evaluate`, `Produce`,
+`Request_Balise_Errors`; state `Acc_Up`, `Bal_Due`, `Bal_Code`), proved
+alone. Tests: `EVC_Test_Handover` (two scenarios at its end, called
+from `evc_test.adb`). Files of record: B3140 and B3081 closed, B3160,
+B3161 (onboard) and B3162 (decision) added; triage lines Se1820110 and
+Sd077284a changed, S776cef6c (3110500_03) and Sb83b2c65 (9990500_09)
+added; baseline re-recorded twice (5 improvements). No edit outside the
+units.
