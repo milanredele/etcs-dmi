@@ -78,6 +78,14 @@ is
    function To_Buffer return Boolean
      with Global => (State, EVC_Received.Store);
 
+   --  1. 4.8.3, the row RBC Transition Order, From RBC: A [3] [15] [17]
+   --  in level 2: a packet 131 of the message received now is rejected
+   --  while the Train Data or a message 133 are not acknowledged, in the
+   --  context of the messages of the cycle (EVC_Sessions, which takes
+   --  the order)
+   function Transition_Order_Rejected return Boolean
+     with Global => State;
+
    --  1. 4.8.5.1, 4.8.5.3: the message Data of the session S kept in the
    --  transition buffer (three messages, the oldest replaced); Accepting:
    --  held from the Accepting RBC (4.8.2.1 c), 4.8.5.2), except the

@@ -451,6 +451,7 @@ begin
    Scenario_SR_List_Direction;
    Scenario_Text_Relocated;
    Scenario_TAF_Relocated_In_Rear;
+   Scenario_Train_Data_Per_Packet;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Order_With_L1_MA;

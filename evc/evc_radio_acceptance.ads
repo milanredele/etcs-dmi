@@ -211,6 +211,42 @@ is
                               C : Context_T) return Boolean
    is (C.Consist_Unacked and then Consist_Row (P));
 
+   --  4.8.3, the rows whose level 2 cell (From RBC: Yes) carries [3], by
+   --  their packets: Linking (5), Gradient Profile (21), International
+   --  SSP (27), Axle Load speed profile (51), Temporary Speed Restriction
+   --  (65) and its Revocation (66), Route Suitability Data (70), RBC
+   --  Transition Order (131), Track Conditions excluding big metal masses
+   --  (39, 40, 68, 69), Reversing Area (138) and Reversing Supervision
+   --  (139) Information, Permitted Braking Distance Information (52),
+   --  Level Crossing information (88), LSSMA display toggle on order
+   --  (180); the rows of messages (the MA, the SR, SH and shorten MA
+   --  answers, the track ahead free request) are First_Filter's
+   function Train_Data_Row (P : ETCS_Catalogue.Packet_Kind_T) return Boolean
+   is (P in ETCS_Catalogue.Track_P5 | ETCS_Catalogue.Track_P21
+          | ETCS_Catalogue.Track_P27 | ETCS_Catalogue.Track_P51
+          | ETCS_Catalogue.Track_P65 | ETCS_Catalogue.Track_P66
+          | ETCS_Catalogue.Track_P70 | ETCS_Catalogue.Track_P131
+          | ETCS_Catalogue.Track_P39 | ETCS_Catalogue.Track_P40
+          | ETCS_Catalogue.Track_P68 | ETCS_Catalogue.Track_P69
+          | ETCS_Catalogue.Track_P138 | ETCS_Catalogue.Track_P139
+          | ETCS_Catalogue.Track_P52 | ETCS_Catalogue.Track_P88
+          | ETCS_Catalogue.Track_P180);
+
+   --  4.8.3 [3] and [17] for packet P of a radio message, the table's
+   --  information being a packet (4.8.1.2, Figure 3: the first filter
+   --  sorts information, not messages): P is rejected when its row
+   --  carries [3] and the Train Data are not acknowledged
+   --  (Train_Data_Unacked, both bullets) or when it carries [17] and a
+   --  message 133 sent is not acknowledged (Consist_Unacked); the other
+   --  packets of its message are judged by their own rows. Decision: the
+   --  two states are those at the reception of the message
+   --  @req 4.8.3.1.1 Table-footnote [3], 4.8.3.1.1 Table-footnote [17]
+   function Packet_Rejected (P                  : ETCS_Catalogue.Packet_Kind_T;
+                             Train_Data_Unacked : Boolean;
+                             Consist_Unacked    : Boolean) return Boolean
+   is ((Train_Data_Unacked and then Train_Data_Row (P))
+       or else (Consist_Unacked and then Consist_Row (P)));
+
    --  4.8.4 [1], the rows A [1] of PT: "for level 2: only if following
    --  the reception of the information "Recognition of Exit from TR
    --  mode" with a more recent time stamp; for level 1: rejected"

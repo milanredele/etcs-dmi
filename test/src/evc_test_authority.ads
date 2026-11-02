@@ -117,4 +117,7 @@ package EVC_Test_Authority is
    procedure Scenario_Parameters_Direction;
    procedure Scenario_SR_List_Direction;
 
+   --  4.8.3 [3] applied to the packet, not to its message
+   procedure Scenario_Train_Data_Per_Packet;
+
 end EVC_Test_Authority;

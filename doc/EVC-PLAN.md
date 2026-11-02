@@ -17629,3 +17629,45 @@ the session's supervision. A build item of the next round
 (`EVC_Sessions.Mission.Evaluate_TD` with `Max_Repeats`, a case counting
 the four sendings).
 
+
+### The acceptance footnotes per packet: [17] and [3] on the packet and on packet 131 by radio, the Train Data's four values, the Infill sub-rows of the linking and the reversing packets (e6/acceptance-packets) (2026-11-02)
+
+- B2962, [17] and [3] per packet. The claim held at the source: 4.8.1.2
+  and Figure 3 filter information, and the table's rows are kinds of
+  information a message carries several of; `General_Taken` judged a
+  message 24 as a whole, so a packet 88 beside a packet 71 was taken
+  while the 133 or the Train Data were not acknowledged. The table
+  printed: [3] in the level 2 cell (From RBC: Yes) of the rows Linking,
+  MA, Gradient, International SSP, Axle Load speed profile, SR
+  authorisation, TSR, TSR revocation, Route Suitability, RBC Transition
+  Order, Track Conditions excluding big metal masses, Request to shorten
+  MA, SH refused, SH authorised, Track Ahead Free Request, Reversing Area,
+  Reversing Supervision, Permitted Braking Distance, Level Crossing, LSSMA
+  display toggle on; National Values, big metal masses ([17] only),
+  adhesion, inhibition of revocable TSRs, geographical position, the
+  level transition orders, the texts have none. Built:
+  `EVC_Radio_Acceptance.Train_Data_Row` (the packets of those rows: 5,
+  21, 27, 39, 40, 51, 52, 65, 66, 68, 69, 70, 88, 131, 138, 139, 180;
+  the message rows stay `First_Filter`'s) and `Packet_Rejected` ([3]
+  by `Train_Data_Row`, [17] by `Consist_Row`); the two states at the
+  reception kept in the message's slot (`EVC_Radio_Info.Slot_T`, set by
+  `EVC_Radio_Authority.Take_Message` for messages 3, 24, 33 and a
+  released set) and read per packet in
+  `EVC_Stored_Information.Radio_Not_Taken`, after the level filter (Figure
+  3: the footnotes are on the A branch, a packet R [2] outside level 2 is
+  stored and judged at its release). `General_Taken` only decides
+  whether the message goes to the stores. The premise on packet 131 did
+  not hold: it is taken by `EVC_Sessions.Take_Radio_Transition` (the
+  parent, any message of the supervising RBC), not by
+  `EVC_Sessions.Network.Take_Radio_Order` (packet 45); judged there by
+  `EVC_Radio_Authority.Transition_Order_Rejected` (the context of the
+  cycle's messages, `limited with` in the sessions' spec for its
+  Global). Decision: the states are those of the context of the
+  message (the last Evaluate), as for the messages. The handover and
+  train data scenarios' `Establish` now acknowledge the Train Data of
+  the first session (an RBC acknowledges them before it orders a
+  handover; without it 44 checks failed, the order rejected by [3]).
+  `evc_test Scenario_SM_Consist_Rejects` (an adhesion factor taken
+  beside a rejected level crossing, packet 131 rejected) and
+  `Scenario_Train_Data_Per_Packet`, both failing before the fix. Runner:
+  no movement.

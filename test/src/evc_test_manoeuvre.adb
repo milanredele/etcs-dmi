@@ -12,6 +12,8 @@ with Sim_Telegrams;
 with EVC_Track_Description;
 with ETCS_Track_Packets.P88;
 with ETCS_Track_Packets.P65;
+with ETCS_Track_Packets.P71;
+with ETCS_Track_Packets.P131;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P12;
 with ETCS_Variables;
@@ -1226,6 +1228,48 @@ package body EVC_Test_Manoeuvre is
       function LX_Stored return Boolean is
         (for some I in 1 .. EVC_Track_Description.Max_LX =>
            EVC_Track_Description.LX_Item (I).Used);
+      --  a general message with an adhesion factor (packet 71, the row
+      --  Adhesion Factor, level 2: A) and the level crossing (packet 88,
+      --  A [3] [17]); or with an RBC transition order (packet 131, A [3]
+      --  [15] [17]) alone
+      function Pair (Order : Boolean) return Byte_Array is
+         W  : Writer_T;
+         V  : ETCS_Message.Value_Array := (others => 0);
+         AD : ETCS_Track_Packets.P71.Packet_T;
+         OK : Boolean;
+      begin
+         V (3) := Now_Stamp;
+         V (5) := 123;
+         V (6) := 10;
+         Start_Message (W, MCat.Track_M24, V);
+         if Order then
+            ETCS_Track_Packets.P131.Encode
+              ((NID_PACKET     => 131,
+                Q_DIR          => 2,
+                L_PACKET       => 0,
+                Q_SCALE        => 1,
+                D_RBCTR        => 900,
+                NID_C          => 5,
+                NID_RBC        => 400,
+                NID_RADIO      => 16#0077#,
+                Q_SLEEPSESSION => 0), W, OK);
+         else
+            AD.Q_DIR := 2;
+            AD.Q_SCALE := 1;
+            AD.D_ADHESION := 200;
+            AD.L_ADHESION := 300;
+            AD.M_ADHESION := 0;
+            ETCS_Track_Packets.P71.Encode (AD, W, OK);
+            if OK then
+               ETCS_Track_Packets.P88.Encode
+                 (Sim_Telegrams.Level_Crossing
+                    (7, 300, 20, Guarded => False, Kmh => 20, Stop => True,
+                     L_Stop_M => 30), W, OK);
+            end if;
+         end if;
+         Check (OK, "SM consist: packets encoded");
+         return Message_Bytes (W);
+      end Pair;
    begin
       --  the change of the safe consist length sent in SB (3.18.3.10),
       --  then SM
@@ -1249,6 +1293,22 @@ package body EVC_Test_Manoeuvre is
              & Boolean'Image (EVC_Sessions.SM_Consist_Awaited) & " "
              & Boolean'Image (LX_Stored)
              & Natural'Image (EVC_Track_Description.TSR_Count));
+      --  the table's information is a packet (4.8.1.2, Figure 3): the
+      --  adhesion factor of the same message taken, the level crossing
+      --  rejected; the RBC transition order by radio rejected
+      Give_Radio_Message (1, Pair (Order => False));
+      Stand_X (300);
+      Give_Radio_Message (1, Pair (Order => True));
+      Stand_X (300);
+      Check (EVC_Stored_Information.Current.Adhesion.Count = 1
+             and then not LX_Stored
+             and then not EVC_Sessions.RBC_Order_Stored,
+             "SM consist: per packet, the adhesion factor taken, the level "
+             & "crossing of its message and the RBC transition order "
+             & "rejected (4.8.3 [17]):"
+             & Natural'Image (EVC_Stored_Information.Current.Adhesion.Count)
+             & " " & Boolean'Image (LX_Stored) & " "
+             & Boolean'Image (EVC_Sessions.RBC_Order_Stored));
       Give_Radio_Message (1, Consist_Ack (T));
       Stand_X (300);
       Give_Radio_Message (1, General (With_LX => True));

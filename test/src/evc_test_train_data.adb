@@ -117,9 +117,14 @@ package body EVC_Test_Train_Data is
       return Message_Bytes (W);
    end M24;
 
-   --  3.5.3.7 b to e for session S: set up, message 32, 38
+   --  3.5.3.7 b to e for session S: set up, message 32, 38; the first
+   --  session acknowledges the Train Data sent after its message 32
+   --  (message 8), as an RBC does before it orders a handover (4.8.3 [3]
+   --  rejects the order before)
    procedure Establish (S : Natural) is
       Values : ETCS_Message.Value_Array := (others => 0);
+      M      : ETCS_Message.Message_T;
+      St     : ETCS_Message.Status_T;
    begin
       Give_Radio_Event (S, Connection_Set_Up);
       Stand;
@@ -127,6 +132,20 @@ package body EVC_Test_Train_Data is
       Values (7) := 48;
       Give_Radio_Message (S, Message_Of (MCat.Track_M32, Values));
       Stand;
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, St);
+         if S = 1 and then ETCS_Message."=" (St, ETCS_Message.Accepted)
+           and then MCat."=" (M.Kind, MCat.Train_M129)
+           and then Radio_Output (N).Session = 1
+         then
+            Values (3) := Now_T;
+            Values (7) := M.Values (3);
+            Give_Radio_Message (S, Message_Of (MCat.Track_M8, Values));
+            Stand;
+            exit;
+         end if;
+      end loop;
+      Values := (others => 0);
       Values (3) := Now_T;
       Values (7) := 0;
       Give_Radio_Message (S, Message_Of (MCat.Track_M38, Values));

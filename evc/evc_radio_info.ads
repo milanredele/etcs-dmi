@@ -75,6 +75,11 @@ is
       --  buffer as a set of information: only its packets on the rows
       --  R [2] are taken (the others were at its reception)
       Level_2_Part : Boolean := False;
+      --  4.8.3 [3], [17] at the reception (or the release) of the
+      --  message: the Train Data, a message 133 not acknowledged
+      --  (EVC_Radio_Acceptance.Packet_Rejected)
+      Train_Data_Unacked : Boolean := False;
+      Consist_Unacked    : Boolean := False;
    end record;
 
    function Count return Count_T
