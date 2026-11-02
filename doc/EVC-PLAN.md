@@ -18348,3 +18348,124 @@ Neither pass is vacuous: no backlog line. The triage lines of the two
 signatures these sequences left (S82c622ac onboard for 4080300_21 step
 127, Sc17009f0 s076 for 4080420_03 step 85) still describe them as
 failing; they are the coordinator's to update.
+### The reports to both RBCs: the establishment report for the Accepting RBC's session, the error report while connected to both, the triggers of 3.6.5.1.4 re-read (e6/reports-both) (2026-11-02)
+
+**B3140, the establishment report for the Accepting RBC's session
+(done).** The review's cause held at the source. `EVC_Sessions.Reports.
+Evaluate` raised 3.6.5.1.4 h) on `R.In_Communication` alone, the
+supervising RBC's session (`Was_Up`). In 3110500_03 SV30 the Accepting
+RBC's session is established at its message 32 (159 and 129 to session
+2 at 94000 ms, 800 m) and no 136 went to either session by 98200 ms.
+3.6.5.1.4 h) reads "A communication session is successfully
+established": any session, and 3.15.1.3.4 sends "its position reports"
+to both RBCs while connected to both. The sequence's steps 86 and 88
+expect that 136 to both ("To both RBCs (Handing Over)", "(Accepting)").
+Order: 3.15.1.3.3 wants the Train Data "as soon as" the session is
+established; `EVC_Sessions.Produce` sends the 129 before
+`Reports.Produce`, so in the cycle of the establishment the 129 goes
+first, then the 136, as the sequence's steps 80 and 86 have them.
+Built: `Evaluate` keeps `Acc_Up` (the Accepting RBC's session
+established at the last cycle); its rising edge makes the report due
+(in the modes of `Session_Reported`, 4.5.2), and `Produce` sends a due
+report to the supervising session and to `Also` (the Accepting and the
+retained Handing Over session, `EVC_Sessions.Handover.Also_Reported`),
+so to both. `Also_Reported` and `Forced_Report` unchanged.
+Scenario `Handover_Session_Report` (EVC_Test_Handover): after the order,
+the Accepting session set up and its 32 given at standstill; over three
+cycles one 136 to each session, the one to 400 after its 129. Before the
+fix: none to either (0, 0). After: 1, 1, after the 129.
+Runner: 3110500_03 SV21, SV22, SV30 move from step 86 (Se1820110) to
+step 98 (S776cef6c): steps 86 to 89 pass (the 136 to both at 94000
+ms). At step 94 the Accepting RBC's message 24 with packet 74 (NID_LRBG
+1048577, BG1d, the LRBG) is followed by a 136 with packets 0 and 4 to
+session 2 at 94900 ms, the message refused as an error, and no text is
+shown after the switch: not traced, triaged onboard with B3160. No other
+sequence moved (the handover families 3150100_xx and 4080100_xx stay
+where they were; not traced why), 0 regressions. Rows: 3.6.5.1.4
+h), 3.15.1.3.3, 3.15.1.3.4 noted; `@req 3.6.5.1.4 h), 3.15.1.3.4` on
+`Evaluate`. The proof of `evc_sessions-reports`: 86 checks, none
+unproved, margin 978 steps.
+
+**B3081, the error report while connected to both (done for the balise
+group errors; the radio message errors a decision, B3162).** The claim
+held at the source: `Request_Balise_Errors` requested the error for the
+supervising session alone (`Request_Error (Sv, ...)`). The words:
+3.16.4.1 "In level 2, if a radio communication session is established,
+errors shall be reported"; 3.16.4.2 names balise group, odometer
+accuracy and radio message errors; 3.6.5.1.4 l) makes "An error as
+defined in 3.16.4" an event of a position report; 3.15.1.3.4: connected
+to both RBCs, the on-board "shall send its position reports to both of
+them". A balise group or odometer error is not tied to a session, so the
+reading is plain: its report goes to both. Built:
+`Request_Balise_Errors` keeps the cycle's error (`Bal_Due`, `Bal_Code`,
+same order of precedence as before); `Produce` gives it to the sessions
+of its report, the supervising one and `Also`
+(`EVC_Sessions.Handover.Also_Reported`: the Accepting RBC's session
+before the switch, the retained Handing Over one after it), each
+established. Scenario `Handover_Error_Report` (EVC_Test_Handover): group
+15 at 200 m with a telegram missing and unlinked (M_ERROR 2), passed
+while connected to both: before the fix 1 report to 300 and 0 to 400;
+after, 1 and 1.
+The radio message errors (M_ERROR 3, 4; `Request_Error (S, ...)` from
+`EVC_Sessions.Take_Inconsistent` and `Take_Message`) are left to the
+RBC whose session received the message: 3.16.3.1.1.2 says "The on-board
+shall inform the trackside if an inconsistent message is received",
+which does not say which trackside while two are connected, and
+3.15.1.3.4 would send any 136 to both. Options: (a) as built, to that
+RBC only: the message, its time stamps (3.16.3.3.3) and its sequence
+belong to its session, the other RBC never saw it; (b) to both, as
+every other position report while connected to both: the other RBC
+gets a packet 4 about a message it did not send. Effect on the corpus:
+none seen (3110500_03's error report at 94900 ms is to the Accepting
+RBC's own message; no step expects it either way). Recommendation (a).
+The user decides (B3162).
+Runner: 9990500_09 SV21 and SV22 move from step 87 to step 101: the
+error report of BG3d (318800 ms, packets 0 and 4) now goes to both
+sessions, so steps 85 and 87 ("136 packets 0" to each RBC) pass on it
+(the sequence's laboratory sends the report of the group's passage
+instead; Sd077284a's reading of BG3d's rejection stands). Step 101
+expects no 136 after the min safe rear end passes the border again
+backwards; ours sends one to both at 382700 ms and the repetitions of
+3.15.1.3.9 to session 1 (377000, 392000, 407000 ms) before its 156 at
+422000 ms: not traced, triaged onboard (Sb83b2c65, B3161). Rows: 3.6.5.1.4
+l) and 3.15.1.3.4 noted; `@req 3.15.1.3.4` added on
+`Request_Balise_Errors`. The proof of `evc_sessions-reports`: none
+unproved, margin 1059 steps.
+
+**The triggers of 3.6.5.1.4 for the Accepting RBC's session (read, not
+run; nothing to build).** The clause has the bullets a) to l) in 4.0.0
+(the brief said a) to n)). Every trigger ours raises ends in
+`EVC_Sessions.Reports.Due` (`Evaluate`, `Mode_Changed`, `Request`) or,
+for l), in the per-session error count; `Produce` sends a due report to
+the supervising session and to `Also` (`EVC_Sessions.Handover.
+Also_Reported`: the Accepting RBC's session before the switch, the
+retained Handing Over one after it), each when established. Against
+3.15.1.3.4 ("its position reports to both", item 2's reading):
+
+| Trigger | Raised by | To the Accepting RBC while connected to both |
+|---|---|---|
+| a) standstill reached | `Evaluate` (`T.Standstill_Reached`, 4.5.2 row) | yes, `Due` -> `Also` |
+| b) mode change | `Mode_Changed` (`Mode_Reported`) | yes, `Due` -> `Also` |
+| c) integrity confirmed | `EVC_Sessions.Integrity.Evaluate` -> `Reports.Request` | yes, `Due` -> `Also` |
+| d) integrity lost | the same | yes |
+| e) RBC/RBC border, min safe rear end | `EVC_Sessions.Handover` `Req.Report` -> `Reports.Request` | yes (and 3.15.1.3.9's repetitions to the Handing Over RBC alone, `Forced_Report`, as that clause says) |
+| f) level transition border from level 2, min safe rear end | not built (row deferred) | no report at all; not a handover gap |
+| g) level change | `Evaluate` (`Level_Reported`) | yes |
+| h) session established | `Evaluate`: the supervising RBC's (`Was_Up`) and since item 1 the Accepting RBC's (`Acc_Up`) | yes (item 1) |
+| i) standstill left | `Evaluate` (`T.Standstill_Left`) | yes |
+| j) LRBG compliant group passed, no parameters | `Evaluate` (`T.LRBG_Passed`) | yes; the parameters are the Handing Over RBC's (one set, 3.15.1.3.4) |
+| k) RBC/RBC border, max safe front end | `EVC_Sessions.Handover` `Req.Report` | yes |
+| l) error of 3.16.4: balise group, odometer | `Request_Balise_Errors` -> `Produce` | yes since item 2 |
+| l) error of 3.16.4: radio message | `Request_Error (S, ...)` | to the sending RBC only, decision (a) of item 2, B3162 |
+
+No gap of a few lines is left; f) is the deferred row of the level
+transition border, not a matter of targets, so no new line.
+
+Units changed: `EVC_Sessions.Reports` (`Evaluate`, `Produce`,
+`Request_Balise_Errors`; state `Acc_Up`, `Bal_Due`, `Bal_Code`), proved
+alone. Tests: `EVC_Test_Handover` (two scenarios at its end, called
+from `evc_test.adb`). Files of record: B3140 and B3081 closed, B3160,
+B3161 (onboard) and B3162 (decision) added; triage lines Se1820110 and
+Sd077284a changed, S776cef6c (3110500_03) and Sb83b2c65 (9990500_09)
+added; baseline re-recorded twice (5 improvements). No edit outside the
+units.
