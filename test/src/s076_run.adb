@@ -21,6 +21,8 @@ with DMI_Radio_Data;
 with DMI_System_Status;
 with DMI_Observe;
 with DMI_Windows;             use DMI_Windows;
+with ETCS_Catalogue;
+with ETCS_Message;
 with EVC_Core;
 with EVC_Distances;
 with EVC_Odometry;
@@ -7552,14 +7554,34 @@ package body S076_Run is
                             & Natural'Image (B.JRU (K).B4));
                end loop;
                --  the window's RTM sendings: message or request, session,
-               --  bench time
+               --  bench time; a message with its length in bytes and its
+               --  packets (a 136 with packet 4 is an error report)
                for K in 1 .. B.Radio_Count loop
-                  Put_Line ("      rtm "
-                            & (if B.Radio (K).Is_Request then "request"
-                               else "message")
-                            & Natural'Image (B.Radio (K).Code)
-                            & " session" & Natural'Image (B.Radio (K).Session)
-                            & " at" & Unsigned_64'Image (B.Radio (K).At_Ms));
+                  Put ("      rtm "
+                       & (if B.Radio (K).Is_Request then "request"
+                          else "message")
+                       & Natural'Image (B.Radio (K).Code)
+                       & " session" & Natural'Image (B.Radio (K).Session)
+                       & " at" & Unsigned_64'Image (B.Radio (K).At_Ms));
+                  if not B.Radio (K).Is_Request then
+                     declare
+                        D : constant S076_Bench.Radio_Out_T := B.Radio (K);
+                        M : ETCS_Message.Message_T;
+                        Status : ETCS_Message.Status_T;
+                     begin
+                        ETCS_Message.Parse (D.Data (1 .. D.Length),
+                                            ETCS_Catalogue.Train_To_Track,
+                                            ETCS_Catalogue.RBC, M, Status);
+                        Put (" bytes" & Natural'Image (D.Length));
+                        if ETCS_Message."=" (Status, ETCS_Message.Accepted) then
+                           Put (" packets");
+                           for J in 1 .. M.Count loop
+                              Put (Natural'Image (Natural (M.Index (J).NID)));
+                           end loop;
+                        end if;
+                     end;
+                  end if;
+                  New_Line;
                end loop;
             end if;
             if Verbose then
