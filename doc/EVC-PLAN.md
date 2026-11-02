@@ -18814,3 +18814,33 @@ decodes the language of system version 3 only, the translation of
 chapter 6 is not built: S776cef6c E7 for SV21 and SV22 (the same family
 and step by another cause, so two lines). The line "onboard, not
 traced" of e6/reports-both rewritten; B3160 dropped, B3244 done.
+
+**Seb6766c6, the group read in TR where FS is expected (triaged by
+cause; no runner change).** Twenty sequences, eight families, each
+traced at SV30 with `DEBUG=1`. Four causes. (1) The sequence's data,
+3040200_05 (SV22, SV30) step 67: BG1d's packet 5 (read in L1 SR,
+accepted by 4.8.3, kept into FS by 4.10.1.3) announces BG3 at 700 m
+(D_LINK 50 then 600, Q_LINKREACTION 00 trip, Q_LOCACC 12), the group is
+at 500 m (ERA's PDF the same): detected in rear of its window,
+3.16.2.3.1 a), the trip of 4.6.3 [17] and the balise group error report
+at 70200 ms. (2) E7, 3110600_01 (three versions) step 82: BG6d's infill
+packet 12 (V_MAIN 0, L_ENDSECTION 0, the infill location reference BG8)
+is placed from BG6d, the group carrying it (3.6.2.3.1, 3.8.5.1.2
+deferred, as Sf619da00), so the EOA is at 2000 m and the train trips at
+2010 m; 3.11.6.5.1 puts it at the next main signal. (3) The runner's
+driver, 4080300_02 (three versions) step 176: the non-protected LX with
+Q_STOPLX 1 is a temporary EOA without release speed (3.12.5.8); step
+175's comment says the train stops in rear of it, after which 5.16.2.1
+lifts the EOA; the runner keeps 18 km/h into it (B3301, the fix left:
+a stop in the stopping area and the resumption). (4) The family's
+earlier reading, narrowed: 3040400_04, 3131050_11, 3131050_22 join a
+case whose first group lies beyond the EOA where the previous case
+leaves the train (at standstill at its EOA, in release speed
+monitoring 22 m before it, or with no L2 MA extension before the
+group); ERA's PDFs not checked, kept as model. Left to trace (B3300):
+4080436_03 and 4080443_01 trip at an immediate transition to level 2
+(D_LEVELTR 0) with an L1 MA left; not a chart cause, the trip reason
+not yet read. No sequence moved; the baseline unchanged.
+
+**S69f1f87e, the speed information still shown (left).** Not taken:
+the bound of the package was reached with the second item.
