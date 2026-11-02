@@ -18789,3 +18789,28 @@ concerns in either reading; the SRS gives no RBC-side rule for an error
 report). The same reading as the balise group errors of B3081. A build
 item of the next round.
 
+
+### The runner's texts and chart: 3110500_03 in three versions, the group read in TR, the speed information still shown (e5/runner-chart-2) (2026-11-02)
+
+**B3244 / B3160, 3110500_03 step 98 in three versions (done; no
+defect of ours).** Traced with `VERBOSE=1 DEBUG=1` in SV30, SV21 and
+SV22 on master: in all three the Accepting RBC's message 24 of step 94
+is refused as inconsistent: JRU 13 (RADIO ERROR, M_ERROR 3) and the 136
+with packets 0 and 4 to session 2 (94900 ms in SV30, 94600 ms in SV21
+and SV22); no text is stored, so none is shown at 1890 m. SV30: the
+RBC's 32 gives M_VERSION 3.0; packet 74 carries M_LEVELTEXTDISPLAY
+101b = 5 for the start and the end condition, spare in 4.0.0 (7.5.1.66:
+0 to 3 the levels, 4 no level sub-condition, 5 to 7 spare); ERA's PDF
+of the sequence prints the same 101 b twice; `evc_s076_check` rejects
+the message (INVALID_VALUE, scn line 855); the refusal is 3.16.1.1's:
+the sequence's data (S776cef6c s076, the reviewer's reading held).
+SV21 and SV22: the RBC's 32 gives M_VERSION 2.1 / 2.2; for an RBC
+certified to 2.0 to 2.3, 6.5.2.3.9.2 makes 6.5.1.5.27.4 apply, where 5
+means the display not limited by the level (translated to 4, note
+[22]); SV21 sends the text as packet 76 (6.5.2.3.1.1.3, the fixed text
+packet of 2.0 and 2.1, undefined in 4.0.0's table 7.4.1.1, so
+`EVC_Core.Inputs.Read_Radio_Messages` counts it unknown); this on-board
+decodes the language of system version 3 only, the translation of
+chapter 6 is not built: S776cef6c E7 for SV21 and SV22 (the same family
+and step by another cause, so two lines). The line "onboard, not
+traced" of e6/reports-both rewritten; B3160 dropped, B3244 done.
