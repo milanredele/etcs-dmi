@@ -70,4 +70,21 @@ package EVC_Test_Handover is
    --  session's end
    procedure Scenario_Handover_Train_Data_Once;
 
+   --  3.15.1.3.1 c), 3.15.1.3.2.2, 3.15.1.3.4: after the switch a group
+   --  past the border orders the transition at once to the RBC already
+   --  supervising: the border kept, the min safe rear end's report to
+   --  the Handing Over RBC, the reports to both until then
+   procedure Scenario_Handover_Order_Again;
+
+   --  3.6.3.1.4, 3.12.3.4.3.1.3, 3.15.1.3.6: the Accepting RBC's fixed
+   --  texts referred to an LRBG "unknown" without a location
+   --  sub-condition, stored until the switch: the one valid for both
+   --  directions shown at the switch, the one valid for the nominal
+   --  direction rejected
+   procedure Scenario_Handover_Text_No_LRBG;
+
+   --  3.18.3.4, A.3.1: the Train Data (message 129) not acknowledged:
+   --  sent once and repeated three times 15 s apart, then no more
+   procedure Scenario_Train_Data_Repeats;
+
 end EVC_Test_Handover;

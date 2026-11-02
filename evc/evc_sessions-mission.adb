@@ -20,7 +20,7 @@ package body EVC_Sessions.Mission
        Refined_State => (State => (Step, SoM_RBC, SoM_S, Report_Valid,
                                    Reject_Due, Reject_S, Awaiting_Network,
                                    TD_Due, TD_Awaited, TD_Stamp, TD_Since,
-                                   TD_S, Was_Up,
+                                   TD_S, Was_Up, TD_Repeats,
                                    EoM_Due, EoM_Awaited, EoM_Since,
                                    EoM_Repeats, EoM_S, EoM_Also,
                                    Confirm, Delete, N_TD, N_Rep, N_EoM))
@@ -68,13 +68,15 @@ is
 
    --  3.18.3.4: the Train Data to send (TD_Due), sent and awaiting their
    --  acknowledgement (message 8 with TD_Stamp) in TD_S since TD_Since;
-   --  Was_Up: the supervising session was established at the last cycle
+   --  Was_Up: the supervising session was established at the last cycle;
+   --  TD_Repeats: the repetitions of the awaited set sent (A.3.1)
    TD_Due       : Boolean := False;
    TD_Awaited   : Boolean := False;
    TD_Stamp     : T_TRAIN_T := 0;
    TD_Since     : R.Time_Ms_T := 0;
    TD_S         : R.Session_T := 1;
    Was_Up       : Boolean := False;
+   TD_Repeats   : Natural range 0 .. Max_Repeats := 0;
 
    --  5.5.3.1.3, 5.5.4.1.1: End of Mission to send, sent and repeated
    --  while the desk is open until the RBC terminates the session
@@ -146,6 +148,7 @@ is
       TD_Since := 0;
       TD_S := 1;
       Was_Up := False;
+      TD_Repeats := 0;
       EoM_Due := False;
       EoM_Awaited := False;
       EoM_Since := 0;
@@ -444,20 +447,30 @@ is
    --  Sent when the supervising session is established with valid Train
    --  Data (not while the start of mission sends its report, decision
    --  2), when the driver validates them in a session, again after a
-   --  connection lost before the acknowledgement (3.18.3.4.2) and every
-   --  Repeat_Ms until acknowledged (decision 4), by the supervising
-   --  session only: the set sent to the Accepting RBC (3.15.1.3.3) is
-   --  repeated once that RBC supervises, never to the Handing Over RBC;
-   --  the acknowledgement is forgotten with the session
+   --  connection lost before the acknowledgement (3.18.3.4.2) and, not
+   --  acknowledged, repeated Max_Repeats times Repeat_Ms apart (decision
+   --  4, A.3.1: four sendings in all; then the acknowledgement is still
+   --  awaited but nothing more is sent: the RBC's silence is the
+   --  session's own supervision, T_NVCONTACT of 3.16.3.4, no brake or
+   --  mode action of its own), by the supervising session only: the set
+   --  sent to the Accepting RBC (3.15.1.3.3) is repeated once that RBC
+   --  supervises, never to the Handing Over RBC; the acknowledgement is
+   --  forgotten with the session
+   --  @req A.3.1 Table
    procedure Evaluate_TD (Ctx : R.Context_T)
-     with Global => (In_Out => (TD_Due, TD_Awaited, Was_Up, R.State),
+     with Global => (In_Out => (TD_Due, TD_Awaited, Was_Up, TD_Repeats,
+                                R.State),
                      Input  => (TD_Since, TD_S, Step, EVC_Train_Data.State,
                                 EVC_Mission.State))
    is
       Sv    : constant R.Session_Ref_T := R.Supervising;
       Is_Up : constant Boolean :=
         Sv /= R.No_Session and then Up (R.Session_T (Sv));
+      First : Boolean;
    begin
+      if not TD_Awaited then
+         TD_Repeats := 0;
+      end if;
       if not Is_Up then
          if not (Sv /= R.No_Session
                  and then R.Info (R.Session_T (Sv)).State
@@ -472,16 +485,18 @@ is
          Was_Up := False;
          return;
       end if;
+      First := (not Was_Up
+                and then (TD_Awaited or else not R.Train_Data_Acknowledged))
+               or else EVC_Mission.Train_Data_Validated;
       if EVC_Train_Data.Valid and then Step not in Opening | Report_Due
-        and then ((not Was_Up
-                   and then (TD_Awaited
-                             or else not R.Train_Data_Acknowledged))
-                  or else EVC_Mission.Train_Data_Validated
+        and then (First
                   or else (TD_Awaited and then Sv = R.Session_Ref_T (TD_S)
+                           and then TD_Repeats < Max_Repeats
                            and then Elapsed (TD_Since, Ctx.Now_Ms)
                                       >= Repeat_Ms))
       then
          TD_Due := True;
+         TD_Repeats := (if First then 0 else TD_Repeats + 1);
       end if;
       Was_Up := True;
    end Evaluate_TD;

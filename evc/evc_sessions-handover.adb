@@ -164,11 +164,18 @@ is
    --  3.15.1.3.1 a), 3.15.1.3.2, 3.15.1.3.2.3: a new order applied: the
    --  border to the position, the session of another Accepting RBC
    --  terminated, the session with the new one asked for
-   --  @req 3.5.3.4.1, 3.15.1.3.1 a), 3.15.1.3.2.3
+   --  decision 6: after the switch, while the Handing Over session is
+   --  retained, an order naming the RBC that supervises (a group at the
+   --  border repeating the engaged order at once, 3150100_06 BG2d)
+   --  replaces the order (3.15.1.3.2.2) with the same pair: the border
+   --  stays for the min safe rear end's report to the Handing Over RBC
+   --  (3.15.1.3.1 c), the reports go on to both (3.15.1.3.4), no second
+   --  switch takes the supervising session as the Handing Over one
+   --  @req 3.5.3.4.1, 3.15.1.3.1 a), 3.15.1.3.2.3, 3.15.1.3.2.2
    procedure Apply_Order (Req : in out Request_T)
      with Global => (In_Out => (Order, Opened, Single, Switch_Next, TD_To,
                                 R.State, EVC_Position.State),
-                     Input  => EVC_Odometry.State),
+                     Input  => (EVC_Odometry.State, Old_S)),
           Post => R.Sessions = R.Sessions'Old
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
@@ -187,7 +194,13 @@ is
       Ac : constant R.Session_Ref_T := R.Accepting;
       OK : Boolean := True;
    begin
-      if Order.Fresh then
+      if Order.Fresh and then Old_S /= R.No_Session
+        and then Sv /= R.No_Session and then Sv /= Old_S
+        and then R.Info (R.Session_T (Sv)).RBC = Order.RBC
+      then
+         --  decision 6
+         Order := (others => <>);
+      elsif Order.Fresh then
          Order.Fresh := False;
          Opened := False;
          Single := False;

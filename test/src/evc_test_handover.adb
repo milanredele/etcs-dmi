@@ -996,4 +996,149 @@ package body EVC_Test_Handover is
              & ", to session 2:" & To_New'Image);
    end Scenario_Handover_Train_Data_Once;
 
+   procedure Scenario_Handover_Order_Again is
+      W       : Writer_T;
+      OK      : Boolean;
+      Passed  : Boolean := False;
+      To_Old  : Natural;
+      At_Rear : Boolean := False;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      --  the group past the border: packet 131 D_RBCTR 0 for 400
+      Add_Group (Group (25, 310));
+      ETCS_Track_Packets.P131.Encode (P131 (0, 400), W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Run_X (30_500);
+      Check (R.Supervising = 2 and then R.Info (1).State = R.Established,
+             "order again: the front past the border at 300 m, 400 "
+             & "supervises, the session with 300 kept");
+      --  the reports of each 5 m step counted (a step's outputs only)
+      To_Old := 0;
+      while Train_Cm < 32_000 loop
+         Run_X (Train_Cm + 500);
+         To_Old := To_Old + Sent (136, 1);
+      end loop;
+      Check (R.Supervising = 2 and then R.Info (1).State = R.Established
+             and then To_Old > 0,
+             "order again: group 25 read with the order at once for 400, "
+             & "which supervises: the Handing Over session 1 still "
+             & "reported to (3.15.1.3.4)");
+      --  5 m a cycle until the min safe rear end passes the border
+      while not Passed and then Train_Cm < 100_000 loop
+         Seen := EVC_Position.No_Triggers;
+         Run_X (Train_Cm + 500);
+         Passed := Seen.Border_Rear;
+         At_Rear := Passed and then Sent (136, 1) > 0;
+      end loop;
+      Check (Passed and then At_Rear and then R.Info (1).State = R.Established,
+             "order again: the min safe rear end past the border, the "
+             & "report to the Handing Over RBC 300 (3.15.1.3.1 c), at"
+             & Integer_64'Image (Train_Cm) & " " & Passed'Image);
+   end Scenario_Handover_Order_Again;
+
+   --  Message 24 referred to the LRBG "unknown" with a fixed text of
+   --  no location sub-condition, valid for the directions Q_DIR
+   function M24_Text_No_LRBG (Q_DIR : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 1023;
+      V (6) := 16383;
+      Start_Message (W, MCat.Track_M24, V);
+      ETCS_Track_Packets.P74.Encode
+        ((Q_DIR => ETCS_Variables.Q_DIR_T (Q_DIR), Q_SCALE => 1,
+          D_TEXTDISPLAY => 32767, L_TEXTDISPLAY => 32767,
+          T_TEXTDISPLAY => 1023,
+          M_MODETEXTDISPLAY => 15, M_LEVELTEXTDISPLAY => 4,
+          M_MODETEXTDISPLAY_2 => 15, M_LEVELTEXTDISPLAY_2 => 4,
+          others => <>), W, OK);
+      Check (OK, "handover: packet 74 encoded");
+      return Message_Bytes (W);
+   end M24_Text_No_LRBG;
+
+   procedure Scenario_Handover_Text_No_LRBG is
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Give_Radio_Message (2, M24_Text_No_LRBG (1));
+      Stand;
+      Give_Radio_Message (2, M24_Text_No_LRBG (2));
+      Stand;
+      Check (R.Accepting = 2 and then EVC_Radio_Authority.Buffered = 2
+             and then EVC_Text_Messages.Displayed = 0,
+             "handover text, LRBG unknown: the two texts of the Accepting "
+             & "RBC stored, not shown before the switch (3.15.1.3.6)");
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then EVC_Radio_Authority.Buffered = 0
+             and then EVC_Text_Messages.Displayed = 1,
+             "handover text, LRBG unknown: at the switch the text valid "
+             & "for both directions shown, no location needed "
+             & "(3.12.3.4.3.1.3), the nominal one rejected (3.6.3.1.4);"
+             & EVC_Text_Messages.Displayed'Image);
+   end Scenario_Handover_Text_No_LRBG;
+
+   procedure Scenario_Train_Data_Repeats is
+      V      : ETCS_Message.Value_Array := (others => 0);
+      N      : Natural := 0;
+      At_Ms  : array (1 .. 8) of Integer := (others => -1);
+      T0     : Integer := 0;
+      N0     : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      V (3) := Now_T;
+      V (7) := 48;
+      N0 := EVC_Sessions.Train_Data_Sent;
+      Give_Radio_Message (1, Message_Of (MCat.Track_M32, V));
+      T0 := Integer (EVC_Core.Time_Ms);
+      --  no message 8: 75 s of 100 ms cycles, the 129s counted with their
+      --  time from the message 32
+      for C in 1 .. 750 loop
+         Stand;
+         if C = 2 then
+            V := (others => 0);
+            V (3) := Now_T;
+            Give_Radio_Message (1, Message_Of (MCat.Track_M38, V));
+         end if;
+         while N < EVC_Sessions.Train_Data_Sent - N0 loop
+            N := N + 1;
+            if N <= At_Ms'Last then
+               At_Ms (N) := Integer (EVC_Core.Time_Ms) - T0;
+            end if;
+         end loop;
+      end loop;
+      Check (N = 4 and then R.Info (1).State = R.Established
+             and then At_Ms (4) - At_Ms (1) in 44_000 .. 46_000,
+             "Train Data unacknowledged: the 129 sent once and repeated "
+             & "three times 15 s apart, none after the fourth (A.3.1); "
+             & "sendings" & N'Image & " at" & At_Ms (1)'Image
+             & At_Ms (2)'Image & At_Ms (3)'Image & At_Ms (4)'Image
+             & At_Ms (5)'Image & " "
+             & R.Session_State_T'Image (R.Info (1).State));
+   end Scenario_Train_Data_Repeats;
+
 end EVC_Test_Handover;

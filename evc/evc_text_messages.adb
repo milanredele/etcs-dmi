@@ -529,8 +529,14 @@ is
    --  3.12.3, 3.6.2.2.2 c): the packets 73 and 74 of the radio
    --  messages of the cycle, valid for the train (3.6.3.1.3), referred to
    --  the estimated position of the LRBG their message names (its origin
-   --  in EVC_Origins; none, the message is not taken: the stored
-   --  information records it), kept until the next Evaluate stores them
+   --  in EVC_Origins), kept until the next Evaluate stores them. Without
+   --  an origin (the LRBG "unknown", 3.6.2.2.2.3) a text needs no
+   --  position when it uses no location sub-condition (3.12.3.4.3.1.3,
+   --  .4): decision: taken then, valid for both directions only
+   --  (3.6.3.1.4: the train orientation cannot be referred to the LRBG);
+   --  any other packet of such a message is not taken (the stored
+   --  information records it)
+   --  @req 3.6.3.1.4
    procedure Take_Radio (First : Positive := 1; Accepted : Boolean := True)
      with Refined_Global => (Input  => (EVC_Radio_Info.State,
                                         EVC_Origins.State),
@@ -545,38 +551,42 @@ is
          pragma Loop_Invariant (True);
          declare
             Sl : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+            Located : constant Boolean :=
+              Sl.Origin /= 0 and then EVC_Origins.Get (Sl.Origin).Used;
+            X0 : constant Dist_T :=
+              (if Located then EVC_Origins.Get (Sl.Origin).Est.Ref.X else 0);
          begin
-            if Sl.Origin /= 0 and then EVC_Origins.Get (Sl.Origin).Used then
-               for P in 1 .. EVC_Radio_Info.Packet_Count (I) loop
-                  pragma Loop_Invariant (True);
-                  declare
-                     E  : constant ETCS_Packet_Index.Entry_T :=
-                       EVC_Radio_Info.Packet_Entry (I, P);
-                     pragma Warnings
-                       (GNATprove, Off,
-                        """R"" is set by ""Decode"" but not used after*",
-                        Reason => "the reader of one packet");
-                     R  : Reader_T;
-                     OK : Boolean;
-                     M  : Message_T;
-                  begin
-                     if E.Kind in ETCS_Catalogue.Track_P73
-                                | ETCS_Catalogue.Track_P74
-                       and then EVC_Position.Valid_For (E.Q_DIR, Sl.G, Sl.T)
-                       and then Pending_N < Max_Pending
+            for P in 1 .. EVC_Radio_Info.Packet_Count (I) loop
+               pragma Loop_Invariant (True);
+               declare
+                  E  : constant ETCS_Packet_Index.Entry_T :=
+                    EVC_Radio_Info.Packet_Entry (I, P);
+                  pragma Warnings
+                    (GNATprove, Off,
+                     """R"" is set by ""Decode"" but not used after*",
+                     Reason => "the reader of one packet");
+                  R  : Reader_T;
+                  OK : Boolean;
+                  M  : Message_T;
+               begin
+                  if E.Kind in ETCS_Catalogue.Track_P73
+                             | ETCS_Catalogue.Track_P74
+                    and then EVC_Position.Valid_For (E.Q_DIR, Sl.G, Sl.T)
+                    and then Pending_N < Max_Pending
+                  then
+                     EVC_Radio_Info.Open_Packet (I, P, R);
+                     Decode (E.Kind = ETCS_Catalogue.Track_P73, R, X0,
+                             Sl.S, M, OK);
+                     if OK and then (Located
+                                     or else not (M.Has_Start_X
+                                                  or else M.Has_End_X))
                      then
-                        EVC_Radio_Info.Open_Packet (I, P, R);
-                        Decode (E.Kind = ETCS_Catalogue.Track_P73, R,
-                                EVC_Origins.Get (Sl.Origin).Est.Ref.X,
-                                Sl.S, M, OK);
-                        if OK then
-                           Pending_N := Pending_N + 1;
-                           Pending (Pending_N) := M;
-                        end if;
+                        Pending_N := Pending_N + 1;
+                        Pending (Pending_N) := M;
                      end if;
-                  end;
-               end loop;
-            end if;
+                  end if;
+               end;
+            end loop;
          end;
       end loop;
    end Take_Radio;
