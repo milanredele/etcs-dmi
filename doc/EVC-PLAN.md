@@ -18672,3 +18672,110 @@ cause; 4080300_16 is the one on-board candidate (the relocation by
 times of 9990500_09 differ from the author's (388600 ms here against
 382700 ms) on the same master. Backlog: B3240 to B3245. The review
 took about 115 tool calls of 130.
+
+### E5 integration after the sixty-second round, the thirtieth of E6 (2026-11-02)
+
+Merged: e6/acceptance-left (B3120 / B3060: 4080300_17 step 179 traced
+with a print: the message 8 was taken and no footnote rejects the
+message 3; `Store_MA` refuses the MA by [4] because the Train Data
+change at standstill deleted the SSP and the gradient beyond the max
+safe front end (3.18.3.7 a), A.3.4.1.3 D[10]) and the message 3 carries
+no packet 21 or 27 (ERA's PDF the same): the on-board conforms, the
+sequence triaged s076; the author's candidate [4] was right, the
+reviewer's alternative wrong; B2961: in levels 1 and 2 the Infill
+sub-rows of the linking and the reversing packets agree with the
+non-infill ones, so no flag in `EVC_Position` or `EVC_Procedures` (the
+brief's unit wrong); `Keep_Unit_Packets` judges by `Infill_Packet` in
+level 0 and NTC, [18] in `Take_MA_Packet`, packet 44 named as no kind of
+ours; 3080300_01 moved from 44 to 48 (E7: the infill MA placed from the
+infill group, 3.8.5.1.2 deferred); the Train Data acknowledgement per
+session decided from the words of [3] ("in the ongoing communication
+session") and left to build with `EVC_Sessions` (B3180)),
+e5/runner-odometer (B3080: `S076_Bench.Cycle` keeps the remainder, the
+odometer interval is the stated per mille at every speed; six sequences
+moved backward and five forward, each traced: 3131050_19 had passed on
+an interval of zero (s076 like its twin: the train above our release
+speed), 4080300_16 (s076: BG6's Q_LOCACC 12 m in the bits against 63 m
+in the comments), 3080200_02 (model), 3040400_03 (B3200); B3083:
+`Group_Input_Ms` reset per sequence, no step moved; the two passes of
+round 60 are for footnote [17]'s reason, not vacuous, the two triage
+lines noted by the coordinator), e6/reports-both (B3140: 3.6.5.1.4 h)
+per session, the Accepting RBC's establishment makes the report due and
+`Produce` sends it to both after the 129 of 3.15.1.3.3,
+`Scenario_Handover_Session_Report`; 3110500_03 moved from 86 to 98 in
+three versions (B3160); B3081: a balise group error reported to both
+while connected to both (3.6.5.1.4 l), 3.15.1.3.4),
+`Scenario_Handover_Error_Report`; 9990500_09 from 87 to 101 (B3161);
+the radio message errors (M_ERROR 3, 4) left to the receiving RBC with
+a paper (B3162); the triggers a) to l) tabled, all reaching the
+Accepting session, f) deferred), and e6/jru-messages (the brake
+statuses 33 to 37 at the first reception and each change, the train
+interface reporting all five special brakes (the brief allowed some
+missing), `Scenario_JRU_Brake_Status`; 40 not written, the traction
+status is a train input the on-board has no signal for (B3220); the
+DMI symbol status 21 from what each cycle sends to the DMI
+(`EVC_Core.Records.Record_Symbols`: the mode and level by DMI 13.3.1.1,
+the status bits, the track conditions, the LX, the LSSMA; the DMI's own
+and the ATO bits 0), `Scenario_JRU_Symbols`, 13 on-board goldens
+re-recorded with records added only; 4.4.13.1.6: no transition was
+missing, the driver's requests of the cycle are dropped in TR with the
+desk closed (isolation excepted), `Scenario_TR_Desk_Closed`, B3221 the
+adhesion choice; B1360 and B15 narrowed), and e5/review-62 (the
+eleventh blind review, below).
+
+The review (e5/review-62, 116 calls, 8.4 USD, past its bound with the
+eighth item in hand): eight items, all reached; ten verdicts, 5 agreed,
+5 disagreed, 1 undecided. Disagreed: (B3240) the radio message errors
+while connected to both: to both, 3.15.1.3.4 making no exception, where
+the author's paper recommends the receiving RBC only: the user decides
+with B3162; (B3242) 4080300_16 step 73 is ours: with BG6 the SOLR the
+EOA should move by the linking distance (3.6.4.2.5 a)), ours keeps it;
+(B3243) 3040400_03 step 76 is the sequence's: Q_LINKREACTION 01 in the
+bits shortens the MA at the standstill (3.16.2.6.2), the trip follows;
+(B3244) 3110500_03 step 98 is the sequence's: M_LEVELTEXTDISPLAY 5 is a
+spare value in 4.0.0 (7.5.1.66), the codec refuses the message and the
+error report follows, SV21 and SV22 to trace; (B3245) 9990500_09 step
+101 is the sequence's: the reports after moving back are required by
+3.6.5.1.4 a) and i) and 3.15.1.3.9. Undecided (B3241): 3131050_19: our
+release speed 20 km/h against the train's 24.1, where the interval
+alone should not move the release speed (3.13.9.4.8.2). The reviewer
+ran one `git log` for a hash before its verdicts, against the brief.
+Eleven rounds of reviews: 91 items, 80 agreed, 15 disagreed, 6
+undecided; 28 lines, of which 8 became fixes; 69.5 USD. The rate of
+disagreement rose with four untraced "onboard" lines of this round's
+authors: a trace agent's "not traced" line is a claim like any other.
+
+Verification of the merged tree: two chain runs (after two packages,
+then after all four), all green: `test/check.sh` ok; the full proof
+13919 checks, none unproved, margin 47726 steps; cross build and stack
+32768 B budget, margin 6056 B (the symbol record on the stack, no
+growth); wasm and both smokes 0 failures; the runner 1193 / 1036 / 961
+-> 1190 / 1039 / 961 (the movements above), 0 regressions against the
+merged baseline, no signature untriaged. The merge: acceptance-left
+fast-forwarded; a stale branch name of an earlier round made the guard
+skip the runner package's branch creation (`git branch -f` to the
+agent's commits); the other three conflicted on the plan and the
+backlog (three-way by id), two on the triage (three-way by signature,
+the markers counted before every commit).
+
+Costs (doc/ROUNDS.csv): 41.4 USD with the review (33.0 for the four
+packages, 8.4 the review), 12 of 12 package items done, 6 of 24 brief
+premises wrong (the five special brakes; 41 already built; the TR
+transition; the Infill flag's unit; 40's nature; the trigger list a) to
+n)), no agent over budget, no resumption, one agent past its bound with
+the third item in hand (140). Lessons: an "onboard, not traced" line
+written by a package that moved a sequence is a claim for the review,
+and four of them fell this round: a movement of a sequence to a new step
+is traced to its cause before the line is written, or the line says
+"not traced" in its category too; the bench's fixed-point arithmetic is
+checked at the lowest speed of the corpus.
+
+The matrix: clauses left 57 -> 56 (todo 2, partial 54): 4.4.13.1.6 done
+(done 2082 -> 2083). Open items: doc/BACKLOG.csv (41 open after this
+round; 15 added of which 6 by the review, 9 closed). Next: the five
+disagreements settled by trace (B3242 4080300_16's EOA at the SOLR,
+B3241 3131050_19's release speed, B3243 / B3200 3040400_03, B3244 /
+B3160 3110500_03 with its SV21 and SV22 versions, B3245 / B3161
+9990500_09), B3180 (the Train Data acknowledgement per session), B3220,
+B3221, B781's rest; the user's decision B3162 / B3240; the review again
+(eight items, readings first, no backlog read).
