@@ -18789,3 +18789,59 @@ concerns in either reading; the SRS gives no RBC-side rule for an error
 report). The same reading as the balise group errors of B3081. A build
 item of the next round.
 
+
+### The position and the release speed: the EOA relocated with the SOLR, the release speed of 3131050_19, the shortened MA of 3040400_03 (e6/position-solr) (2026-11-02)
+
+Three verdicts of the review of round 62 checked at the trace; all
+three are the sequences' data, no code changed, no sequence moved.
+
+**4080300_16 step 73 (B3242, S27eb0678 s076).** The premise that our
+JRU names BG6 as the SOLR was wrong: step 71's `NID_SOLR=<BG2>` passes
+because the runner does not resolve a name of the sequence
+(`S076_Run.Header_Holds`: the field known). A temporary print in
+`EVC_Position.Against` at SV30: BG6's window runs 688 to 712 m past
+BG4 (D_LINK 700 m, Q_LOCACC 12 m), BG6 is read 650 m past BG4 (750 m
+on the track), `Check_Window` gives Early, Q_LINKREACTION 2 (no
+reaction, 3.16.2.3.1 a)). 3.4.4.4.3.2 rejects the message of a group
+whose location reference is detected outside its expectation window,
+so `Take_Group` and `Set_SOLR` are not reached and 3.6.4.2.5 (which
+relocates the items when a balise group becomes the SOLR) does not
+apply: the EOA stays 746 m past BG4, 846 m. With the 63 m of step
+39's comment the window would start 637 m past BG4, BG6 would be the
+SOLR and 3.6.4.2.5 a) would put the EOA at 796 m, the trip of step 73
+at 800 m. Which of a) or c) applies to a group read outside its window
+does not arise: such a group never becomes the SOLR.
+
+**3131050_19 step 55 (B3241, S388a7b2a s076).** A temporary print in
+`EVC_SDM.Release_Speed` at SV30 from 209 m to the EOA: T.EOA 700 m,
+the antenna offset 3 m (level 1, alpha 1), the trip margin 84 m
+(2 x 12 + 10 + 10 % of 500 m from BG2d), the actual interval 24 to
+31 m (below the margin, as the reviewer computed), d_tripEOA 787 m,
+V_delta0rsob 0 (packet 3 Q_NVINHSMICPERM 1), the release speed 554
+cm/s, 19.9 km/h, the same at every cycle. Every term is the one of
+3.13.9.4.8.2. A trial with the margin less 24 m (Q_LOCACC 0, the
+comment of step 48: 60 m) gave d_tripEOA 763 m and 26.3 km/h, above the
+chart's 24.1 km/h, and the sequence passed to its end (workbook 19b
+gives 28 km/h with the antenna at 5 m). So the release speed is below
+the train's speed because of BG2d's Q_LOCACC 12 m against the
+comments' 0, as for the twin 3131050_21; the pass with the truncated
+interval was the timing of the service brake at 653 m.
+
+**3040400_03 step 76 (B3243 done, B3200 dropped, S99eb8ae1 s076 for
+this sequence).** The sequence itself expects the service brake at
+step 56: BGb read inside BGa's window is 3.16.2.3.1 c) with BGa's
+Q_LINKREACTION 01. At the standstill of 305 m 3.16.2.6.2 and
+A.3.4.1.2 h) (column "e, g - j, l, m, o": the MA D[10][11]) shorten
+the MA; printed in `EVC_SDM.Passed_Locations` (SDM frame): EOA 308.00
+m, the estimated front end at standstill, SvL 322.56 m, the max safe
+front end, no release speed. No MA follows (BGa packet 73, BGc packet
+255). The train moved on trips by 4.6.3 [12] at the first cycle where
+the min safe antenna passes that EOA (X_Min 311.07 m less the antenna
+3 m: 308.07 m; the estimated front end 325.80 m), in the drive of step
+72 after step 71 (FS at 321 m with the EB): JRU 23 EOA passed. SV22
+the same. The sequence's FS to 500 m and its balise group error of
+step 76 ignore 3.16.2.6.2.
+
+Rows: 3.6.4.2.5, 3.13.9.4.8.2 and 3.16.2.6.2 stay done, their notes
+name the sequences re-read. Backlog: B3241, B3242, B3243 done, B3200
+dropped; none added.
