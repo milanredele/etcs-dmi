@@ -140,6 +140,8 @@ def is_spare(v, x):
     return any(r and r[0] <= x <= r[1] for r in spare_ranges(v))
 PACKET_KEYS = {"nid", "name", "clause", "direction", "sent_by", "fields"}
 MESSAGE_KEYS = {"nid", "name", "clause", "direction", "sent_by", "fields", "packets"}
+# the keys a message may have besides
+MESSAGE_OPTIONAL_KEYS = {"invariant"}
 NAME_RE = re.compile(r"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$")
 COND_RE = re.compile(r"^([A-Z][A-Z0-9_]*)\s*(==|!=|<=|>=|<|>)\s*(-?\d+)$")
 COND_IN_RE = re.compile(r"^([A-Z][A-Z0-9_]*)\s+in\s+\[\s*(-?\d+(?:\s*,\s*-?\d+)*)\s*\]$")
@@ -356,8 +358,10 @@ def check_messages(messages, variables, packet_keys, used):
             if k not in m:
                 R.err(w, f"missing key {k}")
         for k in m:
-            if k not in MESSAGE_KEYS:
+            if k not in MESSAGE_KEYS | MESSAGE_OPTIONAL_KEYS:
                 R.err(w, f"unknown key {k!r}")
+        if m.get("invariant", False) not in (True, False):
+            R.err(w, f"invariant {m.get('invariant')!r}")
         if not isinstance(nid, int) or not 0 <= nid <= 255:
             R.err(w, "nid not in 0 .. 255")
         if nid in seen:

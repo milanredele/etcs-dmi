@@ -170,6 +170,8 @@ name = "SM Authorisation"    # the SRS title without "Message n:"
 clause = "8.7.2.1"
 direction = "track_to_train" # 8.7 track_to_train, 8.6 train_to_track
 sent_by = ["rbc"]            # 8.5.3 "Transmitted by" / 8.5.2 "Transmitted to"
+# invariant = true           # 8.5.2 / 8.5.3 "Invariant" Yes (optional,
+                             # false when absent): ETCS_Message_Catalogue.Invariant
 fields = [                   # header of 8.4.4.6.1 / 8.4.4.7.1, then the
   { var = "NID_MESSAGE" },   # message variables of the table, in order
   { var = "L_MESSAGE" },

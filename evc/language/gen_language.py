@@ -714,8 +714,11 @@ class Message:
             fail("message %d: NID_MESSAGE not in 0 .. 255" % self.nid)
         for key in spec:
             if key not in ("nid", "name", "clause", "direction", "sent_by",
-                           "fields", "packets"):
+                           "invariant", "fields", "packets"):
                 fail("message %d: unknown key %s" % (self.nid, key))
+        self.invariant = spec.get("invariant", False)
+        if not isinstance(self.invariant, bool):
+            fail("message %d: invariant %r" % (self.nid, self.invariant))
         self.sent_by = [str(x).lower() for x in spec.get("sent_by", [])]
         for x in self.sent_by:
             if x not in SENDERS:
@@ -2205,6 +2208,19 @@ def gen_messages_spec(variables, messages):
     for i, m in enumerate(messages):
         L.append("     %s%s => %s%s" % ("(" if i == 0 else " ", m.kind,
                                         m.dir_ada,
+                                        "," if i < last else ");"))
+    L += [
+        "",
+        "   --  8.5.2, 8.5.3 \"Invariant\": the message keeps its format in",
+        "   --  every system version (the version-invariant messages of",
+        "   --  8.5.1). Nothing reads it yet: what reads it comes with the",
+        "   --  translation of the messages of an RBC of another system",
+        "   --  version (chapter 6)",
+        "   Invariant : constant array (Known_Message_T) of Boolean :=",
+    ]
+    for i, m in enumerate(messages):
+        L.append("     %s%s => %s%s" % ("(" if i == 0 else " ", m.kind,
+                                        "True" if m.invariant else "False",
                                         "," if i < last else ");"))
     max_fields = max(len(m.fields) for m in messages)
     max_rules = max(max(len(m.rules) for m in messages), 1)

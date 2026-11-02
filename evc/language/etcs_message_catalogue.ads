@@ -170,6 +170,56 @@ is
       Train_M158 => Train_To_Track,
       Train_M159 => Train_To_Track);
 
+   --  8.5.2, 8.5.3 "Invariant": the message keeps its format in
+   --  every system version (the version-invariant messages of
+   --  8.5.1). Nothing reads it yet: what reads it comes with the
+   --  translation of the messages of an RBC of another system
+   --  version (chapter 6)
+   Invariant : constant array (Known_Message_T) of Boolean :=
+     (Track_M2 => False,
+      Track_M3 => False,
+      Track_M4 => False,
+      Track_M5 => False,
+      Track_M6 => False,
+      Track_M7 => False,
+      Track_M8 => False,
+      Track_M9 => False,
+      Track_M15 => False,
+      Track_M16 => False,
+      Track_M18 => False,
+      Track_M24 => False,
+      Track_M27 => False,
+      Track_M28 => False,
+      Track_M32 => True,
+      Track_M33 => False,
+      Track_M34 => False,
+      Track_M37 => False,
+      Track_M38 => False,
+      Track_M39 => True,
+      Track_M40 => False,
+      Track_M41 => False,
+      Track_M43 => False,
+      Track_M45 => False,
+      Train_M129 => False,
+      Train_M130 => False,
+      Train_M131 => False,
+      Train_M132 => False,
+      Train_M133 => False,
+      Train_M136 => False,
+      Train_M137 => False,
+      Train_M138 => False,
+      Train_M146 => False,
+      Train_M147 => False,
+      Train_M149 => False,
+      Train_M150 => False,
+      Train_M153 => False,
+      Train_M154 => True,
+      Train_M155 => True,
+      Train_M156 => True,
+      Train_M157 => False,
+      Train_M158 => False,
+      Train_M159 => False);
+
    --  The variables of a message, header included
    Max_Fields : constant := 11;
    subtype Field_Count_T is Natural range 0 .. Max_Fields;
