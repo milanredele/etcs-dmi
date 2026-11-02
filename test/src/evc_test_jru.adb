@@ -814,4 +814,58 @@ package body EVC_Test_JRU is
       EVC_Core.Initialise;
    end Scenario_JRU_Symbols;
 
+   --  SUBSET-027 4.2.4.40: the traction status (SUBSET-034 2.5.4.1, a
+   --  two state input of the train interface, TIU signal 17) recorded as
+   --  the message 40 (viewed as the event 140, 40 being the levels') at
+   --  the first reception and at each change, 1 on, 0 off; none before
+   --  the first input, none while the input holds, a frame with another
+   --  value refused
+   procedure Scenario_JRU_Traction_Status is
+      --  the messages 40 of one cycle after the input Value (none when
+      --  Value is 255), the value of the last one
+      procedure Cycle (Value : Byte; Count : out Natural; Last : out Byte)
+      is
+      begin
+         if Value /= 255 then
+            EVC_Core.Handle_Input (TIU, (17, Value));
+         end if;
+         Reset_Capture;
+         EVC_Core.Tick (100);
+         Take;
+         Count := 0;
+         Last := 255;
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = JRU and then JRU_NID (I) = 40 then
+               Count := Count + 1;
+               Last := View (Payload (I)).B2;
+               Check (View (Payload (I)).Event = 140,
+                      "4.2.4.40: the view's event 140");
+            end if;
+         end loop;
+      end Cycle;
+      Count : Natural;
+      Last  : Byte;
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Set_UTC (Reference);
+      Cycle (255, Count, Last);
+      Check (Count = 0, "4.2.4.40: no message before the first input");
+      Cycle (1, Count, Last);
+      Check (Count = 1 and then Last = 1,
+             "4.2.4.40: the message at the first input, 1 on");
+      Cycle (1, Count, Last);
+      Check (Count = 0, "4.2.4.40: no message while the input holds");
+      Cycle (0, Count, Last);
+      Check (Count = 1 and then Last = 0,
+             "4.2.4.40: the message at the change, 0 off");
+      Cycle (2, Count, Last);
+      Check (Count = 0,
+             "SUBSET-034 2.5.4.1: a value other than on or off refused");
+      Cycle (1, Count, Last);
+      Check (Count = 1 and then Last = 1,
+             "4.2.4.40: the message at the change, 1 on again");
+      Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
+      EVC_Core.Initialise;
+   end Scenario_JRU_Traction_Status;
+
 end EVC_Test_JRU;

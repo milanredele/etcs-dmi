@@ -34,6 +34,9 @@ package body S076_Bench is
    --  the data of 4.10 column NP (EVC_Core.Power_Up), the first one is
    --  that of a new on-board (EVC_Core.Initialise)
    Was_Powered : Boolean := False;
+   --  the traction status last told to the train interface (Cycle)
+   Traction_Told : Boolean := False;
+   Traction_On   : Boolean := False;
    Radio_Systems : EVC_Config.Radio_Systems_T := EVC_Config.Both_Systems;
    Network_Type : EVC_Config.Network_Type_T := EVC_Config.GSMR;
    Default_MN : EVC_Config.Network_Id_T := 0;
@@ -704,6 +707,7 @@ package body S076_Bench is
          B.Used := False;
       end loop;
       Pending_Count := 0;
+      Traction_Told := False;
       Now := (others => <>);
       Last_Mode := No_Value;
       Last_Level_Status := No_Value;
@@ -1059,6 +1063,7 @@ package body S076_Bench is
          end loop;
       end if;
       Pending_Count := 0;
+      Traction_Told := False;
       Now := (others => <>);
       Last_Mode := No_Value;
       Last_Level_Status := No_Value;
@@ -1248,6 +1253,21 @@ package body S076_Bench is
               (RTM, (RTM_Tag_Event, 1,
                      Byte (RTM_Event_T'Pos (FRMCS_Not_Registered) + 1)));
          end if;
+         --  SUBSET-034 2.5.4.1: the traction status, on while the driver
+         --  asks for a speed and the on-board commands neither a traction
+         --  cut-off nor a brake; told at the first cycle and each change
+         declare
+            On : constant Boolean :=
+              Demand_Cms > 0
+              and then not (Now.TCO or else Now.SBC or else Now.EBC);
+         begin
+            if not Traction_Told or else On /= Traction_On then
+               TIU_Input (TIU_Signal_T'Pos (Traction_Status) + 1,
+                          (if On then 1 else 0));
+               Traction_Told := True;
+               Traction_On := On;
+            end if;
+         end;
          EVC_Core.Tick (Cycle_Ms + Jump_Ms);
          Jump_Ms := 0;
          Take_Outputs;

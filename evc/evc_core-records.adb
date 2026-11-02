@@ -329,7 +329,11 @@ is
          Magnetic_Shoe_Brake => Flag (Magnetic_Shoe_Brake_Active),
          Eddy_Current_Brake  => Flag (Eddy_Current_Brake_Active),
          EP_Brake            => Flag (EP_Brake_Active),
-         Additional_Brake    => Flag (Additional_Brake_Active));
+         Additional_Brake    => Flag (Additional_Brake_Active),
+         --  SUBSET-027 4.2.4.40: the traction status (SUBSET-034
+         --  2.5.4.1) at the first value received and at each change
+         --  (decision: as 33 to 37)
+         Traction            => Flag (Traction_Status));
       Changes : Input_Changes_T;
       RBC     : constant Bytes_23_T := EVC_Driver_Requests.RBC_Data;
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));

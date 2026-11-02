@@ -120,21 +120,20 @@ is
                                 EVC_Stored_Information.State),
                      In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
 
-   --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .37, .39, .41, .48, .50, .51,
-   --  EVC_JRU_Records): the sleeping, passive shunting and non leading
-   --  inputs, the direction controller, the type of train data entry and
-   --  the status of the regenerative, magnetic shoe, eddy current,
+   --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .37, .39, .40, .41, .48, .50,
+   --  .51, EVC_JRU_Records): the sleeping, passive shunting and non
+   --  leading inputs, the direction controller, the type of train data
+   --  entry, the status of the regenerative, magnetic shoe, eddy current,
    --  electro pneumatic and additional brakes of the train interface
-   --  (SUBSET-034 2.3.6, 2.3.7) and the output permitting remote
+   --  (SUBSET-034 2.3.6, 2.3.7), the traction status (2.5.4.1, forwarded
+   --  to an STM by 2.5.4.2, recorded only) and the output permitting remote
    --  shunting, the one Send_Remote_Shunting
    --  sent to the train interface this cycle (SH and SM, SUBSET-026
    --  4.4.8.1.4, 4.4.21.1.13), when they change; the RBC contact and
    --  the GSM-R network the driver entered; record 13 with M_ERROR 5,
    --  safe radio connection error, when the reaction to the expiry of
    --  T_NVCONTACT is triggered (SUBSET-026 3.16.3.4); the LSSMA displayed
-   --  (SUBSET-027 4.2.4.44, EVC_JRU_Records.LSSMA) when it changes. The
-   --  traction status (4.2.4.40, SUBSET-034 2.5.4, an input forwarded to
-   --  an STM) is not recorded: the train interface has no such input
+   --  (SUBSET-027 4.2.4.44, EVC_JRU_Records.LSSMA) when it changes
    --  @req 3.20.1.2
    procedure Record_Inputs_Radio_Data
      with Global => (Input  => (Clock_Ms, TIU_RS_Sent, EVC_LS_Display.State,
