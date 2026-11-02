@@ -130,7 +130,11 @@ is
    end record;
 
    --  4.8.3: the kinds whose row has an Infill sub-row (the other rows
-   --  leave it empty: such information is judged by its non-infill row)
+   --  leave it empty: such information is judged by its non-infill row).
+   --  The row "Data to be used by applications outside ERTMS/ETCS"
+   --  (packet 44, 7.4.2.11) has one too but is no kind here: the
+   --  on-board takes no packet 44 (3.15.6.5: the data are passed to
+   --  applications outside ERTMS/ETCS, none on this on-board)
    function Has_Infill_Row (I : Info_T) return Boolean is
      (I in Linking | Signalling_Speed | Movement_Authority
          | Gradient_Profile | International_SSP | Axle_Load_Profile
@@ -140,9 +144,11 @@ is
 
    --  4.8.3, the Infill sub-rows: each reads R, R, A, R [1] in levels 0,
    --  NTC, 1 and 2 (the signalling related speed restriction A [18] in
-   --  level 1: [18], a restriction of zero rejected, is not applied).
-   --  The packets the units take themselves (5, 138, 139) are judged by
-   --  their non-infill rows there. Decision: the [1] of the level
+   --  level 1: [18], a restriction of zero rejected, is applied on the
+   --  value by EVC_Stored_Information.Take_MA_Packet). The packets the
+   --  units take themselves (5, 138, 139) are kept for level 1 by
+   --  EVC_Stored_Information.Keep_Unit_Packets with this flag (in levels
+   --  1 and 2 both sub-rows agree). Decision: the [1] of the level
    --  transition order's sub-row is not taken (an order is not kept in
    --  the transition buffer): rejected in level 2.
    --  @req 4.8.3.1.1 Table

@@ -1007,7 +1007,7 @@ is
                   X.D_MAMODE_List (I).M_MAMODE
                              = ETCS_Variables.M_MAMODE_Limited_Supervision));
 
-   --  @req 4.4.19.1.4.8
+   --  @req 4.4.19.1.4.8, 4.8.3.1.1 Table
    procedure Take_MA_Packet (K           : MA_Kind_T;
                              R           : in out Reader_T;
                              M           : Message_T;
@@ -1032,8 +1032,11 @@ is
                X : ETCS_Track_Packets.P12.Packet_T;
             begin
                ETCS_Track_Packets.P12.Decode (R, X, OK);
+               --  4.8.3 [18], 3.11.6.5: an infill restriction of zero is
+               --  rejected (not a trip order)
                if OK and then EVC_Acceptance.Accepted
                                 (EVC_Acceptance.Signalling_Speed, A)
+                 and then not (A.Infill and then X.V_MAIN = 0)
                then
                   --  3.11.6.2: taken as soon as received
                   EVC_Movement_Authority.Take_V_Main (X);
@@ -1498,8 +1501,6 @@ is
         (GNATprove, Off, """R"" is set by ""*"" but not used after*",
          Reason => "the reader of one packet is not used after it");
       R : Reader_T;
-      A : constant EVC_Acceptance.Context_T :=
-        Acceptance (Ctx, Tk.Group.Linked, Has_41);
       I : EVC_Acceptance.Info_T;
       --  the group's set, opened by Take_Packet or here
       Set_Open : Boolean := Open;
@@ -1522,7 +1523,11 @@ is
                           | ETCS_Catalogue.Track_P139
                  and then EVC_Position.Valid_For
                             (E.Q_DIR, Tk.Group.Orientation, Tk.T)
-                 and then EVC_Acceptance.Stored (I, A)
+                 --  4.8.3: a packet after a packet 136 (Infill_Packet)
+                 --  judged by its Infill sub-row: R in level 0 and NTC
+                 and then EVC_Acceptance.Stored
+                            (I, Acceptance (Ctx, Tk.Group.Linked, Has_41,
+                                            Infill_Packet (J, P, Tk)))
                then
                   if not Set_Open then
                      Balise_Buffer.New_Set ((Origin   => M.Origin,
