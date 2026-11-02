@@ -270,6 +270,16 @@ check(ex.onboard_group_count() === 6 && ex.onboard_group_at(1) === -12,
   const m = /<select id="onboard">\s*<option value="([a-z]+)" selected>/.exec(html);
   check(!!m && m[1] === 'etcs',
         'the page selects the ETCS on-board by default, not the mock');
+  // the browser's clock: given after every reset by the page only (the
+  // runs above keep the reset's fixed reference, their goldens too)
+  const r = /onboard\.onboard_reset\(\)\);\s*(?:\/\/.*\s*)*onboardGuarded\(\(\) => onboard\.onboard_set_utc\(Math\.floor\(Date\.now\(\) \/ 1000\) - 946684800\)\)/.exec(html);
+  check(!!r && typeof ex.onboard_set_utc === 'function',
+        'the page gives the browser\'s UTC (seconds since 2000) after every reset');
+  ex.onboard_reset();
+  ex.onboard_set_utc(Math.floor(Date.now() / 1000) - 946684800);
+  for (let i = 0; i < 50; i++) ex.onboard_step(100);
+  check(ex.onboard_failed() === 0, 'the browser\'s clock is taken without a trap');
+  ex.onboard_reset();
 }
 
 // --- Containment: a trap, then Enter_Failure (the page's path) ---------

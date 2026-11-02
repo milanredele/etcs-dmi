@@ -39,6 +39,11 @@ package body Onboard_Wasm is
       TC_Len := 0;
    end Reset;
 
+   procedure Set_UTC (Seconds : Unsigned_32) is
+   begin
+      Env.Set_Clock (Seconds);
+   end Set_UTC;
+
    procedure Set_Track_Preset (Preset : Integer_32) is
    begin
       Env.Set_Track_Preset

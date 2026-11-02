@@ -243,6 +243,15 @@
             hold it for two seconds and release it. The simulator enters
             the mode IS, which has no symbol on the screen: the lamp of
             the key shows it. Only <i>Reset mission</i> leaves IS.</li>
+          <li><b>The clock.</b> The ETCS on-board takes the browser's
+            clock in UTC at every reset (SUBSET-026 3.18.5.1) and counts
+            the simulated time from there, so the clock of the DMI and
+            the dates of the juridical records are today's, slower or
+            faster when the simulation is. The time shown is UTC: the
+            local time comes from the time zones of the installation
+            configuration (format version 3, by the country of the last
+            balise group), and the bench's configuration has none. The
+            smoke tests keep the fixed reset time 2026-01-01 00:00 UTC.</li>
         </ol>
       </details>
       <p class="note">
@@ -1438,6 +1447,10 @@
             onboardGuarded(() => onboard.onboard_set_track_preset(val('track_preset') === 1 ? 1 : 0));
             onboardGuarded(() => onboard.onboard_set_radio(val('track_preset') === 2 ? 1 : 0));
             onboardGuarded(() => onboard.onboard_reset());
+            // the browser's clock (3.18.5.1): UTC seconds since 2000-01-01
+            // 00:00:00 UTC, in place of the reset's fixed reference
+            // 2026-01-01 00:00:00 that the smoke tests and the goldens keep
+            onboardGuarded(() => onboard.onboard_set_utc(Math.floor(Date.now() / 1000) - 946684800));
             balises = null;
             if (onboardMode()) {
               balises = [];

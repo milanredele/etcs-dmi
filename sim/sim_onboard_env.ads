@@ -41,6 +41,7 @@
 
 with Ada.Streams; use Ada.Streams;
 with EVC_Track;
+with Interfaces;
 with Sim_Vehicle;
 
 package Sim_Onboard_Env is
@@ -60,6 +61,15 @@ package Sim_Onboard_Env is
    --  Start_Front_M, the desk on auto drive, the track of the last
    --  Set_Track_Preset (Default, until the page or a host calls it)
    procedure Reset;
+
+   --  The calendar clock of the host (3.18.5.1), UTC_Now seconds since
+   --  2000-01-01 00:00:00 UTC: the on-board's UTC from now on in place
+   --  of Reset's fixed reference (EVC_Core.Set_UTC, the UTC at the
+   --  on-board time 0, as ports/hosted/evc.adb gives the host's clock);
+   --  ignored when it is before the on-board's time 0. The bench page
+   --  calls it after every Reset with the browser's clock; the tests and
+   --  the goldens keep the reference
+   procedure Set_Clock (UTC_Now : Interfaces.Unsigned_32);
 
    --  The track of the next Reset (EVC_Track.Preset_T): the default
    --  mission (the acceptance run, the native golden) or the bench

@@ -27,6 +27,12 @@ package Onboard_Wasm is
    function Configure (Length : Unsigned_32) return Integer_32
      with Export, Convention => C, Link_Name => "onboard_configure";
 
+   --  the browser's clock, UTC seconds since 2000-01-01 00:00:00
+   --  (Sim_Onboard_Env.Set_Clock): the page calls it after every reset,
+   --  the smoke test does not (its golden keeps the fixed reference)
+   procedure Set_UTC (Seconds : Unsigned_32)
+     with Export, Convention => C, Link_Name => "onboard_set_utc";
+
    -- Receive path (frames from the DMI): the host writes up to
    -- Rx_Capacity bytes at Rx_Buffer and calls Receive with the count
    function Rx_Buffer return System.Address

@@ -360,6 +360,15 @@ package body Sim_Onboard_Env is
       EVC_Core.Handle_Input (EVC_Ports.Odometer, Sim_Odometer.Sample);
    end Reset;
 
+   procedure Set_Clock (UTC_Now : Unsigned_32) is
+      Since_Zero : constant Unsigned_64 :=
+        Unsigned_64 (EVC_Core."/" (EVC_Core.Time_Ms, 1000));
+   begin
+      if Unsigned_64 (UTC_Now) >= Since_Zero then
+         EVC_Core.Set_UTC (UTC_Now - Unsigned_32 (Since_Zero));
+      end if;
+   end Set_Clock;
+
    procedure Step (Dt_Ms : Natural) is
       Failed_Now : constant Boolean := EVC_Core.Failed;
       Braking    : constant Boolean :=
