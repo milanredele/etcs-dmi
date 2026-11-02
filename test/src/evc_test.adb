@@ -257,6 +257,8 @@ begin
    Scenario_JRU_Commands;
    Scenario_JRU_LSSMA;
    Scenario_JRU_Failure;
+   Scenario_JRU_Brake_Status;
+   Scenario_JRU_Symbols;
    Scenario_Message_Consistency;
    Scenario_Consistency_Record;
    Scenario_Duplicated_Pair;
@@ -298,6 +300,7 @@ begin
    Scenario_E5P_JRU_Bodies;
    Scenario_JRU_Inputs;
    Scenario_JRU_Level_Again;
+   Scenario_TR_Desk_Closed;
    EVC_Test_LS.Scenario_LS_Display;
    EVC_Test_LS.Scenario_LS_Order_Buffered;
    EVC_Test_LS.Scenario_LS_Marker_Deleted;

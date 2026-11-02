@@ -320,7 +320,16 @@ is
             then Input_Value_T
                    (EVC_Bytes.Byte'Min
                       (TIU_Value_Now (Train_Data_Entry_Type), 3))
-            else No_Value));
+            else No_Value),
+         --  SUBSET-027 4.2.4.33 to 4.2.4.37: the special and the
+         --  additional brakes' status inputs (SUBSET-034 2.3.6, 2.3.7) at
+         --  the first value received and at each change (decision: the
+         --  records name no trigger, as for 41)
+         Regenerative_Brake  => Flag (Regenerative_Brake_Active),
+         Magnetic_Shoe_Brake => Flag (Magnetic_Shoe_Brake_Active),
+         Eddy_Current_Brake  => Flag (Eddy_Current_Brake_Active),
+         EP_Brake            => Flag (EP_Brake_Active),
+         Additional_Brake    => Flag (Additional_Brake_Active));
       Changes : Input_Changes_T;
       RBC     : constant Bytes_23_T := EVC_Driver_Requests.RBC_Data;
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));
@@ -363,6 +372,83 @@ is
             No_Data);
       end if;
    end Record_Inputs_Radio_Data;
+
+   procedure Record_Symbols is
+      use EVC_JRU_Records;
+      --  the bit of the symbol of a mode (MO01 to MO24), 0 for none
+      function Mode_Bit (M : Mode_T) return Natural is
+        (case M is
+            when M_AD => 14, when M_SM => 15, when M_SH => 16,
+            when M_TR => 19, when M_PT => 21, when M_OS => 22,
+            when M_SR => 24, when M_FS => 26, when M_NL => 27,
+            when M_SB => 28, when M_RV => 29, when M_UN => 31,
+            when M_SF => 33, when M_SN => 34, when M_LS => 36,
+            when others => 0);
+      --  the bit of the acknowledgement for a mode, 0 for none
+      function Ack_Bit (M : Mode_T) return Natural is
+        (case M is
+            when M_SH => 17, when M_TR => 20, when M_OS => 23,
+            when M_SR => 25, when M_RV => 30, when M_UN => 32,
+            when M_SN => 35, when M_LS => 37, when others => 0);
+      --  LE01 to LE04
+      function Level_Bit (L : Level_T) return Positive is
+        (case L is when L0 => 1, when NTC => 2, when L1 => 3, when L2 => 4);
+      Ack  : constant Natural :=
+        (if EVC_Mission.Proposed
+           and then Has_Mode_Code (EVC_Mission.Proposed_Mode)
+         then Ack_Bit (EVC_Mission.Proposed_Mode)
+         elsif EVC_Procedures.Ack_Requested
+           and then Has_Mode_Code (EVC_Procedures.Ack_Mode)
+         then Ack_Bit (EVC_Procedures.Ack_Mode)
+         else 0);
+      List : constant EVC_DMI_Port.Track_Cond_List_T :=
+        EVC_Stored_Information.Track_Cond_List;
+      Now     : Symbol_Bits_T := (others => False);
+      Changed : Boolean;
+      F       : EVC_JRU_Messages.Fields_T;
+   begin
+      if Mode_Bit (Current_Mode) > 0 then
+         Now (Mode_Bit (Current_Mode)) := True;
+      end if;
+      if Ack > 0 then
+         Now (Ack) := True;
+      end if;
+      Now (18) := EVC_Procedures.Override_Indicated;
+      if EVC_Levels.Valid then
+         Now (Level_Bit (EVC_Levels.Level)) := True;
+      end if;
+      if EVC_Levels.Ack_Asked then
+         if EVC_Levels.Ack_Level in L0 | NTC then
+            Now (2 * Level_Bit (EVC_Levels.Ack_Level) + 5) := True;
+         end if;
+      elsif EVC_Levels.Announced then
+         Now (2 * Level_Bit (EVC_Levels.Announced_Level) + 4) := True;
+      end if;
+      Now (38) := Status_Brake_Sent /= Brake_None;
+      Now (39) := Status_Slip_Sent;
+      Now (40) := Status_Radio_Sent = 1;
+      Now (41) := Status_Radio_Sent = 2;
+      Now (43) := Status_Rev_Sent;
+      for I in 1 .. EVC_Stored_Information.Track_Cond_Count loop
+         pragma Loop_Invariant (True);
+         case List (I).Kind is
+            when 1 .. 37 => Now (43 + Natural (List (I).Kind)) := True;
+            when 38      => Now (86) := True;
+            when others  => null;
+         end case;
+      end loop;
+      Now (82) := EVC_Radio_Authority.TAF_Shown;
+      Now (87) := EVC_LS_Display.LSSMA_Kmh /= EVC_LS_Display.No_LSSMA;
+      Now (88) := Status_BMM_Sent;
+      Now (109) := Status_SM_Sent = 1;
+      Now (110) := Status_SM_Sent = 2;
+      Symbols (Now, Changed);
+      if Changed then
+         Symbol_Fields (Now, F);
+         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_DMI_Symbols,
+                             Unsigned_64 (Clock_Ms), F, No_Data);
+      end if;
+   end Record_Symbols;
 
    function Reference_Of (P : ETCS_Train_Packets.P0.Packet_T)
      return EVC_JRU_Messages.Reference_T is

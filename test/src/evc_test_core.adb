@@ -153,7 +153,8 @@ package body EVC_Test_Core is
       --  and at the start-up the messages 15 and 47 (SUBSET-027 4.3.1.1)
       --  3.18.6.1: and the stored values for the DMI's data view, none
       --  DMI 11.3.9.6 a): and the pre-configured train types, once
-      Check (Rec_Count = 12, "power-up: twelve records, got"
+      --  SUBSET-027 4.2.4.21: and the DMI symbol status at the first cycle
+      Check (Rec_Count = 13, "power-up: thirteen records, got"
              & Img (Rec_Count));
       --  MSG_TRAIN_TYPES: two types, "Locomotive" (20 m, 100 %, 80 km/h,
       --  gauge G1) and "Passenger" (200 m, 135 %, 160 km/h, NC_TRAIN 4)
@@ -429,7 +430,8 @@ package body EVC_Test_Core is
       EVC_Core.Tick (100);
       Take;
       Check (EVC_Core.Mode = M_IS, "isolation: SB -> IS");
-      Check (Parsed and then Count_Port (JRU) = 2 and then DMI_Mode_Byte = 17,
+      --  the DMI symbol status too (4.2.4.21: no mode symbol in IS)
+      Check (Parsed and then Count_Port (JRU) = 3 and then DMI_Mode_Byte = 17,
              "isolation: JRU event and MSG_MODE_LEVEL mode IS (17)");
       Input (DMI, Isolate);
       for I in 1 .. 3 loop

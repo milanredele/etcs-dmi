@@ -18469,3 +18469,73 @@ B3161 (onboard) and B3162 (decision) added; triage lines Se1820110 and
 Sd077284a changed, S776cef6c (3110500_03) and Sb83b2c65 (9990500_09)
 added; baseline re-recorded twice (5 improvements). No edit outside the
 units.
+### The juridical messages left: the brake and traction statuses, the DMI symbol status from the on-board's outputs, the desk closure in TR (e6/jru-messages) (2026-11-02)
+
+- Records 33 to 37 (SUBSET-027 4.2.4.33 to .37, M_RB_STATUS,
+  M_MSB_STATUS, M_ECB_STATUS, M_EP_STATUS, M_AB_STATUS, 1 bit, 1 active):
+  the train interface reports all five brakes (`EVC_Ports.TIU_Signal_T`
+  signals 7 to 11: regenerative, eddy current, magnetic shoe, electro
+  pneumatic, additional; SUBSET-034 2.3.6, 2.3.7, two state inputs whose
+  "not active" includes "inhibited"), so the claim of the brief that a
+  brake might be missing did not hold. `EVC_JRU_Records.Input_T` gains
+  the five, written by `EVC_Core.Records.Record_Inputs_Radio_Data`
+  through `EVC_JRU_Records.Inputs`. Decision: at the first reception
+  and at each change (the records name no trigger; the other inputs of
+  the train interface, 30, 31, 32, 39, 41, 50, are recorded so); nothing
+  before the first reception (the variables have no "unknown").
+  `EVC_JRU_Messages.View` gives the events 133 to 137 (33 is the
+  configuration's event of `EVC_Ports`, 34 to 37 kept apart as 43, 44,
+  54 were). `Scenario_JRU_Brake_Status`: 10 failures before the fix, 0
+  after.
+- Record 40 (4.2.4.40, M_TRACTION_STATUS): not written. The traction
+  status is a two state input of the train interface (SUBSET-034
+  2.5.4.1) forwarded to an STM (2.5.4.2); `TIU_Signal_T` has no such
+  input and SUBSET-026 uses it nowhere: B3220.
+- SUBSET-076: 1193 / 1036 / 961 before and after, 0 regressions (no
+  step judges 33 to 37 or 40).
+- Record 21 (4.2.4.21, DMI_SYMB_STATUS, 110 bits, bit 1 the least
+  significant): built from what the cycle sent to the DMI, the user's
+  rule (the on-board tells what it shows), in
+  `EVC_Core.Records.Record_Symbols`, called from
+  `EVC_Core.Outputs.Produce_Outputs` after the records of the inputs;
+  `EVC_JRU_Records.Symbols` keeps the set last recorded,
+  `Symbol_Fields` writes it as 64 + 46 bits. The bits: the mode of
+  MSG_MODE_LEVEL (MO01 .. MO24 by DMI 13.3.1.1: 14 AD, 15 SM, 16 SH, 19
+  TR, 21 PT, 22 OS, 24 SR, 26 FS, 27 NL, 28 SB, 29 RV, 31 UN, 33 SF, 34
+  SN, 36 LS; none in NP, SL, IS, PS), the acknowledgement asked as
+  `Send_Mode_Level` chooses it (17, 20, 23, 25, 30, 32, 35, 37), 18
+  the override active (MO03), the level when valid (1 to 4), the level
+  announced (6, 8, 10, 12) or its acknowledgement (7 for level 0, 9 for
+  NTC; LE11 and LE13 have no bit, spare in the table), MSG_STATUS's
+  values as `Send_Status` sent them (38 ST01 for a brake code other
+  than 0, 39 ST02, 40 / 41 ST03 / ST04, 43 ST06, 88 BTMA for the BMM
+  reaction inhibition, 109 / 110 SM01 / SM02), 82 DR02 (TAF), the track
+  conditions of MSG_TRACK_COND (kind 1 to 37 at bit 43 + kind, 38 LX01
+  at 86) and 87 LS01 with the LSSMA displayed. Decision: 0 for the hour
+  glass ST05 (in the titles of windows the DMI opens alone), the
+  buttons DR01, DR03 to DR05 and ATO01 to ATO20. Trigger: the first
+  cycle and every change of the set (decision: the message gives
+  none). `EVC_JRU_Messages.View`: event 121, the first level bit, the
+  first mode bit, the number set. The runner keeps judging its 7218
+  steps from the DMI's facts (not changed). `Scenario_JRU_Symbols`: 3
+  failures before, 0 after; two counts of `EVC_Test_Core` (power-up 13
+  records, isolation 3 JRU records) and 13 on-board goldens follow
+  (golden review: 6 groups, only JRU records added, 1 to 11 per
+  golden, nothing removed or replaced: as intended).
+- SUBSET-076 after 21: 1193 / 1036 / 961, 0 regressions, 0
+  improvements (the runner judges 21 from the DMI).
+- 4.4.13.1.6 (B015): "closing the desk in Trip mode will not cause a
+  mode change" held already (`EVC_Modes.Conditions`: TR has no
+  condition [28] to SB); the brief's premise of a missing transition
+  read the matrix note backwards. Built: "no interaction with the
+  driver ... as long as the desk is closed, except isolation": at the
+  start of `EVC_Core.Modes.Evaluate_Modes_And_Levels`, in TR with
+  `EVC_Train_Inputs.Desk_Open` false and isolation not selected, the
+  cycle's requests are dropped (`EVC_Driver_Requests.Clear`); isolation
+  selected has the first priority of 4.6.2, so nothing then needs
+  dropping. Post added: `Isolation_Selected` unchanged.
+  `Scenario_TR_Desk_Closed` (in `EVC_Test_Modes`): the trip's
+  acknowledgement with the desk closed was taken before the fix (TR ->
+  PT), refused after it, taken once the desk is open again, isolation
+  taken with the desk closed. Left: the adhesion choice, read by
+  `EVC_Stored_Information` in a step before (B3221).

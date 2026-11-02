@@ -16,17 +16,21 @@ is
    --  the driver's level (EVC_Levels, 5.10), the mission data, the start
    --  of mission and the mode proposed to the driver (EVC_Mission, 5.4),
    --  on the requests of the cycle; the desk closed during the start of
-   --  mission (A.3.4.1.2 k)
+   --  mission (A.3.4.1.2 k); in TR with the desk closed the driver's
+   --  requests of the cycle are dropped first, isolation excepted
+   --  (4.4.13.1.6: no interaction with the driver but isolation;
+   --  isolation selected has the first priority of 4.6.2, so then
+   --  nothing is dropped)
    --  @req A.3.4.1.3, A.3.4.1.3 a), A.3.4.1.3 b), A.3.4.1.3 c), A.3.4.1.3 d)
-   --  @req A.3.4.1.3 Table
+   --  @req A.3.4.1.3 Table, 4.4.13.1.6
    procedure Evaluate_Modes_And_Levels
      with Global => (Input  => (EVC_Radio.State, EVC_Radio_Authority.State,
                                 Current_Mode, Clock_Ms,
-                                EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Odometry.State, EVC_Origins.State,
                                 EVC_Config.State, EVC_Procedures.State),
-                     In_Out => (EVC_Levels.State, EVC_Mission.State,
+                     In_Out => (EVC_Driver_Requests.State,
+                                EVC_Levels.State, EVC_Mission.State,
                                 EVC_National_Values.State,
                                 EVC_Train_Data.State,
                                 EVC_Track_Description.State,
@@ -36,6 +40,10 @@ is
                                 EVC_Stored_Information.State,
                                 EVC_Sessions.State)),
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Driver_Requests.Isolation_Selected
+                             = EVC_Driver_Requests.Isolation_Selected'Old
+                  and then (if EVC_Driver_Requests.Isolation_Latched
+                            then EVC_Driver_Requests.Isolation_Latched'Old)
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
                   and then EVC_Position.Manoeuvre_Orientation

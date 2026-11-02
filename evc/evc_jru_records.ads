@@ -156,9 +156,13 @@ is
      with Global => (In_Out => State);
 
    --  The inputs and states recorded when they change (SUBSET-027
-   --  4.2.4.30, .31, .32, .39, .41, .50, .51)
+   --  4.2.4.30, .31, .32, .39, .41, .50, .51; .33 to .37 the status of
+   --  the regenerative, magnetic shoe, eddy current, electro pneumatic
+   --  and additional brakes, SUBSET-034 2.3.6, 2.3.7: 1 active, 0 not)
    type Input_T is (Sleeping, Passive_Shunting, Non_Leading, Direction,
-                    Integrity, Remote_Shunting, Entry_Type);
+                    Integrity, Remote_Shunting, Entry_Type,
+                    Regenerative_Brake, Magnetic_Shoe_Brake,
+                    Eddy_Current_Brake, EP_Brake, Additional_Brake);
    --  Their values in SUBSET-027's coding, No_Value while not known
    No_Value : constant := -1;
    subtype Input_Value_T is Integer range No_Value .. 3;
@@ -166,7 +170,7 @@ is
    type Input_Changes_T is array (Input_T) of Boolean;
 
    --  The event of an input (the header: 132 for record 32, 141 for
-   --  record 41)
+   --  record 41, 133 to 137 for the records 33 to 37)
    function Input_Event (I : Input_T) return Byte
      with Global => null;
 
@@ -191,6 +195,22 @@ is
      with Global => (In_Out => State),
           Post => (for all I in Input_T =>
                      (if Changes (I) then Now (I) /= No_Value));
+
+   --  DMI_SYMB_STATUS (SUBSET-027 4.2.4.21): bit N set when the symbol
+   --  of the row N of its table is displayed (bit 1 the least
+   --  significant of the 110)
+   subtype Symbol_Bit_T is Positive range 1 .. 110;
+   type Symbol_Bits_T is array (Symbol_Bit_T) of Boolean;
+
+   --  Changed when Now differs from the set last recorded, the first set
+   --  after Reset included
+   procedure Symbols (Now : Symbol_Bits_T; Changed : out Boolean)
+     with Global => (In_Out => State);
+
+   --  The variable of the message 21: bits 110 to 47 then 46 to 1
+   procedure Symbol_Fields (Now : Symbol_Bits_T;
+                            Fields : out EVC_JRU_Messages.Fields_T)
+     with Global => null;
 
    --  The radio data entered by the driver (SUBSET-027 4.2.4.24, .48):
    --  Q_RBCENTRY of the choice of MSG_DRIVER_DATA kind 5 (0 entered: 3,

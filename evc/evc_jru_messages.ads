@@ -39,6 +39,10 @@
 --    30, 31, 32, 39, 51 the TIU inputs and the remote shunting state:
 --       their one variable;
 --    41 type of train data entry of the TIU: M_TRAIN_DATA_ENTRY;
+--    21 DMI symbol status: DMI_SYMB_STATUS (EVC_JRU_Records.Symbols);
+--    33 to 37 the regenerative, magnetic shoe, eddy current, electro
+--       pneumatic and additional brake status inputs of the TIU: their
+--       one variable (1 active);
 --    38 cab status: M_CAB_A_STATUS, Q_CAB_B, M_CAB_B_STATUS (Q_CAB_B 1);
 --    48 GSM-R radio network ID entered by the driver: NID_MN;
 --   255 proprietary juridical data (4.2.4.255): every other event of
@@ -49,8 +53,9 @@
 --  View gives back the event of EVC_Ports a message records, with the
 --  three bytes the record of 16 bytes carried before this format: the
 --  event numbers of the readers stay those of EVC_Ports (21 for the
---  message 20, 124 for 24, 132 for 32, 2 for 6, 3 for 9: the numbers
---  20, 24 and 32 are events of the on-board too).
+--  message 20, 121 for 21, 124 for 24, 132 for 32, 133 to 137 for 33
+--  to 37, 2 for 6, 3 for 9: the numbers 20, 21, 24, 32 and 33 are events
+--  of the on-board too).
 
 with EVC_Bytes;  use EVC_Bytes;
 with EVC_Ports;
@@ -105,6 +110,12 @@ is
    NID_Consist        : constant := 54;
    NID_LSSMA          : constant := 44;
    NID_Fault          : constant := 27;
+   NID_DMI_Symbols         : constant := 21;
+   NID_Regenerative_Brake  : constant := 33;
+   NID_Magnetic_Shoe_Brake : constant := 34;
+   NID_Eddy_Current_Brake  : constant := 35;
+   NID_EP_Brake            : constant := 36;
+   NID_Additional_Brake    : constant := 37;
    NID_Proprietary    : constant := 255;
 
    subtype Width_T is Positive range 1 .. 64;
@@ -245,8 +256,9 @@ is
    No_Fields : constant Fields_T := (others => (Value => 0, Bits => 0));
 
    --  The message of an event of EVC_Ports given by its three bytes:
-   --  11, 30, 31, 39, 51, 132 (as 32), 38, 48, 50 and 141 (as 41, the
-   --  view's event of the message) as the heading gives them, every
+   --  11, 30, 31, 39, 51, 132 (as 32), 38, 48, 50, 141 (as 41, the
+   --  view's event of the message) and 133 to 137 (as 33 to 37) as the
+   --  heading gives them, every
    --  other event as the message 255
    procedure Event_Message (Event      : Byte;
                             B2, B3, B4 : Byte;

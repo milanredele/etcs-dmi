@@ -120,22 +120,54 @@ is
                                 EVC_Stored_Information.State),
                      In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
 
-   --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .41, .48, .50, .51,
+   --  8k. JRU (SUBSET-027 4.2.4.24, .30 to .37, .39, .41, .48, .50, .51,
    --  EVC_JRU_Records): the sleeping, passive shunting and non leading
-   --  inputs, the direction controller and the type of train data entry
-   --  of the train interface and the
-   --  output permitting remote shunting, the one Send_Remote_Shunting
+   --  inputs, the direction controller, the type of train data entry and
+   --  the status of the regenerative, magnetic shoe, eddy current,
+   --  electro pneumatic and additional brakes of the train interface
+   --  (SUBSET-034 2.3.6, 2.3.7) and the output permitting remote
+   --  shunting, the one Send_Remote_Shunting
    --  sent to the train interface this cycle (SH and SM, SUBSET-026
    --  4.4.8.1.4, 4.4.21.1.13), when they change; the RBC contact and
    --  the GSM-R network the driver entered; record 13 with M_ERROR 5,
    --  safe radio connection error, when the reaction to the expiry of
    --  T_NVCONTACT is triggered (SUBSET-026 3.16.3.4); the LSSMA displayed
-   --  (SUBSET-027 4.2.4.44, EVC_JRU_Records.LSSMA) when it changes
+   --  (SUBSET-027 4.2.4.44, EVC_JRU_Records.LSSMA) when it changes. The
+   --  traction status (4.2.4.40, SUBSET-034 2.5.4, an input forwarded to
+   --  an STM) is not recorded: the train interface has no such input
+   --  @req 3.20.1.2
    procedure Record_Inputs_Radio_Data
      with Global => (Input  => (Clock_Ms, TIU_RS_Sent, EVC_LS_Display.State,
                                 TIU_Now, TIU_Known_Now, TIU_Value_Now,
                                 EVC_Driver_Requests.State,
                                 EVC_Sessions.State, EVC_Radio.State),
+                     In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
+
+   --  JRU (SUBSET-027 4.2.4.21, EVC_JRU_Records.Symbols): DMI_SYMB_STATUS
+   --  at the first cycle and at each change, from what this cycle sent
+   --  to the DMI (the driver sees what the on-board tells it): the mode
+   --  (MO01 to MO24 but MO03) and the acknowledgement asked for a mode,
+   --  as Send_Mode_Level; the override active (MO03); the level (LE01 to
+   --  LE04, its status valid), the level announced (LE06, LE08, LE10,
+   --  LE12) and its acknowledgement asked (LE07, LE09; LE11 and LE13
+   --  have no bit, spare in 4.2.4.21); MSG_STATUS as Send_Status sent it:
+   --  ST01 (a brake commanded), ST02, ST03, ST04, ST06, BTMA (the BMM
+   --  reaction inhibition, the DMI's ST07), SM01 and SM02; DR02 (Track
+   --  Ahead Free); the track conditions of MSG_TRACK_COND (TC01 to TC37,
+   --  LX01 as kind 38); LS01 with the LSSMA displayed. Decision: 0 for
+   --  the symbols the DMI decides alone, the hour glass ST05 of its
+   --  window titles and the buttons DR01, DR03 to DR05, and for ATO01
+   --  to ATO20 (no ATO on-board here)
+   --  @req 3.20.1.2
+   procedure Record_Symbols
+     with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Levels.State,
+                                EVC_Mission.State, EVC_Procedures.State,
+                                EVC_Radio_Authority.State,
+                                EVC_LS_Display.State,
+                                EVC_Stored_Information.State,
+                                Status_Brake_Sent, Status_Slip_Sent,
+                                Status_Radio_Sent, Status_Rev_Sent,
+                                Status_BMM_Sent, Status_SM_Sent),
                      In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
 
    --  SUBSET-027 4.2.4.27: the message of a safety critical fault in SL,

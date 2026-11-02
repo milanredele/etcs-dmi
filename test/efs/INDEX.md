@@ -52,7 +52,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Targets and brake deceleration curves | targets-and-brake-deceleration-curves.scn | 7 | 14 | 34 / 8 | 15 / 6 | 0 | absent 4 |
 | Text messages | text-messages.scn | 5 | 10 | 11 / 36 | 0 / 44 | 0 | absent 21, done 5 |
 | Track conditions | track-conditions.scn | 1 | 13 | 14 / 3 | 0 / 18 | 0 | absent 3, done 2 |
-| Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 32, n/a 1, partial 5 |
+| Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 33, n/a 1, partial 4 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 12, done 668, n/a 5, other 52, partial 27 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 12, done 669, n/a 5, other 52, partial 26 |

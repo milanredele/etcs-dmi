@@ -916,7 +916,7 @@ expect efs: Kernel.Mode == ModeEnum.SN
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.NoProcedure
 sequence Close desk in Trip mode
 case Close desk
-clause E4 partial 4.4.13.1.6 ; efs 4.4.13.1.6
+clause E4 done 4.4.13.1.6 ; efs 4.4.13.1.6
 step Initialize test environment
 sub Sub-step1
 init 100.0 TR
