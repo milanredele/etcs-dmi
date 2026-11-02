@@ -70,4 +70,10 @@ package EVC_Test_Handover is
    --  session's end
    procedure Scenario_Handover_Train_Data_Once;
 
+   --  3.15.1.3.1 c), 3.15.1.3.2.2, 3.15.1.3.4: after the switch a group
+   --  past the border orders the transition at once to the RBC already
+   --  supervising: the border kept, the min safe rear end's report to
+   --  the Handing Over RBC, the reports to both until then
+   procedure Scenario_Handover_Order_Again;
+
 end EVC_Test_Handover;

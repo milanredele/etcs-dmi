@@ -996,4 +996,53 @@ package body EVC_Test_Handover is
              & ", to session 2:" & To_New'Image);
    end Scenario_Handover_Train_Data_Once;
 
+   procedure Scenario_Handover_Order_Again is
+      W       : Writer_T;
+      OK      : Boolean;
+      Passed  : Boolean := False;
+      To_Old  : Natural;
+      At_Rear : Boolean := False;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      --  the group past the border: packet 131 D_RBCTR 0 for 400
+      Add_Group (Group (25, 310));
+      ETCS_Track_Packets.P131.Encode (P131 (0, 400), W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Run_X (30_500);
+      Check (R.Supervising = 2 and then R.Info (1).State = R.Established,
+             "order again: the front past the border at 300 m, 400 "
+             & "supervises, the session with 300 kept");
+      --  the reports of each 5 m step counted (a step's outputs only)
+      To_Old := 0;
+      while Train_Cm < 32_000 loop
+         Run_X (Train_Cm + 500);
+         To_Old := To_Old + Sent (136, 1);
+      end loop;
+      Check (R.Supervising = 2 and then R.Info (1).State = R.Established
+             and then To_Old > 0,
+             "order again: group 25 read with the order at once for 400, "
+             & "which supervises: the Handing Over session 1 still "
+             & "reported to (3.15.1.3.4)");
+      --  5 m a cycle until the min safe rear end passes the border
+      while not Passed and then Train_Cm < 100_000 loop
+         Seen := EVC_Position.No_Triggers;
+         Run_X (Train_Cm + 500);
+         Passed := Seen.Border_Rear;
+         At_Rear := Passed and then Sent (136, 1) > 0;
+      end loop;
+      Check (Passed and then At_Rear and then R.Info (1).State = R.Established,
+             "order again: the min safe rear end past the border, the "
+             & "report to the Handing Over RBC 300 (3.15.1.3.1 c), at"
+             & Integer_64'Image (Train_Cm) & " " & Passed'Image);
+   end Scenario_Handover_Order_Again;
+
 end EVC_Test_Handover;
