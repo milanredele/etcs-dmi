@@ -410,6 +410,7 @@ begin
    EVC_Test_Handover.Scenario_Train_Data_Repeats;
    EVC_Test_Handover.Scenario_Handover_Session_Report;
    EVC_Test_Handover.Scenario_Handover_Error_Report;
+   EVC_Test_Handover.Scenario_Handover_Relocated;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;

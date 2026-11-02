@@ -96,4 +96,9 @@ package EVC_Test_Handover is
    --  balise group error reported to both
    procedure Scenario_Handover_Error_Report;
 
+   --  A.3.5.1 6th bullet over a relocation: the border passed by the
+   --  max safe front end, the relocation on a linked group puts it in
+   --  rear of the border, forward again
+   procedure Scenario_Handover_Relocated;
+
 end EVC_Test_Handover;

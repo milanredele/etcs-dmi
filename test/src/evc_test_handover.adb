@@ -1263,4 +1263,102 @@ package body EVC_Test_Handover is
              & "3.15.1.3.4); to 300" & To_1'Image & ", to 400" & To_2'Image);
    end Scenario_Handover_Error_Report;
 
+   --  A.3.5.1 6th bullet over a relocation (3.6.4.2.5 a)): the group 10
+   --  at 100 m (RBC 300's order, packet 42) links the group 20 at 300 m
+   --  (Q_LOCACC 12 m), RBC 300 orders the handover to RBC 400 with the
+   --  border 320 m from the group 10; from 150 m the odometer over-reads
+   --  by 2 % without a confidence interval of its own, so the max safe
+   --  front end passes the border (3.6.5.1.4 k), 3.15.1.3.1 b)) before
+   --  the group 20 is read 6 m late, whose reading puts it back in rear of
+   --  the border; forward over the border again: the crossing neither
+   --  reverted nor taken twice, 400 still supervising, both sessions kept
+   procedure Scenario_Handover_Relocated is
+      Saved : constant Unsigned_16 := Speed_Cms;
+      Front : Natural := 0;
+      W     : Writer_T;
+      OK    : Boolean;
+
+      function SOLR_Group return Natural is
+        (Natural (EVC_Position.SOLR.Id.NID_BG));
+
+      --  the max safe front end in cm from the group 10 as the position
+      --  report gives it (D_LRBG + L_DOUBTOVER), the group 20 counted at
+      --  its linked 300 m
+      function Max_Front_From_10 return Integer_64 is
+         P : constant ETCS_Train_Packets.P0.Packet_T :=
+           EVC_Position.Position_Report (EVC_Core.Mode, EVC_Modes.L2);
+         S : constant Integer_64 :=
+           (case Natural (P.Q_SCALE) is
+               when 0 => 10, when 1 => 100, when others => 1000);
+      begin
+         return (Integer_64 (P.D_LRBG) + Integer_64 (P.L_DOUBTOVER)) * S
+           + (if SOLR_Group = 20 then 30_000 else 0);
+      end Max_Front_From_10;
+
+      --  one cycle of 50 cm, counting the crossings by the front
+      procedure Go is
+      begin
+         Seen := EVC_Position.No_Triggers;
+         Step_X (50);
+         if Seen.Border_Front then
+            Front := Front + 1;
+         end if;
+      end Go;
+
+      function Image return String is
+        (" front" & Front'Image & " group" & SOLR_Group'Image
+         & " max front" & Integer_64'Image (Max_Front_From_10)
+         & " cm, supervising" & R.Session_Ref_T'Image (R.Supervising)
+         & " 300 " & R.Session_State_T'Image (R.Info (1).State)
+         & " 400 " & R.Session_State_T'Image (R.Info (2).State));
+   begin
+      Speed_Cms := 500;
+      Start_X;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 300), (1 => 20), Locacc => 12)));
+      ETCS_Track_Packets.P42.Encode (P42 (1, 300), W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      Add_Group (Group (20, 400));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 320, 400));
+      Stand;
+      Establish (2);
+      Error_Per_Mille := 20;
+      Bound_Per_Mille := 0;
+      while Front = 0 and then SOLR_Group /= 20 and then Train_Cm < 41_000
+      loop
+         Go;
+      end loop;
+      Check (Front = 1 and then SOLR_Group = 10
+             and then Max_Front_From_10 >= 32_000,
+             "handover relocated: the max safe front end past the border "
+             & "before the group 20 is read" & Image);
+      while SOLR_Group /= 20 and then Train_Cm < 41_000 loop
+         Go;
+      end loop;
+      Check (SOLR_Group = 20 and then Max_Front_From_10 < 32_000
+             and then Front = 1 and then R.Supervising = 2
+             and then R.Info (1).State = R.Established
+             and then R.Info (2).State = R.Established,
+             "handover relocated: the relocation on the group 20 puts the "
+             & "max safe front end in rear of the border (3.6.4.2.5 a)), "
+             & "the switch to 400 (3.15.1.3.5) not reverted, the session "
+             & "with 300 kept (A.3.5.1 6th bullet)" & Image);
+      while Train_Cm < 43_000 loop
+         Go;
+      end loop;
+      Check (Max_Front_From_10 > 32_000 and then Front = 1
+             and then R.Supervising = 2
+             and then R.Info (1).State = R.Established
+             and then R.Info (2).State = R.Established,
+             "handover relocated: forward over the border again, no second "
+             & "crossing (A.3.5.1 6th bullet)" & Image);
+      Error_Per_Mille := 0;
+      Bound_Per_Mille := 20;
+      Speed_Cms := Saved;
+   end Scenario_Handover_Relocated;
+
 end EVC_Test_Handover;
