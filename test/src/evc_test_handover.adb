@@ -1096,4 +1096,49 @@ package body EVC_Test_Handover is
              & EVC_Text_Messages.Displayed'Image);
    end Scenario_Handover_Text_No_LRBG;
 
+   procedure Scenario_Train_Data_Repeats is
+      V      : ETCS_Message.Value_Array := (others => 0);
+      N      : Natural := 0;
+      At_Ms  : array (1 .. 8) of Integer := (others => -1);
+      T0     : Integer := 0;
+      N0     : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      V (3) := Now_T;
+      V (7) := 48;
+      N0 := EVC_Sessions.Train_Data_Sent;
+      Give_Radio_Message (1, Message_Of (MCat.Track_M32, V));
+      T0 := Integer (EVC_Core.Time_Ms);
+      --  no message 8: 75 s of 100 ms cycles, the 129s counted with their
+      --  time from the message 32
+      for C in 1 .. 750 loop
+         Stand;
+         if C = 2 then
+            V := (others => 0);
+            V (3) := Now_T;
+            Give_Radio_Message (1, Message_Of (MCat.Track_M38, V));
+         end if;
+         while N < EVC_Sessions.Train_Data_Sent - N0 loop
+            N := N + 1;
+            if N <= At_Ms'Last then
+               At_Ms (N) := Integer (EVC_Core.Time_Ms) - T0;
+            end if;
+         end loop;
+      end loop;
+      Check (N = 4 and then R.Info (1).State = R.Established
+             and then At_Ms (4) - At_Ms (1) in 44_000 .. 46_000,
+             "Train Data unacknowledged: the 129 sent once and repeated "
+             & "three times 15 s apart, none after the fourth (A.3.1); "
+             & "sendings" & N'Image & " at" & At_Ms (1)'Image
+             & At_Ms (2)'Image & At_Ms (3)'Image & At_Ms (4)'Image
+             & At_Ms (5)'Image & " "
+             & R.Session_State_T'Image (R.Info (1).State));
+   end Scenario_Train_Data_Repeats;
+
 end EVC_Test_Handover;

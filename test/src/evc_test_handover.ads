@@ -83,4 +83,8 @@ package EVC_Test_Handover is
    --  direction rejected
    procedure Scenario_Handover_Text_No_LRBG;
 
+   --  3.18.3.4, A.3.1: the Train Data (message 129) not acknowledged:
+   --  sent once and repeated three times 15 s apart, then no more
+   procedure Scenario_Train_Data_Repeats;
+
 end EVC_Test_Handover;
