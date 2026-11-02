@@ -18539,3 +18539,136 @@ units.
   PT), refused after it, taken once the desk is open again, isolation
   taken with the desk closed. Left: the adhesion choice, read by
   `EVC_Stored_Information` in a step before (B3221).
+
+### Review of the sixty-second round: eight verdicts re-derived blind (e5/review-62) (2026-11-02)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the author's record. All eight items were taken. No
+code, no triage line and no line of the authors was changed.
+
+1. The reports to the Accepting RBC's session. Mine: at its
+   establishment the Accepting RBC gets its valid Train Data
+   (3.15.1.3.3). 3.6.5.1.4 h) makes a position report due, and while
+   connected to both 3.15.1.3.4 sends it to both. Order: the 129 first,
+   then the 136. A balise group error while connected to both
+   (3.6.5.1.4 l), 3.16.4.2) is a position report with packet 4, so it
+   goes to both. A radio message error (M_ERROR 3, 4): my
+   recommendation is to send it to both. The error report is a
+   position report, 3.15.1.3.4 makes no exception, and the sending RBC
+   is one of the two (3.16.3.1.1.2). Author (e6/reports-both): the
+   same for h), the order and the balise group errors
+   (`EVC_Sessions.Reports.Evaluate`'s `Acc_Up`,
+   `Request_Balise_Errors` through `Produce`, the two scenarios of
+   `EVC_Test_Handover`). For the radio errors the author recommends
+   the sending RBC only and leaves the choice to the user (B3162).
+   Agree, except that recommendation: B3240.
+2. An MA after a Train Data change at standstill. Mine: A.3.4.1.2 j)
+   is in the column "e, g - j, l, m, o". There the MA is D[10][11]:
+   EOA and SvL at the estimated and max safe front ends, no release
+   speed. The gradient and the SSP are D[10], deleted beyond the max
+   safe front end. A message 3 with packets 15 and 80 only is
+   therefore not covered by the SSP and the gradient, and 4.8.3 [4]
+   refuses it: "rejected", not taken and shortened. The laboratory
+   should send packets 21 and 27 with it. Author (e6/acceptance-left):
+   `Store_MA` refuses it by [4] (`EVC_Track_Description.Covered`
+   False), Sf537caac s076. Agree.
+3. The Infill sub-rows (4.8.3, PDF pages 67-68). Mine: Linking,
+   Reversing area information and Reversing supervision information
+   have non-infill R [1], R [1], A, R [1] and Infill R, R, A, R [1].
+   They differ only in level 0 and NTC: an infill packet is not kept
+   for a level 1 announced. [18] is on the Infill sub-row of the
+   Signalling Related Speed Restriction in level 1 and rejects a zero
+   restriction (3.11.6.5). Packet 44 (7.4.2.11) carries data for
+   applications outside ERTMS/ETCS, which the on-board does not act on.
+   Author: `Keep_Unit_Packets` judges the packets after a packet 136 by
+   their Infill sub-row; `Take_MA_Packet` ignores an infill V_MAIN 0;
+   `Has_Infill_Row` names packet 44 as not taken;
+   `Scenario_Infill_Rejected` covers both. Agree.
+4. The juridical records 21, 33 to 37 and 40, and the desk closure in
+   TR. Mine: all five brakes are inputs of the train interface:
+   regenerative, magnetic shoe, eddy current and EP brakes (SUBSET-034
+   2.3.6.1) and the additional brakes (2.3.7). The traction status of
+   40 is a two-state input that is only forwarded to an STM (2.5.4.2).
+   Our train interface has no such input, so 40 cannot be recorded.
+   The on-board can set the bits of 21 for what it sends the DMI: the
+   modes, the levels, the statuses, the track conditions, TAF, LX and
+   LS. The DMI alone decides the hour glass, the request buttons and,
+   here, ATO. With the desk closed in TR there is no mode change (4.6.2
+   has no desk condition out of TR), and the driver's requests are
+   dropped except isolation (4.4.13.1.6). Author (e6/jru-messages):
+   `Record_Inputs_Radio_Data` for the five brakes and 40 not recorded
+   (B3220), `Record_Symbols` with the same split,
+   `EVC_Core.Modes.Evaluate_Modes_And_Levels` clears the requests
+   unless isolation is selected, and the three scenarios. Agree.
+5. The bench's odometer interval. Mine: by 3.6.4.1.1 a) the interval
+   includes the odometer accuracy. At 1 % after 1250 m it is 12.5 m on
+   each side. A bench that truncates `Step * Acc / 1000` cm per 100 ms
+   cycle gives 0 at 30 km/h (83 cm a cycle, 830 / 1000 truncates to
+   0): nothing at all below 36 km/h. Carrying the remainder (`Odo_Rem`)
+   gives 1250 cm. `Group_Input_Ms` has to restart with the sequence's
+   clock. Author (e5/runner-odometer): the same. Agree.
+6. 3131050_19 step 55 and 4080300_16 step 73.
+   3131050_19: the chart drives at 24.1 km/h to 670 m, and ERA's PDF
+   states "V_TRAIN <= V_RELEASE" there. The MA of BG2d has its EOA at
+   700 m and its SvL at 900 m, a 15 km/h restriction from 800 m and
+   V_RELEASEDP 126. We calculate 20 km/h (23 km/h in the level 2 twin
+   3131050_21), below the train's speed: Warning, then SB, then EB,
+   and status 4 at step 55. 3.13.9.4.8.2 takes the larger of the
+   predicted margin (2 Q_LOCACC + 10 m + 10 % of d_EOA) and the actual
+   interval. The actual interval, about 9 m over 450 m, stays below
+   the predicted one, so the bench's interval alone should not move
+   the release speed. Verdict written: undecided between ours (the
+   release speed too low) and the sequence's data.
+   4080300_16: BG6's Q_LOCACC is 12 m in the bits and in ERA's PDF (63
+   m only in the comment). BG6 is read at 750 m against 800 m by the
+   linking, so outside its window: 3.16.2.3.1 a), no reaction. Our JRU
+   names BG6 as the SOLR, and with that SOLR 3.6.4.2.5 a) relocates
+   the EOA by the linking distance whatever the window: about 796 m,
+   so TR when the min safe front end passes 800 m. Ours keeps the EOA
+   at 846 m before and after BG6. The interval is not the cause: the
+   gap is 50 m, the window 12 m plus about 7 m. Verdict written: ours.
+   Author (e5/runner-odometer): s076 for both. For 4080300_16 the
+   author gives the same numbers (846 m kept) and charges ERA's
+   Q_LOCACC. Undecided on 3131050_19 (B3241); disagree on 4080300_16
+   (B3242).
+7. 3040400_03 step 76. Mine: BG4 and BG5 carry Q_LINKREACTION 01
+   (service brake) in the scn and in ERA's PDF; the comment's "No
+   reaction" is wrong. The brake to standstill at 305 m is therefore
+   the linking reaction. 3.16.2.6.2 and A.3.4.1.2 h) shorten the MA to
+   the train: EOA at the estimated front end, no release speed (ours
+   ma 0 at 305 m). No MA follows: BG4 carries packet 73, BG6 packet
+   255. So the train trips when its min safe front end passes that EOA
+   (4.6.3 [12]): ours TR between 321 and 407 m, record 23 "EOA
+   passed". The sequence's FS to 500 m ignores 3.16.2.6.2. Verdict
+   written: the sequence. Author (e5/runner-odometer): onboard, not
+   traced (B3200). Disagree: B3243.
+8. 3110500_03 step 98 and 9990500_09 step 101.
+   3110500_03: the message 24 of step 94 (session 2, LRBG BG1d)
+   carries packet 74 with M_LEVELTEXTDISPLAY 5, twice. In 4.0.0 that
+   value is spare (7.5.1.66: 4 is "no level condition"; 5 was the
+   older format's value). By 3.16.1.1 the message is inconsistent, so
+   the codec refuses it and `EVC_Sessions.Take_Inconsistent` sends
+   M_ERROR 3 in the 136 with packets 0 and 4 to session 2 at 94900 ms.
+   The text is never stored (3.15.1.3.6), so it is not shown at 1890
+   m. Verdict written: the sequence, for SV30. SV21 and SV22 fail at
+   the same step, where 5 is valid, so they still need a trace.
+   9990500_09 SV21: after the rear end's report at 387700 ms, the
+   train stops and moves back. 3.6.5.1.4 a) and i) make reports due
+   (388600 ms, to both). With no termination order, 3.15.1.3.9
+   requires the repetitions to session 1 (395200 and 410200 ms) and
+   then the 156 (425200 ms). The step's "NOT any 136" forbids reports
+   the SRS requires. Verdict written: the sequence. Author
+   (e6/reports-both): onboard for both, not traced (B3160, B3161).
+   Disagree: B3244, B3245.
+
+Counts: 8 items taken. Agreed: 2, 3, 4, 5, and item 1 except the
+recommendation on the radio errors. Disagreed: item 1's
+recommendation, 4080300_16 (6), 3040400_03 (7), 3110500_03 and
+9990500_09 (8). Undecided: 3131050_19 (6). My calls: S99eb8ae1 and
+Sb83b2c65 are probably s076 once the backlog line's check is made;
+S776cef6c is s076 for SV30 if SV21 and SV22 turn out to have a second
+cause; 4080300_16 is the one on-board candidate (the relocation by
+3.6.4.2.5 a) at an SOLR read outside its window). The recordings'
+times of 9990500_09 differ from the author's (388600 ms here against
+382700 ms) on the same master. Backlog: B3240 to B3245. The review
+took about 115 tool calls of 130.
