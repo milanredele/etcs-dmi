@@ -17928,3 +17928,143 @@ is left as it was in the review of the sixtieth round.
 
 Runner: 1184 passed, 1045 failed, 961 blocked (6 sequences moved, 0
 regressions). Backlog: B2960, B2962 closed; B3060 added; B2961 open.
+
+### Review of the sixty-first round: eight verdicts re-derived blind (e5/review-61) (2026-11-02)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the author's record. All eight items were taken. No
+code, no triage line and no line of the authors was changed.
+
+1. A second RBC transition order after the switch. Mine: a D_RBCTR 0
+   order that names the RBC already supervising has the same Accepting
+   RBC. So 3.15.1.3.2.3 does not apply, 3.15.1.3.2.2 replaces the order
+   with the same pair, and 3.15.1.3.7 is a no-op. The order does not
+   end the Handing Over session: only that RBC's order or 3.15.1.3.9
+   does. The min safe rear end's report to the Handing Over RBC is
+   still due (3.15.1.3.1 c)), and the reports go on to both
+   (3.15.1.3.4). Keeping the border is fair. Strictly, a replacing
+   order puts the location at the group, but the group is at the
+   border. `Apply_Order` decision 6 drops the fresh order and keeps the
+   border, `Old_S`, `Single` and `Opened`. `Scenario_Handover_Order_Again`
+   checks both reports. Author (e6/handover-border): the same. Agree.
+2. A text with no origin. Mine: with NID_LRBG "unknown" (16777215,
+   7.5.1.90) the direction cannot be referred to the train orientation.
+   So a packet 74 with Q_DIR nominal is rejected (3.6.3.1.4), and one
+   with Q_DIR both is evaluated. With no location sub-condition its
+   start is fulfilled at once (3.12.3.4.3.1.3) and its end is never
+   fulfilled by a location (.4). It is taken, and from the Accepting
+   RBC it is stored until the switch (3.15.1.3.6). `Take_Radio` uses
+   `Valid_For` without an origin (both directions only) and takes a
+   text only when it is located or has no start or end distance.
+   Author: the same, S776cef6c moved to s076. Agree.
+3. The footnotes of 4.8.3 per packet. Mine: the first filter sorts
+   information (4.8.1.2, Figure 3), so it acts per packet. In level 2,
+   20 rows from the RBC carry [3]. They are linking 5, MA, gradient 21,
+   SSP 27, ASP 51, the SR authorisation, TSR 65, its revocation 66,
+   route suitability 70, the RBC transition order 131 ([3] [15] [17]),
+   track conditions without big metal masses (39, 40, 68, 69), the
+   shorten MA, SH refused, SH authorised, the TAF request, reversing
+   area 138, reversing supervision 139, PBD 52, LX 88 ([3] [17]) and
+   the LSSMA toggle on 180. Big metal masses (67) has [17] alone.
+   Adhesion (71) by radio is A with no footnote. A message 24 with 71
+   and 88 while the 133 is unacknowledged: the 71 is taken and the 88
+   is rejected by [17]. A 131 is rejected by [17]. After a change of
+   the length only, with Train Data already acknowledged in the
+   session, neither bullet of [3] applies and the message 3 is taken.
+   After a change of the axle load category it is rejected until the
+   message 8. `Train_Data_Row` lists the 15 packet rows and
+   `First_Filter` the message rows: the same 20. `Consist_Row` includes
+   67 and not 71. `TD_Changed` compares the four values. 131 goes
+   through `Transition_Order_Rejected`. Author (e6/acceptance-packets):
+   the same. Agree. Remarks: `TD_Acked` spans both sessions of a
+   handover, while [3]'s first bullet says "the ongoing communication
+   session". The acknowledged values are those of the cycle in which
+   the 8 is first seen, so a change of the four between the sending
+   and the acknowledgement counts as acknowledged. Both are stated
+   decisions.
+4. The 129's four sendings, the Invariant column, the image. Mine: the
+   129 is sent at t, t + 15, t + 30 and t + 45 s. If the fourth is
+   unacknowledged, nothing more is sent: the acknowledgement stays
+   awaited and T_NVCONTACT (3.16.3.4.1) is the only reaction.
+   `Evaluate_TD` uses `Max_Repeats` 3 and `Repeat_Ms` 15000 from
+   `TD_Since`, on the supervising session only. The Invariant column
+   says Yes for 154, 155 and 156 (8.5.2) and for 32 and 39 (8.5.3). The
+   toml has the same five, and so does
+   `ETCS_Message_Catalogue.Invariant`. The format 3 image is the
+   version 2 image (38 to 1248 bytes) plus 57 bytes of zones at L - 61:
+   the count, then 8 x 7 bytes (first, last, offset + 720, summer
+   rule), 95 to 1305 bytes in all. The `[[zone]]` text form carries
+   first, last, offset_min and summer. `--compare` on
+   `zones_v3.toml` / `.img` matches byte for byte. Author
+   (e6/handover-border, e6/clock-tools): the same. Agree.
+5. A negative radio expectation after a timer. Mine: NP deletes the
+   position report parameters (4.10, D in NP). Without them, the cyclic
+   report the step refuses would be due at the timer's expiry (117400 +
+   10000 = 127400 ms). A faithful runner judges the absence from the
+   expiry for about one period (127400 to 137400 ms). A 136 sent 100 ms
+   after the timer's start does not violate it. That 136 is the report
+   of 3.6.5.1.4 i), "the train leaves standstill": the state line of
+   step 161 already shows the odometer moving towards cab A as the
+   bench starts the drive of step 162. `Run_Timer` and `Radio_Expect`
+   do exactly this, and the trace passes step 163 at 137400 ms. Author
+   (e5/runner-linking): the same. Agree. The event of B3082's 136 of
+   117500 ms is i).
+6. 9990500_09 SV21 step 87. Mine: message 3 of step 67 (LRBG BG2)
+   carries packet 5 with D_LINK 1400, Q_LOCACC 60 and Q_LINKREACTION 2
+   (none), and packet 131 with D_RBCTR 1390. ERA's PDF prints the same
+   bits. Its text says 1000 / 990 and puts BG3d at "d0 + 900 m, inside
+   the expectation window". Its step list puts BG2d at 100 m and BG3d
+   at 1350 m. The window starts at 1400 - 60 = 1340 m past BG2
+   (3.4.4.4.3.1). At the reading the antenna is 1248 m past BG2. Adding
+   BG2's 60 m and the over-reading gives at most about 1321 m at the
+   bench's 1 %, so the group is detected in rear of the window: the
+   message is rejected (3.4.4.4.3.2), with the reaction of 3.16.2.3.1
+   a) and the error report (136 with packets 0 and 4). In the text's
+   geometry the group is inside at any odometer error (a margin of 100
+   m against 2 x 60 m). In the data's geometry it is inside only with
+   30 m of over-reading over 1250 m (2.4 %). Ours applies the clause.
+   The cause is the sequence's data, with the bench's interval second.
+   Author: the sequence's data (Sd077284a, s076), with B3080 (the
+   bench's interval truncated to 0, so even my 12 m was too much) and
+   B3081. Agree.
+7. 3110500_03 SV30 step 86 and 4080100_03 SV30 step 130. 3110500_03,
+   mine: step 86 is at 800 m, not at the rear's crossing (the brief's
+   premise). It comes right after the Accepting RBC's session is
+   established (155, 159 and 129 to session 2 at 93700 / 94000 ms). The
+   Handing Over RBC's message 24 of step 70 carries 131 (D_RBCTR 1950)
+   and 58 (T_CYCLOC 255, D_CYCLOC 32767, M_LOC 001, D_LOC 1300). None of
+   that is due at 800 m. The event is 3.6.5.1.4 h), "a communication
+   session is successfully established", and the report goes to both
+   RBCs (3.15.1.3.4), as ERA's comment says. Ours sends none by 98200
+   ms. `EVC_Sessions.Reports` takes h) only for the supervising RBC's
+   session (`Was_Up`, "h): the supervising RBC's session was
+   established"). The on-board. Author: the on-board (Se1820110), cause
+   not traced. Agree; the cause is in this paragraph. 4080100_03, mine:
+   LS is entered at 400 m. The generic LS function marker comes from
+   BG2d at 850 m and is kept until BG5d at 1750 m (4.4.19.1.4.8),
+   whose "removed" at step 133 confirms it. The only toggle on before
+   step 130 is the Accepting RBC's 180 of step 102, which is rejected
+   (4.8.2.1, as ERA's comment says). BG4d carries 41 only. With the
+   marker stored, 4.4.19.1.4.2 to .6 give no display. Ours shows none.
+   The sequence. Author: s076 (S6b9f37cf: case 4070201 40 assumes no
+   marker). Agree.
+8. 4080300_17 SV30 step 179. Mine: the 129 of step 157 (203700 ms) is
+   acknowledged by the 8 of step 163 (204500 ms) before the message 3
+   of step 168 (204800 ms: L_ENDSECTION 3000 from BG4, 80 LS D_MAMODE
+   200, 5 D_LINK 500 to BG5). Neither bullet of [3] nor [17] can reject
+   it, unless the 8 was not taken as the acknowledgement of that 129.
+   The trace keeps LS with ma0 (the MA shortened to the train) and the
+   brakes released through step 178. The train then trips (TR, EB) at
+   BG5d, the immediate level 1 order, at 1809 m. Verdict written:
+   undecided between [3] still applied (the acknowledgement not
+   matched) and a refusal outside the footnotes. The on-board either
+   way. Author (e6/acceptance-packets): the on-board, B3060, cause not
+   traced. Undecided: B3120 names the print that settles it.
+
+Counts: 8 items taken, 7 agreed (1 to 7), 0 disagreed, 1 undecided
+(8). My calls: B3060 can start from the timing in item 8. Se1820110 at
+3110500_03 is 3.6.5.1.4 h) for the Accepting RBC's session, sent to
+both (`EVC_Sessions.Reports`). B3082's 136 is 3.6.5.1.4 i). Backlog:
+B3120. Brief premise wrong: 3110500_03 step 86 is not "at the rear's
+crossing" but at the Accepting RBC's session establishment. The review
+took about 107 tool calls of 130.
