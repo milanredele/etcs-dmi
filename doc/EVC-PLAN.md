@@ -18068,3 +18068,110 @@ both (`EVC_Sessions.Reports`). B3082's 136 is 3.6.5.1.4 i). Backlog:
 B3120. Brief premise wrong: 3110500_03 step 86 is not "at the rear's
 crossing" but at the Accepting RBC's session establishment. The review
 took about 107 tool calls of 130.
+
+### E5 integration after the sixty-first round, the twenty-ninth of E6 (2026-11-02)
+
+Merged: e6/clock-tools (B2980: `test/tools/evc_config.py` reads and
+writes the image's format version 3, `[[zone]]` tables, the version the
+text form names; a `--compare` mode run by `test/check.sh` on the hosted
+and wasm configurations and on the new `test/config/zones_v3` pair,
+which `Scenario_Config_Zones` compares byte for byte with `Encode_V3`;
+B2981: the wasm bench takes the browser's clock through
+`Sim_Onboard_Env.Set_Clock` and a new export, the page calling it after
+each reset, the smokes on the fixed reference; B1463: `invariant = true`
+on messages 154, 155, 156, 32 and 39 in the toml, the catalogue's
+`Invariant` array generated; 91 calls), e6/handover-border (B2941: the
+reviewer's cause held, `EVC_Sessions.Handover.Apply_Order` on a packet
+131 with D_RBCTR 0 for the RBC already supervising deleted the border
+and switched again; after the switch, while the Handing Over session is
+kept, such an order is dropped (decision 6, 3.15.1.3.2.2),
+`Scenario_Handover_Order_Again`; 3150100_06 and 4080100_04 passed in
+three versions, 4080100_03 moved from 113 to 130 (s076), 3110500_03 had
+another cause (found by the review, below); B2940: the Accepting RBC's
+text of 3150100_01 is rightly rejected, NID_LRBG unknown with Q_DIR
+nominal (3.6.3.1.4; ERA's PDF the same), the sequence triaged s076; on
+the way a text with no origin, valid for both directions and with no
+location condition is now taken (`Scenario_Handover_Text_No_LRBG`);
+B3001: `TD_Repeats`, the 129 sent at t, +15, +30, +45 s then left to
+T_NVCONTACT, `Scenario_Train_Data_Repeats`), e6/acceptance-packets
+(B2962: [3] and [17] judged per packet, `EVC_Radio_Acceptance.
+Train_Data_Row` and `Packet_Rejected`, the states kept per message in
+`EVC_Radio_Info.Slot_T` and read by `EVC_Stored_Information.
+Radio_Not_Taken` after the level filter; packet 131 by radio is taken in
+`EVC_Sessions.Take_Radio_Transition`, not in `Take_Radio_Order` as the
+brief said, and judged by `Transition_Order_Rejected`; the [17] row
+done; B2960: the four Train Data values last acknowledged kept
+(`TD_Acked_Categories`) and compared by `TD_Changed`; the old S4eed293c
+triage was wrong, 4080300_17's 129 changes M_LOADINGGAUGE; 4080300_15
+passed in three versions, 4080300_17 moved from 175 to 179 (B3060); the
+handover and train-data test helpers now acknowledge the Train Data;
+B2961 left at the bound), and e5/runner-linking (B3020 / B2942:
+9990500_09 step 87 is the sequence's data: the 136 at 318800 ms is an
+error report to the supervising session, BG3d is read 1248 m past BG2
+where packet 5 announces it at D_LINK 1400 with Q_LOCACC 60 (ERA's PDF
+the same bits, the step text says D_LINK 1000), so it is in rear of its
+window by 3.4.4.4.3.1 and rightly rejected; B2942 dropped; B3080 (the
+bench's odometer interval truncated to 0 below 36 km/h) and B3081 (an
+error report to the supervising session only while connected to both)
+left; B2944: a negative radio expectation after a timer is judged from
+the timer's expiry for one period, 4100103_26 passed in three versions,
+3080200_03's pass without the period was vacuous and stayed; the DEBUG
+list decodes each sending's length and packets; the third item not
+taken at the bound), and e5/review-61 (the tenth blind review, below).
+
+The review (e5/review-61, 106 calls, 8.1 USD): eight items, all
+reached, fully blind; 7 agreed, 0 disagreed, 1 undecided. Undecided
+(B3120): 4080300_17 step 179: the message 8 at 204500 ms precedes the
+message 3 at 204800, so [3] or [17] can only reject the message 3 if
+the 8 was not matched to the 129; a print of `Train_Data_Unacked`,
+`TD_Acked` and `TD_Changed` at that cycle settles it; ours either way.
+Found by reading: 3110500_03 step 86 is not at the rear's crossing (the
+brief's premise wrong) but at the Accepting RBC's session establishment
+at 800 m, where `EVC_Sessions.Reports` sends the establishment report
+(3.6.5.1.4 h)) for the supervising RBC's session only (B3140, added by
+the coordinator from the review); the 136 of 4100103_26 at 117500 ms is
+the report at the train leaving standstill (3.6.5.1.4 i)), which closes
+B3082. Two remarks without a line: `TD_Acked` spans both sessions of a
+handover where [3] says "the ongoing session"; the acknowledged values
+are those of the cycle the message 8 is first seen. Ten rounds of
+reviews: 83 items, 75 agreed, 10 disagreed, 5 undecided; 22 lines, of
+which 8 became fixes, and two causes found by reading (B2941, B3140);
+61.1 USD.
+
+Verification of the merged tree: two chain runs (after three packages,
+then after the acceptance package), all green: `test/check.sh` ok (with
+the new image comparison); the full proof 13871 checks, none unproved,
+margin 47726 steps; cross build and stack 32768 B budget, margin 6056 B;
+wasm and both smokes 0 failures; the runner 1181 / 1048 / 961 -> 1193 /
+1036 / 961 (twelve passes: 3150100_06, 4080100_04, 4080300_15,
+4100103_26 in three versions; 4080100_03 and 4080300_17 later), 0
+regressions against the merged baseline, no signature untriaged. The
+merge: clock-tools fast-forwarded, after a slip: its worktree branch was
+deleted before the named branch existed and the commits were recovered
+from their hash (the named branch is created before any cleanup); the
+other three conflicted on the plan, two on the backlog (three-way by
+id), two on the triage (three-way by signature; one merge was committed
+with a conflict block still in the triage and amended at once).
+
+Costs (doc/ROUNDS.csv): 42.6 USD with the review (34.5 for the four
+packages, 8.1 the review), 10 of 12 package items done (B2961 and the
+two passes' reason left at the bound), 1 of 22 brief premises wrong
+(packet 131's taker), no agent over budget, no resumption, two agents
+past their bound with an item in hand (137, 134), none taking a new
+item after it. Lessons: the merge's order is branch first, then
+worktree; a conflict-resolving script that bails must stop the commit
+(the triage was committed with its markers once); a sequence's step
+text and its telegram bits can disagree (9990500_09's D_LINK): the bits
+are the data, the text the intent, and ERA's PDF prints the bits.
+
+The matrix: clauses left 58 -> 57 (todo 2, partial 55): footnote [17]
+done (done 2081 -> 2082). Open items: doc/BACKLOG.csv (35 open after
+this round; 6 added of which 1 by the review and 1 from it by the
+coordinator, 12 closed). Next: B3140 (the establishment report for the
+Accepting RBC's session), B3120 with B3060 (4080300_17 step 179: the
+print, then the fix), B2961 (the Infill sub-rows of the linking and the
+reversing packets, [18], packet 44), B3081 (an error report while
+connected to both: decide), B3080 and B3083 (the bench's odometer
+interval, `Group_Input_Ms`), the two passes' reason (4080300_21,
+4080420_03), B781's rest; the review again (eight items, readings
+first, no backlog read).
