@@ -2031,10 +2031,12 @@ is
    --  rejected, or stored (4.8.5.1: its message is a set of information
    --  in the transition buffer, EVC_Radio_Authority.Keep_Level_2_Part,
    --  taken at the release); Order: a level transition order in the
-   --  same message
+   --  same message. Then 4.8.3 [3] and [17] for the packet alone, in the
+   --  context of its message Sl (EVC_Radio_Acceptance.Packet_Rejected)
    function Radio_Not_Taken (P     : ETCS_Catalogue.Packet_Kind_T;
                              A     : EVC_Acceptance.Context_T;
-                             Order : Boolean) return Boolean
+                             Order : Boolean;
+                             Sl    : EVC_Radio_Info.Slot_T) return Boolean
    is (EVC_Radio_Acceptance."/="
          (EVC_Radio_Acceptance.Packet_Filter
             (P, A.Level_Valid, A.Level,
@@ -2043,10 +2045,13 @@ is
                and then EVC_Modes."=" (EVC_Levels.Announced_Level,
                                        EVC_Modes.L2),
              Order_In_Message => Order),
-          EVC_Radio_Acceptance.Accepted))
+          EVC_Radio_Acceptance.Accepted)
+       or else EVC_Radio_Acceptance.Packet_Rejected
+                 (P, Sl.Train_Data_Unacked, Sl.Consist_Unacked))
      with Global => EVC_Levels.State;
 
    --  @req 3.8.5.1, 3.10.2.4, 4.8.2.1 c)
+   --  @req 4.8.3.1.1 Table-footnote [3], 4.8.3.1.1 Table-footnote [17]
    procedure Take_Radio (I      : EVC_Radio_Info.Index_T;
                          T      : Origin_Table_T;
                          Train  : Train_Frame_T;
@@ -2134,12 +2139,12 @@ is
                              and then EVC_Modes."="
                                         (EVC_Levels.Announced_Level,
                                          EVC_Modes.L2));
-                  elsif Radio_Not_Taken (E.Kind, A, Order) then
-                     --  4.8.3, From RBC: R [2] outside level 2, the
-                     --  message 24 taken for its other packets; Stored:
-                     --  the set kept in the transition buffer (4.8.5.1)
+                  elsif Radio_Not_Taken (E.Kind, A, Order, Sl) then
+                     --  4.8.3, From RBC: R [2] outside level 2 (Stored:
+                     --  the set kept in the transition buffer, 4.8.5.1);
+                     --  [3], [17]: the packet rejected; the other packets
+                     --  of its message judged by their rows
                      Record_Event (Info_Group, Change_Filtered, NID_Of (K));
-
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,

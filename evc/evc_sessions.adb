@@ -13,6 +13,7 @@ with ETCS_Track_Packets.P131;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
+with EVC_Radio_Authority;
 with EVC_Sessions.Handover;
 with EVC_Sessions.Integrity;
 with EVC_Sessions.Manoeuvre;
@@ -797,11 +798,14 @@ is
    --  3.15.1.3: packet 131 of a message of the supervising
    --  RBC, the border referred to the LRBG of the message (8.4.2.1);
    --  4.8.2.1 c) exception 2: not from the Accepting RBC (the caller);
-   --  3.6.3.1.3: valid for the train orientation relative to that LRBG
+   --  3.6.3.1.3: valid for the train orientation relative to that LRBG;
+   --  4.8.3 [3], [17]: rejected while the Train Data or a message 133 are
+   --  not acknowledged (EVC_Radio_Authority.Transition_Order_Rejected)
    --  @req 3.6.3.1.3
    procedure Take_Radio_Transition
      with Global => (In_Out => Handover.State,
-                     Input  => (EVC_Received.Store, EVC_Position.State))
+                     Input  => (EVC_Received.Store, EVC_Position.State,
+                                EVC_Radio_Authority.State))
    is
       pragma Warnings
         (GNATprove, Off, """Rd"" is set by ""Decode"" but not used after*",
@@ -819,6 +823,7 @@ is
             if OK and then ETCS_Track_Packets.P131.Valid (P)
               and then P.Q_SCALE <= 2
               and then EVC_Position.Radio_Valid_For (Last_LRBG, P.Q_DIR)
+              and then not EVC_Radio_Authority.Transition_Order_Rejected
             then
                Handover.Take_Order
                  (RBC   => (NID_C => P.NID_C, NID_RBC => P.NID_RBC),

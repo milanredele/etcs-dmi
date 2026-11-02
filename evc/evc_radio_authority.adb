@@ -23,7 +23,8 @@ with Interfaces;              use Interfaces;
 
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Rejected_N, TD_Acked, Held,
+       Refined_State => (State => (Messages, Rejected_N, TD_Acked,
+                                   TD_Ack_Seen, TD_Acked_Categories, Held,
                                    Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
                                    Params, Params_Level, Params_Seen,
@@ -52,6 +53,12 @@ is
    --  4.8.3 [3]: the RBC acknowledged Train Data in the ongoing session
    --  of the supervising RBC (EVC_Radio.Train_Data_Acknowledged seen)
    TD_Acked      : Boolean := False;
+   --  4.8.3 [3] second bullet: the train category, axle load category,
+   --  loading gauge and traction systems of the Train Data the RBC
+   --  acknowledged last (as of the cycle the acknowledgement is seen in:
+   --  TD_Ack_Seen, EVC_Radio.Train_Data_Acknowledged of the last cycle)
+   TD_Ack_Seen         : Boolean := False;
+   TD_Acked_Categories : EVC_Train_Data.Categories_T;
    --  4.8: the messages rejected since Clear
    Rejected_N    : Natural := 0;
    Held          : Held_T := (others => False);
@@ -392,6 +399,11 @@ is
    function To_Buffer return Boolean is
      (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored);
 
+   function Transition_Order_Rejected return Boolean is
+     (EVC_Radio_Acceptance.Packet_Rejected
+        (ETCS_Catalogue.Track_P131, Buffer.Context.Train_Data_Unacked,
+         Buffer.Context.Consist_Unacked));
+
    procedure Keep_Level_2_Part (S    : EVC_Radio.Session_T;
                                 Data : EVC_Bytes.Byte_Array) is
    begin
@@ -469,6 +481,8 @@ is
    begin
       Buffer.Clear;
       TD_Acked := False;
+      TD_Ack_Seen := False;
+      TD_Acked_Categories := (others => <>);
       Messages := 0;
       Rejected_N := 0;
       Held := (others => False);
@@ -554,15 +568,19 @@ is
    --  takes it (Shortening: message 9, 3.8.6); Reversed: for the train
    --  orientation after the shift of a Supervised Manoeuvre
    --  authorisation in the opposite direction (4.4.21.1.7); Part: a set
-   --  of information released from the transition buffer (Take_Message)
+   --  of information released from the transition buffer (Take_Message);
+   --  TD_Unacked, SCL_Unacked: 4.8.3 [3] and [17] in the context of the
+   --  message, for the stored information's verdict per packet
+   --  (EVC_Radio_Acceptance.Packet_Rejected)
    procedure Take_Stored_Information
- (Shifted : Boolean;
-                                      Now_Ms  : EVC_Radio.Time_Ms_T;
-                                      Action  : EVC_Radio_Info.Action_T :=
-                                        EVC_Radio_Info.Packets;
-                                      Accepting : Boolean := False;
-                                      Reversed  : Boolean := False;
-                                      Part      : Boolean := False)
+     (Shifted     : Boolean;
+      Now_Ms      : EVC_Radio.Time_Ms_T;
+      Action      : EVC_Radio_Info.Action_T := EVC_Radio_Info.Packets;
+      Accepting   : Boolean := False;
+      Reversed    : Boolean := False;
+      Part        : Boolean := False;
+      TD_Unacked  : Boolean := False;
+      SCL_Unacked : Boolean := False)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State, Emergency),
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State))
@@ -583,6 +601,8 @@ is
       Sl.Action := Action;
       Sl.From_Accepting := Accepting;
       Sl.Level_2_Part := Part;
+      Sl.Train_Data_Unacked := TD_Unacked;
+      Sl.Consist_Unacked := SCL_Unacked;
       --  3.10.2.4: no MA while an emergency stop is not revoked
       Sl.MA_Allowed := not Any_Stop;
       --  3.10.2.2: the stop location of message 15 from the shifted
@@ -1000,13 +1020,17 @@ is
    end Take_SM_Authorisation;
 
    --  A general message (24): one of its packets is taken through the
-   --  stored information in the context C (Take_Message); a packet of a
-   --  row with [17] is not while a message 133 is not acknowledged
+   --  stored information in the context C (Take_Message), the message
+   --  put there for it; the stored information judges each packet again
+   --  (4.8.3 [3] and [17] per packet, EVC_Radio_Acceptance.Packet_Rejected,
+   --  so a packet of a row with [3] or [17] does not go along with a
+   --  packet taken)
    function General_Taken (C : EVC_Radio_Acceptance.Context_T)
      return Boolean is
      (for some I in 1 .. EVC_Received.Last_Packet_Count =>
-        not EVC_Radio_Acceptance.Consist_Rejected
-              (EVC_Received.Last_Packet_Kind (I), C)
+        not EVC_Radio_Acceptance.Packet_Rejected
+              (EVC_Received.Last_Packet_Kind (I), C.Train_Data_Unacked,
+               C.Consist_Unacked)
         and then
         (EVC_Received.Last_Packet_Kind (I)
             in ETCS_Catalogue.Track_P73
@@ -1029,8 +1053,7 @@ is
                       | ETCS_Catalogue.Track_P69
                       | ETCS_Catalogue.Track_P70
                       | ETCS_Catalogue.Track_P88
-                      | ETCS_Catalogue.Track_P180
-                   and then not C.Train_Data_Unacked)
+                      | ETCS_Catalogue.Track_P180)
           or else (EVC_Received.Last_Packet_Kind (I)
                      in ETCS_Catalogue.Track_P51
                       | ETCS_Catalogue.Track_P52
@@ -1101,9 +1124,13 @@ is
       elsif Kind = ETCS_Message_Catalogue.Track_M3 then
          --  4.8.2.1 c) exception 2: the RBC transition order of
          --  the Accepting RBC's message rejected by Take_Radio
-         Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
+         Take_Stored_Information (False, Now_Ms, Accepting => Accepting,
+                                  TD_Unacked  => C.Train_Data_Unacked,
+                                  SCL_Unacked => C.Consist_Unacked);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
-         Take_Stored_Information (True, Now_Ms, Accepting => Accepting);
+         Take_Stored_Information (True, Now_Ms, Accepting => Accepting,
+                                  TD_Unacked  => C.Train_Data_Unacked,
+                                  SCL_Unacked => C.Consist_Unacked);
       elsif Kind = ETCS_Message_Catalogue.Track_M4 then
          Take_SM_Authorisation (Now_Ms, Accepting);
       elsif Kind = ETCS_Message_Catalogue.Track_M9 then
@@ -1142,8 +1169,8 @@ is
          --  data from any trackside, the track description's);
          --  or level crossing information (packet 88, 3.12.5: its start
          --  a temporary EOA when not protected, 3.12.5.8), rejected while
-         --  the Train Data are not acknowledged (4.8.3 [3]; decision: a
-         --  message 24 that has other packets taken carries it along);
+         --  the Train Data are not acknowledged (4.8.3 [3], the packet
+         --  alone: the other packets of its message are taken);
          --  or an LSSMA display toggle order (packet 180,
          --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information;
          --  rejected from the Accepting RBC, 4.8.2.1 c exception 2);
@@ -1159,7 +1186,9 @@ is
          --  (packet 5, EVC_Position.Take_Radio_Linking).
          --  Not taken: packets 3, 57, 138, 139
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting,
-                                  Part => Part);
+                                  Part => Part,
+                                  TD_Unacked  => C.Train_Data_Unacked,
+                                  SCL_Unacked => C.Consist_Unacked);
 
       end if;
    end Take_Message;
@@ -1581,6 +1610,23 @@ is
       return False;
    end Linked_Group_At_EOA;
 
+   --  4.8.3 [3] second bullet: the train category (the cant deficiency
+   --  and the other international categories), the axle load category,
+   --  the loading gauge or the traction systems of the Train Data differ
+   --  from those the RBC acknowledged last (3.18.3.7 names the same four)
+   --  @req 4.8.3.1.1 Table-footnote [3]
+   function TD_Changed return Boolean is
+     (EVC_Train_Data.Categories.Cant_Deficiency
+        /= TD_Acked_Categories.Cant_Deficiency
+      or else EVC_Train_Data.Categories.Other /= TD_Acked_Categories.Other
+      or else EVC_Train_Data.Categories.Axle_Load
+                /= TD_Acked_Categories.Axle_Load
+      or else EVC_Train_Data.Categories.Loading_Gauge
+                /= TD_Acked_Categories.Loading_Gauge
+      or else EVC_Train_Data.Categories.Voltages
+                /= TD_Acked_Categories.Voltages)
+     with Global => (TD_Acked_Categories, EVC_Train_Data.State);
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
@@ -1597,19 +1643,26 @@ is
          Exit_Acknowledged := False;
       end if;
       --  4.8.3 [3]: "not yet acknowledged any train data in the ongoing
-      --  communication session" (Train Data sent again in the session do
-      --  not reject; their changed values are not compared, decision)
-      --  The ongoing session: one established or being established (an
-      --  acknowledgement may come before the session is established, and
-      --  the Train Data are sent again when it is, 3.18.3.4.2)
+      --  communication session", or Train Data whose four values differ
+      --  from the last acknowledged sent and not acknowledged yet
+      --  (TD_Changed). The ongoing session: one established or being
+      --  established (an acknowledgement may come before the session is
+      --  established, and the Train Data are sent again when it is,
+      --  3.18.3.4.2). Decision: the values acknowledged are those of
+      --  EVC_Train_Data in the cycle the acknowledgement is first seen
+      --  (they were sent, a new entry being sent again)
       if not (for some X in EVC_Radio.Session_T =>
                 EVC_Radio.Established (X)
                 or else EVC_Radio.Being_Established (X))
       then
          TD_Acked := False;
       elsif EVC_Radio.Train_Data_Acknowledged then
+         if not TD_Ack_Seen then
+            TD_Acked_Categories := EVC_Train_Data.Categories;
+         end if;
          TD_Acked := True;
       end if;
+      TD_Ack_Seen := EVC_Radio.Train_Data_Acknowledged;
       Evaluate_TAF (Facts);
       --  4.8: the context of the messages of the next cycle; 4.8.5.4,
       --  4.8.5.5: the transition buffer deleted or released
@@ -1620,7 +1673,7 @@ is
           L2_Announced       => EVC_Levels.Announced
                                 and then EVC_Levels.Announced_Level = L2,
           Train_Data_Unacked => Facts.Train_Data_Unacked
-                                and then not TD_Acked,
+                                and then (not TD_Acked or else TD_Changed),
           Consist_Unacked    => Facts.Consist_Unacked,
           Trip_Exit_Known    => Exit_Recognised,
           Cab_Active         => Facts.Cab_Active,

@@ -29,6 +29,7 @@ with EVC_Radio;
 with EVC_Radio_Info;
 with EVC_Received;
 with EVC_Stored_Information;
+with EVC_Train_Data;
 
 --  @req 3.6.7.1 g), 3.10.2.4, 3.13.11.8, 4.4.11.1.3, 4.4.11.1.6.4
 --  @req 4.4.19.1.4.2 a), 4.6.3 Table, 4.8.3.1.1 Table-footnote [5]
@@ -77,6 +78,14 @@ is
    --  to be kept in the transition buffer instead of taken (Store_Message)
    function To_Buffer return Boolean
      with Global => (State, EVC_Received.Store);
+
+   --  1. 4.8.3, the row RBC Transition Order, From RBC: A [3] [15] [17]
+   --  in level 2: a packet 131 of the message received now is rejected
+   --  while the Train Data or a message 133 are not acknowledged, in the
+   --  context of the messages of the cycle (EVC_Sessions, which takes
+   --  the order)
+   function Transition_Order_Rejected return Boolean
+     with Global => State;
 
    --  1. 4.8.5.1, 4.8.5.3: the message Data of the session S kept in the
    --  transition buffer (three messages, the oldest replaced); Accepting:
@@ -214,7 +223,7 @@ is
                                 EVC_Position.State, EVC_Radio.State,
                                 EVC_Levels.State, EVC_Odometry.State,
                                 EVC_Movement_Authority.State,
-                                EVC_Origins.State)),
+                                EVC_Origins.State, EVC_Train_Data.State)),
           Post => EVC_Radio_Info.Count <= 1;
 
    --  3.8.2: the reasons of the MA request applicable (Q_MARQSTREASON,

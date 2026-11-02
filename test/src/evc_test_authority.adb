@@ -2917,4 +2917,155 @@ package body EVC_Test_Authority is
              & "(A.3.5.1 9th bullet)");
    end Scenario_TAF_Relocated_In_Rear;
 
+   --  Message 24 referring to the group NID_BG with an adhesion factor
+   --  (packet 71, the row Adhesion Factor, level 2: A) and a level
+   --  crossing (packet 88, A [3] [17]) D m from it; or an RBC transition
+   --  order (packet 131, A [3] [15] [17]) alone
+   function Footnote_Message (NID_BG : Natural; D : Natural;
+                              Order  : Boolean) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      AD : T71.Packet_T;
+      LX : T88.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      if Order then
+         ETCS_Track_Packets.P131.Encode
+           ((NID_PACKET     => 131,
+             Q_DIR          => 2,
+             L_PACKET       => 0,
+             Q_SCALE        => 1,
+             D_RBCTR        => 900,
+             NID_C          => 5,
+             NID_RBC        => 400,
+             NID_RADIO      => 16#0077#,
+             Q_SLEEPSESSION => 0), W, OK);
+      else
+         AD.Q_DIR := 1;
+         AD.Q_SCALE := 1;
+         AD.D_ADHESION := ETCS_Variables.D_ADHESION_T (D);
+         AD.L_ADHESION := 300;
+         AD.M_ADHESION := 0;
+         T71.Encode (AD, W, OK);
+         LX.Q_DIR := 1;
+         LX.Q_SCALE := 1;
+         LX.NID_LX := 7;
+         LX.D_LX := ETCS_Variables.D_LX_T (D);
+         LX.L_LX := 20;
+         LX.Q_LXSTATUS := 1;
+         LX.Has_V_LX := True;
+         LX.V_LX := 4;
+         LX.Q_STOPLX := 1;
+         LX.Has_L_STOPLX := True;
+         LX.L_STOPLX := 30;
+         if OK then
+            T88.Encode (LX, W, OK);
+         end if;
+      end if;
+      Check (OK, "authority: packets 71 and 88, or 131, encoded");
+      return Message_Bytes (W);
+   end Footnote_Message;
+
+   --  4.8.3 [3] per packet: the table's information is a packet (4.8.1.2,
+   --  Figure 3), so before the RBC acknowledged the Train Data a general
+   --  message's adhesion factor (A) is taken, its level crossing (A [3]
+   --  [17]) rejected, an RBC transition order by radio (A [3] [15] [17])
+   --  rejected; after the acknowledgement both taken
+   procedure Scenario_Train_Data_Per_Packet is
+   begin
+      Start_X;
+      Stand_X (100);
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Run_X (11_000);
+      Stand_X (1_000);
+      Give_Radio_Message (1, Footnote_Message (10, 300, Order => False));
+      Stand_X (200);
+      Give_Radio_Message (1, Footnote_Message (10, 300, Order => True));
+      Stand_X (200);
+      Check (EVC_Sessions.Train_Data_Awaited
+             and then SI.Current.Adhesion.Count = 1
+             and then not LX_Stored
+             and then not EVC_Sessions.RBC_Order_Stored,
+             "per packet: before the Train Data are acknowledged the "
+             & "adhesion factor taken, the level crossing of its message "
+             & "and the RBC transition order rejected (4.8.3 [3]):"
+             & Natural'Image (SI.Current.Adhesion.Count) & " "
+             & Boolean'Image (LX_Stored) & " "
+             & Boolean'Image (EVC_Sessions.RBC_Order_Stored));
+      Ack_Train_Data;
+      Give_Radio_Message (1, Footnote_Message (10, 300, Order => False));
+      Stand_X (200);
+      Give_Radio_Message (1, Footnote_Message (10, 300, Order => True));
+      Stand_X (200);
+      Check (LX_Stored and then EVC_Sessions.RBC_Order_Stored,
+             "per packet: after the acknowledgement the level crossing and "
+             & "the RBC transition order taken (4.8.3 [3])");
+   end Scenario_Train_Data_Per_Packet;
+
+   --  4.8.3 [3] second bullet: Train Data whose train category, axle load,
+   --  loading gauge or traction system differ from the last acknowledged
+   --  sent again: a track condition (packet 68, A [3] [17]) of a general
+   --  message before their acknowledgement (message 8) rejected, after it
+   --  taken; Train Data changed in their length only sent again: a level
+   --  crossing (packet 88) before the acknowledgement taken
+   procedure Scenario_Train_Data_Changed is
+      --  the driver's Train Data (MSG_DRIVER_DATA kind 2): the length,
+      --  135 %, 160 km/h, the categories with the axle load category
+      function Data_Entry (Length_M : Natural; Axle_Load : Byte)
+        return Byte_Array
+      is (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                 Byte_Array'(1 => 2)
+                 & U16 (Unsigned_16 (Length_M)) & U16 (135) & U16 (160)
+                 & Byte_Array'(1 => 2) & U16 (4)
+                 & Byte_Array'(Axle_Load, 0, 1)));
+   begin
+      Start_X;
+      Stand_X (100);
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Input (DMI, Data_Entry (200, 0));
+      Run_X (11_000);
+      Stand_X (1_000);
+      Ack_Train_Data;
+      Input (DMI, Data_Entry (321, 0));
+      Stand_X (300);
+      Give_Radio_Message (1, LX_Message (10, 300));
+      Stand_X (200);
+      Check (EVC_Sessions.Train_Data_Awaited and then LX_Stored,
+             "Train Data changed: the length only, sent again: the level "
+             & "crossing taken before the acknowledgement (4.8.3 [3], the "
+             & "four values the same)");
+      Ack_Train_Data;
+      Input (DMI, Data_Entry (321, 2));
+      Stand_X (300);
+      Give_Radio_Message (1, TC_Message (10, 300));
+      Stand_X (200);
+      Check (EVC_Sessions.Train_Data_Awaited
+             and then EVC_Track_Conditions.Conditions.Count = 0,
+             "Train Data changed: the axle load category, sent again: the "
+             & "track condition rejected before the acknowledgement (4.8.3 "
+             & "[3] second bullet)");
+      Ack_Train_Data;
+      Give_Radio_Message (1, TC_Message (10, 300));
+      Stand_X (200);
+      Check (not EVC_Sessions.Train_Data_Awaited
+             and then EVC_Track_Conditions.Conditions.Count = 1,
+             "Train Data changed: after the acknowledgement the track "
+             & "condition taken (4.8.3 [3])");
+   end Scenario_Train_Data_Changed;
+
 end EVC_Test_Authority;
