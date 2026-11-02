@@ -66,6 +66,13 @@ package body S076_Bench is
    Odo_Over  : Integer_64 := 0;
    Odo_Under : Integer_64 := 0;
    Acc       : Integer_64 := Accuracy_Per_Mille;
+   --  The over- and under-reading's growth not yet stated, in thousandths
+   --  of a cm: a cycle adds abs Step * Acc of them and the odometer states
+   --  the whole cm, so the interval is Acc per mille of the distance at
+   --  every speed (truncated per cycle, a cycle under 1000 / Acc cm added
+   --  nothing: at 10 per mille the interval stayed 0 below 36 km/h, a
+   --  cycle of 100 cm, and was 0.6 % at 60 km/h, 1.67 cm truncated to 1)
+   Odo_Rem   : Integer_64 := 0;
    --  B191: the speed's confidence interval of SUBSET-041 5.3.1.2
    Speed_Acc : Boolean := False;
    --  B262: the speed asked for (Set_Speed), the braking model's
@@ -690,6 +697,7 @@ package body S076_Bench is
       Dir := 1;
       Odo_Over := 0;
       Odo_Under := 0;
+      Odo_Rem := 0;
       Acc := Accuracy_Per_Mille;
       Speed_Acc := False;
       for B of Balises loop
@@ -1212,8 +1220,10 @@ package body S076_Bench is
                Deliver (Best);
             end;
          end loop;
-         Odo_Over := Odo_Over + abs Step * Acc / 1000;
-         Odo_Under := Odo_Under + abs Step * Acc / 1000;
+         Odo_Rem := Odo_Rem + abs Step * Acc;
+         Odo_Over := Odo_Over + Odo_Rem / 1000;
+         Odo_Under := Odo_Under + Odo_Rem / 1000;
+         Odo_Rem := Odo_Rem mod 1000;
       end if;
       X_Cm := New_X;
       if Is_Powered then

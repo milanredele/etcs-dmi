@@ -18175,3 +18175,58 @@ connected to both: decide), B3080 and B3083 (the bench's odometer
 interval, `Group_Input_Ms`), the two passes' reason (4080300_21,
 4080420_03), B781's rest; the review again (eight items, readings
 first, no backlog read).
+
+### The bench's odometer interval at low speed, the negative expectation's window start reset, the reason of two passes (e5/runner-odometer) (2026-11-02)
+
+**The odometer interval (B3080).** `S076_Bench.Cycle` added `abs Step
+* Acc / 1000` cm to the over- and under-reading per cycle of 100 ms,
+truncated: at the default 10 per mille a cycle under 100 cm (36 km/h)
+added nothing and one of 167 cm (60 km/h) 1 cm, 0.6 %. The premise
+held at the source (the accumulation in cm, `Acc` set per sequence by
+`Set_Accuracy`: 10 by default, 50 where a step says the confidence
+interval "already overlaps", 60 and 400 for the odometer performance
+steps). The odometer frame of `EVC_Ports` carries the over- and
+under-reading as accumulated values (`S076_Bench.Sample`); e5/runner-
+linking printed `EVC_Odometry.Low` and `High` 0 and 0 at 1356 m in
+9990500_09 SV21. `Cycle` now keeps
+the remainder in thousandths of a cm (`Odo_Rem`, reset with the
+odometer at the start of a sequence) and states the whole cm, so the
+interval is `Acc` per mille of the distance at every speed. The corpus:
+1193 / 1036 / 961 -> 1190 / 1039 / 961, 6 regressions and 5
+improvements, each traced at SV30 with the master binary and the new
+one side by side:
+
+- 3131050_19 (SV21, SV22, SV30) passed -> 55 (S388a7b2a, s076). Its
+  packets are those of 3131050_21 (BG2d at 200 m with Q_LOCACC 12 m,
+  packet 12 EOA 700 m, packet 27 15 km/h from 800 m), whose step 82
+  fails on this signature by the comments' trip location with
+  Q_LOCACC 0 (our release speed 23 km/h, the train at 24 to 25
+  km/h). On the truncated interval the SB at 653 m brought the train
+  to 20 km/h and M_SDMSUPSTAT 1 was recorded at 664 m; with 4.5 m of
+  interval over the 453 m from BG2d, step 53's max safe front end
+  reaches 653 m at 639 m (640 m before) and the EB and M_SDMSUPSTAT 4
+  come at 673 m.
+- 4080300_16 (3 SV) 119 -> 73 (S27eb0678, s076, ERA's PDF read).
+  BG1d's packet 5 gives BG6, 700 m past BG4d (100 m), Q_LOCACC 001100,
+  12 m, in the bits and in ERA's PDF; step 39's comment says 63 m and
+  step 69's that the high Q_LOCACC puts BG6, read at 750 m, inside its
+  window. With 12 m BG6 is 650 m past BG4 against a window from 688 m;
+  ours does not move the EOA over BG6 (846 m before and after it, by
+  `ma` 189 m at 657 m and 85 m at 761 m), and the trip at our min safe
+  front end past it came at 865 m at 82700 ms, 200 ms inside the 4 s of
+  step 73 after the reach-point of 78700 ms; with 1 % it comes after
+  866 m at 82900 ms (TR by step 85).
+- 3080200_02 (3 SV) 73 -> 77 (Saeffd85e, model, a window): the train
+  runs at 35 km/h through the 40 s of T_SECTIONTIMER (the signature's
+  first line); its trip at the EOA falls after the timer step now (FS
+  at 1009 m at 121700 ms, TR at 1086 m in step 77's window).
+- 3040400_03 SV22, SV30 67 -> 76 (S99eb8ae1, onboard, not traced:
+  B3200). BGa (BG4d, nominal 300 m, Q_LOCACC 12 m) read at 315 m is
+  now inside its window as step 67 says (the trip of 321 m is gone);
+  ours then trips at BG6d (step 72, 400 m: TR at 407 m, JRU 23 with
+  reason EOA_Passed) where the step says there is no consistency
+  error.
+
+5090200_01, 5180400_01 and 3131040_98, which B620 lists as sensitive to
+the interval, do not move: the 5 % trial of B620 is not the stated 1 %.
+B3080 closed with these counts, B620's note extended, B3200 added.
