@@ -7,6 +7,7 @@ with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P131;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P74;
+with ETCS_Track_Packets.P88;
 with ETCS_Track_Packets.P180;
 with ETCS_Train_Packets.P0;
 with ETCS_Variables;
@@ -20,6 +21,7 @@ with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Text_Messages;
+with EVC_Track_Description;
 with EVC_Stored_Information;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Sim_Telegrams;
@@ -1306,5 +1308,103 @@ package body EVC_Test_Handover is
              & "message reported to both RBCs (3.16.3.1.1.2, 3.15.1.3.4); "
              & "to 300" & To_1'Image & ", to 400" & To_2'Image);
    end Scenario_Handover_Message_Error;
+
+   --  Message 24 referring to the group NID_BG (country 123) with a
+   --  protected level crossing NID_LX (packet 88, A [3] [17] in level 2)
+   --  D_LX metres from it
+   function M24_LX (NID_BG, NID_LX, D_LX : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      LX : ETCS_Track_Packets.P88.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      LX.Q_DIR := 1;
+      LX.Q_SCALE := 1;
+      LX.NID_LX := ETCS_Variables.NID_LX_T (NID_LX);
+      LX.D_LX := ETCS_Variables.D_LX_T (D_LX);
+      LX.L_LX := 20;
+      LX.Q_LXSTATUS := 0;
+      LX.Has_V_LX := False;
+      ETCS_Track_Packets.P88.Encode (LX, W, OK);
+      Check (OK, "handover: packet 88 encoded");
+      return Message_Bytes (W);
+   end M24_LX;
+
+   --  The level crossing NID_LX is stored
+   function LX_Of (NID_LX : Natural) return Boolean is
+     (for some I in 1 .. EVC_Track_Description.Max_LX =>
+        EVC_Track_Description.LX_Item (I).Used
+        and then Natural (EVC_Track_Description.LX_Item (I).Id) = NID_LX);
+
+   procedure Scenario_Handover_TD_Per_Session is
+      M     : ETCS_Message.Message_T;
+      St    : ETCS_Message.Status_T;
+      V     : ETCS_Message.Value_Array := (others => 0);
+      Acked : Boolean := False;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Check (R.Accepting = 2 and then EVC_Sessions.Train_Data_Awaited
+             and then R.Info (1).TD_Acked and then not R.Info (2).TD_Acked,
+             "Train Data per session: the 129 sent to the Accepting RBC "
+             & "awaits its 8, the Handing Over RBC acknowledged its own");
+      --  the Handing Over RBC's level crossing: taken
+      Give_Radio_Message (1, M24_LX (10, 7, 600));
+      Stand;
+      Check (LX_Of (7),
+             "Train Data per session: the Handing Over RBC's level crossing "
+             & "taken, its own acknowledgement received (4.8.3 [3])");
+      --  the Accepting RBC's, before its message 8: stored until the
+      --  switch, rejected there
+      Give_Radio_Message (2, M24_LX (10, 8, 600));
+      Stand;
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then not LX_Of (8),
+             "Train Data per session: the Accepting RBC's level crossing "
+             & "before its message 8 rejected at the switch (4.8.3 [3] "
+             & "first bullet, in the ongoing communication session)");
+      Give_Radio_Message (2, M24_LX (10, 9, 600));
+      Stand;
+      Check (not LX_Of (9),
+             "Train Data per session: the supervising RBC's level crossing "
+             & "before its message 8 rejected (4.8.3 [3])");
+      --  its 129 repeated (3.18.3.4), acknowledged
+      for C in 1 .. 400 loop
+         Stand;
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, St);
+            if ETCS_Message."=" (St, ETCS_Message.Accepted)
+              and then M.Kind = MCat.Train_M129
+              and then Radio_Output (N).Session = 2
+            then
+               V (3) := Now_T;
+               V (7) := M.Values (3);
+               Acked := True;
+            end if;
+         end loop;
+         exit when Acked;
+      end loop;
+      Give_Radio_Message (2, Message_Of (MCat.Track_M8, V));
+      Stand;
+      Give_Radio_Message (2, M24_LX (10, 10, 600));
+      Stand;
+      Check (Acked and then R.Info (2).TD_Acked and then LX_Of (10),
+             "Train Data per session: after the Accepting RBC's message 8 "
+             & "its level crossing taken (4.8.3 [3]); acknowledged "
+             & Acked'Image);
+   end Scenario_Handover_TD_Per_Session;
 
 end EVC_Test_Handover;

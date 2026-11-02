@@ -23,7 +23,7 @@ with Interfaces;              use Interfaces;
 
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Rejected_N, TD_Acked,
+       Refined_State => (State => (Messages, Rejected_N, TD_Awaited, TD_Differ,
                                    TD_Ack_Seen, TD_Acked_Categories, Held,
                                    Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
@@ -50,15 +50,26 @@ is
    type Held_T is array (Condition_T) of Boolean;
 
    Messages      : Natural := 0;
-   --  4.8.3 [3]: the RBC acknowledged Train Data in the ongoing session
-   --  of the supervising RBC (EVC_Radio.Train_Data_Acknowledged seen)
-   TD_Acked      : Boolean := False;
+   --  4.8.3 [3]: Train Data sent and their acknowledgement awaited
+   --  (EVC_Sessions.Train_Data_Awaited, the facts of the last Evaluate:
+   --  the last Train Data sent, one set awaited at a time)
+   TD_Awaited    : Boolean := False;
+   --  and of other values than those acknowledged last (TD_Changed, of the
+   --  last Evaluate)
+   TD_Differ     : Boolean := False;
    --  4.8.3 [3] second bullet: the train category, axle load category,
    --  loading gauge and traction systems of the Train Data the RBC
    --  acknowledged last (as of the cycle the acknowledgement is seen in:
    --  TD_Ack_Seen, EVC_Radio.Train_Data_Acknowledged of the last cycle)
    TD_Ack_Seen         : Boolean := False;
    TD_Acked_Categories : EVC_Train_Data.Categories_T;
+
+   function TD_Changed return Boolean
+     with Global => (TD_Acked_Categories, EVC_Train_Data.State);
+   function TD_Unacked (Awaited, Changed : Boolean;
+                        S                : EVC_Radio.Session_Ref_T)
+                        return Boolean
+     with Global => EVC_Radio.State;
    --  4.8: the messages rejected since Clear
    Rejected_N    : Natural := 0;
    Held          : Held_T := (others => False);
@@ -480,7 +491,8 @@ is
    procedure Clear is
    begin
       Buffer.Clear;
-      TD_Acked := False;
+      TD_Awaited := False;
+      TD_Differ := False;
       TD_Ack_Seen := False;
       TD_Acked_Categories := (others => <>);
       Messages := 0;
@@ -1075,6 +1087,9 @@ is
       --  messages changed (the mode, message 6)
       C.Mode := Mode_Now;
       C.Trip_Exit_Known := Exit_Recognised;
+      --  4.8.3 [3] by the RBC of the message's session
+      C.Train_Data_Unacked :=
+        TD_Unacked (TD_Awaited, TD_Differ, EVC_Radio.Session_Ref_T (S));
       if EVC_Radio_Acceptance.Verdict
            (EVC_Radio_Acceptance.Info_Of (Kind), C)
          /= EVC_Radio_Acceptance.Accepted
@@ -1218,7 +1233,7 @@ is
      with Global => (Input  => (Params, EVC_Levels.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Stored_Information.State,
-                                EVC_Radio.State, TD_Acked, Mode_Now),
+                                EVC_Radio.State, Mode_Now),
                      In_Out => (Reasons, Request_Due, Start_Reason,
                                 Deleted_Reason, SR_Authorised, TAF_Request,
                                 TAF_Group))
@@ -1231,7 +1246,9 @@ is
       --  another mode (SR, PT) is not the start of mission
       Acked  : constant Boolean :=
         Mode_Now /= M_SB
-        or else EVC_Radio.Train_Data_Acknowledged or else TD_Acked;
+        or else EVC_Radio.Train_Data_Acknowledged
+        or else (for some X in EVC_Radio.Session_T =>
+                   EVC_Radio.Info (X).TD_Acked);
       Old    : constant Q_MARQSTREASON_T := Reasons;
       Pert   : Boolean;
       Timer  : Boolean;
@@ -1624,8 +1641,25 @@ is
       or else EVC_Train_Data.Categories.Loading_Gauge
                 /= TD_Acked_Categories.Loading_Gauge
       or else EVC_Train_Data.Categories.Voltages
-                /= TD_Acked_Categories.Voltages)
-     with Global => (TD_Acked_Categories, EVC_Train_Data.State);
+                /= TD_Acked_Categories.Voltages);
+
+   --  4.8.3 [3] for the messages of the session S (No_Session: none
+   --  established), Awaited the Train Data sent and not acknowledged:
+   --  the first bullet, "not yet acknowledged any train data in the
+   --  ongoing communication session", by the RBC of S itself (decision:
+   --  per session as the text reads, so after 3.15.1.3.3 the Accepting
+   --  RBC's messages are judged by its own message 8, the Handing Over
+   --  RBC's by its own; EVC_Radio.Info (S).TD_Acked, forgotten with the
+   --  session); the second, Train Data of other values awaited
+   --  (Changed: TD_Changed)
+   --  @req 4.8.3.1.1 Table-footnote [3]
+   function TD_Unacked (Awaited, Changed : Boolean;
+                        S                : EVC_Radio.Session_Ref_T)
+                        return Boolean is
+     (Awaited
+      and then (EVC_Radio."=" (S, EVC_Radio.No_Session)
+                or else not EVC_Radio.Info (EVC_Radio.Session_T (S)).TD_Acked
+                or else Changed));
 
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
@@ -1642,27 +1676,22 @@ is
          Exit_Recognised := False;
          Exit_Acknowledged := False;
       end if;
-      --  4.8.3 [3]: "not yet acknowledged any train data in the ongoing
-      --  communication session", or Train Data whose four values differ
-      --  from the last acknowledged sent and not acknowledged yet
-      --  (TD_Changed). The ongoing session: one established or being
-      --  established (an acknowledgement may come before the session is
-      --  established, and the Train Data are sent again when it is,
-      --  3.18.3.4.2). Decision: the values acknowledged are those of
-      --  EVC_Train_Data in the cycle the acknowledgement is first seen
-      --  (they were sent, a new entry being sent again)
-      if not (for some X in EVC_Radio.Session_T =>
-                EVC_Radio.Established (X)
-                or else EVC_Radio.Being_Established (X))
+      --  4.8.3 [3] second bullet: decision: the values acknowledged are
+      --  those of EVC_Train_Data in the cycle the acknowledgement is first
+      --  seen (they were sent, a new entry being sent again), shared by
+      --  the sessions (the Accepting RBC is sent the same Train Data,
+      --  3.15.1.3.3, the bullet compares with the last values
+      --  acknowledged)
+      if EVC_Radio.Train_Data_Acknowledged and then not TD_Ack_Seen
+        and then (for some X in EVC_Radio.Session_T =>
+                    EVC_Radio.Established (X)
+                    or else EVC_Radio.Being_Established (X))
       then
-         TD_Acked := False;
-      elsif EVC_Radio.Train_Data_Acknowledged then
-         if not TD_Ack_Seen then
-            TD_Acked_Categories := EVC_Train_Data.Categories;
-         end if;
-         TD_Acked := True;
+         TD_Acked_Categories := EVC_Train_Data.Categories;
       end if;
       TD_Ack_Seen := EVC_Radio.Train_Data_Acknowledged;
+      TD_Awaited := Facts.Train_Data_Unacked;
+      TD_Differ := TD_Changed;
       Evaluate_TAF (Facts);
       --  4.8: the context of the messages of the next cycle; 4.8.5.4,
       --  4.8.5.5: the transition buffer deleted or released
@@ -1672,8 +1701,8 @@ is
           Level              => EVC_Levels.Level,
           L2_Announced       => EVC_Levels.Announced
                                 and then EVC_Levels.Announced_Level = L2,
-          Train_Data_Unacked => Facts.Train_Data_Unacked
-                                and then (not TD_Acked or else TD_Changed),
+          Train_Data_Unacked => TD_Unacked (TD_Awaited, TD_Differ,
+                                            EVC_Radio.Supervising),
           Consist_Unacked    => Facts.Consist_Unacked,
           Trip_Exit_Known    => Exit_Recognised,
           Cab_Active         => Facts.Cab_Active,

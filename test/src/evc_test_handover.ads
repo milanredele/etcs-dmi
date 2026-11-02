@@ -100,4 +100,9 @@ package EVC_Test_Handover is
    --  radio message of either RBC reported to both
    procedure Scenario_Handover_Message_Error;
 
+   --  4.8.3 [3] first bullet, "in the ongoing communication session",
+   --  3.15.1.3.3: the Accepting RBC's level crossing rejected until its
+   --  own acknowledgement of the Train Data, the Handing Over RBC's taken
+   procedure Scenario_Handover_TD_Per_Session;
+
 end EVC_Test_Handover;
