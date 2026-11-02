@@ -18242,3 +18242,39 @@ steps 210153 passed, 12271 failed, 4120 not judged before and after),
 so no negative expectation of the corpus was judged on a value left by
 the previous sequence; the reset keeps it so for a corpus run in another
 order.
+
+**The reason of two passes (4080300_21, 4080420_03 SV30).** Both
+passed when B2882 brought footnote [17] of 4.8.3 to the level 2 cells
+(8768f710: 4080300_21 failed 127 -> passed, 4080420_03 failed 85 ->
+passed, no other change of their lines in that commit). Re-run with
+`VERBOSE=1 DEBUG=1` on master (31eddcd1; both still pass with this
+package's bench, by the corpus runs): each pass rests on the message rejected while the 133 is
+unacknowledged, not on a vacuous judgement.
+
+- 4080300_21 SV30: the 133 (packets 0 and 10) is sent at 83500 ms
+  (step 122, passed); the 24 with packet 88 (Q_LXSTATUS 1, Q_STOPLX 1)
+  is given at 84000 ms (step 124), before the 7 of step 129 (123400
+  ms). From there the trace shows no target (`tgt0@0`) and the
+  supervision status 0 at 680 m at 19 km/h (step 127: `perm=60/20 ...
+  st0`); the step's "LX not protected" is not shown and no record 21
+  with bit 86 is in the windows of steps 124 to 128 (step 128 passed).
+  Before 8768f710 the same step failed with the symbol shown
+  (S82c622ac, triage: "the packet 88 of message 24 at step 124 taken in
+  SM while ... message 133 ... is unacknowledged"). The step's
+  expectation is met because the packet 88 is not applied.
+- 4080420_03 SV30: the 133 is sent at 102100 ms (step 80); the 24 of
+  step 82 (given at 119600 ms at 651 m, before the 7 of step 84 at
+  119900 ms) carries packet 5 with NID_LRBG 1048578 (BG2, 200 m),
+  D_LINK 450, NID_BG 3, Q_LINKREACTION 00 (trip) and Q_LOCACC 5 m: a
+  group expected at 650 m that the sequence does not place. The trace
+  shows no record 23 in the windows of steps 82 to 88 and the mode FS
+  to 760 m (step 87 "NOT Trip" and step 88's negative M_MODE 7 record
+  passed, 110 m past the group's nominal place). Before 8768f710 the train was
+  tripped at 710 m for the linking error (Sc17009f0, triage: record 23
+  with reason 4, Linking_Error), so step 85 failed. The steps call that
+  linking "rejected" (step 82's comment), and it is.
+
+Neither pass is vacuous: no backlog line. The triage lines of the two
+signatures these sequences left (S82c622ac onboard for 4080300_21 step
+127, Sc17009f0 s076 for 4080420_03 step 85) still describe them as
+failing; they are the coordinator's to update.
