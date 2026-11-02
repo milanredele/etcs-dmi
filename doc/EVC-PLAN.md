@@ -18845,3 +18845,57 @@ step 76 ignore 3.16.2.6.2.
 Rows: 3.6.4.2.5, 3.13.9.4.8.2 and 3.16.2.6.2 stay done, their notes
 name the sequences re-read. Backlog: B3241, B3242, B3243 done, B3200
 dropped; none added.
+### The train interface's last inputs: the traction status and the message 40, the adhesion choice in TR with the desk closed, the handover border over a relocation (e6/tiu-traction) (2026-11-02)
+
+- B3220, record 40 (SUBSET-027 4.2.4.40, M_TRACTION_STATUS 1 bit, 0
+  off, 1 on; SUBSET-034 2.5.4.1 a two state input, 2.5.4.2 forwarded to
+  an STM): the claim held, `EVC_Ports.TIU_Signal_T` had no such input.
+  Built: `Traction_Status`, signal 17 of the existing two byte TIU frame
+  (a signal id is a byte of the format, so the frame and its version
+  are unchanged; value 1 on, 0 off, another refused by `Valid_TIU`);
+  `EVC_Core.Records.Record_Inputs_Radio_Data` writes the message 40
+  through `EVC_JRU_Records.Inputs` (`Input_T` `Traction`, event 140: 40
+  is the levels' event of `EVC_Ports`) at the first reception and at each
+  change, as 33 to 37 (decision: the record names no trigger); nothing
+  before the first input. `EVC_JRU_Messages.View` gives back the event
+  140 (`NID_Traction_Status`). The fuzzer picks the signals 13 to 17;
+  `S076_Bench.Cycle` tells the status at the first cycle and at each
+  change: on while the driver asks for a speed (`Demand_Cms` above 0)
+  and the on-board commands neither a traction cut-off nor a service or
+  emergency brake. The simulator (`Sim_Vehicle`) sends none of the brake
+  statuses either and is left as it is (no golden changes).
+  `Scenario_JRU_Traction_Status` (`EVC_Test_JRU`): 3 failures before
+  the fix, 0 after. SUBSET-076 1190 / 1039 / 961 before and after, 0
+  movements (no step judges 40). The row 3.20.1.2 notes 40; B1360 left
+  with 22 only.
+- B3221, the adhesion choice in TR with the desk closed (4.4.13.1.6: no
+  interaction with the driver but isolation; 3.18.4.6.2.1 the driver's
+  choice): the claim held, `EVC_Core.Stored` calls
+  `EVC_Stored_Information.Take_Driver_Adhesion` before the modes' step
+  that dropped the requests. Built: the drop moved to
+  `EVC_Core.Inputs.Read_Ports`, right after `EVC_Driver_Requests.Take`
+  and `EVC_Train_Inputs.Set` (TR, the desk closed, isolation not
+  selected: `EVC_Driver_Requests.Clear`), so no step of the cycle reads
+  them; the drop at the start of `EVC_Core.Modes.Evaluate_Modes_And_Levels`
+  removed as redundant, whose Global then reads `EVC_Driver_Requests.State`
+  only (gnatprove's flow warning). `Scenario_TR_Desk_Closed` gains the
+  case: the adhesion choice (action 9, Q_NVDRIVER_ADHES 1 by a group's
+  national values, the mission run to 60 m, then TR) not taken with the
+  desk closed (1 failure before, 0 after), taken once the desk is open
+  again (the check is not vacuous). The rows 4.4.13.1.6 (done, the unit
+  now `EVC_Core.Inputs.Read_Ports`, its `@req` moved there) and
+  3.18.4.6.2 (the exception noted).
+- B781, the 6th bullet of A.3.5.1 over a relocation:
+  `Scenario_Handover_Relocated` (`EVC_Test_Handover`): the group 10 at
+  100 m with RBC 300's packet 42 links the group 20 at 300 m (Q_LOCACC
+  12 m), RBC 300 orders the handover to 400 with the border 320 m from
+  the group 10; from 150 m the odometer over-reads by 2 % without its
+  own confidence interval. The max safe front end passes the border at
+  320.1 m (by the position report, D_LRBG + L_DOUBTOVER) before the group
+  20 is read; the relocation puts it below 320 m; 400 supervises, both
+  sessions established; forward over the border again: one crossing
+  only. No defect (`EVC_Position.Evaluate_Border` invalidates the border
+  item when it fires). The 6th bullet done; left of B781: the stop of the
+  3rd bullet over a relocation, the LS profile of the 4th. The row
+  A.3.5.1 notes the 6th bullet.
+- Not taken (the bound): the stop of the 3rd bullet over a relocation.

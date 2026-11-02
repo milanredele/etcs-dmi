@@ -54,8 +54,8 @@
 --  three bytes the record of 16 bytes carried before this format: the
 --  event numbers of the readers stay those of EVC_Ports (21 for the
 --  message 20, 121 for 21, 124 for 24, 132 for 32, 133 to 137 for 33
---  to 37, 2 for 6, 3 for 9: the numbers 20, 21, 24, 32 and 33 are events
---  of the on-board too).
+--  to 37, 140 for 40, 2 for 6, 3 for 9: the numbers 20, 21, 24, 32, 33
+--  and 40 are events of the on-board too).
 
 with EVC_Bytes;  use EVC_Bytes;
 with EVC_Ports;
@@ -116,6 +116,7 @@ is
    NID_Eddy_Current_Brake  : constant := 35;
    NID_EP_Brake            : constant := 36;
    NID_Additional_Brake    : constant := 37;
+   NID_Traction_Status     : constant := 40;
    NID_Proprietary    : constant := 255;
 
    subtype Width_T is Positive range 1 .. 64;
@@ -257,7 +258,8 @@ is
 
    --  The message of an event of EVC_Ports given by its three bytes:
    --  11, 30, 31, 39, 51, 132 (as 32), 38, 48, 50, 141 (as 41, the
-   --  view's event of the message) and 133 to 137 (as 33 to 37) as the
+   --  view's event of the message), 133 to 137 (as 33 to 37) and 140 (as
+   --  40, the levels' event of EVC_Ports being 40) as the
    --  heading gives them, every
    --  other event as the message 255
    procedure Event_Message (Event      : Byte;

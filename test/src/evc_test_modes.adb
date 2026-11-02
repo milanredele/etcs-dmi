@@ -1379,6 +1379,7 @@ package body EVC_Test_Modes is
    --  desk opened again, the acknowledgement leads to PT (4.6.3 [7])
    procedure Scenario_TR_Desk_Closed is
       PT_Code : constant := 13;
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
    begin
       Start_E4;
       EVC_Core.Set_Mode_For_Test (M_TR, L1);
@@ -1409,6 +1410,34 @@ package body EVC_Test_Modes is
       Stand_X (300);
       Check (EVC_Core.Mode = M_IS,
              "4.4.13.1.6: isolation taken with the desk closed in TR");
+      --  the driver's adhesion choice (3.18.4.6.2.1, permitted by
+      --  Q_NVDRIVER_ADHES 1) is an interaction too: not taken while the
+      --  desk is closed in TR, taken once it is open again
+      Mission (L1_Code);
+      Stand_X (100);
+      NV.Q_NVDRIVER_ADHES := 1;
+      Add_Group (Group (10, 50));
+      Carry (1, 0, NV);
+      Speed_Cms := 500;
+      while Train_Cm < 6_000 loop
+         Step_X (500);
+      end loop;
+      Speed_Cms := 0;
+      EVC_Core.Set_Mode_For_Test (M_TR, L1);
+      Stand_X (300);
+      Signal (Cab_A_Active, False);
+      Stand_X (300);
+      Send (Action (9, 1));
+      Check (EVC_Core.Mode = M_TR
+               and then not EVC_Stored_Information.Driver_Slippery_Rail,
+             "4.4.13.1.6: the adhesion choice not taken while the desk is "
+             & "closed in TR");
+      Signal (Cab_A_Active, True);
+      Stand_X (300);
+      Send (Action (9, 1));
+      Check (EVC_Stored_Information.Driver_Slippery_Rail,
+             "3.18.4.6.2.1: the desk opened again in TR, the adhesion "
+             & "choice taken");
    end Scenario_TR_Desk_Closed;
 
 end EVC_Test_Modes;

@@ -89,8 +89,9 @@
 --     requested [3] [14], 4 passive shunting permitted [26], 5 non
 --     leading permitted [46]; 6 to 12, of the speed and distance
 --     monitoring, at the end of this package; 13 the train
---     configuration, there too; 14 the train integrity and 15 the safe
---     consist length at their declaration), value u8 (0 or 1). The
+--     configuration, there too; 14 the train integrity, 15 the safe
+--     consist length, 16 the type of train data entry and 17 the
+--     traction status at their declaration), value u8 (0 or 1). The
 --     active cab gives the train orientation (SUBSET-026 3.6.1.5,
 --     EVC_Position). The TIU outputs are at the end of this package:
 --     the commands (TIU_Output_Length bytes), the track conditions
@@ -320,7 +321,7 @@ is
    function Valid_TIU (Payload : Byte_Array) return Boolean is
      (Valid_TIU_SCL (Payload)
       or else (Payload'Length = TIU_Length
-               and then Payload (Payload'First) in 1 .. 14 | 16
+               and then Payload (Payload'First) in 1 .. 14 | 16 .. 17
                --  the direction controller, the train integrity and the
                --  type of train data entry have three values, the brake
                --  pressure and the train configuration are numbers, every
@@ -530,7 +531,10 @@ is
       --  input): signal 16, value 0 fixed, 1 flexible, 2 switchable (the
       --  coding of M_TRAIN_DATA_ENTRY, SUBSET-027 4.2.4.41); a frame with
       --  another value is refused. Unknown until the first input
-      Train_Data_Entry_Type);
+      Train_Data_Entry_Type,
+      --  the traction status (SUBSET-034 2.5.4.1, a two state input):
+      --  signal 17, value 1 on, 0 off; unknown until the first input
+      Traction_Status);
 
    type TIU_Input_T is record
       Signal : TIU_Signal_T;

@@ -411,6 +411,17 @@ is
          Sleeping         => TIU_Now (Sleeping_Requested),
          Passive_Shunting => TIU_Now (Passive_Shunting_Permitted),
          Non_Leading      => TIU_Now (Non_Leading_Permitted));
+      --  4.4.13.1.6: in TR with the desk closed no interaction with the
+      --  driver but isolation, so the requests of the cycle are dropped
+      --  before any step reads them (the adhesion choice is read by the
+      --  stored information, before the modes); isolation selected has
+      --  the first priority of 4.6.2, so then nothing is dropped
+      if Current_Mode = M_TR
+        and then not EVC_Train_Inputs.Desk_Open
+        and then not EVC_Driver_Requests.Isolation_Selected
+      then
+         EVC_Driver_Requests.Clear;
+      end if;
       EVC_Levels.Begin_Cycle;
       Take_VBC_Requests;
       Read_Telegrams;

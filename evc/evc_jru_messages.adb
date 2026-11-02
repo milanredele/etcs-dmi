@@ -349,6 +349,9 @@ is
          when NID_Regenerative_Brake .. NID_Additional_Brake =>
             --  events 133 to 137 (33 is the configuration's): the status
             return (P (P'First) + 100, F (0, 1), 0, 0);
+         when NID_Traction_Status =>
+            --  event 140 (40 is the levels'): M_TRACTION_STATUS
+            return (140, F (0, 1), 0, 0);
          when NID_Cold_Movement =>
             return (if F (0, 2) = 1 then (9, 1, 0, 0) else (others => <>));
          when NID_Odometer =>
@@ -433,6 +436,10 @@ is
             --  4.2.4.33 to 4.2.4.37: M_RB_STATUS, M_MSB_STATUS,
             --  M_ECB_STATUS, M_EP_STATUS, M_AB_STATUS (1 active)
             NID := Event - 100;
+            Fields (1) := F (B2, 1);
+         when 140 =>
+            --  4.2.4.40: M_TRACTION_STATUS (0 off, 1 on)
+            NID := NID_Traction_Status;
             Fields (1) := F (B2, 1);
          when 9 =>
             --  4.2.4.15: M_COLD_MVT (1 cold movement detected)
