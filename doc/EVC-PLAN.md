@@ -17629,3 +17629,71 @@ the session's supervision. A build item of the next round
 (`EVC_Sessions.Mission.Evaluate_TD` with `Max_Repeats`, a case counting
 the four sendings).
 
+
+### The clock's tools: the image tool at format version 3, the browser's clock for the wasm bench, the Invariant column of the catalogue (e6/clock-tools) (2026-11-02)
+
+Three tooling items, all done; each claim of the brief checked at the
+source first.
+
+**B2980, the image tool at format version 3.** At the source: the claim
+held: `test/tools/evc_config.py` knew the versions 1 and 2 only, and
+nothing ran it (no line in `test/check.sh`; `evc_test` compared
+`test/wasm/onboard.cfg`, which the tool makes from
+`ports/hosted/evc.cfg`, with `EVC_Config.Encode` of the default, so the
+tool was checked only when someone re-ran it). The layout of
+`evc/evc_config.ads` and `Get_Zones` agree: a count 0 .. 8, then 8
+entries of u16 first, u16 last, u16 offset + 720, u8 rule, the entries
+after the count 0 and not read; refused: a count above 8, last above
+1023 or below first, an offset above 1560 (UTC+14:00), a rule above 1.
+Built: `format = 3` with a `[train]` section and 0 to 8 `[[zone]]`
+tables (`first`, `last`, `offset_min` -720 .. 840, `summer` "none" or
+"eu"); decision: the version written is the one the text form names, as
+for version 2 (zones under format 1 or 2 are refused rather than a
+silent change of version, and a format 3 without zones is a valid image
+of 95 bytes); decoded the same way (the train ends at L - 61, the zones
+there), every refusal of `Get_Zones` given with the zone's number. The
+check that the two agree: `--compare TEXT IMAGE ...` (each image is its
+text encoded byte for byte and decodes back to it), run by
+`test/check.sh` on `ports/hosted/evc.cfg` / `test/wasm/onboard.cfg` and
+on the new `test/config/zones_v3.toml` / `.img` (the default, a lambda
+train, the two zones of `Scenario_Config_Zones`: 200 .. 210 +60 EU and
+300 -300 none); the scenario compares that image byte for byte with
+`EVC_Config.Encode_V3` of the same configuration (failed with one byte
+of the file flipped). A gamma train of version 2 and 3 round trips
+through the tool, the version 3 image the version 2 one with the 57
+bytes inserted.
+
+**B2981, the browser's clock for the wasm bench.** At the source: the
+claim held (`Sim_Onboard_Env.Reset` gives `EVC_Core.Set_UTC
+(820_540_800)`, 2026-01-01 00:00:00 UTC; the glue had no clock entry;
+`onboard_smoke.js` drives the module's exports itself, not the page).
+The native AdaWebPack toolchain is installed; `test/wasm/build.sh` built
+before the change. Built: `Sim_Onboard_Env.Set_Clock (UTC_Now)` gives
+`Set_UTC` the UTC at the on-board time 0 (UTC_Now minus the on-board's
+seconds, ignored before it), as `ports/hosted/evc.adb`'s `Give_UTC`;
+the export `onboard_set_utc` of `onboard.wasm`; `index.html` calls it
+after every `onboard_reset` with `Math.floor (Date.now () / 1000) -
+946684800` (1970 to 2000). The simulated time runs from there, so the
+clock is the browser's at the reset, then the simulation's. The smoke
+test never calls it, so its goldens (`bench_onboard.sha256`,
+`bench_level2.sha256`) stay on the reference; it checks the page's call
+after the reset and a run with the clock given. The page's help ("How
+to try it", "The clock"): UTC, the bench's configuration (`onboard.cfg`,
+version 1) has no zone. `build.sh`, `onboard_smoke.js` and `smoke.js`
+green.
+
+**B1463, the Invariant column.** At the source (`clause.py 8.5.2
+--page`, `8.5.3 --page`): Yes for 154, 155, 156 (to the RBC, RIU) and
+for 32, 39 (from them), No for every other row: the backlog line held.
+Built: an optional key `invariant = true` on those five `[[messages]]`
+of `etcs_language.toml` (false when absent; `SCHEMA.md`,
+`check_catalogue.py`), generated as the constant array
+`ETCS_Message_Catalogue.Invariant` beside `NID_Of` and `Direction_Of`
+(decision: an array like the unit's other per-message constants rather
+than a function); nothing reads it yet: the translation of the messages
+of an RBC of another system version (chapter 6) will. The unit proved,
+`gen_language.py --check` green.
+
+Edits outside the units named: `test/check.sh` (the `evc_config` check),
+`test/src/evc_test_config.adb` (the byte comparison in
+`Scenario_Config_Zones`). Runner 0 movements.
