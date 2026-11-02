@@ -357,16 +357,31 @@ function Radio_Expect (St : Step_T) return Judgement_T is
       end if;
       Expect_Session :=
         (if Judging_JRU then 0 else Named_Session (Image (St.Comment)));
+      --  "no message after the timer": watched for one period of the
+      --  timer from its expiry, so that a sending the timer would repeat
+      --  is seen (3080200_03 step 87: the 132 of 130000 ms after the
+      --  T_CYCRQST expiring at 122000 ms)
+      if Neg and then Timer_Expiry_Ms >= B.Window_Ms then
+         while B.Now_Ms < Timer_Expiry_Ms + Timer_Period_Ms loop
+            Wait_Cycle;
+         end loop;
+      end if;
       for I in 1 .. B.Radio_Count loop
          if not B.Radio (I).Is_Request and then Img (B.Radio (I).Code) = Nid
            and then (Expect_Session = 0
                      or else B.Radio (I).Session = Expect_Session)
            --  B270: a message sent before the window's input (kept listed
            --  for the positive expectations, Keep_Radio) is no answer to
-           --  it: 4080428_01 step 134, the 136 of step 129 before the 38
+           --  it: 4080428_01 step 134, the 136 of step 129 before the 38;
+           --  nor is one sent before the expiry of the timer of the
+           --  window's input (Timer_Expiry_Ms): 4100103_26 step 163, "no
+           --  136 after T_CYCLOC", the 136 of 117500 ms at the timer's
+           --  start, 10 s before its expiry
            and then not (Neg and then B.Radio (I).At_Ms
-                                      < Unsigned_64'Max (B.Window_Ms,
-                                                         Group_Input_Ms))
+                                      < Unsigned_64'Max
+                                          (Unsigned_64'Max (B.Window_Ms,
+                                                            Group_Input_Ms),
+                                           Timer_Expiry_Ms))
            --  a sending an earlier step matched is no candidate
            --  (S076_Run.Matched)
            and then (Neg or else Judging_JRU

@@ -21,6 +21,8 @@ with DMI_Radio_Data;
 with DMI_System_Status;
 with DMI_Observe;
 with DMI_Windows;             use DMI_Windows;
+with ETCS_Catalogue;
+with ETCS_Message;
 with EVC_Core;
 with EVC_Distances;
 with EVC_Odometry;
@@ -2019,15 +2021,23 @@ package body S076_Run is
       return Best;
    end Timer_Seconds;
 
+   --  The expiry of the last timer run (Run_Timer): a negative radio
+   --  expectation after the timer's input judges the sendings from there
+   --  on, for one period of the timer (Radio_Expect)
+   Timer_Expiry_Ms : Unsigned_64 := 0;
+   Timer_Period_Ms : Unsigned_64 := 0;
+
    --  The timer is taken to have started when the step before ended (the
    --  time the train took to reach the step's distance counts), or at
    --  From_Ms when given (not 0)
    procedure Run_Timer (Seconds : Natural; From_Ms : Unsigned_64 := 0) is
-      Elapsed : constant Unsigned_64 :=
-        B.Time_Ms - (if From_Ms in 1 .. B.Time_Ms then From_Ms
-                     else Step_Start_Ms);
+      Start   : constant Unsigned_64 :=
+        (if From_Ms in 1 .. B.Time_Ms then From_Ms else Step_Start_Ms);
+      Elapsed : constant Unsigned_64 := B.Time_Ms - Start;
       Due     : constant Unsigned_64 := Unsigned_64 (Seconds) * 1000 + 200;
    begin
+      Timer_Expiry_Ms := Start + Unsigned_64 (Seconds) * 1000;
+      Timer_Period_Ms := Unsigned_64 (Seconds) * 1000;
       if Elapsed < Due then
          for K in 1 .. (Natural (Due - Elapsed) + B.Cycle_Ms - 1) / B.Cycle_Ms
          loop
@@ -7170,6 +7180,7 @@ package body S076_Run is
       Loc_Since := 0;
       Loc_Count := 0;
       Loc_Window := Unsigned_64'Last;
+      Timer_Expiry_Ms := 0;
       Loc_Copied := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);
@@ -7552,14 +7563,34 @@ package body S076_Run is
                             & Natural'Image (B.JRU (K).B4));
                end loop;
                --  the window's RTM sendings: message or request, session,
-               --  bench time
+               --  bench time; a message with its length in bytes and its
+               --  packets (a 136 with packet 4 is an error report)
                for K in 1 .. B.Radio_Count loop
-                  Put_Line ("      rtm "
-                            & (if B.Radio (K).Is_Request then "request"
-                               else "message")
-                            & Natural'Image (B.Radio (K).Code)
-                            & " session" & Natural'Image (B.Radio (K).Session)
-                            & " at" & Unsigned_64'Image (B.Radio (K).At_Ms));
+                  Put ("      rtm "
+                       & (if B.Radio (K).Is_Request then "request"
+                          else "message")
+                       & Natural'Image (B.Radio (K).Code)
+                       & " session" & Natural'Image (B.Radio (K).Session)
+                       & " at" & Unsigned_64'Image (B.Radio (K).At_Ms));
+                  if not B.Radio (K).Is_Request then
+                     declare
+                        D : constant S076_Bench.Radio_Out_T := B.Radio (K);
+                        M : ETCS_Message.Message_T;
+                        Status : ETCS_Message.Status_T;
+                     begin
+                        ETCS_Message.Parse (D.Data (1 .. D.Length),
+                                            ETCS_Catalogue.Train_To_Track,
+                                            ETCS_Catalogue.RBC, M, Status);
+                        Put (" bytes" & Natural'Image (D.Length));
+                        if ETCS_Message."=" (Status, ETCS_Message.Accepted) then
+                           Put (" packets");
+                           for J in 1 .. M.Count loop
+                              Put (Natural'Image (Natural (M.Index (J).NID)));
+                           end loop;
+                        end if;
+                     end;
+                  end if;
+                  New_Line;
                end loop;
             end if;
             if Verbose then

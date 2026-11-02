@@ -17782,3 +17782,76 @@ scenarios at its end, called from `evc_test.adb`). Files of record:
 B2940, B2941 and B3001 closed; triage lines Se1820110 (3150100_06
 family) and S776cef6c (3150100_01) changed; baseline re-recorded
 (9 improvements). No edit outside the units.
+### The runner's linking window at 9990500_09, the hidden sending of 4100103_26, the reason of two passes (e5/runner-linking) (2026-11-02)
+
+**9990500_09 SV21 / SV22 step 87 (B3020, B2942; Sd077284a).** The
+DEBUG list of a window's RTM sendings now gives each message's length
+and packets (`S076_Run`, decoded with `ETCS_Message.Parse`). At SV21
+and SV22 the on-board sends at 318800 ms one 136 of 28 bytes with
+packets 0 and 4 to session 1 (supervising), none to session 2
+(Accepting, established since 83500 ms) until the ordinary reports of
+345800 ms (24 bytes, packet 0, to both). Packet 4 is an error report:
+the reviewer's reading holds. Its cause is the linking of BG3d. Message
+3 of step 67 (NID_LRBG 1048578, BG2, read at 100 m) carries packet 5
+with D_LINK 1400 and Q_LOCACC 60 for BG3 (and packet 131 with D_RBCTR
+1390); BG2's own accuracy is 60 m (BG4d's packet 5, Q_LOCACC 60). ERA's
+PDF of the sequence prints the same bits (its telegram table of the
+message: D_LINK 1400, D_RBCTR 1390), and its step list puts BG3d at
+1350.00 m and BG2d at 100.00 m, while the text of steps 67 and 83 says
+D_LINK 1000, D_RBCTR 990 and the group at d0 + 900 m "inside the
+expectation window". The window's first possible location is 1400 - 60
+= 1340 m past BG2 (3.4.4.4.3.1). At the reading the antenna is about
+1248 m past BG2 (the odometer moved 124770 cm since the reading of
+BG2d), and the max safe antenna position adds BG2's 60 m and the
+odometer's over-reading. The bench states that as 0 (a temporary print
+of `EVC_Odometry.Low` / `High`: 0 and 0 at 1356 m; `S076_Bench.Cycle`
+adds `abs Step * Acc / 1000` cm per cycle, nothing at 10 per mille
+under 100 cm a cycle: B3080). So about 1308 m < 1340 m: detected in
+rear of the window, rejected (3.4.4.4.3.2), the reaction of 3.16.2.3.1
+a) with Q_LINKREACTION 2 (none), and the error report. Ours follows the
+clause. In the text's geometry the group is 100 m short of its D_LINK,
+covered by the two Q_LOCACC of 60 m without any odometer term; in the
+data it is 150 m short and inside only with an over-reading of at least
+30 m over 1250 m (2.4 %). With the bench's accuracy set by hand
+(temporary): at 36 per mille BG3d is still rejected, at 40 it is
+accepted (the estimated position moved by 150 m), steps 85 and 87 pass
+and the train is tripped at step 95 (not traced). Verdict: the
+sequence's data, Sd077284a triaged s076; B2942's claim (the report of
+BG3d to the Handing Over RBC only, 3.15.1.3.4) withdrawn, B3020 closed.
+Left: B3080 (the bench's odometer interval truncated, a runner line
+for `S076_Bench`, not this package's unit) and B3081 (a 136 carrying
+packet 4 while connected to both RBCs goes to the supervising session
+only; whether 3.15.1.3.4 covers it is to decide).
+
+**4100103_26 step 163 (B2944; Sb83b2c65).** A temporary print of the
+negative expectation's search at SV30 named the sending it found: the
+136 of 117500 ms to session 1 (24 bytes, packet 0), sent at 700 m at
+standstill 100 ms after step 161 (NOT a 136) was judged at once at
+117400 ms, inside the window that the timer input of step 162 opened
+(`Window_Ms` 117400). The DEBUG list of step 162 shows that 136 and
+nothing after it, and the judgement reads the same list: the premise
+"the list shows none" held, the 136 found is the one of 117500 ms. The
+timer (T_CYCLOC 10 s, taken from step 161's comment) started at 117400
+ms and expired at 127400 ms, while the bench drove the train from 700
+to 800 m (to 134500 ms); "no position report after T_CYCLOC" is about
+the time after the expiry. `S076_Run.Run_Timer` now records the expiry
+and the period (`Timer_Expiry_Ms`, `Timer_Period_Ms`, reset per
+sequence), and `Radio_Expect` judges a negative expectation after a
+timer input from the expiry on and watches one period of the timer
+from it. A first version without the period moved 3080200_03 too, on
+a window of 500 ms after the T_CYCRQST expiry (a vacuous pass); with
+the period its step 87 finds the 132 of 130000 ms and keeps Sc4c3a7a1.
+The corpus: 4100103_26 SV21, SV22, SV30 passed (163 -> passed), no
+other movement, 0 regressions (1181 / 1048 / 961 -> 1184 / 1045 /
+961). No 136 comes between 117500 and 137400 ms: the packet 58 of
+before the power-off is not applied, as 4.10 wants (row "Position
+Report parameters", column NP: D). Left: B3082 (the event of the 136
+of 117500 ms, 600 ms after the one of 116900 ms that step 159 matched,
+not traced) and B3083 (`Group_Input_Ms`, the other start of the same
+filter, is never reset at the start of a sequence).
+
+**The two sequences of footnote [17] (4080300_21, 4080420_03 SV30): not
+taken.** The bound of the package came during the second item; the
+check of their reason (the JRU or DEBUG line of the message rejected
+while the 133 is unacknowledged, and the step's expectation met by it)
+is left as it was in the review of the sixtieth round.
