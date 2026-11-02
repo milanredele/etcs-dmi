@@ -76,4 +76,11 @@ package EVC_Test_Handover is
    --  the Handing Over RBC, the reports to both until then
    procedure Scenario_Handover_Order_Again;
 
+   --  3.6.3.1.4, 3.12.3.4.3.1.3, 3.15.1.3.6: the Accepting RBC's fixed
+   --  texts referred to an LRBG "unknown" without a location
+   --  sub-condition, stored until the switch: the one valid for both
+   --  directions shown at the switch, the one valid for the nominal
+   --  direction rejected
+   procedure Scenario_Handover_Text_No_LRBG;
+
 end EVC_Test_Handover;

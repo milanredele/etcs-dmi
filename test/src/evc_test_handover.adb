@@ -1045,4 +1045,55 @@ package body EVC_Test_Handover is
              & Integer_64'Image (Train_Cm) & " " & Passed'Image);
    end Scenario_Handover_Order_Again;
 
+   --  Message 24 referred to the LRBG "unknown" with a fixed text of
+   --  no location sub-condition, valid for the directions Q_DIR
+   function M24_Text_No_LRBG (Q_DIR : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 1023;
+      V (6) := 16383;
+      Start_Message (W, MCat.Track_M24, V);
+      ETCS_Track_Packets.P74.Encode
+        ((Q_DIR => ETCS_Variables.Q_DIR_T (Q_DIR), Q_SCALE => 1,
+          D_TEXTDISPLAY => 32767, L_TEXTDISPLAY => 32767,
+          T_TEXTDISPLAY => 1023,
+          M_MODETEXTDISPLAY => 15, M_LEVELTEXTDISPLAY => 4,
+          M_MODETEXTDISPLAY_2 => 15, M_LEVELTEXTDISPLAY_2 => 4,
+          others => <>), W, OK);
+      Check (OK, "handover: packet 74 encoded");
+      return Message_Bytes (W);
+   end M24_Text_No_LRBG;
+
+   procedure Scenario_Handover_Text_No_LRBG is
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Give_Radio_Message (2, M24_Text_No_LRBG (1));
+      Stand;
+      Give_Radio_Message (2, M24_Text_No_LRBG (2));
+      Stand;
+      Check (R.Accepting = 2 and then EVC_Radio_Authority.Buffered = 2
+             and then EVC_Text_Messages.Displayed = 0,
+             "handover text, LRBG unknown: the two texts of the Accepting "
+             & "RBC stored, not shown before the switch (3.15.1.3.6)");
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then EVC_Radio_Authority.Buffered = 0
+             and then EVC_Text_Messages.Displayed = 1,
+             "handover text, LRBG unknown: at the switch the text valid "
+             & "for both directions shown, no location needed "
+             & "(3.12.3.4.3.1.3), the nominal one rejected (3.6.3.1.4);"
+             & EVC_Text_Messages.Displayed'Image);
+   end Scenario_Handover_Text_No_LRBG;
+
 end EVC_Test_Handover;
