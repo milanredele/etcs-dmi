@@ -411,6 +411,8 @@ begin
    EVC_Test_Handover.Scenario_Handover_Session_Report;
    EVC_Test_Handover.Scenario_Handover_Error_Report;
    EVC_Test_Handover.Scenario_Handover_Relocated;
+   EVC_Test_Handover.Scenario_Handover_Message_Error;
+   EVC_Test_Handover.Scenario_Handover_TD_Per_Session;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;

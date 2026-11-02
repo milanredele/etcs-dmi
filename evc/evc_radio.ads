@@ -151,6 +151,9 @@ is
       --  3.18.4.3.4: the RBC identity EURORADIO reported when the safe
       --  radio connection was set up (No_RBC: none reported)
       Reported      : RBC_Id_T;
+      --  4.8.3 [3] first bullet: the RBC acknowledged Train Data (message
+      --  8) in this session (forgotten with the session, Reset_Session)
+      TD_Acked      : Boolean := False;
    end record;
 
    No_Info : constant Session_Info_T :=
@@ -164,7 +167,8 @@ is
       Received_Ms   => 0,
       Sent          => False,
       Last_Sent     => 0,
-      Reported      => No_RBC);
+      Reported      => No_RBC,
+      TD_Acked      => False);
 
    --  The sessions this on-board handles (EVC_Config, taken at Clear)
    function Sessions return Session_Count_T
@@ -438,6 +442,20 @@ is
    procedure Set_Train_Data_Acknowledged (Acked : Boolean)
      with Global => (In_Out => State),
           Post => Train_Data_Acknowledged = Acked
+                  and then Sessions = Sessions'Old
+                  and then Engine_Id = Engine_Id'Old
+                  and then Supervising = Supervising'Old
+                  and then Accepting = Accepting'Old
+                  and then Contact = Contact'Old;
+
+   --  4.8.3 [3]: the RBC of the session S acknowledged the Train Data
+   --  sent to it (message 8)
+   procedure Note_Train_Data_Acknowledged (S : Session_T)
+     with Global => (In_Out => State),
+          Post => Info (S).TD_Acked
+                  and then Info (S).State = Info (S).State'Old
+                  and then Train_Data_Acknowledged
+                           = Train_Data_Acknowledged'Old
                   and then Sessions = Sessions'Old
                   and then Engine_Id = Engine_Id'Old
                   and then Supervising = Supervising'Old

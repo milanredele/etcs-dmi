@@ -133,6 +133,11 @@ is
       TD_Acked := Acked;
    end Set_Train_Data_Acknowledged;
 
+   procedure Note_Train_Data_Acknowledged (S : Session_T) is
+   begin
+      Table (S).TD_Acked := True;
+   end Note_Train_Data_Acknowledged;
+
    procedure Set_Trip_Exit_Recognised (Recognised : Boolean) is
    begin
       Exit_Known := Recognised;

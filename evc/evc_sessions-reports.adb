@@ -23,7 +23,8 @@ package body EVC_Sessions.Reports
        Refined_State => (State => (P58, P58_Ref, P58_Held, Due,
                                    Was_Up, Acc_Up, Last_Level,
                                    Level_Seen, N_Sent, N_Params,
-                                   Error_Due, Error_Code, Bal_Due,
+                                   Error_Due, Error_Code, Msg_Due,
+                                   Msg_Code, Bal_Due,
                                    Bal_Code, TRN_Due,
                                    Watch, Watch_Mode, Watch_S, Watch_At,
                                    Watch_Reps, Repeat_Due))
@@ -59,6 +60,11 @@ is
    type Error_Count_T is range 0 .. Max_Errors;
    Error_Due  : array (R.Session_T) of Error_Count_T := (others => 0);
    Error_Code : array (R.Session_T) of M_ERROR_T := (others => 0);
+   --  per session, the inconsistent messages received on it and not yet
+   --  given by Produce to the sessions of a report, the M_ERROR of the
+   --  last
+   Msg_Due    : array (R.Session_T) of Error_Count_T := (others => 0);
+   Msg_Code   : array (R.Session_T) of M_ERROR_T := (others => 0);
    --  the balise group or odometer error of the cycle, its M_ERROR: given
    --  by Produce to the sessions its report goes to (3.15.1.3.4)
    Bal_Due    : Boolean := False;
@@ -108,6 +114,8 @@ is
       N_Params := 0;
       Error_Due := (others => 0);
       Error_Code := (others => 0);
+      Msg_Due := (others => 0);
+      Msg_Code := (others => 0);
       Bal_Due := False;
       Bal_Code := 0;
       TRN_Due := False;
@@ -395,16 +403,57 @@ is
                       Forced : Targets_T := No_Targets)
    is
       Sv : constant R.Session_Ref_T := R.Supervising;
+
+      --  N reports with packet 4 and Error queued for session T
+      procedure Queue_Error (T     : R.Session_T;
+                             Error : M_ERROR_T;
+                             N     : Error_Count_T)
+        with Global => (In_Out => (Error_Due, Error_Code))
+      is
+      begin
+         if Natural (Error_Due (T)) + Natural (N) >= Max_Errors then
+            Error_Due (T) := Max_Errors;
+         else
+            Error_Due (T) := Error_Due (T) + N;
+         end if;
+         Error_Code (T) := Error;
+      end Queue_Error;
+
+      --  T is one of the sessions a report goes to, established
+      function Report_Target (T : R.Session_T) return Boolean is
+        ((Sv = R.Session_Ref_T (T) or else Also (T))
+         and then R.Info (T).State = R.Established);
    begin
+      --  an inconsistent radio message (3.16.3.1.1.2), once its session is
+      --  established: received on a session a report goes to, to all the
+      --  sessions of a report, so to both RBCs while connected to both.
+      --  Decision of the user: 3.15.1.3.4 sends every position report to
+      --  both and makes no exception; packet 4 carries only M_ERROR, so
+      --  the receiving session no longer selects the target. Received on
+      --  another session, to that one alone
+      for S in R.Session_T loop
+         pragma Loop_Invariant (True);
+         if Msg_Due (S) > 0 and then R.Info (S).State = R.Established then
+            if Report_Target (S) then
+               for T in R.Session_T loop
+                  pragma Loop_Invariant (True);
+                  if Report_Target (T) then
+                     Queue_Error (T, Msg_Code (S), Msg_Due (S));
+                  end if;
+               end loop;
+            else
+               Queue_Error (S, Msg_Code (S), Msg_Due (S));
+            end if;
+            Msg_Due (S) := 0;
+         end if;
+      end loop;
       --  the balise group error to the sessions of a report, both RBCs
       --  while connected to both (3.6.5.1.4 l), 3.15.1.3.4)
       if Bal_Due then
          for S in R.Session_T loop
             pragma Loop_Invariant (True);
-            if (Sv = R.Session_Ref_T (S) or else Also (S))
-              and then R.Info (S).State = R.Established
-            then
-               Request_Error (S, Bal_Code);
+            if Report_Target (S) then
+               Queue_Error (S, Bal_Code, 1);
             end if;
          end loop;
          Bal_Due := False;
@@ -470,13 +519,13 @@ is
 
    procedure Request_Error (S     : EVC_Radio.Session_T;
                             Error : ETCS_Variables.M_ERROR_T)
-     with Refined_Global => (In_Out => (Error_Due, Error_Code))
+     with Refined_Global => (In_Out => (Msg_Due, Msg_Code))
    is
    begin
-      if Error_Due (S) < Max_Errors then
-         Error_Due (S) := Error_Due (S) + 1;
+      if Msg_Due (S) < Max_Errors then
+         Msg_Due (S) := Msg_Due (S) + 1;
       end if;
-      Error_Code (S) := Error;
+      Msg_Code (S) := Error;
    end Request_Error;
 
    procedure Request_Balise_Errors (In_L2 : Boolean)

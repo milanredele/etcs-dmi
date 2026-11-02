@@ -192,6 +192,9 @@ is
                                   and 16#FFFF_FFFF#) = TD_Stamp
             then
                TD_Awaited := False;
+               --  4.8.3 [3]: for the session too (EVC_Radio_Authority
+               --  judges each RBC's messages by its own)
+               R.Note_Train_Data_Acknowledged (S);
                R.Set_Train_Data_Acknowledged (True);
             end if;
          when Track_M43 =>

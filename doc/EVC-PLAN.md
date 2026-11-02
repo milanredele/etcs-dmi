@@ -18975,3 +18975,87 @@ joined case of step 62 (feature 4070201, test case 37 in ERA's PDF)
 expects the permitted speed not displayed in the same SH mode after an
 override, which 4.4.8.1.10 (displayed until the driver asks to stop it)
 does not allow. No sequence moved; the baseline unchanged.
+### The reports' last items: a radio message error to both RBCs, the Train Data acknowledgement per session, 9990500_09's reports after moving back (e6/reports-errors) (2026-11-02)
+
+**B3162, a radio message error to both RBCs (done).** The premise held
+at the source: `EVC_Sessions.Reports.Request_Error (S, ...)`, called by
+`EVC_Sessions.Take_Inconsistent` (M_ERROR 3) and `Take_Message`
+(M_ERROR 4), counted the error for the receiving session S alone
+(`Error_Due (S)`). Built to the user's decision (3.15.1.3.4 makes no
+exception; packet 4 names neither the message nor the RBC):
+`Request_Error` keeps the error per receiving session (`Msg_Due`,
+`Msg_Code`); `Produce`, once that session is established, queues it to
+every session of a report (the supervising one and `Also`, as for the
+balise group errors) when the receiving session is one of them, to that
+session alone otherwise (a session that is neither supervising nor
+Accepting nor retained). Scenario `Scenario_Handover_Message_Error`
+(EVC_Test_Handover): connected to both, a message one byte longer than
+its L_MESSAGE from each RBC in turn. Before the fix: the Accepting RBC's
+reported 0 times to 300 and once to 400, the Handing Over RBC's once and
+0; after, once to each. Proof of `evc_sessions-reports`: none unproved,
+margin 978 steps. Runner: no sequence moved, 0 regressions (no step of
+the corpus distinguishes the two readings, as the decision paper said).
+Rows 3.15.1.3.4 and 3.16.3.1.1.2 noted; `@req 3.15.1.3.4` added on
+`Request_Error`.
+
+**B3180, the Train Data acknowledgement per session (done).** The
+premises held: `EVC_Radio_Authority.TD_Acked` was one flag, set from
+`EVC_Radio.Train_Data_Acknowledged` (the 8 of the session the last 129
+went to) and cleared only when no session was established or being
+established, so the Handing Over RBC's acknowledgement counted for the
+Accepting RBC. 4.8.3 [3] first bullet reads "the RBC has not yet
+acknowledged any train data in the ongoing communication session";
+3.15.1.3.3 sends the Train Data to the Accepting RBC as soon as its
+session is established. One fact the brief did not name:
+`EVC_Radio_Authority` cannot read `EVC_Sessions` (which withs it), and
+`Take_Message`'s callers are `EVC_Core.Inputs` and `EVC_Core.Stored`, so
+the channel is `EVC_Radio`, the session table both halves read. Built:
+`EVC_Radio.Session_Info_T.TD_Acked`, the RBC of the session acknowledged
+Train Data in it, set by `EVC_Radio.Note_Train_Data_Acknowledged` from
+`EVC_Sessions.Mission.Take_Answer` on the matching 8 and forgotten with
+the session (`Reset_Session` at its end and at its opening); in
+`EVC_Radio_Authority` the scalar is gone, `TD_Unacked (Awaited, Changed,
+S)` judges a message by the RBC of its own session in `Take_Message`
+(the transition buffer's context by the supervising session), with the
+awaited Train Data (`TD_Awaited`, EVC_Sessions.Train_Data_Awaited of the
+last cycle) and `TD_Changed` of the last cycle (`TD_Differ`, so that
+`Take_Message`'s globals stay as they were). The acknowledged values
+(`TD_Acked_Categories`) stay shared: the second bullet compares with the
+last values acknowledged and the Accepting RBC is sent the same Train
+Data. The Start of 5.4.3.2 D15 in SB waits as before for any session's
+acknowledgement. Scenario `Scenario_Handover_TD_Per_Session`: connected
+to both, the 129 to 400 awaiting its 8; the Handing Over RBC's packet 88
+(level crossing 7) taken; the Accepting RBC's (8) held until the switch;
+after it the supervising 400's (9) given directly; the 400's repeated
+129 acknowledged, its level crossing 10. Before the fix 8 and 9 were
+taken; after, rejected, 7 and 10 taken. Proofs of `evc_radio`,
+`evc_sessions-mission`, `evc_radio_authority`, `evc_sessions`: none
+unproved. Runner: no sequence moved, 0 regressions (the corpus was not
+searched for a step that needs it). Rows 4.8.3.1.1 Table-footnote [3]
+and 3.15.1.3.3 noted, `@req 4.8.3.1.1 Table-footnote [3]` on
+`TD_Unacked`. Left: `EVC_Radio_Authority.Transition_Order_Rejected`
+(packet 131 by radio, read by `EVC_Sessions.Take_Radio_Transition`)
+still judges by the supervising session's context.
+
+**B3245 / B3161, 9990500_09 step 101 (the sequence).** Traced at SV21
+on this branch (the times have moved since B3161 was written: 388600,
+395200, 410200, 425200 ms). ERA's step list (the PDF): step 99 "The
+train reaches standstill and starts moving backward", step 100 the min
+safe rear end over the border again backwards, step 101 "NOT ...
+(NID_MESSAGE=136) containing packet 0/1 is transmitted", comment "The
+position report is NOT sent again"; no RBC message between steps 95 and
+103, so no order to terminate the session. Ours in the window of step
+101: the odometer from STANDSTILL (388200 ms) to TOWARDS_CAB_B (388500
+ms), then a 136 to both sessions at 388600 ms: 3.6.5.1.4 i), the train
+leaves standstill (the border report of 3.15.1.3.1 c) is not sent
+again); then 136s to session 1 alone at 395200 and 410200 ms, 15 s apart
+after the one of 380200 ms: the repetitions of 3.15.1.3.9; then the 156
+at 425200 ms. Every 136 of the window is required; the step's comment
+means the border report. The runner prints no trigger: i) is read from
+the odometer state of the cycle before the report. Sb83b2c65's line for
+9990500_09 rewritten s076; B3161 dropped, B3245 done. No code.
+
+Files of record: B3162, B3180, B3245 done, B3161 dropped; no new line;
+the triage line of Sb83b2c65 for 9990500_09. Edits outside the named
+units: `EVC_Radio` (the field `TD_Acked` of `Session_Info_T`, `No_Info`,
+`Note_Train_Data_Acknowledged`), the channel above.
