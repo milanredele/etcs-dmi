@@ -19181,3 +19181,98 @@ s076 (3.4.4.4.7, the bits of ERA's PDF), which settles B3300. The
 second bullet of 4.8.3 [3] is a decision for the coordinator; a
 scenario is needed only if per RBC is chosen. Backlog: B3340, B3341.
 The review took about 112 tool calls of 130.
+
+### E5 integration after the sixty-third round, the thirty-first of E6 (2026-11-02)
+
+Merged: e6/position-solr (the three position disagreements of the
+eleventh review traced with temporary prints, each the sequence's data,
+nothing in evc/: B3242, 4080300_16's BG6 is read 650 m past BG4 against
+a window of 688 to 712 m, 3.4.4.4.3.2 rejects its message so it is never
+the SOLR and the EOA stays (the review's "our JRU names BG6 as the SOLR"
+was the runner's header check passing a sequence name without resolving
+it); B3241, 3131050_19's release speed is 19.9 km/h with every term of
+3.13.9.4.8.2 (the trip margin 84 m, the interval 24 to 31 m under it),
+and with the Q_LOCACC 0 the comments assume 26.3 km/h and the sequence
+passes to its end: the data's 12 m; B3243 / B3200, 3040400_03's linking
+reaction (Q_LINKREACTION 01) brakes to standstill, the MA is shortened by
+3.16.2.6.2 to the estimated front end, and moving on trips by 4.6.3
+[12]), e6/tiu-traction (B3220: the traction status as TIU signal 17,
+the frame unchanged, the message 40 at the first reception and each
+change, the fuzzer and the bench give it, `Scenario_JRU_Traction_
+Status`; B3221: the drop of the driver's requests in TR with the desk
+closed moved to `Read_Ports` right after they are taken, the adhesion
+choice covered; B781's 6th bullet over a relocation, no defect; B1360
+narrowed to 22), e5/runner-chart-2 (B3244 / B3160: 3110500_03 step 98
+in three versions: SV30 the sequence's, M_LEVELTEXTDISPLAY 5 is spare
+and the codec refuses the message; SV21 and SV22 E7, the value is valid
+in 2.x and its translation is chapter 6's: not a second defect of ours;
+Seb6766c6 by cause: a sequence's linking, an infill MA (E7), the driver
+into an LX's temporary EOA (B3301), three chart families, two sequences
+left (B3300, settled by the review below); S69f1f87e on a resumption of
+31 calls: 18 sequences where the runner judges the whole speed
+information while the step names one object of it (B3302), 5080200_03
+the sequence's, the toggle kept over an override by 4.4.8.1.10), and
+e6/reports-errors (B3162: a radio message error reported to both RBCs
+while connected to both, `Request_Error` per receiving session and
+`Produce`'s targets, `Scenario_Handover_Message_Error`; B3180: the Train
+Data acknowledgement per session, the authority cannot read the sessions
+so `EVC_Radio.Session_Info_T.TD_Acked` carries it, `TD_Unacked` judges
+each message by its own session, the acknowledged values shared,
+`Scenario_Handover_TD_Per_Session`; left: packet 131 by radio judged by
+the supervising session's context; B3245 / B3161: 9990500_09 step 101
+the sequence's, the 136 at 388600 ms is the report at leaving
+standstill (3.6.5.1.4 i)) and the repetitions 3.15.1.3.9's, against
+ERA's own comment "NOT sent again"), and e5/review-63 (the twelfth
+blind review, below).
+
+The review (e5/review-63, 118 calls, 8.0 USD): eight items, all
+reached, fully blind; 7 agreed, 1 disagreed, 1 undecided. Disagreed
+(B3341, done at the integration): the two trips the runner agent left
+open, 4080436_03 and 4080443_01, are the sequences' data: the first
+group's packet 5 announces BG3 with Q_LINKORIENTATION 0 and BG3d is
+passed nominal, so ours rejects it and trips by 3.4.4.4.7 before the
+level order is taken; ERA's PDFs the same in every version (the triage
+line rewritten s076, B3300 closed). Undecided (B3340): the second bullet
+of [3], the acknowledged values per RBC or one shared copy: they differ
+only when the Train Data change while connected to both and one RBC has
+acknowledged the new values: the user decides. A remark without a line:
+the runner's `Header_Holds` passes a JRU header field named by a
+sequence name without resolving it (step 71 of 4080300_16 says nothing
+about the SOLR). Twelve rounds of reviews: 99 items, 87 agreed, 16
+disagreed, 7 undecided; 30 lines, of which 8 became fixes; 77.5 USD.
+
+Verification of the merged tree: an early chain on three packages
+green; the full merge failed its build: the handover test package had
+two conflict blocks and the blind join of the second interleaved
+`Scenario_Handover_Relocated`'s body with `Scenario_Handover_Message_
+Error`'s; the file was rebuilt from the two branches' versions (the
+reports package's whole, the relocation scenario appended), compiled,
+committed as a repair, and the chain run again: all green: `test/check.
+sh` ok; the full proof 13936 checks, none unproved, margin 47726 steps;
+cross build and stack 32768 B budget, margin 6056 B; wasm and both
+smokes 0 failures; the runner 1190 / 1039 / 961 unchanged, 0
+regressions, no signature untriaged. The merge: position-solr
+fast-forwarded; the other three conflicted on the plan and the backlog
+(three-way by id), two on the triage (three-way by signature).
+
+Costs (doc/ROUNDS.csv): 40.9 USD with the review (32.8 for the four
+packages, 8.0 the review), 12 of 12 package items done (one on a
+resumption of 31 calls inside the budget), 3 of 23 brief premises wrong
+(the SOLR claim; the authority reading the sessions; the review's
+"removed" reading of the speed information), no agent over budget, one
+agent past its bound with the third item in hand (146). Lessons: a
+.adb with two conflict blocks is rebuilt from the branches' versions,
+never joined block by block (the build catches it, the chain's order
+makes that cheap); the review's traces of "not traced" lines pay: four
+of five last round and the two left open this round were the sequences'
+data, and the rule of this round's brief (trace before writing) held in
+all four packages.
+
+The matrix: clauses left 56 (todo 2, partial 54; done 2083, no row
+changed state). Open items: doc/BACKLOG.csv (31 open after this round;
+5 added of which 2 by the review, 9 closed). Next: B3340 (the user's
+decision), B3301 (the runner's driver stopping in an LX's stopping
+area), B3302 (the speed information judged by the object a step
+names), the header check resolving a group's sequence name, packet 131
+by radio judged by its own session, B781's last two bullets, B1360's
+22; the review again (eight items, readings first, no backlog read).
