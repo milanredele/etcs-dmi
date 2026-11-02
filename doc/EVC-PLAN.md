@@ -17671,3 +17671,35 @@ the four sendings).
   beside a rejected level crossing, packet 131 rejected) and
   `Scenario_Train_Data_Per_Packet`, both failing before the fix. Runner:
   no movement.
+- B2960, [3] second bullet. The claim held at the source (4.8.3 [3]:
+  "Train Data where the value of Train category, Axle load, Loading gauge
+  or Traction system is different from the last value acknowledged by
+  the RBC has been sent to the RBC and the corresponding Acknowledgement
+  of Train Data has not been received yet"), with one correction: the
+  state is computed in `EVC_Radio_Authority.Evaluate` (`TD_Acked`) before
+  `Buffer.Update`, not in `Update`. Built: `TD_Acked_Categories` (the
+  cant deficiency and other international categories, the axle load
+  category, the loading gauge, the traction systems of
+  `EVC_Train_Data.Categories`), taken in the cycle the acknowledgement
+  is first seen (`TD_Ack_Seen`, `EVC_Radio.Train_Data_Acknowledged` of the
+  last cycle; decision: the data then are those sent, a new entry being
+  sent again); `TD_Changed` compares them (3.18.3.7 names the same
+  four); [3] is the Train Data awaited and either none acknowledged in
+  the session or `TD_Changed`. `evc_test Scenario_Train_Data_Changed`
+  (a change of the length sent again: a level crossing taken before the
+  acknowledgement; of the axle load category: a track condition
+  rejected until message 8, taken after), failing before the fix.
+  Runner: 4080300_15 SV21, SV22, SV30 109 -> passed; 4080300_17 SV21,
+  SV22, SV30 175 -> 179 (Sf537caac, B3060): its 129 of step 157 changes
+  M_LOADINGGAUGE 1 -> 2 (the step 153 comment asks for one of the four
+  changed; the triage S4eed293c had read the gauge as unchanged), so the
+  toggle of step 159 is rejected and steps 175 to 178 pass; at step 179
+  the message 3 of step 168 has left no MA after the Train Data change
+  at standstill and BG5d's immediate level 1 trips (the cause of the MA
+  not taken not traced). 1184 passed, 1045 failed, 961 blocked, 0
+  regressions.
+- B2961 (the Infill flag in the contexts of the linking and the
+  reversing packets, [18], packet 44) left: the bound came after item 2.
+
+Runner: 1184 passed, 1045 failed, 961 blocked (6 sequences moved, 0
+regressions). Backlog: B2960, B2962 closed; B3060 added; B2961 open.

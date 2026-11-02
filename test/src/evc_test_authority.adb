@@ -3012,4 +3012,60 @@ package body EVC_Test_Authority is
              & "the RBC transition order taken (4.8.3 [3])");
    end Scenario_Train_Data_Per_Packet;
 
+   --  4.8.3 [3] second bullet: Train Data whose train category, axle load,
+   --  loading gauge or traction system differ from the last acknowledged
+   --  sent again: a track condition (packet 68, A [3] [17]) of a general
+   --  message before their acknowledgement (message 8) rejected, after it
+   --  taken; Train Data changed in their length only sent again: a level
+   --  crossing (packet 88) before the acknowledgement taken
+   procedure Scenario_Train_Data_Changed is
+      --  the driver's Train Data (MSG_DRIVER_DATA kind 2): the length,
+      --  135 %, 160 km/h, the categories with the axle load category
+      function Data_Entry (Length_M : Natural; Axle_Load : Byte)
+        return Byte_Array
+      is (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                 Byte_Array'(1 => 2)
+                 & U16 (Unsigned_16 (Length_M)) & U16 (135) & U16 (160)
+                 & Byte_Array'(1 => 2) & U16 (4)
+                 & Byte_Array'(Axle_Load, 0, 1)));
+   begin
+      Start_X;
+      Stand_X (100);
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Input (DMI, Data_Entry (200, 0));
+      Run_X (11_000);
+      Stand_X (1_000);
+      Ack_Train_Data;
+      Input (DMI, Data_Entry (321, 0));
+      Stand_X (300);
+      Give_Radio_Message (1, LX_Message (10, 300));
+      Stand_X (200);
+      Check (EVC_Sessions.Train_Data_Awaited and then LX_Stored,
+             "Train Data changed: the length only, sent again: the level "
+             & "crossing taken before the acknowledgement (4.8.3 [3], the "
+             & "four values the same)");
+      Ack_Train_Data;
+      Input (DMI, Data_Entry (321, 2));
+      Stand_X (300);
+      Give_Radio_Message (1, TC_Message (10, 300));
+      Stand_X (200);
+      Check (EVC_Sessions.Train_Data_Awaited
+             and then EVC_Track_Conditions.Conditions.Count = 0,
+             "Train Data changed: the axle load category, sent again: the "
+             & "track condition rejected before the acknowledgement (4.8.3 "
+             & "[3] second bullet)");
+      Ack_Train_Data;
+      Give_Radio_Message (1, TC_Message (10, 300));
+      Stand_X (200);
+      Check (not EVC_Sessions.Train_Data_Awaited
+             and then EVC_Track_Conditions.Conditions.Count = 1,
+             "Train Data changed: after the acknowledgement the track "
+             & "condition taken (4.8.3 [3])");
+   end Scenario_Train_Data_Changed;
+
 end EVC_Test_Authority;

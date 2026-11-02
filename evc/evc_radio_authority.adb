@@ -23,7 +23,8 @@ with Interfaces;              use Interfaces;
 
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Rejected_N, TD_Acked, Held,
+       Refined_State => (State => (Messages, Rejected_N, TD_Acked,
+                                   TD_Ack_Seen, TD_Acked_Categories, Held,
                                    Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
                                    Params, Params_Level, Params_Seen,
@@ -52,6 +53,12 @@ is
    --  4.8.3 [3]: the RBC acknowledged Train Data in the ongoing session
    --  of the supervising RBC (EVC_Radio.Train_Data_Acknowledged seen)
    TD_Acked      : Boolean := False;
+   --  4.8.3 [3] second bullet: the train category, axle load category,
+   --  loading gauge and traction systems of the Train Data the RBC
+   --  acknowledged last (as of the cycle the acknowledgement is seen in:
+   --  TD_Ack_Seen, EVC_Radio.Train_Data_Acknowledged of the last cycle)
+   TD_Ack_Seen         : Boolean := False;
+   TD_Acked_Categories : EVC_Train_Data.Categories_T;
    --  4.8: the messages rejected since Clear
    Rejected_N    : Natural := 0;
    Held          : Held_T := (others => False);
@@ -474,6 +481,8 @@ is
    begin
       Buffer.Clear;
       TD_Acked := False;
+      TD_Ack_Seen := False;
+      TD_Acked_Categories := (others => <>);
       Messages := 0;
       Rejected_N := 0;
       Held := (others => False);
@@ -1601,6 +1610,23 @@ is
       return False;
    end Linked_Group_At_EOA;
 
+   --  4.8.3 [3] second bullet: the train category (the cant deficiency
+   --  and the other international categories), the axle load category,
+   --  the loading gauge or the traction systems of the Train Data differ
+   --  from those the RBC acknowledged last (3.18.3.7 names the same four)
+   --  @req 4.8.3.1.1 Table-footnote [3]
+   function TD_Changed return Boolean is
+     (EVC_Train_Data.Categories.Cant_Deficiency
+        /= TD_Acked_Categories.Cant_Deficiency
+      or else EVC_Train_Data.Categories.Other /= TD_Acked_Categories.Other
+      or else EVC_Train_Data.Categories.Axle_Load
+                /= TD_Acked_Categories.Axle_Load
+      or else EVC_Train_Data.Categories.Loading_Gauge
+                /= TD_Acked_Categories.Loading_Gauge
+      or else EVC_Train_Data.Categories.Voltages
+                /= TD_Acked_Categories.Voltages)
+     with Global => (TD_Acked_Categories, EVC_Train_Data.State);
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
@@ -1617,19 +1643,26 @@ is
          Exit_Acknowledged := False;
       end if;
       --  4.8.3 [3]: "not yet acknowledged any train data in the ongoing
-      --  communication session" (Train Data sent again in the session do
-      --  not reject; their changed values are not compared, decision)
-      --  The ongoing session: one established or being established (an
-      --  acknowledgement may come before the session is established, and
-      --  the Train Data are sent again when it is, 3.18.3.4.2)
+      --  communication session", or Train Data whose four values differ
+      --  from the last acknowledged sent and not acknowledged yet
+      --  (TD_Changed). The ongoing session: one established or being
+      --  established (an acknowledgement may come before the session is
+      --  established, and the Train Data are sent again when it is,
+      --  3.18.3.4.2). Decision: the values acknowledged are those of
+      --  EVC_Train_Data in the cycle the acknowledgement is first seen
+      --  (they were sent, a new entry being sent again)
       if not (for some X in EVC_Radio.Session_T =>
                 EVC_Radio.Established (X)
                 or else EVC_Radio.Being_Established (X))
       then
          TD_Acked := False;
       elsif EVC_Radio.Train_Data_Acknowledged then
+         if not TD_Ack_Seen then
+            TD_Acked_Categories := EVC_Train_Data.Categories;
+         end if;
          TD_Acked := True;
       end if;
+      TD_Ack_Seen := EVC_Radio.Train_Data_Acknowledged;
       Evaluate_TAF (Facts);
       --  4.8: the context of the messages of the next cycle; 4.8.5.4,
       --  4.8.5.5: the transition buffer deleted or released
@@ -1640,7 +1673,7 @@ is
           L2_Announced       => EVC_Levels.Announced
                                 and then EVC_Levels.Announced_Level = L2,
           Train_Data_Unacked => Facts.Train_Data_Unacked
-                                and then not TD_Acked,
+                                and then (not TD_Acked or else TD_Changed),
           Consist_Unacked    => Facts.Consist_Unacked,
           Trip_Exit_Known    => Exit_Recognised,
           Cab_Active         => Facts.Cab_Active,

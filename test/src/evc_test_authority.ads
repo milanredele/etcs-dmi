@@ -119,5 +119,7 @@ package EVC_Test_Authority is
 
    --  4.8.3 [3] applied to the packet, not to its message
    procedure Scenario_Train_Data_Per_Packet;
+   --  4.8.3 [3] second bullet: the four values changed and sent again
+   procedure Scenario_Train_Data_Changed;
 
 end EVC_Test_Authority;
