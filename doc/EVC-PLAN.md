@@ -19059,3 +19059,125 @@ Files of record: B3162, B3180, B3245 done, B3161 dropped; no new line;
 the triage line of Sb83b2c65 for 9990500_09. Edits outside the named
 units: `EVC_Radio` (the field `TD_Acked` of `Session_Info_T`, `No_Info`,
 `Note_Train_Data_Acknowledged`), the channel above.
+
+### Review of the sixty-third round: eight verdicts re-derived blind (e5/review-63) (2026-11-02)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the author's record. All eight items were taken. No
+code, no triage line and no line of the authors was changed.
+
+1. The error reports and the Train Data acknowledgement across two
+   sessions. Mine: 4.8.3 gives the level crossing information from the
+   RBC in level 2 as A [3] [17]. The first bullet of [3] is per session
+   ("in the ongoing communication session"). So, after the Accepting
+   RBC's session is established and the Train Data is sent to it
+   (3.15.1.3.3), its message 24 with packet 88 is rejected until its
+   own message 8. The Handing Over RBC's is taken: it acknowledged
+   earlier in its own session, and no new Train Data was sent to it.
+   The second bullet reads "the last value acknowledged by the RBC"
+   and "the corresponding acknowledgement", so per RBC as well. A radio
+   message error while connected to both goes to both (the user's
+   decision, 3.15.1.3.4). Author (e6/reports-errors):
+   `EVC_Radio_Authority.TD_Unacked` judges the first bullet by the
+   session's own `TD_Acked` (`EVC_Radio.Note_Train_Data_Acknowledged`);
+   `EVC_Sessions.Reports.Request_Error` sends to both. The values of
+   the second bullet stay shared (`TD_Acked_Categories`), because the
+   Accepting RBC is sent the same Train Data. Agree on the first bullet
+   and the error reports. Undecided on the second bullet: the shared
+   copy differs from a copy per RBC only when the Train Data changes
+   while connected to both and only one RBC has acknowledged the new
+   values (B3340).
+2. A linked group read outside its expectation window. Mine: the
+   window is 700 +- 12 m (3.4.4.4.3.1). Read at 650 m, the max safe
+   antenna is in rear of it: 3.16.2.3.1 a) applies, and 3.4.4.4.3.2
+   rejects the message. The group is not the LRBG (3.6.2.2.2 a) with
+   3.6.5.1.8: its message is not taken into account) and not the SOLR.
+   Nothing is relocated by 3.6.4.2.5. `S076_Run.Header_Holds` checks
+   a sequence name (`NID_SOLR=<BG2>`) only for a known field, never
+   for the group's identity. A step that passes on it says nothing
+   about which group is the SOLR. Author (e6/position-solr) and the
+   matrix row 3.6.4.2.5: the same; `EVC_Position.Decide_Linking` gives
+   Early, a reaction and the next window, without `Set_SOLR`. Agree.
+3. The release speed and a linking reaction's shortened MA. Mine: by
+   3.13.9.4.8.2 the margin is 2 x Q_LOCACC + 10 m + 10 % of d_EOA, or
+   the confidence interval if larger: 2 x 12 + 10 + 70 = 104 m for an
+   EOA 700 m from the group. In level 1 the antenna offset is added
+   too; beta (SM) is left out. After a linking reaction's service
+   brake to standstill, 3.16.2.6.2 and A.3.4 [10] [11] put the EOA at
+   the estimated front end and the SvL at the max safe front end, with
+   no release speed. If the train then moves on, it is braked at once
+   by the EBI of the SvL, and in level 1 it trips by 4.6.3 [12].
+   Author and code: `Build_Trip_Margin`, `EVC_SDM.Release_Speed`
+   (Min (Max (margin, X_Max - X_Min))), and
+   `EVC_Stored_Information.Linking_Shortening` ->
+   `EVC_Movement_Authority.Shorten_To_Train` (withdrawn, no release
+   speed). Agree.
+4. The traction status, the adhesion choice in TR, the border over a
+   relocation. Mine: the traction status is a two-state input from the
+   train interface (SUBSET-034 2.5.4.1). It is forwarded to the STM and
+   recorded as M_TRACTION_STATUS (SUBSET-027 4.2.4.40). In TR with the
+   desk closed, the driver's adhesion choice is not taken (4.4.13.1.6:
+   isolation only). If a relocation puts the max safe front end back in
+   rear of a border it has passed, A.3.5.1's 6th bullet says the
+   handover actions are neither reverted nor done twice. Author
+   (e6/tiu-traction): `TIU_Signal_T.Traction_Status` (signal 17,
+   unknown until the first input); `EVC_Core.Inputs.Read_Ports` clears
+   the driver's requests in TR with the desk closed, unless isolation
+   is selected, before the adhesion choice is read;
+   `Scenario_Handover_Relocated` crosses once. Agree.
+5. A spare text-display value; the reports after moving back. Mine:
+   M_LEVELTEXTDISPLAY 5 from a 3.0 RBC is spare (7.5.1.66), so the
+   message is inconsistent (3.16.1.1.1) and refused with an error
+   report. From a 2.1 or 2.2 RBC, 6.5.2.3.9.2 makes 6.5.1.5.27.4
+   apply: 5 means the display is not limited by the level, and it is
+   translated to 4 (6.6.3.2.3 [22]; the packet is 76 there,
+   6.5.2.3.1.1.3). Today the codec refuses it: the variable's maximum
+   is 4 in every version, and the row [22] is deferred. After the rear
+   end's border report, if the train stops and moves back: a position
+   report on leaving standstill (3.6.5.1.4 i)) to both RBCs while
+   connected to both, the repetitions of 3.15.1.3.9 to the Handing Over
+   RBC, and no second border report (A.3.5.1). Author (triage of
+   3110500_03 and 9990500_09): s076 at SV30, E7 at SV21/SV22,
+   Sb83b2c65 s076. Agree.
+6. 3040200_05 SV30 step 67: in BG1d's packet 5, BG3 is 600 m past BG2
+   (700 m), with Q_LOCACC 12 and the reaction to trip. BG3d is placed
+   at 500 m (the scn and ERA's PDF), and BG4d at 700 m against the
+   800 m of the linking. The group is read in rear of its window, so
+   ours trips (the 136 with packet 4 at 70200 ms). Mine: the sequence.
+   Author: s076. Agree. 4080300_02 SV30 step 176: BG11d's packet 88
+   places the LX start at 2200 m (Q_STOPLX 1, stopping area 2100 to
+   2200 m, V_LX 20 km/h). At 2080 m ours has a temporary EOA about
+   116 m ahead. Step 175's comment says the train stops in rear of the
+   LX; the runner's driver keeps 18 to 19 km/h and trips. With a stop,
+   5.16.2.1 would put V_LX in the MRSP. Mine: the runner's driver.
+   Author: model (B3301). Agree.
+7. 4080436_03 SV30 step 67 and 4080443_01 SV30 step 70. Mine: this is
+   not the level transition. BG1d / BG101d's packet 5 announces BG3
+   with Q_LINKORIENTATION 0 (seen in reverse, 7.5.1.116) and reaction
+   00 (BG4 and later also 0). BG3d is passed nominal (N_PIG 0, then 1
+   5 m on), and ERA's PDFs print the same values. So 3.4.4.4.7 rejects
+   the message and trips the train: JRU 4 with linking cause 4 (wrong
+   direction), TR at 209 / 359 m, before packet 41 is taken.
+   4080436_03's BG3d also carries D_LEVELTR 100, where step 67's text
+   says 0. SV21 and SV22 of 4080443_01 carry the same orientations.
+   Verdict: the sequences' data. Author (e5/runner-chart-2): model,
+   the cause not found (B3300), with packet 41's immediate transition
+   suspected. Disagree (B3341).
+8. 3131030_23 SV30 step 55: in FS the speed information is always
+   shown (DMI Table 10). The object removed at the Indication location
+   is the Time to Indication (3.13.10.3.10; step 53 recorded M_TTI 1).
+   Mine: the runner's judgement. Author: model (B3302). Agree.
+   5080200_03 SV30 step 62: the driver toggled the permitted speed on
+   at step 35 in SH. With no mode change since, 8.2.2.4.5 does not
+   apply, 4.4.8.1.10 keeps the permitted speed, and nothing at the
+   override resets it. Step 57 starts a joined case that assumes a
+   fresh SH. Mine: the sequence. Author: s076. Agree.
+
+Counts: 8 items taken. Agreed: 2, 3, 4, 5, 6 (both), 8 (both), and
+item 1 except the second bullet. Disagreed: 7 (both sequences, one
+cause). Undecided: item 1's second bullet (shared or per RBC). My
+calls: Seb6766c6's model line for 4080436_03 and 4080443_01 moves to
+s076 (3.4.4.4.7, the bits of ERA's PDF), which settles B3300. The
+second bullet of 4.8.3 [3] is a decision for the coordinator; a
+scenario is needed only if per RBC is chosen. Backlog: B3340, B3341.
+The review took about 112 tool calls of 130.
