@@ -18842,5 +18842,27 @@ group); ERA's PDFs not checked, kept as model. Left to trace (B3300):
 (D_LEVELTR 0) with an L1 MA left; not a chart cause, the trip reason
 not yet read. No sequence moved; the baseline unchanged.
 
-**S69f1f87e, the speed information still shown (left).** Not taken:
-the bound of the package was reached with the second item.
+**S69f1f87e, the speed information still shown (triaged by cause in a
+resumption; no runner change).** Twenty-one sequences, eight families,
+each read at SV30 with our state at the step; 3131030_23 and 5080200_03
+traced with `DEBUG=1`. Two causes. (1) The runner's judgement, seven
+families (3131030_23, 3131030_24, 3160200_21, 4080418_04, 5080400_02,
+5190300_01, 9990400_44, 18 sequences): the step's text says the speed
+and distance monitoring information removed or not displayed, its
+comment names one object of it (the Time to Indication removed at the
+Indication location, 3.13.10.3.10; the MA length not updated; the former
+EOA deleted; the over-speeding warning removed), in FS, SR or UN, where
+the DMI shows the speed information whatever the object (DMI 8.2.1.5.7,
+Table 10); `S076_Run.Speed_Info_Shown` judges the whole information. Ours
+agrees with the comments where the trace shows it: 3131030_23 at 715 m
+in Indication status (step 56's JRU 20 M_SDMSUPSTAT 1 passes),
+5190300_01 at 103 km/h under 110 with the status normal. The rule (judge
+the named object, or not judged as a runner gap) moves 18 sequences
+whose new steps need tracing: B3302, not built. The family's earlier
+reading (the chart's speed above the warning) did not hold. (2) The
+sequence, 5080200_03 (three versions) step 62: the driver turned the
+speed information on in SH at step 35 (DMI 8.2.2.4, Table 15); the
+joined case of step 62 (feature 4070201, test case 37 in ERA's PDF)
+expects the permitted speed not displayed in the same SH mode after an
+override, which 4.4.8.1.10 (displayed until the driver asks to stop it)
+does not allow. No sequence moved; the baseline unchanged.
