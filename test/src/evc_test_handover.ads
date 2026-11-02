@@ -92,4 +92,8 @@ package EVC_Test_Handover is
    --  to both RBCs
    procedure Scenario_Handover_Session_Report;
 
+   --  3.6.5.1.4 l), 3.16.4.1, 3.15.1.3.4: connected to both RBCs, a
+   --  balise group error reported to both
+   procedure Scenario_Handover_Error_Report;
+
 end EVC_Test_Handover;

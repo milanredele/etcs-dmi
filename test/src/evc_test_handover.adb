@@ -1210,4 +1210,57 @@ package body EVC_Test_Handover is
              & ", after the 129 " & TD_First'Image);
    end Scenario_Handover_Session_Report;
 
+   --  The error reports (136 with packet 4) of the last step on session S
+   function Errors_To (S : Natural) return Natural is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      N4 : Natural := 0;
+   begin
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, St);
+         if ETCS_Message."=" (St, ETCS_Message.Accepted)
+           and then M.Kind = MCat.Train_M136
+           and then Radio_Output (N).Session = S
+         then
+            for I in 1 .. M.Count loop
+               if Natural (M.Index (I).NID) = 4 then
+                  N4 := N4 + 1;
+               end if;
+            end loop;
+         end if;
+      end loop;
+      return N4;
+   end Errors_To;
+
+   procedure Scenario_Handover_Error_Report is
+      To_1, To_2 : Natural := 0;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      --  group 15 at 200 m, before the border at 300 m: a telegram
+      --  missing, unlinked (3.16.2.5.1, M_ERROR 2)
+      Add_Group (Group (15, 200));
+      Track (Track_N).Skip := 1;
+      Track (Track_N).Linked := False;
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Check (R.Accepting = 2 and then R.Info (2).State = R.Established,
+             "error report to both: connected to both RBCs");
+      while Train_Cm < 25_000 loop
+         Step_X (500);
+         To_1 := To_1 + Errors_To (1);
+         To_2 := To_2 + Errors_To (2);
+      end loop;
+      Check (To_1 = 1 and then To_2 = 1,
+             "error report to both: the balise group error reported to "
+             & "both RBCs while connected to both (3.6.5.1.4 l), 3.16.4.1, "
+             & "3.15.1.3.4); to 300" & To_1'Image & ", to 400" & To_2'Image);
+   end Scenario_Handover_Error_Report;
+
 end EVC_Test_Handover;

@@ -18213,3 +18213,49 @@ where they were; not traced why), 0 regressions. Rows: 3.6.5.1.4
 h), 3.15.1.3.3, 3.15.1.3.4 noted; `@req 3.6.5.1.4 h), 3.15.1.3.4` on
 `Evaluate`. The proof of `evc_sessions-reports`: 86 checks, none
 unproved, margin 978 steps.
+
+**B3081, the error report while connected to both (done for the balise
+group errors; the radio message errors a decision, B3162).** The claim
+held at the source: `Request_Balise_Errors` requested the error for the
+supervising session alone (`Request_Error (Sv, ...)`). The words:
+3.16.4.1 "In level 2, if a radio communication session is established,
+errors shall be reported"; 3.16.4.2 names balise group, odometer
+accuracy and radio message errors; 3.6.5.1.4 l) makes "An error as
+defined in 3.16.4" an event of a position report; 3.15.1.3.4: connected
+to both RBCs, the on-board "shall send its position reports to both of
+them". A balise group or odometer error is not tied to a session, so the
+reading is plain: its report goes to both. Built:
+`Request_Balise_Errors` keeps the cycle's error (`Bal_Due`, `Bal_Code`,
+same order of precedence as before); `Produce` gives it to the sessions
+of its report, the supervising one and `Also`
+(`EVC_Sessions.Handover.Also_Reported`: the Accepting RBC's session
+before the switch, the retained Handing Over one after it), each
+established. Scenario `Handover_Error_Report` (EVC_Test_Handover): group
+15 at 200 m with a telegram missing and unlinked (M_ERROR 2), passed
+while connected to both: before the fix 1 report to 300 and 0 to 400;
+after, 1 and 1.
+The radio message errors (M_ERROR 3, 4; `Request_Error (S, ...)` from
+`EVC_Sessions.Take_Inconsistent` and `Take_Message`) are left to the
+RBC whose session received the message: 3.16.3.1.1.2 says "The on-board
+shall inform the trackside if an inconsistent message is received",
+which does not say which trackside while two are connected, and
+3.15.1.3.4 would send any 136 to both. Options: (a) as built, to that
+RBC only: the message, its time stamps (3.16.3.3.3) and its sequence
+belong to its session, the other RBC never saw it; (b) to both, as
+every other position report while connected to both: the other RBC
+gets a packet 4 about a message it did not send. Effect on the corpus:
+none seen (3110500_03's error report at 94900 ms is to the Accepting
+RBC's own message; no step expects it either way). Recommendation (a).
+The user decides (B3162).
+Runner: 9990500_09 SV21 and SV22 move from step 87 to step 101: the
+error report of BG3d (318800 ms, packets 0 and 4) now goes to both
+sessions, so steps 85 and 87 ("136 packets 0" to each RBC) pass on it
+(the sequence's laboratory sends the report of the group's passage
+instead; Sd077284a's reading of BG3d's rejection stands). Step 101
+expects no 136 after the min safe rear end passes the border again
+backwards; ours sends one to both at 382700 ms and the repetitions of
+3.15.1.3.9 to session 1 (377000, 392000, 407000 ms) before its 156 at
+422000 ms: not traced, triaged onboard (Sb83b2c65, B3161). Rows: 3.6.5.1.4
+l) and 3.15.1.3.4 noted; `@req 3.15.1.3.4` added on
+`Request_Balise_Errors`. The proof of `evc_sessions-reports`: none
+unproved, margin 1059 steps.

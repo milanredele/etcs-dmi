@@ -160,7 +160,9 @@ is
 
    --  3.16.3.1.1.2, 3.16.4.1: an inconsistent message
    --  received on S, reported to that RBC by packet 4 with Error
-   --  (7.5.1.64) in the message 136 of the next Produce
+   --  (7.5.1.64) in the message 136 of the next Produce. Decision (open
+   --  to the user): only to that RBC, also while connected to both; the
+   --  message and its time stamps belong to its session
    --  @req 3.6.5.1.4 l), 3.16.3.1.1.2
    procedure Request_Error (S     : EVC_Radio.Session_T;
                             Error : ETCS_Variables.M_ERROR_T)
@@ -173,8 +175,10 @@ is
    --  linked group 1, 3.16.2.4, of an unlinked one 2, 3.16.2.5, with or
    --  without a reaction, 3.16.4.2; the odometer accuracy monitoring on
    --  the cycle it reaches a threshold, 9 the impairment threshold,
-   --  3.6.8.5, 10 the safety threshold, 3.6.8.7), reported in level 2 to
-   --  the supervising RBC while its session is established. 3.16.4.3: a group
+   --  3.6.8.5, 10 the safety threshold, 3.6.8.7), reported in level 2
+   --  while the supervising RBC's session is established, by Produce to
+   --  the sessions of its report: while connected to both RBCs to both
+   --  (3.15.1.3.4). 3.16.4.3: a group
    --  marked linked and not in the linking information is no linking
    --  reaction, so not reported. Decision: one report per cycle, the
    --  safety threshold first (the mode is SF, it implies the impairment:
@@ -183,7 +187,7 @@ is
    --  linked group's message, an
    --  unlinked group's, the single linking error, the impairment; an
    --  error without an established session is not kept for a later one
-   --  @req 3.16.4.1, 3.16.4.3, 3.6.5.1.4 l)
+   --  @req 3.16.4.1, 3.16.4.3, 3.6.5.1.4 l), 3.15.1.3.4
    procedure Request_Balise_Errors (In_L2 : Boolean)
      with Global => (Input  => (EVC_Position.State, EVC_Radio.State),
                      In_Out => State);

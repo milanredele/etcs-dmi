@@ -23,7 +23,8 @@ package body EVC_Sessions.Reports
        Refined_State => (State => (P58, P58_Ref, P58_Held, Due,
                                    Was_Up, Acc_Up, Last_Level,
                                    Level_Seen, N_Sent, N_Params,
-                                   Error_Due, Error_Code, TRN_Due,
+                                   Error_Due, Error_Code, Bal_Due,
+                                   Bal_Code, TRN_Due,
                                    Watch, Watch_Mode, Watch_S, Watch_At,
                                    Watch_Reps, Repeat_Due))
 is
@@ -58,6 +59,10 @@ is
    type Error_Count_T is range 0 .. Max_Errors;
    Error_Due  : array (R.Session_T) of Error_Count_T := (others => 0);
    Error_Code : array (R.Session_T) of M_ERROR_T := (others => 0);
+   --  the balise group or odometer error of the cycle, its M_ERROR: given
+   --  by Produce to the sessions its report goes to (3.15.1.3.4)
+   Bal_Due    : Boolean := False;
+   Bal_Code   : M_ERROR_T := 0;
    --  the train running number to send with the next report to the
    --  supervising RBC (3.18.4.5.4)
    TRN_Due    : Boolean := False;
@@ -103,6 +108,8 @@ is
       N_Params := 0;
       Error_Due := (others => 0);
       Error_Code := (others => 0);
+      Bal_Due := False;
+      Bal_Code := 0;
       TRN_Due := False;
       Watch := Off;
       Watch_Mode := M_SH;
@@ -389,6 +396,19 @@ is
    is
       Sv : constant R.Session_Ref_T := R.Supervising;
    begin
+      --  the balise group error to the sessions of a report, both RBCs
+      --  while connected to both (3.6.5.1.4 l), 3.15.1.3.4)
+      if Bal_Due then
+         for S in R.Session_T loop
+            pragma Loop_Invariant (True);
+            if (Sv = R.Session_Ref_T (S) or else Also (S))
+              and then R.Info (S).State = R.Established
+            then
+               Request_Error (S, Bal_Code);
+            end if;
+         end loop;
+         Bal_Due := False;
+      end if;
       for S in R.Session_T loop
          pragma Loop_Invariant (True);
          if ((Due and then (Sv = R.Session_Ref_T (S) or else Also (S)))
@@ -461,7 +481,7 @@ is
 
    procedure Request_Balise_Errors (In_L2 : Boolean)
      with Refined_Global => (Input  => (EVC_Position.State, EVC_Radio.State),
-                             In_Out => (Error_Due, Error_Code))
+                             In_Out => (Bal_Due, Bal_Code))
    is
       use type EVC_Position.Event_Kind_T;
       Sv     : constant R.Session_Ref_T := R.Supervising;
@@ -505,20 +525,20 @@ is
         and then In_L2 and then Sv /= R.No_Session
         and then R.Info (R.Session_T (Sv)).State = R.Established
       then
-         Request_Error (R.Session_T (Sv),
-                        (if Unsafe
-                         then M_ERROR_Odometer_Accuracy_Monitoring_Safety
-                         elsif Repos
-                         then M_ERROR_Double_Repositioning_Error_3
-                         elsif Double then M_ERROR_Double_Linking_Error_3
-                         elsif Linked
-                         then M_ERROR_Linked_Balise_Group_Message
-                         elsif Unlinked
-                         then M_ERROR_Unlinked_Balise_Group_Message
-                         elsif Found
-                         then M_ERROR_Balise_Group_Linking_Consistency
-                         else
-                            M_ERROR_Odometer_Accuracy_Monitoring_Impairment));
+         Bal_Due := True;
+         Bal_Code := (if Unsafe
+                      then M_ERROR_Odometer_Accuracy_Monitoring_Safety
+                      elsif Repos
+                      then M_ERROR_Double_Repositioning_Error_3
+                      elsif Double then M_ERROR_Double_Linking_Error_3
+                      elsif Linked
+                      then M_ERROR_Linked_Balise_Group_Message
+                      elsif Unlinked
+                      then M_ERROR_Unlinked_Balise_Group_Message
+                      elsif Found
+                      then M_ERROR_Balise_Group_Linking_Consistency
+                      else
+                         M_ERROR_Odometer_Accuracy_Monitoring_Impairment);
       end if;
    end Request_Balise_Errors;
 
