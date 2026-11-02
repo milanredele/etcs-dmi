@@ -18246,3 +18246,105 @@ first, no backlog read).
 
 Runner: 1193 passed, 1036 failed, 961 blocked (3 sequences moved, 0
 regressions). Backlog: B2961, B3060, B3120 closed; B3180 added.
+### The bench's odometer interval at low speed, the negative expectation's window start reset, the reason of two passes (e5/runner-odometer) (2026-11-02)
+
+**The odometer interval (B3080).** `S076_Bench.Cycle` added `abs Step
+* Acc / 1000` cm to the over- and under-reading per cycle of 100 ms,
+truncated: at the default 10 per mille a cycle under 100 cm (36 km/h)
+added nothing and one of 167 cm (60 km/h) 1 cm, 0.6 %. The premise
+held at the source (the accumulation in cm, `Acc` set per sequence by
+`Set_Accuracy`: 10 by default, 50 where a step says the confidence
+interval "already overlaps", 60 and 400 for the odometer performance
+steps). The odometer frame of `EVC_Ports` carries the over- and
+under-reading as accumulated values (`S076_Bench.Sample`); e5/runner-
+linking printed `EVC_Odometry.Low` and `High` 0 and 0 at 1356 m in
+9990500_09 SV21. `Cycle` now keeps
+the remainder in thousandths of a cm (`Odo_Rem`, reset with the
+odometer at the start of a sequence) and states the whole cm, so the
+interval is `Acc` per mille of the distance at every speed. The corpus:
+1193 / 1036 / 961 -> 1190 / 1039 / 961, 6 regressions and 5
+improvements, each traced at SV30 with the master binary and the new
+one side by side:
+
+- 3131050_19 (SV21, SV22, SV30) passed -> 55 (S388a7b2a, s076). Its
+  packets are those of 3131050_21 (BG2d at 200 m with Q_LOCACC 12 m,
+  packet 12 EOA 700 m, packet 27 15 km/h from 800 m), whose step 82
+  fails on this signature by the comments' trip location with
+  Q_LOCACC 0 (our release speed 23 km/h, the train at 24 to 25
+  km/h). On the truncated interval the SB at 653 m brought the train
+  to 20 km/h and M_SDMSUPSTAT 1 was recorded at 664 m; with 4.5 m of
+  interval over the 453 m from BG2d, step 53's max safe front end
+  reaches 653 m at 639 m (640 m before) and the EB and M_SDMSUPSTAT 4
+  come at 673 m.
+- 4080300_16 (3 SV) 119 -> 73 (S27eb0678, s076, ERA's PDF read).
+  BG1d's packet 5 gives BG6, 700 m past BG4d (100 m), Q_LOCACC 001100,
+  12 m, in the bits and in ERA's PDF; step 39's comment says 63 m and
+  step 69's that the high Q_LOCACC puts BG6, read at 750 m, inside its
+  window. With 12 m BG6 is 650 m past BG4 against a window from 688 m;
+  ours does not move the EOA over BG6 (846 m before and after it, by
+  `ma` 189 m at 657 m and 85 m at 761 m), and the trip at our min safe
+  front end past it came at 865 m at 82700 ms, 200 ms inside the 4 s of
+  step 73 after the reach-point of 78700 ms; with 1 % it comes after
+  866 m at 82900 ms (TR by step 85).
+- 3080200_02 (3 SV) 73 -> 77 (Saeffd85e, model, a window): the train
+  runs at 35 km/h through the 40 s of T_SECTIONTIMER (the signature's
+  first line); its trip at the EOA falls after the timer step now (FS
+  at 1009 m at 121700 ms, TR at 1086 m in step 77's window).
+- 3040400_03 SV22, SV30 67 -> 76 (S99eb8ae1, onboard, not traced:
+  B3200). BGa (BG4d, nominal 300 m, Q_LOCACC 12 m) read at 315 m is
+  now inside its window as step 67 says (the trip of 321 m is gone);
+  ours then trips at BG6d (step 72, 400 m: TR at 407 m, JRU 23 with
+  reason EOA_Passed) where the step says there is no consistency
+  error.
+
+5090200_01, 5180400_01 and 3131040_98, which B620 lists as sensitive to
+the interval, do not move: the 5 % trial of B620 is not the stated 1 %.
+B3080 closed with these counts, B620's note extended, B3200 added.
+
+**The negative expectation's window start (B3083).** The premise held
+at the source: `S076_Run.Group_Input_Ms` is set at each BTM input and
+read by `Radio_Expect.Message`, where a negative expectation's sending
+counts only from the latest of `B.Window_Ms`, `Group_Input_Ms` and
+`Timer_Expiry_Ms`; `Loc_Window` and `Timer_Expiry_Ms` were reset at the
+start of a sequence, `Group_Input_Ms` was not. It is now reset with
+them. The corpus: no sequence and no step moves (1190 / 1039 / 961,
+steps 210153 passed, 12271 failed, 4120 not judged before and after),
+so no negative expectation of the corpus was judged on a value left by
+the previous sequence; the reset keeps it so for a corpus run in another
+order.
+
+**The reason of two passes (4080300_21, 4080420_03 SV30).** Both
+passed when B2882 brought footnote [17] of 4.8.3 to the level 2 cells
+(8768f710: 4080300_21 failed 127 -> passed, 4080420_03 failed 85 ->
+passed, no other change of their lines in that commit). Re-run with
+`VERBOSE=1 DEBUG=1` on master (31eddcd1; both still pass with this
+package's bench, by the corpus runs): each pass rests on the message rejected while the 133 is
+unacknowledged, not on a vacuous judgement.
+
+- 4080300_21 SV30: the 133 (packets 0 and 10) is sent at 83500 ms
+  (step 122, passed); the 24 with packet 88 (Q_LXSTATUS 1, Q_STOPLX 1)
+  is given at 84000 ms (step 124), before the 7 of step 129 (123400
+  ms). From there the trace shows no target (`tgt0@0`) and the
+  supervision status 0 at 680 m at 19 km/h (step 127: `perm=60/20 ...
+  st0`); the step's "LX not protected" is not shown and no record 21
+  with bit 86 is in the windows of steps 124 to 128 (step 128 passed).
+  Before 8768f710 the same step failed with the symbol shown
+  (S82c622ac, triage: "the packet 88 of message 24 at step 124 taken in
+  SM while ... message 133 ... is unacknowledged"). The step's
+  expectation is met because the packet 88 is not applied.
+- 4080420_03 SV30: the 133 is sent at 102100 ms (step 80); the 24 of
+  step 82 (given at 119600 ms at 651 m, before the 7 of step 84 at
+  119900 ms) carries packet 5 with NID_LRBG 1048578 (BG2, 200 m),
+  D_LINK 450, NID_BG 3, Q_LINKREACTION 00 (trip) and Q_LOCACC 5 m: a
+  group expected at 650 m that the sequence does not place. The trace
+  shows no record 23 in the windows of steps 82 to 88 and the mode FS
+  to 760 m (step 87 "NOT Trip" and step 88's negative M_MODE 7 record
+  passed, 110 m past the group's nominal place). Before 8768f710 the train was
+  tripped at 710 m for the linking error (Sc17009f0, triage: record 23
+  with reason 4, Linking_Error), so step 85 failed. The steps call that
+  linking "rejected" (step 82's comment), and it is.
+
+Neither pass is vacuous: no backlog line. The triage lines of the two
+signatures these sequences left (S82c622ac onboard for 4080300_21 step
+127, Sc17009f0 s076 for 4080420_03 step 85) still describe them as
+failing; they are the coordinator's to update.
