@@ -759,4 +759,59 @@ package body EVC_Test_JRU is
       Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
    end Scenario_JRU_Brake_Status;
 
+   --  SUBSET-027 4.2.4.21: DMI_SYMB_STATUS from the on-board's outputs to
+   --  the DMI, recorded at the first cycle and at each change of the
+   --  set (viewed as event 121); bit 26 MO11 (FS), 28 MO13 (SB), 3 LE03
+   --  (level 1), 4 LE04 (level 2)
+   procedure Scenario_JRU_Symbols is
+      --  the messages 21 of one cycle, the last one's bits
+      Count : Natural;
+      Last  : Positive := 1;
+      procedure Cycle is
+      begin
+         Reset_Capture;
+         EVC_Core.Tick (100);
+         Take;
+         Count := 0;
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = JRU and then JRU_NID (I) = 21 then
+               Count := Count + 1;
+               Last := I;
+               Check (View (Payload (I)).Event = 121,
+                      "4.2.4.21: the view's event of message 21");
+            end if;
+         end loop;
+      end Cycle;
+      --  bit N of DMI_SYMB_STATUS in the last message 21 (bit 1 the
+      --  least significant of the 110)
+      function Bit (N : Positive) return Boolean is
+        (Get_Bits (Payload (Last), Body_Bit (Payload (Last)) + 110 - N, 1)
+           = 1);
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Set_UTC (Reference);
+      Cycle;
+      Check (Count = 1 and then Bit (28) and then not Bit (26),
+             "4.2.4.21: message 21 at the first cycle, MO13 (SB)");
+      Cycle;
+      Check (Count = 0, "4.2.4.21: no message 21 while no symbol changes");
+      --  the desk open, so that FS stays
+      EVC_Test_Modes.Start_E4;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Cycle;
+      Check (Count = 1 and then Bit (26) and then not Bit (28)
+               and then Bit (3) and then not Bit (4),
+             "4.2.4.21: message 21 at the mode change, MO11 (FS), LE03, got"
+             & Count'Image & View (Payload (Last)).B2'Image
+             & View (Payload (Last)).B3'Image & " in "
+             & EVC_Core.Mode'Image);
+      EVC_Core.Set_Mode_For_Test (M_FS, L2);
+      Cycle;
+      Check (Count = 1 and then Bit (26) and then Bit (4)
+               and then not Bit (3),
+             "4.2.4.21: message 21 at the level change, LE04");
+      Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
+      EVC_Core.Initialise;
+   end Scenario_JRU_Symbols;
+
 end EVC_Test_JRU;

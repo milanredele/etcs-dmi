@@ -196,6 +196,22 @@ is
           Post => (for all I in Input_T =>
                      (if Changes (I) then Now (I) /= No_Value));
 
+   --  DMI_SYMB_STATUS (SUBSET-027 4.2.4.21): bit N set when the symbol
+   --  of the row N of its table is displayed (bit 1 the least
+   --  significant of the 110)
+   subtype Symbol_Bit_T is Positive range 1 .. 110;
+   type Symbol_Bits_T is array (Symbol_Bit_T) of Boolean;
+
+   --  Changed when Now differs from the set last recorded, the first set
+   --  after Reset included
+   procedure Symbols (Now : Symbol_Bits_T; Changed : out Boolean)
+     with Global => (In_Out => State);
+
+   --  The variable of the message 21: bits 110 to 47 then 46 to 1
+   procedure Symbol_Fields (Now : Symbol_Bits_T;
+                            Fields : out EVC_JRU_Messages.Fields_T)
+     with Global => null;
+
    --  The radio data entered by the driver (SUBSET-027 4.2.4.24, .48):
    --  Q_RBCENTRY of the choice of MSG_DRIVER_DATA kind 5 (0 entered: 3,
    --  the RBC data with GSM-R, the only radio of this on-board; 1

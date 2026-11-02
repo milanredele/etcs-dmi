@@ -258,6 +258,7 @@ begin
    Scenario_JRU_LSSMA;
    Scenario_JRU_Failure;
    Scenario_JRU_Brake_Status;
+   Scenario_JRU_Symbols;
    Scenario_Message_Consistency;
    Scenario_Consistency_Record;
    Scenario_Duplicated_Pair;

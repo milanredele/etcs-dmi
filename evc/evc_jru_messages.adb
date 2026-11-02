@@ -225,6 +225,31 @@ is
       H.M_Mode := Get (P, B + 172, 5, 31);
    end Get_Header;
 
+   --  The view of the message 21 whose variable begins at At_Bit: event
+   --  121 (21 is the supervision's), the first of its bits 1 to 13 set
+   --  (the level symbol), the first of 14 to 37 (the mode's) and the
+   --  number of bits set
+   function Symbol_View (P : Byte_Array; At_Bit : Natural) return View_T
+     with Pre => P'Length <= 2**16 and then At_Bit <= 2**20
+   is
+      V : View_T := (Event => 121, others => 0);
+      N : Natural := 0;
+   begin
+      for Bit in 1 .. 110 loop
+         pragma Loop_Invariant (N < Bit);
+         if Get (P, At_Bit + 110 - Bit, 1, 1) = 1 then
+            N := N + 1;
+            if Bit <= 13 and then V.B2 = 0 then
+               V.B2 := Byte (Bit);
+            elsif Bit in 14 .. 37 and then V.B3 = 0 then
+               V.B3 := Byte (Bit);
+            end if;
+         end if;
+      end loop;
+      V.B4 := Byte (N);
+      return V;
+   end Symbol_View;
+
    function View (P : Byte_Array) return View_T is
       B : constant Natural := Body_Bit (P);
       function F (Offset : Natural; Bits : Width_T) return Byte is
@@ -319,6 +344,8 @@ is
          when NID_Fault =>
             --  event 127 (27 is no event of EVC_Ports): no field
             return (127, 0, 0, 0);
+         when NID_DMI_Symbols =>
+            return Symbol_View (P, B);
          when NID_Regenerative_Brake .. NID_Additional_Brake =>
             --  events 133 to 137 (33 is the configuration's): the status
             return (P (P'First) + 100, F (0, 1), 0, 0);

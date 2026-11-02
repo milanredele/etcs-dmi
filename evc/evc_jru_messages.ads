@@ -39,6 +39,7 @@
 --    30, 31, 32, 39, 51 the TIU inputs and the remote shunting state:
 --       their one variable;
 --    41 type of train data entry of the TIU: M_TRAIN_DATA_ENTRY;
+--    21 DMI symbol status: DMI_SYMB_STATUS (EVC_JRU_Records.Symbols);
 --    33 to 37 the regenerative, magnetic shoe, eddy current, electro
 --       pneumatic and additional brake status inputs of the TIU: their
 --       one variable (1 active);
@@ -52,9 +53,9 @@
 --  View gives back the event of EVC_Ports a message records, with the
 --  three bytes the record of 16 bytes carried before this format: the
 --  event numbers of the readers stay those of EVC_Ports (21 for the
---  message 20, 124 for 24, 132 for 32, 133 to 137 for 33 to 37, 2 for
---  6, 3 for 9: the numbers 20, 24, 32 and 33 are events of the on-board
---  too).
+--  message 20, 121 for 21, 124 for 24, 132 for 32, 133 to 137 for 33
+--  to 37, 2 for 6, 3 for 9: the numbers 20, 21, 24, 32 and 33 are events
+--  of the on-board too).
 
 with EVC_Bytes;  use EVC_Bytes;
 with EVC_Ports;
@@ -109,6 +110,7 @@ is
    NID_Consist        : constant := 54;
    NID_LSSMA          : constant := 44;
    NID_Fault          : constant := 27;
+   NID_DMI_Symbols         : constant := 21;
    NID_Regenerative_Brake  : constant := 33;
    NID_Magnetic_Shoe_Brake : constant := 34;
    NID_Eddy_Current_Brake  : constant := 35;

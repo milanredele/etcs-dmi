@@ -10,7 +10,8 @@ package body EVC_JRU_Records
        Refined_State => (State => (Cab_A_Recorded, Cab_B_Recorded,
                                    Cab_Recorded,
                                    Last_TC, Last_Inputs, Shown,
-                                   Entries_Shown, Last_LSSMA))
+                                   Entries_Shown, Last_LSSMA,
+                                   Last_Symbols, Symbols_Recorded))
 is
 
    use EVC_Driver_Requests;
@@ -24,6 +25,9 @@ is
    Power_Up_Inputs : constant Input_Values_T :=
      (Remote_Shunting => 0, others => No_Value);
    Last_Inputs : Input_Values_T := Power_Up_Inputs;
+   --  the DMI symbols last recorded (Symbols)
+   Last_Symbols     : Symbol_Bits_T := (others => False);
+   Symbols_Recorded : Boolean := False;
    --  the system status messages displayed (System_Status)
    Shown : Unsigned_32 := 0;
    --  the same set by entry of the catalogue, entry N as 2 ** N
@@ -115,7 +119,36 @@ is
       Shown := 0;
       Entries_Shown := 0;
       Last_LSSMA := V_LSSMA_None;
+      Last_Symbols := (others => False);
+      Symbols_Recorded := False;
    end Reset;
+
+   procedure Symbols (Now : Symbol_Bits_T; Changed : out Boolean) is
+   begin
+      Changed := not Symbols_Recorded or else Now /= Last_Symbols;
+      Last_Symbols := Now;
+      Symbols_Recorded := True;
+   end Symbols;
+
+   procedure Symbol_Fields (Now    : Symbol_Bits_T;
+                            Fields : out EVC_JRU_Messages.Fields_T)
+   is
+      Hi, Lo : Unsigned_64 := 0;
+   begin
+      for B in Symbol_Bit_T loop
+         pragma Loop_Invariant (Lo < 2 ** (Natural'Min (B, 47) - 1));
+         if Now (B) then
+            if B >= 47 then
+               Hi := Hi or Shift_Left (1, B - 47);
+            else
+               Lo := Lo or Shift_Left (1, B - 1);
+            end if;
+         end if;
+      end loop;
+      Fields := EVC_JRU_Messages.No_Fields;
+      Fields (1) := (Value => Hi, Bits => 64);
+      Fields (2) := (Value => Lo, Bits => 46);
+   end Symbol_Fields;
 
    procedure LSSMA (Kmh     : Natural;
                     V       : out Natural;
