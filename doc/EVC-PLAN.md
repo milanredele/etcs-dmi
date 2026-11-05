@@ -19959,3 +19959,24 @@ deletes the sets only for an order to another level, 4.8.5.5 and
 4.8.5.6 release and re-evaluate them at the transition. Where the set is
 lost (the release or its re-evaluation in UN) is left to the on-board
 package (B3520).
+
+**B3360, the header's group names (tried and reverted; open).** Built
+as the brief's premise had it: in `S076_Run.Header_Holds`, a value
+"<BGn>" of NID_LRBG or NID_SOLR resolved to the 24-bit identity (NID_C,
+NID_BG of 7.4.1.1) of the sequence's telegrams tagged BGn with a suffix
+d or r when exactly one identity matches (the sv30 telegram tags are
+BG0d .. BGnd, LOOP and PACKETn: the letters never resolve). The whole
+runner: 24 regressions, 8 families in three versions (3070300_12 and
+_13 step 69, 3110300_01 step 148, 3110400_02 step 76, 3110600_01 step
+68, 3131100_11 step 69, 4060300_09 step 78, 5200800_02 step 51), each
+a header compared with another group's identity. The premise is wrong:
+a step's names are its test case's own, not the sequence's tags. At
+3110400_02 SV30, case 3110400 5 reads BG2d at 400 m (step 67) and BG3d
+at 600 m (step 74); its step 76 asks NID_SOLR=<BG2> Q_LRBG=2
+NID_LRBG=<BG1>, ours records SOLR 1048579 (NID_BG 3) and LRBG 1048578
+(NID_BG 2): the case's BG1 and BG2 are the sequence's BG2d and BG3d.
+Reverted; the line B3360 says what a resolution needs (the case's own
+numbering of its groups).
+
+**B3361, the Train Data categories from the packet 11 (not taken: the
+bound).**
