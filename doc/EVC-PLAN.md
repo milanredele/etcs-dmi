@@ -19323,3 +19323,38 @@ step before, not from the display, B3384, S13c9beb3 model); 9990400_19 at
 model). 9990200_03 (step 97, the difference of two T_NVCONTACT) and
 9990200_04 (step 70, s076) did not move. Rows 3.16.3.4.3, 3.16.4.1 and
 3.6.5.1.4 l) noted; `@req 3.16.3.4.3` on `Take_Event`.
+
+**B009, the balise group error reports re-read (done, narrowed to one
+missing report).** The premise was old: the row 3.16.4.1 is done and
+`EVC_Sessions.Reports.Request_Balise_Errors` requests M_ERROR 0, 1, 2, 7,
+8, 9, 10. At the sequences: 3060100_01 SV30 (blocked at 135 by the
+extractor) passes its steps 72, 88 and 118 (136 with M_ERROR 0, 1, 2);
+3160200_15 passes; 4120100_06 and 4120100_09 pass since the T_STEP of
+B024; 3160200_02 is blocked at step 54 by a timer without a name (the
+emergency brake after a service brake that fails to apply, "implementation
+dependent" by its comment), a runner gap no fix of the reports touches.
+3160400_01 showed the report the sequences expect and ours did not send: a
+linked group's inconsistent message (BG2d, N_PIG 2 for the second
+telegram, step 77 at 1700 m) read while the safe radio connection was lost
+(SA-DISCONNECT at 700 m), M_ERROR 1 expected in the 136 after the
+SA-CONNECT.Confirm (step 85, 1900 m). Ours dropped it:
+`Request_Balise_Errors` took an error only while the supervising session
+was in the state Established, and `Produce` gave it to the established
+sessions of a report and forgot it. 3.16.4.1: "errors shall be reported as
+soon as the availability of a safe radio connection permits". Built:
+`Request_Balise_Errors` takes the error while the supervising session is
+Established or Connection_Lost (the session kept, 3.5.4.1); `Produce`
+keeps it while that session's connection is lost and gives it once the
+connection is set up again (decision: the last error of the wait, one
+report, as within a cycle). Scenario `Scenario_Balise_Error_While_Lost`
+(EVC_Test_Sessions): level 2, the connection lost, a linked group with a
+balise skipped at 300 m: nothing sent while lost; set up again, one 136
+with M_ERROR 1. Before the fix: 0 reports; after, 1. Proof of
+`evc_sessions-reports`: none unproved, margin 978 steps. Runner: 3160400_01
+moves from step 85 to 116 (SV22, SV30; SV21 blocked at 112 by the system
+version of BG5d), its steps 85 (M_ERROR 1) and 107 (M_ERROR 5, item B024)
+pass; step 116 traced: BG5d (marked linked, not in the linking
+information, packet 73 with Q_SCALE 11) is rejected and not reported
+(3.16.4.3), but no JRU 12 M_ERROR 1 is recorded: EVC_Position gives no
+event for it (B3386, S1291957a onboard). 0 regressions. Row 3.16.4.1
+noted.

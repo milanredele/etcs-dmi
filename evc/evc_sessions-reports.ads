@@ -188,7 +188,11 @@ is
    --  linking error, then a
    --  linked group's message, an
    --  unlinked group's, the single linking error, the impairment; an
-   --  error without an established session is not kept for a later one
+   --  error without an established session is not kept for a later one;
+   --  while the supervising session's connection is lost (the session
+   --  kept, 3.5.4.1) the error waits for the connection set up again
+   --  ("as soon as the availability of a safe radio connection permits",
+   --  decision: the last error of the wait, one report)
    --  @req 3.16.4.1, 3.16.4.3, 3.6.5.1.4 l), 3.15.1.3.4
    procedure Request_Balise_Errors (In_L2 : Boolean)
      with Global => (Input  => (EVC_Position.State, EVC_Radio.State),

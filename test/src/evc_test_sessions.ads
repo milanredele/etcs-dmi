@@ -131,4 +131,7 @@ package EVC_Test_Sessions is
    --  3.16.3.4.3, 7.5.1.64: M_ERROR 5 once the connection is set up again
    procedure Scenario_Contact_Error_Report;
 
+   --  3.16.4.1: a balise group error kept while the connection is lost
+   procedure Scenario_Balise_Error_While_Lost;
+
 end EVC_Test_Sessions;

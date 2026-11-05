@@ -448,8 +448,12 @@ is
          end if;
       end loop;
       --  the balise group error to the sessions of a report, both RBCs
-      --  while connected to both (3.6.5.1.4 l), 3.15.1.3.4)
-      if Bal_Due then
+      --  while connected to both (3.6.5.1.4 l), 3.15.1.3.4); kept while
+      --  the supervising session's connection is lost (3.16.4.1)
+      if Bal_Due
+        and then (Sv = R.No_Session
+                  or else R.Info (R.Session_T (Sv)).State /= R.Connection_Lost)
+      then
          for S in R.Session_T loop
             pragma Loop_Invariant (True);
             if Report_Target (S) then
@@ -572,7 +576,8 @@ is
       if (Found or else Linked or else Unlinked or else Impaired
           or else Unsafe)
         and then In_L2 and then Sv /= R.No_Session
-        and then R.Info (R.Session_T (Sv)).State = R.Established
+        and then R.Info (R.Session_T (Sv)).State
+                   in R.Established | R.Connection_Lost
       then
          Bal_Due := True;
          Bal_Code := (if Unsafe

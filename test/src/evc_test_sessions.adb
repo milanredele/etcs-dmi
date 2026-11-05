@@ -3541,4 +3541,47 @@ package body EVC_Test_Sessions is
              & "is not reported again, got" & Img (Count));
    end Scenario_Contact_Error_Report;
 
+
+   --  3.16.4.1: a balise group error found while the safe radio connection
+   --  of the established session is lost is reported once the connection
+   --  is set up again
+   procedure Scenario_Balise_Error_While_Lost is
+      Count, Error : Natural := 0;
+
+      --  Runs to To_Cm a cycle at a time, the error reports added up
+      procedure Run_Errors (To_Cm : Integer_64) is
+         C, E : Natural;
+      begin
+         while Train_Cm < To_Cm loop
+            Step_X (1_000);
+            Error_Reports (0, C, E);
+            Count := Count + C;
+            if C > 0 then
+               Error := E;
+            end if;
+         end loop;
+      end Run_Errors;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 300));
+      Track (2).Skip := 1;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Event (1, Connection_Lost);
+      Run_Errors (40_000);
+      Check (R.Info (1).State = R.Connection_Lost and then Count = 0,
+             "balise error while lost: a linked group's message "
+             & "inconsistent at 300 m, the connection lost, nothing sent, "
+             & "got" & Img (Count));
+      Give_Radio_Event (1, Connection_Set_Up);
+      Run_Errors (45_000);
+      Check (Count = 1 and then Error = 1,
+             "balise error while lost: reported once the connection is "
+             & "set up again, M_ERROR 1 (3.16.4.1 'as soon as the "
+             & "availability of a safe radio connection permits'), got"
+             & Img (Count) & Img (Error));
+   end Scenario_Balise_Error_While_Lost;
+
 end EVC_Test_Sessions;
