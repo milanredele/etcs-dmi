@@ -1503,7 +1503,13 @@ package body EVC_Test_Handover is
       Enter_Axle_Load (1);
       Stand;
       Find_129 (1, V1, F1);
+      --  RBC 300's level crossing in the cycle after its 129: rejected
+      --  (the set awaited judged at the reception)
+      Give_Radio_Message (1, M24_LX (10, 14, 600));
       Stand;
+      Check (not LX_Of (14),
+             "Train Data per RBC: RBC 300's level crossing received in the "
+             & "cycle after the changed set was sent rejected (4.8.3 [3])");
       Check (F1 and then EVC_Sessions.Train_Data_Awaited
              and then Natural (EVC_Train_Data.Categories.Axle_Load) = 1,
              "Train Data per RBC: the changed set sent to RBC 300, its "

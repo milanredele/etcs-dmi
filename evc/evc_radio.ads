@@ -155,6 +155,9 @@ is
       --  4.8.3 [3] first bullet: the RBC acknowledged Train Data (message
       --  8) in this session (forgotten with the session, Reset_Session)
       TD_Acked      : Boolean := False;
+      --  4.8.3 [3]: Train Data sent in this session, their
+      --  acknowledgement (message 8) not received yet
+      TD_Awaited    : Boolean := False;
       --  4.8.3 [3] second bullet: the train category, axle load category,
       --  loading gauge and traction systems of the Train Data last sent
       --  in this session (TD_Sent) and of those its RBC acknowledged last
@@ -176,6 +179,7 @@ is
       Last_Sent     => 0,
       Reported      => No_RBC,
       TD_Acked      => False,
+       TD_Awaited    => False,
        TD_Sent       => (others => <>),
        TD_Values     => (others => <>));
 
@@ -462,7 +466,8 @@ is
    procedure Note_Train_Data_Sent (S : Session_T;
                                    C : EVC_Train_Data.Categories_T)
      with Global => (In_Out => State),
-          Post => Info (S).TD_Acked = Info (S).TD_Acked'Old
+          Post => Info (S).TD_Awaited
+                  and then Info (S).TD_Acked = Info (S).TD_Acked'Old
                   and then Info (S).State = Info (S).State'Old
                   and then Info (S).Sent = Info (S).Sent'Old
                   and then Info (S).Last_Sent = Info (S).Last_Sent'Old
@@ -478,7 +483,7 @@ is
    --  sent to it (message 8): the values sent are those it acknowledged
    procedure Note_Train_Data_Acknowledged (S : Session_T)
      with Global => (In_Out => State),
-          Post => Info (S).TD_Acked
+          Post => Info (S).TD_Acked and then not Info (S).TD_Awaited
                   and then Info (S).State = Info (S).State'Old
                   and then Train_Data_Acknowledged
                            = Train_Data_Acknowledged'Old

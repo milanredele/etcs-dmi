@@ -137,11 +137,13 @@ is
                                    C : EVC_Train_Data.Categories_T) is
    begin
       Table (S).TD_Sent := C;
+      Table (S).TD_Awaited := True;
    end Note_Train_Data_Sent;
 
    procedure Note_Train_Data_Acknowledged (S : Session_T) is
    begin
       Table (S).TD_Acked := True;
+      Table (S).TD_Awaited := False;
       Table (S).TD_Values := Table (S).TD_Sent;
    end Note_Train_Data_Acknowledged;
 

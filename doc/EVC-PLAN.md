@@ -19961,3 +19961,38 @@ row 4.8.3.1.1 Table-footnote [3] (done) has its second bullet's text
 rewritten. Proofs `evc_radio`, `evc_radio_authority`,
 `evc_sessions-mission`: no unproved check. Runner 1214 / 1045 / 931,
 0 movements.
+
+B3440 (the second bullet judged at the reception). At the source:
+`EVC_Sessions.Take_Message` dispatches the message 8 to
+`Mission.Take_Answer` (where `Note_Train_Data_Acknowledged` runs)
+before a later message's `Take_Radio_Transition`, so with B3340 the
+categories of a session are already updated when its 131 of the same
+cycle is judged: the case added to `Scenario_Handover_TD_Per_Session`
+(the axle load category changed, then the 8 and the 131 in one cycle,
+the 131 taken) failed on master and passes with B3340 alone. What was
+left was the gate: `TD_Unacked` was `Awaited and then (...)` with
+`Awaited` the authority's `TD_Awaited`, the facts of the last
+`Evaluate`; the 129 is sent by `Mission.Produce` after that `Evaluate`,
+so the messages of the next cycle did not see it awaited (B3460, found
+while building B3340: RBC 300's level crossing received in the cycle
+after its 129 was taken). Built: the set awaited per session,
+`EVC_Radio.Info (S).TD_Awaited`, set with `TD_Sent`, cleared by the 8
+and with the session; `TD_Unacked (S)` reads it at the reception; the
+authority's `TD_Awaited` removed (`Facts_T.Train_Data_Unacked` is no
+longer read; `EVC_Core.Modes` still sets it, not this package's unit).
+Decision: the first bullet now holds for the RBC the Train Data were
+sent to ("has been sent to the RBC"), no longer for every session while
+one set is awaited; the mission still awaits one set at a time
+(`TD_S`), so an RBC whose set was superseded by a 129 to the other one
+keeps its information rejected until the session ends (its 8 is not
+matched): part of B3461. The new case: RBC 300's crossing in the cycle
+after the 129 rejected (failed before the fix). Proofs `evc_radio`,
+`evc_radio_authority`: no unproved check. Runner 1214 / 1045 / 931, 0
+movements.
+
+B846 left at the bound (no new item after 120 calls), scoped: the
+transition buffer keeps raw bytes per message, so whether a buffered
+message carries packets 15, 21 and 27 is known only at `Buffer.Store`;
+the build is a flag per entry set there, an accessor, a field of
+`EVC_Procedures.Context_T` set in `EVC_Core.Modes`, D5 in
+`Train_Data_Step`, and a scenario in `EVC_Test_Procedures`.
