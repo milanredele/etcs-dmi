@@ -19587,3 +19587,183 @@ once `Released`. Corpus: 12 sequences of sv30 carry Q_STOPLX 1.
 
 **The header's group names (B3360, not taken: the bound).** Recorded
 from the brief's premise for the next package.
+
+### Review of the sixty-fourth round: eight verdicts re-derived blind (e5/review-64) (2026-11-05)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items were taken. No
+code, no triage line and no line of the authors was changed.
+
+1. The session messages in the acceptance tables. Mine: in 4.8.3
+   (radio rows) the acknowledgement of Train Data (8) and of the
+   termination (39) are A in every level; Train Rejected (40), Train
+   Accepted (41) and the SoM position report confirmed (43) are A in
+   level 2 only and R in 0, NTC and 1. None of these rows has a
+   footnote. In 4.8.4 the 8 is A [2] in SB and A in FS, AD, LS, SR, OS,
+   UN, TR, PT, SN and RV. It is R in PS, SH, SM, SL and NL, and NR in
+   NP, SF and IS. The 39 is A in every mode except NP, SF and IS (NR).
+   The 40, 41 and 43 are A [2] in SB only. "Session Management" is the
+   packet 42 (6.5.1.5.2), A [15] in every level, with [14] in level 2
+   from a balise. The messages 32 and 38 have no row. A message the
+   tables reject has still been received: its time stamp orders the
+   next ones (3.16.3.3.3, "the preceding message") and feeds the radio
+   supervision (3.16.3.4.1, "the latest received message"). It is
+   acknowledged, because 3.16.3.5.1 exempts only an inconsistent
+   message. Author (e6/acceptance-sessions):
+   `EVC_Radio_Acceptance.Info_Of`, `First_Filter`, `Third_Filter` and
+   `EVC_Sessions.Take_Message` (`Rejected_By_Tables` after
+   `Note_Received` and the acknowledgement) do the same. Agree.
+2. The RBC transition order and the Train Data acknowledgement in one
+   cycle. Mine: an 8 and a 24 with a 131 from the supervising RBC, the
+   8 first. After the 8, neither bullet of 4.8.3 [3] holds: the RBC has
+   acknowledged in the ongoing session, and the corresponding
+   acknowledgement has been received. So the 131 is taken. Author
+   (B3400): `Transition_Order_Rejected (S)` judges the first bullet by
+   the session's own `TD_Acked`, which the 8 sets at once. The scenario
+   case passes. The second bullet is still judged by `TD_Awaited` and
+   `TD_Differ` (with `TD_Acked_Categories`), which only
+   `EVC_Radio_Authority.Evaluate` updates, at the end of the cycle.
+   When the categories sent differ from the last acknowledged ones (a
+   Train Data change, or the first acknowledgement after power-up while
+   the acknowledged categories are still the defaults), the 131 of the
+   same cycle is still rejected. The heading claims "an 8 taken before
+   it in the cycle counts". Agree on the first bullet; undecided on the
+   second (B3440).
+3. The safe radio connection's error report. Mine: 7.5.1.64 M_ERROR 5
+   is "to be sent when communication links re-established". After
+   T_NVCONTACT and 60 s more, the connection is released and set up
+   again (3.16.3.4.3). Once it is set up, one 136 with packet 4 M_ERROR
+   5 goes to that session's RBC (3.6.5.1.4 l)). If a new message
+   arrives before the 60 s, nothing is released, so no link is
+   re-established and no M_ERROR 5 is due (a decision the words
+   support). A balise group error found while the supervising
+   session's connection is lost is reported when the connection is set
+   up again (3.16.4.1, the session kept by 3.5.4.1). Two errors in the
+   wait give two reports: 3.16.4.1 says "errors shall be reported", and
+   each detection is a trigger of 3.6.5.1.4 l). Author
+   (e6/sessions-contact): `EVC_Sessions.Take_Event` requests M_ERROR 5
+   only after `NV.Released`; `Request_Balise_Errors` and `Produce` keep
+   the error of the wait, but with the decision "the last error of the
+   wait, one report". Agree on M_ERROR 5, the new message and one
+   error. Disagree on two errors in the wait: the decision drops every
+   error but the last (B3441).
+4. The stored information's table and the BMM inhibition. Mine:
+   columns "a to d, f, n" and "e, g to j, l, m, o" of A.3.4.1.3:
+   - Not yet applicable National Values, Linking, the RBC Transition
+     Order, the Radio Infill Area information and the Reversing Area
+     Information: D[1] and D[10].
+   - The list of balise groups for the SH area: D, and D[9] (unchanged
+     in SH).
+   - The track conditions, BMM included: R[1] and R[10].
+
+   `EVC_Stored_Information.Apply` builds the profiles, the MA, the mode
+   profile, the signalling related speed restriction, the texts ([8],
+   [13]), the track conditions and `Delete_Pending` for the national
+   values. Linking, the RBC transition order, the reversing area and
+   the SH list are not deleted there. Author (e6/stored-columns, its
+   table): the same, the four left under B036, the radio infill not
+   stored. Agree.
+
+   BMM: 4.10 resets the BMM on entering NP, SB, PS, SH, SR, SL and RV.
+   5.22.3.1.1 excludes NP and RV. On PS and SL, 5.22.5.1 b) would end
+   the procedure at once. That leaves SB, SH and SR, which is the
+   decision of `EVC_Procedures.BMM_Reset`. Column k (the desk closed
+   during SoM, R in SB) would trigger the procedure too. It is not
+   built, and the row says so (partial). The resets of [1] and [10]
+   start beyond the SvL or the max safe front end, so they cannot
+   reach the antenna in normal running.
+
+   `Scenario_Group_Read_At_EOA` checks each of the three examples of
+   A.3.5.2 as written: level 1 with an MA extension, no trip; override
+   and "stop if in SR", no trip and SR kept; level 2 LOA and an
+   immediate order to level 0, no trip. Agree.
+5. The speed information "removed" by object; two sequences' data.
+   Mine: when FS reaches the Indication location, the TTI ends
+   (3.13.10.3.10 counts to the first Indication location) and the
+   Indication status shows. So a step naming the TTI is judged by the
+   TTI shown. A step naming the over-speeding warning is judged by the
+   status being neither Overspeed nor Warning. "Former EOA deleted" and
+   "MA not updated" name nothing the DMI removes: not judged.
+   `S076_Run.Speed_Info_Object` does the same.
+
+   5190300_01 step 73: M_MODE 21 is spare in 7.5.1.72 (LS is 12).
+   ERA's PDF prints 21 there and 12 for LS elsewhere: the sequence's
+   data.
+
+   3131030_24 SV21 and SV22 step 56: the 10 km/h restriction is at
+   D_STATIC 1900 against 1727 in SV30, at the same step location of
+   730 m. The comment (max safe front end 1270 m before the
+   restriction) holds for SV30 only. With the SV21 data the Indication
+   comes about 173 m later, and ours is still in status 0 at 790 m.
+   The sequence's data again.
+
+   Author (e5/runner-chart-3, S862b2e14 and Sc70786e6 s076): the same.
+   Agree. One side note: in SV21, step 55 ("TTI not shown") passes
+   while the Indication is about 11 s ahead, a pass on inconsistent
+   data.
+6. 3160400_01 SV30 step 116. Mine: BG5d is marked linked and is not in
+   the linking information, whose expected group has a known
+   identity. Its packet 73 has Q_SCALE 11, a spare value (3.16.1.1).
+   - 3.4.4.4.2 rejects the message.
+   - 3.16.2.4.3 applies no reaction "even if errors in the reading
+     occur".
+   - 3.16.4.3 excludes only the report to the RBC.
+
+   The error is still detected, and SUBSET-027 4.3.1.1 writes record 12
+   "when a balise group error is detected". ERA's PDF has it with
+   M_ERROR 1 (steps 79, 116, 145). Ours writes none: ours. Author
+   (S1291957a onboard, B3386): the same. Agree.
+7. 3050700_02 step 113 and 3050400_03 step 82.
+
+   3050700_02. Mine: the session is established. The messages 32 and
+   38 arrive at 2100 m and the MA of step 102 at 2400 m. The comment of
+   step 107, "being established", does not fit the flow. The
+   connection is lost at 2600 m (286.4 s), and the order to terminate
+   is read at 3000 m (327 s). The session is still considered
+   established (3.5.4.1), so the 156 is due (3.5.5.2 a)) and is
+   considered as sent (3.5.4.5). What the sequence observes is the
+   indication: "No Connection" at 3020 m. That needs the set-up
+   requests stopped and the connection status timer stopped with them
+   (3.5.7.4, Table 2 [6]). Ours moves to `Terminating` and keeps
+   `Requesting` and `Timer_On`. The timer expires at 331.4 s, and
+   "Connection Lost" shows: ours. Author (Sffc229a2 onboard, B3381):
+   ours, with "3.5.5.2 sends 156 only for an established session" as
+   the reason, which takes the comment's "being established" for the
+   state. Agree that it is ours. Disagree on the reason: a fix that
+   suppresses the 156 here would go against 3.5.4.1 (B3442).
+
+   3050400_03. Mine: the driver enters the data of the RBC whose
+   session is being terminated (3.5.3.4 h)). 3.5.3.4.2 defers the new
+   session until the 39 and the release, and ours does that (steps 84
+   to 96 pass). The on-board holds an establishment the driver ordered
+   and sends no "waiting" to the DMI, so ST05 (DMI 11.2.1.6) does not
+   show: ours, leaning. Author (S7e2edbdf onboard, B3383): ours. Agree.
+8. 9990400_44 step 91 and 4120100_02 step 239.
+
+   9990400_44. Mine: the runner enters the same Train Data at 750 m as
+   at the start of mission, without the sequence's packet 11 (NC_CDTRAIN
+   7, NC_TRAIN 0100). Ours sees no category change, so 3.18.3.7 a) and
+   b) are not applied. The MA stays at 747 m at step 81, and the
+   buffered level 2 MA, with its linking, is released at step 83 (2747
+   m). BG3d is then rejected. The runner should enter the sequence's
+   values at the change: the runner. Author (Seabc1f7c model): the
+   same. Agree.
+
+   4120100_02. Mine: the Communication error shows at 245.5 s, and the
+   train is at standstill at 257 s. Step 211's comment starts the 30 s
+   at the display, which gives 275.5 s, but the runner waits until
+   287.5 s. The release of 3.16.3.4.3 comes at about 305 s. Ours
+   reaches PT after it, so its 136 is considered sent (3.5.4.5). From
+   275.5 s the PT comes about 12 s earlier, just before the release.
+   The runner's timer reference: the runner. The sequence never models
+   the release, so the margin is thin. Author (S13c9beb3 model, B3384):
+   the same. Agree.
+
+Counts: 8 items. Agreed: 6 whole (1, 4, 5, 6, 8; 7 on 3050400_03). Split
+items: item 2 agrees on the first bullet and is undecided on the
+second; item 3 agrees on M_ERROR 5 and disagrees on the last-error
+decision; item 7 on 3050700_02 agrees on the verdict and disagrees on
+the reason. Backlog lines: B3440 (decision or onboard, settled by a
+scenario with the categories changed and an 8 plus a 131 in one cycle),
+B3441 (onboard: every error of the wait reported), B3442 (onboard: the
+reason for 3050700_02 settled before a fix).
