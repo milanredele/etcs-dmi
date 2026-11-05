@@ -403,8 +403,13 @@ is
 
    --  3.5.5.2 a: terminate the session S. Established: message 156, its
    --  acknowledgement awaited (3.5.5.3.1); being established: aborted
-   --  and its safe radio connection released (3.5.3.8)
-   --  @req 3.5.3.8, 3.5.5.2, 3.5.5.2 a), 3.5.5.1 b)
+   --  and its safe radio connection released (3.5.3.8). Its connection
+   --  lost (still established, 3.5.4.1): 156 likewise, considered as sent
+   --  (3.5.4.5), and decision: the requests to set up the connection
+   --  again stop, the session being ended (3.5.4.3 maintains a session,
+   --  not its termination), so the "connection status" timer stops with
+   --  them and the indication is "No Connection" (3.5.7.4, Table 2 [6])
+   --  @req 3.5.3.8, 3.5.5.2, 3.5.5.2 a), 3.5.5.1 b), 3.5.7.4
    procedure Terminate_Session (S : Session_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
@@ -412,6 +417,9 @@ is
    begin
       case R.Info (S).State is
          when R.Established | R.Connection_Lost =>
+            if R.Info (S).State = R.Connection_Lost then
+               Ind_Stopped (S, Final_SoM => False);
+            end if;
             R.Set_State (S, R.Terminating);
             --  3.5.5.3: nothing else is sent after 156
             Links (S) := (Send_156 => True, Since => Now, others => <>);

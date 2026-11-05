@@ -134,4 +134,8 @@ package EVC_Test_Sessions is
    --  3.16.4.1: a balise group error kept while the connection is lost
    procedure Scenario_Balise_Error_While_Lost;
 
+   --  3.5.5.2 a), 3.5.7.4: an order to terminate a session whose safe
+   --  radio connection is lost
+   procedure Scenario_Session_Terminate_Lost;
+
 end EVC_Test_Sessions;

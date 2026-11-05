@@ -364,6 +364,7 @@ begin
    Scenario_Shunting_L2_Terminated;
    Scenario_Contact_Error_Report;
    Scenario_Balise_Error_While_Lost;
+   Scenario_Session_Terminate_Lost;
    Scenario_Text_Ack_Report;
    Scenario_Train_Integrity;
    --  phase E6: Supervised Manoeuvre, the safe consist length

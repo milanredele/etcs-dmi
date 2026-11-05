@@ -3593,4 +3593,50 @@ package body EVC_Test_Sessions is
              & Img (Error));
    end Scenario_Balise_Error_While_Lost;
 
+   --  3.5.5.2 a), 3.5.4.5: an order to terminate an established session
+   --  whose safe radio connection is lost: 156 due and considered as
+   --  sent; 3.5.7.4, Table 2 [6]: the requests to set up the connection
+   --  stopped and the "connection status" timer with them, "No
+   --  Connection"; 3.5.5.3.1, 3.5.5.3.2: the repetitions, then terminated
+   procedure Scenario_Session_Terminate_Lost is
+      use type EVC_Sessions.Indication_T;
+      Asked : Boolean := False;
+
+      --  Ms standing, the set-up requests of the cycle noted
+      procedure Wait (Ms : Natural) is
+      begin
+         Sample (0);
+         EVC_Core.Tick (Ms);
+         Take;
+         for I in 1 .. Radio_Outputs loop
+            Asked := Asked or else Is_Request (I, 1);
+         end loop;
+      end Wait;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Order_Group (20, 300, Q_RBC => 0, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Event (1, Connection_Lost);
+      Run_X (35_000);
+      Check (R.Info (1).State = R.Terminating,
+             "terminate lost: the order to terminate read while the "
+             & "connection is lost, 156 due (3.5.5.2 a), 3.5.4.5)");
+      Wait (45_000);
+      Check (not Asked
+             and then EVC_Sessions.Indication = EVC_Sessions.No_Connection,
+             "terminate lost: no request to set up the connection after "
+             & "the order, the connection status timer stopped, ""No "
+             & "Connection"" (3.5.7.4, Table 2 [6]), got "
+             & Boolean'Image (Asked) & " "
+             & EVC_Sessions.Indication_T'Image (EVC_Sessions.Indication));
+      for K in 1 .. 4 loop
+         Wait (45_000);
+      end loop;
+      Check (R.Info (1).State = R.Idle and then not Asked,
+             "terminate lost: no acknowledgement after the repetitions, "
+             & "terminated (3.5.5.3.2), no set-up requested in the wait");
+   end Scenario_Session_Terminate_Lost;
+
 end EVC_Test_Sessions;

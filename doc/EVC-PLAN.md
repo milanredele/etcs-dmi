@@ -19951,3 +19951,46 @@ M_ERROR 2; after, green. Proof of `evc_sessions-reports`: none unproved,
 margin 978 steps. Runner: 0 regressions, no sequence moved (the sequences
 with several M_ERROR steps report one error per wait or per cycle). Rows
 3.16.4.1 and 3.6.5.1.4 l) noted.
+
+**B3381 with B3442, the order to terminate while the connection is lost
+(done).** The trace of 3050700_02 SV30 (DEBUG) and the sequence: the
+session was established (155 at step 89, 32 at step 91, 159, 38 at step
+96, Train Data and 8, the MA at 2400 m); the comment of step 107 ("being
+established") does not fit the flow, so 3.5.3.8 c) (the abort) does not
+apply and the reviewer's reading holds: the session is still considered
+established after the SA-DISCONNECT at 2600 m (3.5.4.1), the order to
+terminate (BG7d packet 42 Q_RBC=0, 3000 m, 327.0 s) sends 156, considered
+as sent (3.5.5.2 a), 3.5.4.5), repeated after the fixed waiting time and
+the session terminated after the last (3.5.5.3.1, 3.5.5.3.2), as before.
+The defect was the indication: `EVC_Sessions.Terminate_Session` reset the
+session's `Links` (no further request) but kept `Requesting` and
+`Timer_On`, so the connection status timer started by the request of
+286.4 s expired at 331.4 s and ST04 showed, where the sequence expects at
+3020 m ST03 removed and no ST04, the transition Connection Up to No
+Connection of Table 2 [6] (the connection lost and the requests stopped
+for a reason other than the set-up). Decision: 3.5.4.3 repeats the
+attempts to maintain a session; a session the on-board terminates is not
+maintained, so the requests stop with the order and the timer with them
+(3.5.7.4). Built: `Terminate_Session` calls `Ind_Stopped (S, Final_SoM =>
+False)` for a session in Connection_Lost (`@req 3.5.7.4`). Scenario
+`Scenario_Session_Terminate_Lost` (EVC_Test_Sessions): established, the
+connection lost, the order read at 300 m: Terminating; 45 s later no
+set-up request and "No Connection"; four waits later Idle, no request.
+Before the fix it failed at the second check (Connection_Lost); after,
+green. Proof of `evc_sessions`: none unproved. Runner: 3050700_02 SV21,
+SV22, SV30 move from step 113 to step 139, 0 regressions. Step 139 traced
+(DEBUG, ERA's PDF of the sequence checked: the same values): the message
+24 of step 133 announces a radio hole at D_TRACKCOND 890 m from BG8d
+(balise 1 at 3900 m), its start at 4790 m by the estimated front end
+(3.12.1.2.1.5); the sequence expects TC12, its JRU bit and no ST04 at
+4731 m, 59 m before; ours enters the hole at 4790 m (as the 5180500
+sequences, which pass), and its timer, started at 456.2 s by the
+SA-DISCONNECT of 4300 m, expires at 501.2 s before it: S44ed028d, s076.
+The triage line Sffc229a2 rewritten (fixed, no longer reached). Rows
+3.5.7.4 and 3.5.5.2 a) noted.
+
+**B3383, the hour glass while terminating (left).** Not taken: the second
+item ended past the bound (120 of 160 calls). The line stays open as
+written; the reviewer's reading of item 7 (3.5.3.4 h), 3.5.3.4.2 defer the
+new session, ours does; the waiting byte of MSG_ONBOARD not set) is the
+starting point of its package.

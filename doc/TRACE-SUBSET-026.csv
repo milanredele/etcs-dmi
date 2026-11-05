@@ -94,7 +94,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.5.1 a),3,x,,,,,E5,done,"EVC_Sessions.Apply_Order; the order of a balise group or of the RBC (packet 42 of message 24: EVC_Sessions.Take_Radio_Order, e5/session-4); evc_test session_establish, Scenario_Session_Reports [E5 session]"
 3.5.5.1 b),3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session, called for the conditions of the other sections: the level transition without its order (5.10.3.15.4, EVC_Level_Sessions.Await_Order), the end of mission and the desk closed (5.5.4.1.1, 5.4.3.2.2, EVC_Sessions.Apply_Mission), no compatible version (3.5.3.7 d, EVC_Sessions.Take_Version), the acknowledgement not received (3.5.3.7.4.1, EVC_Sessions.Supervise_Session), the handover (3.15.1.3.6, EVC_Sessions.Apply_Handover), the network change (3.18.4.3.6.1, EVC_Sessions.Apply_Network); evc_test Session_EoM, Session_Lost_Version [E5 session]"
 3.5.5.2,3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session, Take_Message (39); evc_test session_establish [E5 session]"
-3.5.5.2 a),3,x,,,,,E5,done,EVC_Sessions.Terminate_Session (156 last in Produce) [E5 session]
+3.5.5.2 a),3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session (156 last in Produce) [E5 session]; also a session whose connection is lost (still established, 3.5.4.1): 156 considered as sent (3.5.4.5), repeated and then terminated by 3.5.5.3.1 / 3.5.5.3.2, evc_test Scenario_Session_Terminate_Lost"
 3.5.5.2 c),3,x,,,,,E5,done,"EVC_Sessions.Take_Message (39: closed, released) [E5 session]"
 3.5.5.3,3,x,,,,,E5,done,"EVC_Sessions.Produce (nothing after 156, no 146 either) [E5 session]"
 3.5.5.3.1,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (156 repeated) [E5 session]
@@ -123,7 +123,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.7.3,3,x,,,,,E5,done,"EVC_Sessions.Ind_Request: a) done, b) 3.5.4.2 and 3.5.4.4 (radio holes: Produce_Session) [E5 session]"
 3.5.7.3 a),3,x,,,,,E5,done,EVC_Sessions.Ind_Request [E5 session]
 3.5.7.3 b),3,x,,,,,E5,done,"EVC_Sessions.Ind_Request (3.5.4.2; 3.5.4.4: no request while in the hole, Produce_Session); evc_test Scenario_Session_Radio_Hole [E5 session]"
-3.5.7.4,3,x,,,,,E5,done,EVC_Sessions.Ind_Stopped; evc_test session_indication [E5 session]
+3.5.7.4,3,x,,,,,E5,done,"EVC_Sessions.Ind_Stopped; evc_test session_indication [E5 session]; the order to terminate a session whose connection is lost stops the set-up requests and the timer with them (EVC_Sessions.Terminate_Session, Table 2 [6] to No Connection), evc_test Scenario_Session_Terminate_Lost"
 3.5.7.5,3,x,,,,,E5,done,"EVC_Sessions (Table 1 per session, 3.5.7.6.1: Ind, Requesting, Timer_On per session; [1] Scenario_Session_SoM_Failures, [7] the connection lost in a radio hole: Take_Event, Scenario_Session_Radio_Hole); evc_test handover_indication [E5 session]"
 3.5.7.5 Table 1,3,x,,,,,E5,done,"EVC_Sessions (all transitions; [1] reached in a start of mission, evc_test Scenario_Session_SoM_Failures; [7] the connection lost in a radio hole, evc_test Scenario_Session_Radio_Hole) [E5 session]"
 3.5.7.5 Table 2,3,x,,,,,E5,done,"EVC_Sessions ([1]: Ind_Stopped Final_SoM from Set_Up_Failed after the last attempt of a start of mission, evc_test Scenario_Session_SoM_Failures; [2] to [6]; [7]: the connection lost in a radio hole, Take_Event, evc_test Scenario_Session_Radio_Hole) [E5 session]"
