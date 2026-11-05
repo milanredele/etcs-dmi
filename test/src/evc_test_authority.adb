@@ -1676,6 +1676,130 @@ package body EVC_Test_Authority is
              & "no trip (5.8.4.1 g)");
    end Scenario_Override_Ends_By_Radio;
 
+   --  A.3.5.2: the group 20 at G_M metres read in the cycle in which the
+   --  train moves from 285 m to 320 m, past the EOA/LOA (or former EOA)
+   --  at 300 m with its min safe antenna and front end (the odometer's
+   --  bound of 2 % and the group's accuracy leave it beyond 310 m): the
+   --  message of the group is taken by the stored information before the
+   --  monitoring and the procedures of the same cycle judge the location
+   --  passed. Example 1 (A.3.5.2.1), level 1: the group extends the MA
+   --  of the group 10 (EOA 300 m) to 800 m; no trip, the new EOA taken;
+   --  without the extension the trip of 4.6.3 [12]. Example 2
+   --  (A.3.5.2.2), level 1: the override selected at standstill at
+   --  285 m before the EOA, the group carries "stop if in SR"; no trip,
+   --  SR kept; the same group at 330 m, read after the former EOA is
+   --  passed and the override ended (5.8.4.1 c): the trip of 4.6.3 [54].
+   --  Example 3 (A.3.5.2.3), level 2: the MA of the RBC ends with an LOA
+   --  at 300 m, the group carries an immediate order to level 0; no trip,
+   --  level 0; without the order the trip of 3.13.10.2.6 a)
+   procedure Scenario_Group_Read_At_EOA is
+      procedure Track (Level_2 : Boolean) is
+      begin
+         if Level_2 then
+            Start_L2;
+            Run_X (15_000);
+            declare
+               X : T12.Packet_T := MA_Of ((1 => 200));
+            begin
+               X.V_EMA := 4;
+               X.T_EMA := 1023;
+               Give_Radio_Message (1, MA_Message (10, X, Stamp));
+            end;
+            Stand_X (200);
+         else
+            Start_X;
+            Add_Group (Group (10, 100));
+            Carry (1, 0, SSP ((1 => (0, 100, False))));
+            Carry (1, 0, Grad ((1 => (0, 0))));
+            Carry (1, 1, MA_Of ((1 => 200)));
+         end if;
+      end Track;
+
+      procedure Cross is
+      begin
+         Run_X (28_500);
+         Stand_X (200);
+         Step_X (3_500);
+      end Cross;
+
+      procedure Example_1 (Extend : Boolean) is
+      begin
+         Track (False);
+         Add_Group (Group (20, 296));
+         if Extend then
+            Carry (2, 0, SSP ((1 => (0, 100, False))));
+            Carry (2, 0, Grad ((1 => (0, 0))));
+            Carry (2, 1, MA_Of ((1 => 504)));
+         end if;
+         Cross;
+      end Example_1;
+
+      procedure Example_2 (G_M : Integer_64) is
+      begin
+         Track (False);
+         Add_Group (Group (20, G_M));
+         Carry_SR_Stop (2);
+         Run_X (28_500);
+         Stand_X (200);
+         Input (DMI, (16#41#, 6, 0, 0, 0, 1, 4, 49, 50, 51, 52));
+         Stand_X (100);
+         Input (DMI, (16#40#, 3, 0, 0, 0, 6, 0, 0));
+         Stand_X (200);
+         Check (EVC_Procedures.Override_Active and then EVC_Core.Mode = M_SR,
+                "group read at the EOA, example 2: the override selected "
+                & "at standstill in rear of the EOA");
+         Step_X (3_500);
+         Run_X (34_000);
+      end Example_2;
+
+      procedure Example_3 (Order : Boolean) is
+         P : TP41.Packet_T;
+      begin
+         Track (True);
+         Add_Group (Group (20, 296));
+         if Order then
+            P.Q_DIR := 2;
+            P.Q_SCALE := 1;
+            P.D_LEVELTR := ETCS_Variables.D_LEVELTR_Now_The_Level_Transition;
+            P.M_LEVELTR := ETCS_Variables.M_LEVELTR_Level_0;
+            P.Has_NID_NTC := False;
+            P.L_ACKLEVELTR := 0;
+            P.N_ITER := 0;
+            Carry (2, 0, P);
+         end if;
+         Cross;
+      end Example_3;
+   begin
+      Example_1 (True);
+      Check (EVC_Core.Mode = M_FS and then SI.Current.MA.EOA = 80_000,
+             "group read at the EOA, example 1: the min safe antenna past "
+             & "the EOA in the cycle that reads the extension, no trip, "
+             & "the EOA at 800 m (A.3.5.2.1)");
+      Example_1 (False);
+      Check (EVC_Core.Mode = M_TR,
+             "group read at the EOA, example 1 without the extension: the "
+             & "same move trips (4.6.3 [12])");
+      Example_2 (296);
+      Check (EVC_Core.Mode = M_SR,
+             "group read at the EOA, example 2: the former EOA passed in "
+             & "the cycle that reads stop if in SR, no trip (A.3.5.2.2)");
+      Example_2 (330);
+      Check (EVC_Core.Mode = M_TR
+             and then EVC_Procedures."=" (EVC_Procedures.Trip_Reason,
+                                         EVC_Procedures.SR_Stop_Order),
+             "group read at the EOA, example 2 with the group beyond the "
+             & "former EOA: the override ended, then the trip (4.6.3 [54])");
+      Example_3 (True);
+      Check (EVC_Core.Mode /= M_TR and then EVC_Levels.Level = L0,
+             "group read at the EOA, example 3: the min safe front end past "
+             & "the LOA in the cycle that reads the order to level 0, no "
+             & "trip (A.3.5.2.3)");
+      Example_3 (False);
+      Check (EVC_Core.Mode = M_TR,
+             "group read at the EOA, example 3 without the order: the same "
+             & "move trips (3.13.10.2.6 a)");
+   end Scenario_Group_Read_At_EOA;
+
    --  The driver selects Shunting (MSG_DRIVER_ACTION 7)
    procedure Select_Shunting is
    begin
