@@ -19337,3 +19337,26 @@ the order the trip. The cycle's order (`EVC_Core`'s header, tagged
 A.3.5.2: the ports, the position, the stored information, then the
 monitoring and the procedures) gives the three; no code changed. Row
 A.3.5.2 done; B037 closed.
+
+**5.22.3.1, the automatic BMM inhibition (B015).** The store of the big
+metal masses (`EVC_Track_Conditions`, BMM_S) is reset in four places:
+the deletions of `EVC_Stored_Information.Apply` (cut beyond the new
+SvL or the max safe front end: in advance of the max safe antenna, so
+the antenna is never in the part reset), the entry into NP, SB, PS, SH,
+SR, SL or RV (`EVC_Core.Modes.Delete_On_Mode_Entry`, 4.10), the desk
+closed in the start of mission (A.3.4.1.3 k) and the Supervised
+Manoeuvre authorisation in the opposite direction. Built: the mode
+entry. `EVC_Procedures.Mode_Changed`, called by `Enter_Mode` just before
+`Delete_On_Mode_Entry`, calls `BMM_Reset`: on entering SB, SH or SR with
+the antenna's min and max safe positions in a stored area
+(`EVC_Track_Conditions.BMM_At_Antenna`, the frame of the monitoring's
+BTM alarm), the inhibition starts through `Start_BMM`, the entry the
+driver's request now shares (JRU event Event_BMM, the DMI's status).
+Not on NP or RV (5.22.3.1.1); decision: not on PS or SL either, whose
+switch ends the procedure by 5.22.5.1 b). Scenario_BMM_Reset
+(`EVC_Test_Procedures`): SR in level 1, a big metal mass from 40 to
+240 m, the train stopped with its front at 100 m, the driver selects
+Shunting: SH and the inhibition indicated (failed before); front at
+25 m: SH, no inhibition. Rows: 5.22.3.1.1 done, 5.22.3.1 partial for
+the two resets without a mode change; B015 narrowed to them and to
+4.4.18.1.5.

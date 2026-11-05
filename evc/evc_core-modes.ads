@@ -220,6 +220,7 @@ is
    --  @req 5.4.5.3 g)
    procedure Enter_Mode (From, To : Mode_T)
      with Global => (Input  => (EVC_Radio.State,
+                                EVC_Origins.State,
                                 EVC_Odometry.State,
                                 EVC_National_Values.State,
                                 EVC_Train_Inputs.State,
