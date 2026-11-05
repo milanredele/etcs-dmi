@@ -19311,3 +19311,19 @@ linking is released at the immediate transition of step 83, ma 747 to
 2747 m, and BG3d, linked and not in it, is rejected; with Q_LINK 0 in a
 copy the text is shown), SV21 blocked at 89 (E7-version). The step 85
 of 9990400_44, now not judged, would show the same released MA.
+
+**B3301, the stop in a level crossing's stopping area (left at the
+bound; no change).** Read for the build: the accessors exist and are
+public, `EVC_Track_Description.LX` / `LX_Item` (LX_T: `Protected_LX`,
+`Stop_Required`, `Stop_Length` = L_STOPLX, `Start` as a Location_T,
+`Released` with `Released_From`, 5.16.2.1) and `LX_Target` (the
+nearest start not protected as temporary EOA and SvL, 3.12.5.8; it
+needs the origin table, the sense and the min safe front end); the
+driver's hook is `S076_Run.Drive_To` before `B.Set_Speed
+(Transit_Cms)` (the chart's speed per cycle). Left to build: the start
+resolved to the bench's frame, a speed profile to standstill inside the
+stopping area (start less L_STOPLX to start), the chart's speed again
+once `Released`. Corpus: 12 sequences of sv30 carry Q_STOPLX 1.
+
+**The header's group names (B3360, not taken: the bound).** Recorded
+from the brief's premise for the next package.
