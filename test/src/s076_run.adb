@@ -443,14 +443,58 @@ package body S076_Run is
       and then Chart_Kmh >= 0.0
       and then abs (Chart_Kmh - Explicit_Chart) > Chart_Band);
 
+   --  B3301: the stop in rear of a non-protected level crossing that a
+   --  step's comment asks for ("Then, the train shall stop in rear of the
+   --  non-protected LX"), held from that step to the next step of another
+   --  test case or whose comment says the train overpasses (set and
+   --  cleared in Run_Loaded's step loop). Corpus sv30: the comment in 5
+   --  sequences, 9 steps; 7 of them are followed at once by a case line
+   --  (4060300_09 step 99: the next case overpasses the temporary EOA on
+   --  purpose), so the stop is driven at 4080300_02 step 176 (the three
+   --  versions) and at 9990500_05 steps 101 to 107 (blocked before them)
+   LX_Stop_Asked : Boolean := False;
+   LX_Stop_Feature, LX_Stop_Case : Natural := 0;
+
+   --  B3301: while the stop is asked and the on-board supervises the start
+   --  of a non-protected level crossing with Q_STOPLX 1 as its temporary
+   --  EOA and SvL (3.12.5.8), the speed in cm/s that brings the estimated
+   --  front end to standstill in the middle of the stopping area (from
+   --  L_STOPLX in rear of the start to the start, 5.16.2.1), measured in
+   --  the on-board's own frame; -1 when there is none (the chart's speed,
+   --  also once the on-board has released the crossing at the standstill)
+   function LX_Stop_Cms return Integer is
+      S : constant EVC_Supervision_Input.Snapshot_T :=
+        EVC_Stored_Information.Current;
+
+      function Ahead_Of (X : EVC_Distances.Dist_T) return Integer_64 is
+        (if EVC_Distances."=" (S.Train.Ahead, EVC_Distances.Plus)
+         then Integer_64 (X) - Integer_64 (S.Train.Est_Front)
+         else Integer_64 (S.Train.Est_Front) - Integer_64 (X));
+
+      Middle : Integer_64;
+   begin
+      if not (LX_Stop_Asked and then S.LX.Present and then S.LX.Stop
+              and then S.Temporary.Present)
+      then
+         return -1;
+      end if;
+      Middle :=
+        (Ahead_Of (S.LX.Stop_From) + Ahead_Of (S.Temporary.EOA)) / 2;
+      --  half the distance left per second, standstill within a metre
+      return (if Middle < 100 then 0
+              else Integer (Integer_64'Min (Middle / 2, 10_000)));
+   end LX_Stop_Cms;
+
    --  B262: the speed asked for is the chart's; the train's is that of
    --  the bench's braking model (lower under a brake command, regaining
    --  the chart's once released); held at standstill by a brake for 10 s
    --  the train stops trying (a trip: the sequence's location is not
-   --  reached)
+   --  reached); B3301: held at standstill in a level crossing's stopping
+   --  area by LX_Stop_Cms it waits for the on-board's release
    procedure Drive_To (To_Cm : Integer_64) is
       Dir  : constant Integer := (if To_Cm >= B.Position then 1 else -1);
       Held : Natural := 0;
+      LX_V : Integer;
    begin
       B.Set_Direction (Dir);
       B.Set_Brake_Floor (Kmh_To_Cms (10.0));
@@ -465,6 +509,10 @@ package body S076_Run is
             Forced_Speed := -1;
          end if;
          B.Set_Speed (Transit_Cms);
+         LX_V := (if Dir > 0 then LX_Stop_Cms else -1);
+         if LX_V >= 0 then
+            B.Set_Speed (Natural'Min (Transit_Cms, LX_V));
+         end if;
          declare
             Left : constant Integer_64 :=
               (To_Cm - B.Position) * Integer_64 (Dir);
@@ -479,7 +527,8 @@ package body S076_Run is
             else
                B.Cycle;
             end if;
-            Held := (if B.Speed = 0 then Held + B.Cycle_Ms else 0);
+            Held := (if B.Speed = 0 and then LX_V < 0
+                     then Held + B.Cycle_Ms else 0);
          end;
       end loop;
       B.Set_Brake_Floor (0);
@@ -7219,6 +7268,7 @@ package body S076_Run is
       Cab_Sign := 1;
       Controller_Given := False;
       Controller_Due := False;
+      LX_Stop_Asked := False;
       VBC_Entries := 0;
       VBC_Last := 0;
       Selected_MN := -1;
@@ -7297,6 +7347,25 @@ package body S076_Run is
             J  : Judgement_T;
          begin
             Cur := I;
+            --  B3301: the stop in rear of a non-protected LX, asked by a
+            --  step's comment, ends at a step of another test case or one
+            --  whose comment says the train overpasses (4060300_09 step
+            --  100: the temporary EOA overpassed on purpose)
+            if LX_Stop_Asked
+              and then (St.Case_Feature /= LX_Stop_Feature
+                        or else St.Case_No /= LX_Stop_Case
+                        or else Has (Image (St.Comment), "overpass"))
+            then
+               LX_Stop_Asked := False;
+            end if;
+            if Has (Image (St.Comment), "stop in rear of")
+              and then (Has (Image (St.Comment), "LX")
+                        or else Has (Image (St.Comment), "level crossing"))
+            then
+               LX_Stop_Asked := True;
+               LX_Stop_Feature := St.Case_Feature;
+               LX_Stop_Case := St.Case_No;
+            end if;
             --  B1540: a direction controller the sequence set belongs to
             --  its test case; decision: from a step of another case on,
             --  the driver puts it the way the train moves again
