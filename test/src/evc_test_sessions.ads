@@ -128,4 +128,7 @@ package EVC_Test_Sessions is
    --  3.6.3.1.3: packet 58 by the train orientation
    procedure Scenario_Report_Parameters_Direction;
 
+   --  3.16.3.4.3, 7.5.1.64: M_ERROR 5 once the connection is set up again
+   procedure Scenario_Contact_Error_Report;
+
 end EVC_Test_Sessions;

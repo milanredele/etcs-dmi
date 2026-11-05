@@ -86,8 +86,10 @@ is
 
    --  1. A connection event of the RTM port on the session S, at the
    --  on-board time Now_Ms; Reported: the RBC identity EURORADIO
-   --  reports with a connection set up (EVC_Ports), else No_RBC
+   --  reports with a connection set up (EVC_Ports), else No_RBC; the
+   --  connection released by 3.16.3.4.3 set up again: M_ERROR 5 requested
    --  @req 3.5.3.7 b), 3.5.4.1, 3.5.4.2, 3.5.4.3, 3.5.4.3 1st bullet
+   --  @req 3.16.3.4.3
    procedure Take_Event (S        : EVC_Radio.Session_T;
                          Event    : EVC_Ports.RTM_Event_T;
                          Now_Ms   : EVC_Radio.Time_Ms_T;

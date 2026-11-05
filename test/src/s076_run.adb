@@ -2134,6 +2134,18 @@ package body S076_Run is
             end if;
          end;
       end if;
+      --  "<T_STEP>" with its value in the comment: A.3.1's additional
+      --  delay to disconnection on supervision of the safe radio
+      --  connection, 60 s (3.16.3.4.3; 3160300_01 step 96, 3160400_01 step
+      --  94), or the "Connection status" timer, 45 s (3160400_01 step 97)
+      if Same (Name, "<T_STEP>")
+        and then Text_Seconds (Image (St.Comment)) >= 0
+      then
+         Run_Timer (Text_Seconds (Image (St.Comment)));
+         return Pass ("T_STEP"
+                      & Integer'Image (Text_Seconds (Image (St.Comment)))
+                      & " s elapsed (the comment's)");
+      end if;
       --  T_VBC (days, 3.15.9.5 b): the period of the cover that ends
       --  first has passed, a second more, at once (S076_Bench.Pass_Time)
       if Same (Name, "T_VBC") then

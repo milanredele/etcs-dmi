@@ -134,6 +134,9 @@ is
       Since       : Time_Ms_T := 0;     -- at
       SB          : Boolean := False;   -- the service brake commanded
       Reconnected : Boolean := False;   -- 3.16.3.4.3 done
+      --  the session whose connection 3.16.3.4.3 released, its setting up
+      --  again still to report (7.5.1.64, M_ERROR 5)
+      Released    : R.Session_Ref_T := R.No_Session;
    end record;
 
    type Held_T is array (Condition_T) of Boolean;
@@ -660,6 +663,15 @@ is
                R.Set_State (S, R.Established);
                Links (S).Request_Due := False;
                Ind_Set_Up (S);
+               --  7.5.1.64: M_ERROR 5 "to be sent when communication links
+               --  re-established" after the release of 3.16.3.4.3 (decision:
+               --  not when a new message ended the reaction before it, no
+               --  connection was released)
+               if NV.Released = R.Session_Ref_T (S) then
+                  Reports.Request_Error
+                    (S, M_ERROR_Radio_Safe_Radio_Connection);
+                  NV.Released := R.No_Session;
+               end if;
             end if;
          when EVC_Ports.Connection_Lost | EVC_Ports.Connection_Released =>
             case St is
@@ -1194,12 +1206,14 @@ is
       if In_Hole or else Gone
         or else (Young and then (not NV.Expired or else Fresh))
       then
-         NV := (others => <>);
+         --  the release stays to report while the session lasts
+         NV := (Released => (if Up then NV.Released else R.No_Session),
+                others   => <>);
          return;
       end if;
       if not NV.Expired then
          NV := (Expired => True, Since => Now, SB => NVal.M_NVCONTACT = 1,
-                Reconnected => False);
+                Reconnected => False, Released => NV.Released);
          Contact_Tripped := True;
       end if;
       Held (C_41) := NVal.M_NVCONTACT = 0;
@@ -1217,6 +1231,7 @@ is
          Links (Session_T (Sv)).Release_Due := True;
          Links (Session_T (Sv)).Request_Due := True;
          NV.Reconnected := True;
+         NV.Released := Sv;
       end if;
    end Supervise_Contact;
 

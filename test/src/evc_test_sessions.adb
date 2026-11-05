@@ -3467,4 +3467,78 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Shunting_L2_Terminated;
 
+
+   --  3.16.3.4.3, 7.5.1.64: the safe radio connection released and set up
+   --  again 60 s after T_NVCONTACT expired, the error reported once
+   --  re-established (packet 4, M_ERROR 5); no report when a new message
+   --  ends the reaction before the release
+   procedure Scenario_Contact_Error_Report is
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+      Count, Error : Natural := 0;
+
+      --  Two cycles at standstill, the error reports of each added up
+      procedure Step is
+         C, E : Natural;
+      begin
+         for K in 1 .. 2 loop
+            Stand;
+            Error_Reports (0, C, E);
+            Count := Count + C;
+            if C > 0 then
+               Error := E;
+            end if;
+         end loop;
+      end Step;
+   begin
+      Start_X;
+      NV.T_NVCONTACT := 10;   -- s
+      NV.M_NVCONTACT := 2;    -- no reaction
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Carry (Track_N, 1, NV);
+      Run_X (15_000);
+      Establish (1);
+      Stand;
+      --  a new message 20 s after the expiry: no release, no report
+      Sample (0);
+      EVC_Core.Tick (11_000);
+      Take;
+      Sample (0);
+      EVC_Core.Tick (20_000);
+      Take;
+      Give_Radio_Message (1, Msg (MCat.Track_M24, Now_T (1)));
+      Step;
+      Sample (0);
+      EVC_Core.Tick (50_000);
+      Take;
+      Step;
+      Check (R.Info (1).State = R.Established and then Count = 0,
+             "contact error: a new message before the additional delay, "
+             & "no release, no M_ERROR 5 (7.5.1.64), got" & Img (Count));
+      --  T_NVCONTACT expires, 60 s more: released and set up again
+      Sample (0);
+      EVC_Core.Tick (11_000);
+      Take;
+      Sample (0);
+      EVC_Core.Tick (60_000);
+      Take;
+      Step;
+      Check (R.Info (1).State = R.Connection_Lost and then Count = 0,
+             "contact error: released 60 s after the expiry (3.16.3.4.3), "
+             & "nothing reported while the connection is down, got"
+             & Img (Count));
+      Give_Radio_Event (1, Connection_Set_Up);
+      Step;
+      Check (R.Info (1).State = R.Established and then Count = 1
+             and then Error = 5,
+             "contact error: once the connection is re-established, one "
+             & "position report with packet 4 M_ERROR 5 (3.16.3.4.3, "
+             & "3.16.4.1, 7.5.1.64), got" & Img (Count) & Img (Error));
+      Give_Radio_Event (1, Connection_Lost);
+      Give_Radio_Event (1, Connection_Set_Up);
+      Step;
+      Check (Count = 1,
+             "contact error: a later loss of the connection set up again "
+             & "is not reported again, got" & Img (Count));
+   end Scenario_Contact_Error_Report;
+
 end EVC_Test_Sessions;

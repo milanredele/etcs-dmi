@@ -19276,3 +19276,50 @@ area), B3302 (the speed information judged by the object a step
 names), the header check resolving a group's sequence name, packet 131
 by radio judged by its own session, B781's last two bullets, B1360's
 22; the review again (eight items, readings first, no backlog read).
+
+### The safe radio connection's error report: M_ERROR 5 when re-established, the balise group error reports re-read, the rows A.3.1 and 4.4.6.1.10 (e6/sessions-contact) (2026-11-05)
+
+**B024, M_ERROR 5 once the connection is re-established (done).** The
+premise held at the source: `EVC_Sessions.Supervise_Contact` built
+3.16.3.4.1 to .5 and 3.16.3.4.3 (60 s after the expiry the connection
+released and asked again, `NV.Reconnected`), and no code requested M_ERROR
+5 (`Request_Error` with 3 and 4 in `EVC_Sessions`, 0, 1, 2, 7 to 10 in
+`Request_Balise_Errors`). 7.5.1.64 reads M_ERROR 5 "Radio: safe radio
+connection error (ref. 3.16.3.4, to be sent when communication links
+re-established)"; 3.16.4.1 reports an error in level 2 "as soon as the
+availability of a safe radio connection permits". Built: `NV.Released`,
+the session whose connection 3.16.3.4.3 released (kept while that session
+lasts, also through the reset of `NV` by a new message); `Take_Event` on
+Connection_Set_Up of that session from Connection_Lost calls
+`Reports.Request_Error (S, 5)` once, so the position report with packet 4
+goes in the next `Produce` (the session established again). Decision: no
+report when a new message ends the reaction before the 60 s: nothing was
+released, nothing "re-established". Scenario
+`Scenario_Contact_Error_Report` (EVC_Test_Sessions; T_NVCONTACT 10 s, no
+reaction): a message 20 s after the expiry, no release and no report; the
+next expiry and 60 s more, released, nothing while down; set up again, one
+136 with M_ERROR 5; lost and set up again, none more. Before the fix it
+failed at "once the connection is re-established" (0 reports) and at the
+check after it; after, green. Proof of `evc_sessions`: none unproved,
+margin 6641 steps.
+
+The runner: `S076_Run.Timer_Input` runs `<T_STEP>` for the seconds its
+comment gives (A.3.1's additional delay of 60 s, the connection status
+timer of 45 s, the 30 s of a DMI message). 32 sequences moved (12 of them
+SV30), 0 regressions; every new step traced: 4120100_06, _09, _11, _16
+and 5110400_02 pass; 3160400_01 fails at step 85 (the M_ERROR 1 of a
+balise group read while the connection was lost: B009 below);
+3160300_01 at 156 (a message marked "[faulty] MAC-Error" given decodable,
+B3380, Se794ff7e model); 3050700_02 at 113 (an order to terminate while the
+connection is down: ours sends 156 and keeps the set-up requests, the
+connection status timer not stopped, 3.5.7.4, B3381, Sffc229a2 onboard);
+3050700_03 at 73 (the RTM model gives no set-up failure after EURORADIO's
+40 s, B3382, Sa8a3ba1a model); 3050400_03 at 82 (no hour glass after an
+RBC data entry while terminating, B3383, S7e2edbdf onboard); 4120100_02 at
+239 (the release of 3.16.3.4.3 at 305.5 s comes before the 136 of 1625 m
+and the sequence confirms no connection; the 30 s of step 211 run from the
+step before, not from the display, B3384, S13c9beb3 model); 9990400_19 at
+120 (the reach-point of step 119 ignores D_LEVELTR 100 m, B3385, S863aab40
+model). 9990200_03 (step 97, the difference of two T_NVCONTACT) and
+9990200_04 (step 70, s076) did not move. Rows 3.16.3.4.3, 3.16.4.1 and
+3.6.5.1.4 l) noted; `@req 3.16.3.4.3` on `Take_Event`.
