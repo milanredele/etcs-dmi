@@ -19919,3 +19919,35 @@ the values sent with the ones that RBC acknowledged, one copy per
 session in `EVC_Radio.Session_Info_T`, `EVC_Radio_Authority.TD_Unacked`
 judging by it; with B3440 (the second bullet judged at the reception)
 these are build items of the next round.
+
+### The session's end and its errors: each error of a wait reported, the status timer at a termination with the connection down, the hour glass while terminating (e6/sessions-termination) (2026-11-05)
+
+**B3441, each error of a wait reported (done).** The premise held at the
+source: `EVC_Sessions.Reports` kept one balise group or odometer error
+(`Bal_Due`, `Bal_Code`, the code chosen by priority among the kinds of
+the cycle, overwritten by the next) and, per session, a count of radio
+message errors with the code of the last (`Error_Due` / `Error_Code`,
+`Msg_Due` / `Msg_Code`): two radio message errors 3 then 4 gave two
+reports with M_ERROR 4, two balise group errors in a lost-connection wait
+one report with the last code. The user's decision (2026-11-05): each
+qualifying error reported, one report per detection (3.16.4.1, 3.6.5.1.4
+l)). Chapter 8 settles the shape: 8.4.1.5 "A train-to-track message shall
+contain at most one instance of the same packet type" (packet 44 the only
+exception), so one packet 4 per 136, one report per error, one per cycle
+as before. Built: three queues of M_ERROR in the order found
+(`Error_Queue_T`: `Errors` per session, the reports still to send; `Msg`
+per session, the radio message errors received on it; `Bal`, the balise
+group and odometer errors), `Push` / `Pop` / `Append`; decision: at most 8
+kept per queue, a ninth drops the oldest. `Request_Balise_Errors` queues
+each kind found in a cycle (decision: in the order linking error (its
+worst cause: 8, 7 or 0), linked message 1, unlinked message 2, odometer
+(10 or 9)), `Produce` appends `Bal` to every session of a report once the
+supervising session's connection is not lost, and the radio errors of
+`Msg` likewise; each 136 takes the oldest code. Scenario
+`Scenario_Balise_Error_While_Lost` extended: a linked group's message
+inconsistent at 300 m and an unlinked one's at 600 m, both in the wait;
+set up again, two 136 with M_ERROR 1 then 2. Before the fix: one report,
+M_ERROR 2; after, green. Proof of `evc_sessions-reports`: none unproved,
+margin 978 steps. Runner: 0 regressions, no sequence moved (the sequences
+with several M_ERROR steps report one error per wait or per cycle). Rows
+3.16.4.1 and 3.6.5.1.4 l) noted.

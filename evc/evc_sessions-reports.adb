@@ -23,9 +23,7 @@ package body EVC_Sessions.Reports
        Refined_State => (State => (P58, P58_Ref, P58_Held, Due,
                                    Was_Up, Acc_Up, Last_Level,
                                    Level_Seen, N_Sent, N_Params,
-                                   Error_Due, Error_Code, Msg_Due,
-                                   Msg_Code, Bal_Due,
-                                   Bal_Code, TRN_Due,
+                                   Errors, Msg, Bal, TRN_Due,
                                    Watch, Watch_Mode, Watch_S, Watch_At,
                                    Watch_Reps, Repeat_Due))
 is
@@ -52,23 +50,29 @@ is
    Level_Seen : Boolean := False;
    N_Sent     : Natural := 0;
    N_Params   : Natural := 0;
-   --  per session, the inconsistent messages still to
-   --  report (3.16.3.1.1.2), one message 136 each, one per cycle, and
-   --  the M_ERROR of the last (decisions: one packet 4 per message, the
-   --  codes of the ones before the last not kept, at most 8 pending)
+   --  The M_ERROR of the errors still to report, oldest first: one
+   --  message 136 each, one per cycle (8.4.1.5: one packet 4 per message;
+   --  3.6.5.1.4 l): each error detected is a report; decision: at most 8
+   --  kept, a ninth drops the oldest)
    Max_Errors : constant := 8;
    type Error_Count_T is range 0 .. Max_Errors;
-   Error_Due  : array (R.Session_T) of Error_Count_T := (others => 0);
-   Error_Code : array (R.Session_T) of M_ERROR_T := (others => 0);
+   type Error_List_T is array (1 .. Max_Errors) of M_ERROR_T;
+   type Error_Queue_T is record
+      N    : Error_Count_T := 0;
+      Code : Error_List_T := (others => 0);
+   end record;
+   No_Errors : constant Error_Queue_T := (N => 0, Code => (others => 0));
+   --  per session, the errors to report on it (3.16.3.1.1.2, 3.16.4.1)
+   Errors     : array (R.Session_T) of Error_Queue_T :=
+     (others => No_Errors);
    --  per session, the inconsistent messages received on it and not yet
-   --  given by Produce to the sessions of a report, the M_ERROR of the
-   --  last
-   Msg_Due    : array (R.Session_T) of Error_Count_T := (others => 0);
-   Msg_Code   : array (R.Session_T) of M_ERROR_T := (others => 0);
-   --  the balise group or odometer error of the cycle, its M_ERROR: given
-   --  by Produce to the sessions its report goes to (3.15.1.3.4)
-   Bal_Due    : Boolean := False;
-   Bal_Code   : M_ERROR_T := 0;
+   --  given by Produce to the sessions of a report
+   Msg        : array (R.Session_T) of Error_Queue_T :=
+     (others => No_Errors);
+   --  the balise group and odometer errors found and not yet given by
+   --  Produce to the sessions a report goes to (3.15.1.3.4), kept while
+   --  the supervising session's connection is lost (3.16.4.1)
+   Bal        : Error_Queue_T := No_Errors;
    --  the train running number to send with the next report to the
    --  supervising RBC (3.18.4.5.4)
    TRN_Due    : Boolean := False;
@@ -100,6 +104,37 @@ is
       end if;
    end Bump;
 
+   --  Adds E after the errors of Q, the oldest dropped when Q is full
+   procedure Push (Q : in out Error_Queue_T; E : M_ERROR_T) is
+   begin
+      if Q.N = Max_Errors then
+         Q.Code (1 .. Max_Errors - 1) := Q.Code (2 .. Max_Errors);
+         Q.Code (Max_Errors) := E;
+      else
+         Q.N := Q.N + 1;
+         Q.Code (Positive (Q.N)) := E;
+      end if;
+   end Push;
+
+   --  Removes the oldest error of Q
+   procedure Pop (Q : in out Error_Queue_T) is
+   begin
+      if Q.N > 0 then
+         Q.Code (1 .. Max_Errors - 1) := Q.Code (2 .. Max_Errors);
+         Q.Code (Max_Errors) := 0;
+         Q.N := Q.N - 1;
+      end if;
+   end Pop;
+
+   --  Adds the errors of From after those of To, in their order
+   procedure Append (To : in out Error_Queue_T; From : Error_Queue_T) is
+   begin
+      for I in 1 .. Positive (From.N) loop
+         pragma Loop_Invariant (True);
+         Push (To, From.Code (I));
+      end loop;
+   end Append;
+
    procedure Clear is
    begin
       P58 := (others => <>);
@@ -112,12 +147,9 @@ is
       Level_Seen := False;
       N_Sent := 0;
       N_Params := 0;
-      Error_Due := (others => 0);
-      Error_Code := (others => 0);
-      Msg_Due := (others => 0);
-      Msg_Code := (others => 0);
-      Bal_Due := False;
-      Bal_Code := 0;
+      Errors := (others => No_Errors);
+      Msg := (others => No_Errors);
+      Bal := No_Errors;
       TRN_Due := False;
       Watch := Off;
       Watch_Mode := M_SH;
@@ -404,21 +436,6 @@ is
    is
       Sv : constant R.Session_Ref_T := R.Supervising;
 
-      --  N reports with packet 4 and Error queued for session T
-      procedure Queue_Error (T     : R.Session_T;
-                             Error : M_ERROR_T;
-                             N     : Error_Count_T)
-        with Global => (In_Out => (Error_Due, Error_Code))
-      is
-      begin
-         if Natural (Error_Due (T)) + Natural (N) >= Max_Errors then
-            Error_Due (T) := Max_Errors;
-         else
-            Error_Due (T) := Error_Due (T) + N;
-         end if;
-         Error_Code (T) := Error;
-      end Queue_Error;
-
       --  T is one of the sessions a report goes to, established
       function Report_Target (T : R.Session_T) return Boolean is
         ((Sv = R.Session_Ref_T (T) or else Also (T))
@@ -433,39 +450,40 @@ is
       --  another session, to that one alone
       for S in R.Session_T loop
          pragma Loop_Invariant (True);
-         if Msg_Due (S) > 0 and then R.Info (S).State = R.Established then
+         if Msg (S).N > 0 and then R.Info (S).State = R.Established then
             if Report_Target (S) then
                for T in R.Session_T loop
                   pragma Loop_Invariant (True);
                   if Report_Target (T) then
-                     Queue_Error (T, Msg_Code (S), Msg_Due (S));
+                     Append (Errors (T), Msg (S));
                   end if;
                end loop;
             else
-               Queue_Error (S, Msg_Code (S), Msg_Due (S));
+               Append (Errors (S), Msg (S));
             end if;
-            Msg_Due (S) := 0;
+            Msg (S) := No_Errors;
          end if;
       end loop;
-      --  the balise group error to the sessions of a report, both RBCs
+      --  the balise group errors to the sessions of a report, both RBCs
       --  while connected to both (3.6.5.1.4 l), 3.15.1.3.4); kept while
-      --  the supervising session's connection is lost (3.16.4.1)
-      if Bal_Due
+      --  the supervising session's connection is lost (3.16.4.1), each
+      --  one reported once it is set up again
+      if Bal.N > 0
         and then (Sv = R.No_Session
                   or else R.Info (R.Session_T (Sv)).State /= R.Connection_Lost)
       then
          for S in R.Session_T loop
             pragma Loop_Invariant (True);
             if Report_Target (S) then
-               Queue_Error (S, Bal_Code, 1);
+               Append (Errors (S), Bal);
             end if;
          end loop;
-         Bal_Due := False;
+         Bal := No_Errors;
       end if;
       for S in R.Session_T loop
          pragma Loop_Invariant (True);
          if ((Due and then (Sv = R.Session_Ref_T (S) or else Also (S)))
-             or else Forced (S) or else Error_Due (S) > 0
+             or else Forced (S) or else Errors (S).N > 0
              or else (Repeat_Due and then Watch = Running
                       and then EVC_Ports."=" (Watch_S, S)))
            and then R.Info (S).State = R.Established
@@ -478,10 +496,8 @@ is
                Watch_At := Ctx.Now_Ms;
                Watch_Reps := 0;
             end if;
-            Send_136 (S, Ctx, Error_Due (S) > 0, Error_Code (S));
-            if Error_Due (S) > 0 then
-               Error_Due (S) := Error_Due (S) - 1;
-            end if;
+            Send_136 (S, Ctx, Errors (S).N > 0, Errors (S).Code (1));
+            Pop (Errors (S));
          end if;
       end loop;
       --  not sent: no session established to watch (5.6.4.2)
@@ -523,18 +539,15 @@ is
 
    procedure Request_Error (S     : EVC_Radio.Session_T;
                             Error : ETCS_Variables.M_ERROR_T)
-     with Refined_Global => (In_Out => (Msg_Due, Msg_Code))
+     with Refined_Global => (In_Out => Msg)
    is
    begin
-      if Msg_Due (S) < Max_Errors then
-         Msg_Due (S) := Msg_Due (S) + 1;
-      end if;
-      Msg_Code (S) := Error;
+      Push (Msg (S), Error);
    end Request_Error;
 
    procedure Request_Balise_Errors (In_L2 : Boolean)
      with Refined_Global => (Input  => (EVC_Position.State, EVC_Radio.State),
-                             In_Out => (Bal_Due, Bal_Code))
+                             In_Out => Bal)
    is
       use type EVC_Position.Event_Kind_T;
       Sv     : constant R.Session_Ref_T := R.Supervising;
@@ -579,20 +592,25 @@ is
         and then R.Info (R.Session_T (Sv)).State
                    in R.Established | R.Connection_Lost
       then
-         Bal_Due := True;
-         Bal_Code := (if Unsafe
-                      then M_ERROR_Odometer_Accuracy_Monitoring_Safety
-                      elsif Repos
-                      then M_ERROR_Double_Repositioning_Error_3
-                      elsif Double then M_ERROR_Double_Linking_Error_3
-                      elsif Linked
-                      then M_ERROR_Linked_Balise_Group_Message
-                      elsif Unlinked
-                      then M_ERROR_Unlinked_Balise_Group_Message
-                      elsif Found
-                      then M_ERROR_Balise_Group_Linking_Consistency
-                      else
-                         M_ERROR_Odometer_Accuracy_Monitoring_Impairment);
+         --  3.6.5.1.4 l): each error detected, one report each; decision:
+         --  the kinds found in one cycle in this order, a linking error
+         --  given by its worst cause, the odometer by its worst threshold
+         if Found then
+            Push (Bal, (if Repos then M_ERROR_Double_Repositioning_Error_3
+                        elsif Double then M_ERROR_Double_Linking_Error_3
+                        else M_ERROR_Balise_Group_Linking_Consistency));
+         end if;
+         if Linked then
+            Push (Bal, M_ERROR_Linked_Balise_Group_Message);
+         end if;
+         if Unlinked then
+            Push (Bal, M_ERROR_Unlinked_Balise_Group_Message);
+         end if;
+         if Unsafe then
+            Push (Bal, M_ERROR_Odometer_Accuracy_Monitoring_Safety);
+         elsif Impaired then
+            Push (Bal, M_ERROR_Odometer_Accuracy_Monitoring_Impairment);
+         end if;
       end if;
    end Request_Balise_Errors;
 
