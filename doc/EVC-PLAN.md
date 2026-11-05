@@ -20303,3 +20303,149 @@ the verdict and disagrees on the pending decision; item 3 disagrees
 author's side). Backlog lines: B3540 (decision: the set-up requests at
 a termination with the connection lost), B3541 (decision: B3500
 settled as the sequence's data). Calls: 95 of 130 at this point.
+
+### E5 integration after the sixty-fifth round, the thirty-third of E6 (2026-11-05)
+
+Merged: e6/sessions-termination (B3441, the user's decision: three
+queues of M_ERROR oldest first in `EVC_Sessions.Reports` (the balise
+group and odometer errors, the radio message errors per session, whose
+codes were lost too: 3 then 4 gave two reports with 4), one message 136
+per error and at most one per cycle (8.4.1.5: one packet of each type
+per message), `Scenario_Balise_Error_While_Lost` with two errors in the
+wait; B3381 with B3442, the reviewer's reading: the session of
+3050700_02 was established (155, 32, 159, 38 before the order), so the
+156 is due and counts as sent, and the defect was `Terminate_Session`
+keeping the set-up requests and the connection status timer in
+Connection_Lost: `Ind_Stopped (S, Final_SoM => False)` by 3.5.7.4 and
+Table 2 [6], `Scenario_Session_Terminate_Lost`; 3050700_02 moved from
+step 113 to 139 in three versions, traced: the radio hole of its packet
+68 at 4790 m measured by the estimated front end (3.12.1.2.1.5), the
+sequence's step at 4731 m, ERA's PDF the same: the data (S44ed028d
+s076); B3383 left at the bound), e5/runner-lx (B3301: the stop in rear
+of a non-protected level crossing scoped by the step, `LX_Stop_Asked`
+set by the comment "shall stop in rear of the non-protected LX" and
+cleared at a step of another case or an "overpasses" comment (5
+sequences, 9 steps, 7 right before a `case` line: only 4080300_02 step
+176 and the blocked 9990500_05 drive it), `LX_Stop_Cms` in `Drive_To`
+braking to the middle of the stopping area while the on-board
+supervises the crossing's start as the temporary EOA and holding until
+it releases it (5.16.2.1); 4080300_02 moved from step 176 to 234 in
+three versions, traced with a print of the transition buffer: the
+RBC's message 3 received in level 0 UN with level 2 announced is held
+in the buffer, the second group orders the same level at once, and
+after the transition the buffer is empty and no MA is in use, UN where
+FS is expected (B3520, kind onboard: 4.8.5.4 a) deletes only for an
+order to a different level, 4.8.5.5 and 4.8.5.6 release and re-evaluate;
+where the set is lost is not located); B3360's premise wrong: a step's
+group names are the test case's own numbering, not the sequence's
+telegram tags (3110400_02 case 5 reads BG2d and BG3d and calls them BG1
+and BG2): the resolution by tags regressed 24 sequences and was
+reverted, the line extended; B3361 not taken), e6/stored-cells (B036:
+the four cells: `Apply` cannot call `EVC_Position` (its state would
+turn In_Out along 14 callers) nor `EVC_Procedures` (which depends on
+the stores), so `Apply` records the deletion (`Cut_Due`, `Cut_X`) and
+`EVC_Core.Stored.Apply_Cut` applies it right after each producer
+(`Train_Data_Shortening`, `Release_Balise_Buffer`, `Evaluate_Released`),
+before the procedures take the cycle's information (one cycle later it
+deleted the SH list a released message 3 had just delivered,
+4080421_02): `EVC_Position.Delete_Linking_Beyond` (the links beyond X
+removed, their windows ended, a linking taken in the same cycle kept:
+3.8.5.1.5), `EVC_Procedures.Delete_Beyond` (the SH list unless in SH,
+[9]; a reversing area starting beyond X deleted, one ending beyond X
+cut at X: decision), the RBC transition order and its border through
+`EVC_Sessions.Delete_RBC_Order` and `EVC_Position.Delete_Border` when
+`Border_Beyond (X)`; `Scenario_Stored_Cells`; 9990400_29 passes in
+three versions (its step 86 says the transition is deleted); 3040400_03
+moved earlier, from step 76 to 67: after the linking reaction's
+standstill (situation h) the table deletes the linking beyond the
+train (D[10]), BGa marked linked is then not in the linking and ours
+trips at 321 m where the sequence keeps the linking and expects BGa's
+packet 73 rejected inside its old window: built as printed, triaged
+s076, the user decides (B3500); the rows A.3.4.1.3, a), Table, [1],
+[9], [10] and 3.7.3.3 done; B3386 and 5.22.3.1 not taken), and
+e6/td-per-rbc (B3340, the user's decision: the values *sent* per
+session (`TD_Sent`, `TD_Values` in `Session_Info_T`, `Note_Train_Data_
+Sent` from `Await_TD`) copied into the acknowledged values at the
+message 8, `TD_Changed (S)` comparing the four categories of 3.18.3.7
+per session, the shared copy and `TD_Differ` gone (decision: the 8
+acknowledges the set its time stamp names, and the driver can change
+the data while a set awaits its 8); the brief's "sent to both" wrong:
+`Evaluate_TD` sends the changed set to the supervising RBC only, one
+set at a time, and the Accepting RBC gets a set once after its 32
+(3.15.1.3.3): B3461 open, a superseded set leaves that RBC's information
+rejected until its session ends; B3440 settled by B3340 (`Take_Message`
+handles the 8 before `Take_Radio_Transition`); B3460 found and fixed:
+the authority's `TD_Awaited` gate was copied at `Evaluate` while the
+129 goes out after it, so a message with a level crossing received in
+the next cycle was taken: `TD_Awaited` per session, read at the
+reception; `Scenario_Handover_TD_Values_Per_RBC`; B846 scoped (a flag
+per buffer entry set at `Store`, a context field, D5 in `Train_Data_
+Step`, about 40 calls) and left), and e5/review-65 (the fourteenth
+blind review, below).
+
+The review (e5/review-65, 101 calls, 7.7 USD): eight items, all
+reached, fully blind; 6 agreed, 2 disagreed in part, 0 undecided.
+Disagreed (B3540, the user decides): a termination ordered while the
+connection is lost: the package stops the set-up requests and the
+connection status timer at the order (Table 2 [6], No Connection at
+once), the reviewer reads 3.5.4.3 as keeping the requests and the timer
+until the session is considered terminated; ERA's 3050700_02 expects
+ST03 removed and no ST04 at 3020 m, which supports the package.
+Disagreed on the pending decision, agreed on the verdict (B3541, done
+at the integration): 3040400_03 step 67: ERA's PDF gives Q_LINKREACTION
+01 for BGa and BGb against step 50's comment "No reaction", so with the
+data situation h) applies and the table shortens the MA as well ([11]):
+ours trips by that EOA at 321 m; the sequence's data, no decision
+needed: B3500 closed. The rest agreed: the values sent per session and
+the one awaited set (B3461 already written); one 136 per error in the
+order found; the four cells beyond the max safe front end, the SH list
+unless in SH; the stop in the middle of the stopping area and the
+names as the test case's own numbering; 4080300_02's buffered message
+3 lost at the transition to the same level (ours, B3520, not located
+to a line); 3050700_02's radio hole by the estimated front end at 4790
+m (the data). Fourteen rounds of reviews: 115 items, 98 agreed, 20
+disagreed, 8 undecided; 35 lines, of which 8 became fixes; 93.5 USD.
+
+Verification of the merged tree: an early chain on the sessions
+package green; the full chain after the four merges failed its proof:
+one check, `EVC_Core.Tick`'s postcondition on the orientation
+(3.6.1.5), because the stored-cells package made `EVC_Position.State`
+In_Out of `Evaluate_Stored_Information` for `Apply_Cut` and proved its
+own units but not the parent; the step's postcondition (the
+orientation, the cab, the LRBG and the doubts unchanged, as its
+neighbours have) added, both units re-proved, the chain run again: all
+green: `test/check.sh` ok; the full proof 14010 checks, none unproved,
+margin 47726 steps; cross build and stack 32768 B budget, margin 6056
+B; wasm and both smokes 0 failures; the runner 1217 / 1042 / 931 (from
+1214 / 1045 / 931), 0 regressions, no signature untriaged. The merge:
+sessions-termination and the review fast-forwarded; the other three
+conflicted on the plan and the backlog (three-way by id), two on the
+triage (both tails kept); no code conflict.
+
+Costs (doc/ROUNDS.csv): 47.7 USD with the review (40.0 for the four
+packages, 7.7 the review), 6 of 12 package items done and one found
+item fixed (B3460), 4 of 23 brief premises wrong ("sent to both"; the
+header names as telegram tags; "called from Apply"; `Handover.Delete`
+reachable), no agent over budget, two agents past the bound with the
+second item in hand (128, 133), one at 128 with the first. Lessons: a
+package that widens a step's Global (a state turned In_Out) proves the
+parent too, `evc_core`, not only its units: the brief's proof list
+names the parent when a Global of `EVC_Core.Stored` changes; a runner
+rule's premise about the sequences' names is checked on one sequence
+before the corpus (the telegram tags against the case's numbering
+would have shown in one grep); the four cells cost a whole budget
+because `Apply` could reach none of the stores: the shape (a recorded
+cut applied by the cycle) is the pattern for the next deletion that
+crosses a dependency.
+
+The matrix: clauses left 34 (todo 0, partial 34; done 2105: 7 rows set
+done this round). Open items: doc/BACKLOG.csv (34 open after this
+round; 6 added of which 2 by the review, 10 closed). Next: B3540 (the
+user's decision), B3383 (the hour glass while terminating), B3386 (the
+record 12 of a linked group not announced), 5.22.3.1's resets without a
+mode change, B846 (D5, scoped: about 40 calls), B3520 (the buffered MA
+lost at a transition to the same level), B3461 (the changed Train Data
+to the Accepting RBC), B3360 (the header names by the case's
+numbering), B3361 (the Train Data categories from the packet 11), the
+runner's model lines B3380, B3382, B3384, B3385; the review again
+(eight items, readings first, no backlog read).
