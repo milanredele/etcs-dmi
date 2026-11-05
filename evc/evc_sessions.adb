@@ -13,6 +13,7 @@ with ETCS_Track_Packets.P131;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
+with EVC_Radio_Acceptance;
 with EVC_Radio_Authority;
 with EVC_Sessions.Handover;
 with EVC_Sessions.Integrity;
@@ -24,7 +25,8 @@ with Interfaces;             use Interfaces;
 
 package body EVC_Sessions
   with SPARK_Mode => On,
-       Refined_State => (State => (Events, Messages, Held_Back, Held,
+       Refined_State => (State => (Events, Messages, Rejected_N,
+                                   Held_Back, Held,
                                    Mode_Changes, Cycles, Links, Order,
                                    Pending, Acks, Ack_N, NV, Ind,
                                    Requesting, Timer_On, Timer_Since,
@@ -140,6 +142,7 @@ is
 
    Events       : Natural := 0;
    Messages     : Natural := 0;
+   Rejected_N   : Natural := 0;
    --  the messages waiting in the transition buffer
    Held_Back    : Natural := 0;
    Held         : Held_T := (others => False);
@@ -538,6 +541,8 @@ is
      with Refined_Global => Events;
    function Messages_Taken return Natural is (Messages)
      with Refined_Global => Messages;
+   function Messages_Rejected return Natural is (Rejected_N)
+     with Refined_Global => Rejected_N;
    function Mode_Changes_Taken return Natural is (Mode_Changes)
      with Refined_Global => Mode_Changes;
    function Cycles_Produced return Natural is (Cycles)
@@ -560,6 +565,7 @@ is
    begin
       Events := 0;
       Messages := 0;
+      Rejected_N := 0;
       Held_Back := 0;
       Held := (others => False);
       Mode_Changes := 0;
@@ -850,6 +856,30 @@ is
       end if;
    end Take_Inconsistent;
 
+   --  4.8.3.1.1, 4.8.4.2: a session message (8, 39, 40, 41, 43) the
+   --  tables reject in the level and the mode (Network.Accepts: the mode
+   --  of the last Mode_Changed)
+   function Rejected_By_Tables (Kind : Message_Kind_T) return Boolean is
+     (EVC_Radio_Acceptance.Info_Of (Kind)
+        in EVC_Radio_Acceptance.Session_Info_T
+      and then not Network.Accepts
+                     (Kind, EVC_Position.Active_Cab /= EVC_Position.No_Cab,
+                      EVC_Levels.Valid, EVC_Levels.Level));
+
+   --  3.18.3.4.1, 5.4.3.2 A35, A23, A38: the answers 8, 40, 41, 43 to
+   --  EVC_Sessions.Mission; one it does not take passes on
+   procedure Take_Mission_Answer (S       : EVC_Radio.Session_T;
+                                  Kind    : Message_Kind_T;
+                                  Verdict : in out Verdict_T)
+   is
+      Taken : Boolean;
+   begin
+      Mission.Take_Answer (S, Kind, Taken);
+      if not Taken then
+         Verdict := Pass;
+      end if;
+   end Take_Mission_Answer;
+
    procedure Take_Message (S       : EVC_Radio.Session_T;
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
@@ -885,6 +915,16 @@ is
          Ack_N := Ack_N + 1;
          Acks (Ack_N) := (S => S, T => T);
       end if;
+      --  4.8.3.1.1, 4.8.4.2: the rows of the session messages. Decision:
+      --  one the tables reject is still a message received, so its time
+      --  stamp is noted above (3.16.3.3.3 orders the next ones by it,
+      --  3.16.3.4.1 supervises the radio by "the latest received
+      --  message") and its acknowledgement is owed (3.16.3.5.1 exempts
+      --  the inconsistent messages alone)
+      if Rejected_By_Tables (Kind) then
+         Count (Rejected_N);
+         return;
+      end if;
       case Kind is
          when Track_M32 =>
             Take_Version
@@ -896,15 +936,7 @@ is
          when Track_M39 =>
             null;                             -- no termination going on
          when Track_M8 | Track_M40 | Track_M41 | Track_M43 =>
-            --  3.18.3.4.1, 5.4.3.2 A35, A23, A38 (EVC_Sessions.Mission)
-            declare
-               Taken : Boolean;
-            begin
-               Mission.Take_Answer (S, Kind, Taken);
-               if not Taken then
-                  Verdict := Pass;
-               end if;
-            end;
+            Take_Mission_Answer (S, Kind, Verdict);
          when others =>
             if Handover.Old = R.Session_Ref_T (S)
               and then R.Supervising /= R.Session_Ref_T (S)

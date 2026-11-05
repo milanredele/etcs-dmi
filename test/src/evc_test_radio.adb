@@ -10,9 +10,11 @@ with EVC_Core;
 with EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
+with EVC_Radio_Acceptance;
 with EVC_Radio_Authority;
 with EVC_Received;
 with EVC_Sessions;
+with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
 
@@ -283,5 +285,82 @@ package body EVC_Test_Radio is
              & "(3.16.1.1.1, 3.16.3.1.1.2), got"
              & Img (JRU_Count (3)) & Img (JRU_Count (13)));
    end Scenario_Radio_Unknown_Message;
+
+   --  4.8.3.1.1 Table: "Acknowledgement of Train Data" and
+   --  "Acknowledgement of session termination" A in every level, "Train
+   --  Rejected", "Train Accepted", "SoM Position Report Confirmed by
+   --  RBC" A in level 2 alone; 4.8.4.2 Table: the 8 A [2] in SB, A in FS,
+   --  AD, LS, SR, OS, UN, TR, PT, SN, RV, R in PS, SH, SM, SL, NL; the
+   --  39 A in every mode it can come in; the 40, 41 and 43 A [2] in SB
+   --  alone. Through the on-board: in SB with the cab active, a session
+   --  open and no level 2, the 8 is taken and the 41 rejected, the time
+   --  stamp of both noted (3.16.3.4.1)
+   procedure Scenario_Session_Rows is
+      package A renames EVC_Radio_Acceptance;
+      use type A.Verdict_T;
+      function L2_SB (Mode  : EVC_Modes.Mode_T := EVC_Modes.M_SB;
+                      Level : EVC_Modes.Level_T := EVC_Modes.L2;
+                      Cab   : Boolean := True;
+                      Valid : Boolean := True) return A.Context_T
+      is ((Mode => Mode, Level_Valid => Valid, Level => Level,
+           Cab_Active => Cab, others => <>));
+      function V (K : MCat.Message_Kind_T; C : A.Context_T)
+        return A.Verdict_T is (A.Verdict (A.Info_Of (K), C));
+      Rejected, Taken : Natural;
+      Stamp : Unsigned_64;
+   begin
+      for K in MCat.Message_Kind_T loop
+         if K in MCat.Track_M40 | MCat.Track_M41 | MCat.Track_M43 then
+            Check (V (K, L2_SB) = A.Accepted
+                   and then V (K, L2_SB (Cab => False))
+                            = A.Rejected
+                   and then V (K, L2_SB (EVC_Modes.M_FS))
+                            = A.Rejected
+                   and then V (K, L2_SB (Level => EVC_Modes.L1))
+                            = A.Rejected,
+                   "session rows: " & K'Image & " A [2] in SB in level 2, R "
+                   & "without a cab, in FS, in level 1 (4.8.3, 4.8.4)");
+         end if;
+      end loop;
+      Check (V (MCat.Track_M8, L2_SB (EVC_Modes.M_FS, EVC_Modes.L1))
+             = A.Accepted
+             and then V (MCat.Track_M8, L2_SB (EVC_Modes.M_SH))
+                      = A.Rejected
+             and then V (MCat.Track_M8, L2_SB (EVC_Modes.M_TR))
+                      = A.Accepted
+             and then V (MCat.Track_M8, L2_SB (Cab => False))
+                      = A.Rejected,
+             "session rows: the 8 A in FS in level 1 and in TR, R in SH, "
+             & "R in SB without a cab ([2])");
+      Check (V (MCat.Track_M39, L2_SB (Cab => False, Valid => False))
+             = A.Accepted
+             and then V (MCat.Track_M39, L2_SB (EVC_Modes.M_SH))
+                      = A.Accepted,
+             "session rows: the 39 A in every level and in SB without a "
+             & "cab, in SH");
+      --  through the on-board: SB, the cab active, no level 2
+      EVC_Test_Modes.Start_E4;
+      Take;
+      Establish_Session (1);
+      Rejected := EVC_Sessions.Messages_Rejected;
+      Taken := EVC_Sessions.Messages_Taken;
+      Give_Radio_Message (1, Radio_Msg (MCat.Track_M8, Radio_Now));
+      EVC_Core.Tick (100);
+      Take;
+      Check (EVC_Sessions.Messages_Taken = Taken + 1
+             and then EVC_Sessions.Messages_Rejected = Rejected,
+             "session rows: the 8 taken in SB with a cab (A [2])");
+      Stamp := Radio_Now;
+      Give_Radio_Message (1, Radio_Msg (MCat.Track_M41, Stamp));
+      EVC_Core.Tick (100);
+      Take;
+      Check (EVC_Sessions.Messages_Rejected = Rejected + 1
+             and then EVC_Radio.Info (1).Received
+             and then Unsigned_64 (EVC_Radio.Info (1).Last_Received)
+                      = Stamp,
+             "session rows: the 41 rejected outside level 2 (4.8.3), its "
+             & "time stamp noted (3.16.3.4.1), got"
+             & Img (EVC_Sessions.Messages_Rejected - Rejected));
+   end Scenario_Session_Rows;
 
 end EVC_Test_Radio;

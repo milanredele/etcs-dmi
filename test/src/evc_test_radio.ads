@@ -18,4 +18,9 @@ package EVC_Test_Radio is
    --  ignored, a spare value of a known message reported inconsistent
    procedure Scenario_Radio_Unknown_Message;
 
+   --  4.8.3.1.1, 4.8.4.2: the rows of the session messages (8, 39, 40,
+   --  41, 43) looked up in the tables; one the tables reject is noted
+   --  received and not taken
+   procedure Scenario_Session_Rows;
+
 end EVC_Test_Radio;

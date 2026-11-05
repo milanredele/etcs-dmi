@@ -45,10 +45,16 @@ is
 
    --  The kinds of information of the tables in the messages the
    --  on-board takes by radio (the messages in brackets); Other: not
-   --  filtered here (the session messages, the general message 24 whose
-   --  packets the tables filter one by one where they are used)
+   --  filtered here (the messages of the session's establishment 32 and
+   --  38, no row of the tables; the general message 24 whose packets the
+   --  tables filter one by one where they are used)
    type Info_T is
      (Other,
+      Train_Data_Ack,       -- 8
+      Termination_Ack,      -- 39
+      Train_Rejected,       -- 40
+      Train_Accepted,       -- 41
+      SoM_Report_Confirmed, -- 43
       Movement_Authority,   -- 3, 33
       SR_Authorisation,     -- 2
       Trip_Exit,            -- 6, recognition of exit from TR mode
@@ -65,6 +71,11 @@ is
       --  packet 45 of a message (not a message kind,
       --  so not in Info_Of: EVC_Sessions.Network filters it)
       Network_Order);
+
+   --  the rows of the messages of the session half (8, 39, 40, 41, 43),
+   --  judged by EVC_Sessions.Take_Message
+   subtype Session_Info_T is Info_T
+     range Train_Data_Ack .. SoM_Report_Confirmed;
 
    function Info_Of (K : ETCS_Message_Catalogue.Message_Kind_T)
      return Info_T
@@ -83,6 +94,11 @@ is
           when ETCS_Message_Catalogue.Track_M4  => SM_Authorisation,
           when ETCS_Message_Catalogue.Track_M5  => SM_Refused,
           when ETCS_Message_Catalogue.Track_M45 => Coordinate_Assignment,
+          when ETCS_Message_Catalogue.Track_M8  => Train_Data_Ack,
+          when ETCS_Message_Catalogue.Track_M39 => Termination_Ack,
+          when ETCS_Message_Catalogue.Track_M40 => Train_Rejected,
+          when ETCS_Message_Catalogue.Track_M41 => Train_Accepted,
+          when ETCS_Message_Catalogue.Track_M43 => SoM_Report_Confirmed,
           when others => Other);
 
    type Context_T is record
@@ -123,6 +139,12 @@ is
        --  level, the exception of [10] applied by
        --  EVC_Position.Assign_Coordinate_System (3.4.2.3.3.8)
        elsif I = Coordinate_Assignment then Accepted
+       --  the rows "Acknowledgement of Train Data" and "Acknowledgement
+       --  of session termination": A in every level (decision: a level
+       --  not valid too, as the rows above); "Train Rejected", "Train
+       --  Accepted" and "SoM Position Report Confirmed by RBC": A in
+       --  level 2 without footnote, R in the other levels (below)
+       elsif I in Train_Data_Ack | Termination_Ack then Accepted
        elsif C.Level_Valid and then C.Level = L2 then
          (if I in Movement_Authority | SR_Authorisation | Shorten_MA
                 | SH_Refused | SH_Authorised | TAF_Request
@@ -263,6 +285,24 @@ is
    function Third_Filter (I : Info_T; C : Context_T) return Boolean
    is (case I is
           when Other => True,
+          --  4.8.4, the row "Acknowledgement of Train Data": [2] in SB;
+          --  A in FS, AD, LS, SR, OS, UN, TR, PT (no footnote), SN, RV;
+          --  R in PS, SH, SM, SL, NL; NR in NP, SF, IS (decision: NR is
+          --  rejected, as the other rows)
+          when Train_Data_Ack =>
+             (case C.Mode is
+                 when M_SB => C.Cab_Active,                 -- [2]
+                 when M_FS | M_AD | M_LS | M_SR | M_OS | M_UN | M_TR
+                    | M_PT | M_SN | M_RV => True,
+                 when others => False),
+          --  the row "Acknowledgement of session termination": A in every
+          --  mode, NR in NP, SF, IS (a session being terminated takes its
+          --  39 before the tables: EVC_Sessions, 3.5.5.2 c)
+          when Termination_Ack => C.Mode not in M_NP | M_SF | M_IS,
+          --  the rows "Train Rejected", "Train Accepted" and "SoM
+          --  Position Report Confirmed by RBC": [2] in SB, R elsewhere
+          when Train_Rejected | Train_Accepted | SoM_Report_Confirmed =>
+             C.Mode = M_SB and then C.Cab_Active,          -- [2]
           when Movement_Authority =>
              (case C.Mode is
                  when M_SB =>
