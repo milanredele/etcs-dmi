@@ -156,6 +156,23 @@ is
 
    Max_Events : constant := 16;
 
+   --  A.3.4.1.3 [1], [10]: a deletion of the stored information beyond
+   --  the frame position Cut_X (the new SvL or the max safe front end) was
+   --  asked and is not yet applied to the stores of the other units: the
+   --  linking, the list of balise groups for the SH area, the reversing
+   --  area and the RBC transition order (EVC_Core.Stored); the last one
+   --  asked counts
+   --  @req A.3.4.1.3 Table-footnote [1], A.3.4.1.3 Table-footnote [10]
+   function Cut_Due return Boolean
+     with Global => State;
+   function Cut_X return Dist_T
+     with Global => State;
+
+   --  The deletion applied by the other units
+   procedure Cut_Taken
+     with Global => (In_Out => State),
+          Post => not Cut_Due;
+
    function Event_Count return Natural
      with Global => State,
           Post => Event_Count'Result <= Max_Events;

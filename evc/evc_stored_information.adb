@@ -42,7 +42,7 @@ package body EVC_Stored_Information
   with SPARK_Mode => On,
        Refined_State => (State => (Snap, Sources, Steps, Ceiling,
                                    Failures, Msg_Count, Last_Orient,
-                                   Orient_Seen, Events, Event_N,
+                                   Orient_Seen, Events, Event_N, Cut,
                                    Indicated, Indicated_N, Sent, Sent_N,
                                    Cond_Due, Plan, Plan_Due,
                                    Driver_Slippery, PBD_Last, PBD_Known,
@@ -82,6 +82,13 @@ is
    Orient_Seen     : Boolean := False;
    Events          : Event_Array;
    Event_N         : Natural range 0 .. Max_Events := 0;
+   --  A.3.4.1.3 [1], [10]: the last deletion beyond a location asked by
+   --  Apply, not yet applied to the stores of the other units
+   type Cut_T is record
+      Due : Boolean := False;
+      X   : Dist_T := 0;
+   end record;
+   Cut             : Cut_T;
    Indicated       : EVC_DMI_Port.Track_Cond_List_T;
    Indicated_N     : Natural range 0 .. EVC_DMI_Port.Max_Track_Cond := 0;
    Sent            : EVC_DMI_Port.Track_Cond_List_T;
@@ -158,6 +165,18 @@ is
    Tun             : EVC_Track_Conditions.Tunnel_T;
 
    --  Queries
+
+   function Cut_Due return Boolean is (Cut.Due)
+     with Refined_Global => Cut;
+   function Cut_X return Dist_T is (Cut.X)
+     with Refined_Global => Cut;
+
+   procedure Cut_Taken
+     with Refined_Global => (In_Out => Cut)
+   is
+   begin
+      Cut.Due := False;
+   end Cut_Taken;
 
    function Event_Count return Natural is (Event_N)
      with Refined_Global => Event_N;
@@ -256,6 +275,7 @@ is
       Orient_Seen := False;
       Events := (others => No_Event);
       Event_N := 0;
+      Cut := (others => <>);
       Indicated := (others => EVC_DMI_Port.No_Track_Cond);
       Indicated_N := 0;
       Sent := (others => EVC_DMI_Port.No_Track_Cond);
@@ -389,7 +409,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
-                                Events, Event_N))
+                                Events, Event_N, Cut))
    is
    begin
       if O.Shortened then
@@ -411,7 +431,7 @@ is
          --  A.3.4.1.3: gradients, SSP, ASP, route suitability, mode
          --  profile, signalling related speed restriction deleted, track
          --  conditions reset; TSRs, level crossings, adhesion, national
-         --  values unchanged; the linking is EVC_Position's
+         --  values unchanged
          EVC_Track_Description.Delete_Beyond
            (T, O.Delete_X, O.Delete_To, O.Delete_Before);
          EVC_Movement_Authority.Delete_Beyond
@@ -420,6 +440,9 @@ is
            (T, O.Delete_X, O.Delete_To, O.Delete_Before);
          --  [8], [13]: the location based texts beyond the same location
          EVC_Text_Messages.Delete_Beyond (O.Delete_X);
+         --  the linking, the SH list, the reversing area and the RBC
+         --  transition order are the other units' (Cut_X)
+         Cut := (Due => True, X => O.Delete_X);
          --  [1], [10]: the national values not yet applicable, due at a
          --  location beyond the same location
          if EVC_National_Values.Pending then
@@ -947,7 +970,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
-                                Events, Event_N))
+                                Events, Event_N, Cut))
    is
       O : EVC_Movement_Authority.Outcome_T;
    begin
@@ -1040,7 +1063,7 @@ is
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N))
+                                Events, Event_N, Cut))
    is
       OK : Boolean;
    begin
@@ -1363,7 +1386,8 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, TAF_L2_New, TAF_L2_Loc),
+                                Events, Event_N, Cut, TAF_L2_New,
+                                TAF_L2_Loc),
                      Input  => (EVC_Train_Data.State, Group_Country))
    is
    begin
@@ -1439,7 +1463,7 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, Balise_Buffer.State,
+                                Events, Event_N, Cut, Balise_Buffer.State,
                                 TAF_L2_New, TAF_L2_Loc),
                      Input  => (EVC_Position.State, EVC_Train_Data.State,
                                 EVC_Radio_Info.State, Group_Country)),
@@ -1740,7 +1764,7 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, Msg_Count,
+                                Events, Event_N, Cut, Msg_Count,
                                 Balise_Buffer.State, TAF_L2_New,
                                 TAF_L2_Loc, EVC_System_Version.State,
                                 EVC_VBC.State),
@@ -1848,7 +1872,7 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, Msg_Count,
+                                Events, Event_N, Cut, Msg_Count,
                                 TAF_L2_New, TAF_L2_Loc),
                      Input  => (EVC_Train_Data.State, Balise_Buffer.State,
                                 Group_Country)),
@@ -1981,7 +2005,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
-                                Events, Event_N, Stop_Q)),
+                                Events, Event_N, Cut, Stop_Q)),
           Pre => I <= EVC_Radio_Info.Count
    is
       Sl      : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
@@ -2089,7 +2113,7 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, Msg_Count, Radio_MA,
+                                Events, Event_N, Cut, Msg_Count, Radio_MA,
                                 Proposal, Proposal_Origin, Proposal_Cover,
                                 Stop_Q, TAF_L2_New, TAF_L2_Loc,
                                 Radio_SH, Radio_SH_N, Radio_SH_Ids),
@@ -3071,7 +3095,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
-                                Events, Event_N))
+                                Events, Event_N, Cut))
    is
       O : EVC_Movement_Authority.Outcome_T;
    begin
@@ -3134,7 +3158,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
-                                Events, Event_N))
+                                Events, Event_N, Cut))
    is
       O : EVC_Movement_Authority.Outcome_T;
    begin
@@ -3177,7 +3201,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
-                                Events, Event_N))
+                                Events, Event_N, Cut))
    is
       use type EVC_Modes.Mode_T;
       Now  : constant Boolean := EVC_Train_Data.Consist_Available;
@@ -3218,7 +3242,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
                                 EVC_National_Values.State,
-                                Events, Event_N))
+                                Events, Event_N, Cut))
    is
    begin
       Contact_Shortening (T, Train);
@@ -3464,7 +3488,8 @@ is
                         EVC_National_Values.State,
                         EVC_Levels.State, EVC_Sessions.State,
                         EVC_LS_Display.State,
-                        Events, Event_N, Msg_Count, Balise_Buffer.State,
+                        Events, Event_N, Cut, Msg_Count,
+                        Balise_Buffer.State,
                         TAF_L2_New, TAF_L2_Loc),
              Output => (MA_Board, Profile_Overlap, Covered_Flag,
                         Slippery_Flag),

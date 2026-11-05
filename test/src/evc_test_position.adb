@@ -5,6 +5,8 @@ with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P16;
 with ETCS_Track_Packets.P79;
+with ETCS_Track_Packets.P49;
+with ETCS_Track_Packets.P138;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P1;
 with ETCS_Variables;
@@ -23,6 +25,7 @@ with EVC_National_Values;
 with EVC_Odometry;
 with EVC_Ports;
 with EVC_Position;
+with EVC_Procedures;
 with EVC_Stored_Information;
 with EVC_Train_Data;
 with Interfaces;
@@ -1443,5 +1446,69 @@ package body EVC_Test_Position is
              "LRBG unknown: the RBC's message with NID_LRBG unknown "
              & "accepted, its SR distance given (3.6.2.2.2.3)");
    end Scenario_LRBG_Unknown_Accepted;
+
+   --  A.3.4.1.3 [1], situation b) of A.3.4.1.2: the group at 100 m
+   --  announces the groups at 300 and 700 m, gives an MA to 800 m, a
+   --  list of balise groups for the SH area and a reversing area from
+   --  600 to 700 m; the border of an RBC transition order is set at
+   --  650 m (an order is stored in level 2 only: its border is its
+   --  location); the group at 300 m shortens the MA to 500 m. Beyond the
+   --  new SvL: the link to the group at 700 m, the reversing area and the
+   --  order deleted, the link to the group at 300 m kept; the SH list
+   --  deleted as a whole (D without a location; not in SH, [9])
+   procedure Scenario_Stored_Cells is
+      W    : Writer_T;
+      OK   : Boolean;
+      P49  : ETCS_Track_Packets.P49.Packet_T;
+      P138 : ETCS_Track_Packets.P138.Packet_T;
+   begin
+      Start_X;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((200, 400), (20, 30))));
+      Add_Group (Group (20, 300));
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((300, 400)));
+      Carry (2, 1, MA_Of ((1 => 200)));
+      P49.Q_DIR := 2;
+      P49.N_ITER := 1;
+      P49.Q_NEWCOUNTRY_List (1).NID_BG := 20;
+      ETCS_Track_Packets.P49.Encode (P49, W, OK);
+      Check (OK, "stored cells: packet 49 encoded");
+      P138.Q_DIR := 2;
+      P138.Q_SCALE := 1;
+      P138.D_STARTREVERSE := 500;
+      P138.L_REVERSEAREA := 100;
+      ETCS_Track_Packets.P138.Encode (P138, W, OK);
+      Check (OK, "stored cells: packet 138 encoded");
+      Carry_Writer (1, 0, W);
+      Run_X (15_000);
+      Check (EVC_Stored_Information.Current.MA.EOA = 80_000,
+             "stored cells: the MA to 800 m");
+      Check (Pos.Linking.Count = 2, "stored cells: two links");
+      Check (EVC_Procedures.SH_List_Stored, "stored cells: the SH list");
+      Check (EVC_Procedures.Reversing_Area_Known,
+             "stored cells: the reversing area stored");
+      Pos.Set_Border (Pos.LRBG.Id, 55_000, OK);
+      Check (OK and then Pos.Border_Beyond (0),
+             "stored cells: the border of an RBC transition order at 650 m");
+      Run_X (31_000);
+      Check (EVC_Stored_Information.Current.MA.EOA = 50_000,
+             "stored cells: the MA shortened to 500 m");
+      Check (Pos.Linking.Count = 1
+             and then not EVC_Linking.Checked (Pos.Linking),
+             "stored cells: the link to the group at 700 m, beyond the new "
+             & "SvL at 500 m, deleted, the one at 300 m kept (A.3.4.1.3 "
+             & "[1])");
+      Check (not EVC_Procedures.SH_List_Stored,
+             "stored cells: the list of balise groups for the SH area "
+             & "deleted (A.3.4.1.3, not in SH [9])");
+      Check (not EVC_Procedures.Reversing_Area_Known,
+             "stored cells: the reversing area from 600 m deleted "
+             & "(A.3.4.1.3 [1])");
+      Check (not Pos.Border_Beyond (0),
+             "stored cells: the RBC transition order with its border at "
+             & "650 m deleted (A.3.4.1.3 [1])");
+   end Scenario_Stored_Cells;
 
 end EVC_Test_Position;

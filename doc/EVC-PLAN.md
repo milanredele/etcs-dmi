@@ -20054,3 +20054,66 @@ numbering of its groups).
 
 **B3361, the Train Data categories from the packet 11 (not taken: the
 bound).**
+### The stored information's cells left: the linking, the SH list, the transition order and the reversing area beyond a location, the record 12 of a linked group not announced, the BMM inhibition at a reset without a mode change (e6/stored-cells) (2026-11-05)
+
+**A.3.4.1.3, the four cells left (B036).** The premise held at the
+source: `EVC_Stored_Information.Apply` reached none of the four stores.
+Two facts shaped the build: `EVC_Procedures` depends on
+`EVC_Stored_Information` (Apply cannot call it), and calling
+`EVC_Position` from Apply would have turned `EVC_Position.State` from an
+input into an output along the fourteen callers of Apply. Built: Apply
+records the deletion's location (`Cut_Due`, `Cut_X`, the last one
+asked) and `EVC_Core.Stored.Apply_Cut` applies it to the other units
+right after each producer (after `Train_Data_Shortening` in
+`Evaluate_Stored_Information`, after `Release_Balise_Buffer` and after
+`Evaluate_Released` in `Release_Transition_Buffer`), before the
+procedures take the information of the cycle; a first version applied
+it in the next cycle and deleted the SH list that the released message
+3 of 4080421_02 had just given (the sequence regressed from step 174 to
+101; fixed by the placement). The cells: the linking, D[1] / D[10]:
+`EVC_Position.Delete_Linking_Beyond (X)` removes the links whose
+location (the cumulated distance from the SOLR) lies beyond X, keeps
+the ones in rear, ends the window of a removed link (`Expected` at most
+`Count + 1`) and deletes the linking when no link is left; decision: a
+linking taken in the cycle (`Linking_New`, set by `Commit_Linking` and
+`Take_Radio_Linking`, reset with the cycle) is the information of the
+message that asks for the deletion and is kept whole (3.8.5.1.5, as
+`Delete_Before` does for the other stores). The SH list, D / D[9]:
+deleted as a whole unless the train is in SH
+(`EVC_Procedures.Delete_Beyond`, In_SH); the first column's situations
+come with an MA, never in SH, so one rule serves both columns. The
+reversing area, D[1] / D[10]: an area starting beyond X goes, one
+ending beyond X ends at X (decision: as the stores cut their
+profiles); the reversing supervision information is U. The RBC
+transition order, D[1] / D[10]: its location is the border kept by
+`EVC_Position` (`Set_Border`); `Border_Beyond (X)` when the front end's
+border is beyond X, then `EVC_Sessions.Delete_RBC_Order` (the public
+procedure of 3.7.3.4 b), `Handover.Delete` behind it) and
+`EVC_Position.Delete_Border`. The radio infill area is not stored
+(infill not taken). Scenario_Stored_Cells (`EVC_Test_Position`, level
+1): the group at 100 m announces the groups at 300 and 700 m, gives an
+MA to 800 m, packet 49 and a reversing area from 600 to 700 m, a border
+is set at 650 m; the group at 300 m shortens the MA to 500 m: the link
+to 700 m deleted and the one to 300 m kept, the SH list deleted, the
+reversing area deleted, the border deleted. Before the fix the linking,
+SH list and reversing area checks failed (the border check came with
+`Border_Beyond`; an RBC order from a balise is not stored in level 1,
+so the case sets the border). Proofs: `evc_position`,
+`evc_procedures`, `evc_stored_information`, `evc_core-stored`: none
+unproved. Runner: 9990400_29 (SV21, SV22, SV30) passes (step 86, "the
+RBC transition is deleted": no position report at the border after the
+shortening); 3040400_03 (SV22, SV30) moves from step 76 to 67, traced:
+the linking reaction's brake stops the train at 305 m (h), the links of
+BGa (315 m) and BGc (400 m) are deleted by D[10], BGa (Q_LINK 1) read
+at 315 m is then not in the linking information, its message is taken
+(its plain text shown at step 70) and ours is in TR at 321 m; the
+sequence keeps the linking through steps 67 to 81 (BGa in its old
+window, the trip by the next group's linking reaction at 500 m). The
+table is built as printed; the disagreement is B3500 (decision), the
+triage line Seb6766c6 s076. Rows: A.3.4.1.3, a), Table, [1], [9], [10]
+and 3.7.3.3 done. B036 closed.
+
+**Left at the bound: B3386 (the record 12 of a linked group not
+announced with a spare value) and 5.22.3.1's resets without a mode
+change (B015).** Neither was started; their premises were not checked
+at the source.

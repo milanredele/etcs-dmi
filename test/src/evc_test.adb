@@ -167,6 +167,7 @@ begin
    Scenario_SL_Deletes_Invalid;
    Scenario_Crossing_Direction;
    Scenario_LRBG_Unknown_Accepted;
+   Scenario_Stored_Cells;
    Scenario_Relocation;
    Scenario_Repositioning;
    Scenario_MA_Repositioning;

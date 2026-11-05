@@ -36,5 +36,8 @@ package EVC_Test_Position is
    procedure Scenario_Crossing_Direction;
    --  3.6.2.2.2.3: a message of the RBC with NID_LRBG unknown accepted
    procedure Scenario_LRBG_Unknown_Accepted;
+   --  A.3.4.1.3 [1]: the linking, the SH list, the reversing area and the
+   --  RBC transition order at a shortened MA
+   procedure Scenario_Stored_Cells;
 
 end EVC_Test_Position;
