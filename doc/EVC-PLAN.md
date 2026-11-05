@@ -19358,3 +19358,22 @@ information, packet 73 with Q_SCALE 11) is rejected and not reported
 (3.16.4.3), but no JRU 12 M_ERROR 1 is recorded: EVC_Position gives no
 event for it (B3386, S1291957a onboard). 0 regressions. Row 3.16.4.1
 noted.
+
+**The rows A.3.1 Table and 4.4.6.1.10 re-read (done, no code).** A.3.1
+Table was partial with three things left: B788 (the repetition of the mode
+change report) and B844 (the FRMCS registration time) are done in the
+backlog, and both distances of metal immunity are built: 300 m in levels 0
+/ NTC (`EVC_BTM_Alarm.Immunity_Distance_Cm`, 3.15.7.2) and 300 m set by
+procedure in level 1 or 2 (`EVC_Procedures.BMM_Step`, the rows 5.22.5.1 to
+5.22.5.2). The radio values of the page (218) against the constants:
+waiting for the system version and for the acknowledgement of the session
+15 s (`Wait_Ms`), the session kept 5 minutes (`Keep_Ms`), the additional
+delay 60 s (`Extra_Ms`), the connection status timer 45 s
+(`Status_Timer_Ms`), the registration times 40 s
+(`EVC_Sessions.Network.Registration_Time_Ms`): no value wrong. The note
+rewritten, the row set done. 4.4.6.1.10 was partial for b) ("no SL
+case", B783): B783 is done, and b) has its scenario,
+`Scenario_Session_Sleeping` (SL entered and left in level 2, the session
+requested each time); c) is a row of its own, deferred (no safety critical
+fault is detected by this on-board yet), so the parent row is set done and
+c) stays tracked by its row. Clauses left: 54 (two partial rows done).
