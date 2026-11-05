@@ -19994,3 +19994,63 @@ item ended past the bound (120 of 160 calls). The line stays open as
 written; the reviewer's reading of item 7 (3.5.3.4 h), 3.5.3.4.2 defer the
 new session, ours does; the waiting byte of MSG_ONBOARD not set) is the
 starting point of its package.
+### The runner's driver and data: the stop in a level crossing's stopping area by the step, the header's group names resolved, the Train Data categories from the packet 11 (e5/runner-lx) (2026-11-05)
+
+**B3301, the stop in rear of a non-protected level crossing (done;
+runner).** Scoped first: the comment "Then, the train shall stop in rear
+of the non-protected LX" is in 5 sequences of sv30 (4060300_09,
+4080300_02, 4080300_07, 4080300_16, 9990500_05), 9 steps; 7 of them are
+followed at once by a `case` line, so a flag that holds from the step of
+the comment to the next step of another case, or to a step whose comment
+says the train overpasses, is driven only at 4080300_02 step 176 (step
+175's comment, no case line before step 176) and at 9990500_05 steps 101
+to 107 (blocked at 53 before them). 4060300_09's step 99 asks for the
+stop and its step 100, of the next case (4060300 83), overpasses the
+temporary EOA on purpose: the case line ends the flag before it, which
+is what the step-scoped attempt of last round lacked. Built:
+`S076_Run.LX_Stop_Asked`, set and cleared in `Run_Loaded`'s step loop;
+`S076_Run.LX_Stop_Cms` in `Drive_To`: while the flag holds and the
+on-board supervises the start of a non-protected crossing with Q_STOPLX
+1 as its temporary EOA (`EVC_Stored_Information.Current`: `LX.Present`,
+`LX.Stop`, `LX.Stop_From`, `Temporary.EOA`, measured from `Train.
+Est_Front` in the sense `Train.Ahead`, the on-board's own frame), the
+speed asked is half the distance to the middle of the stopping area per
+second, 0 within a metre; held at standstill there the train waits (the
+10 s give-up of `Drive_To` does not count) until the on-board releases
+the crossing (5.16.2.1: `LX.Present` false), then the chart's speed. At
+4080300_02 SV30 the train stops near 2146 m (L_STOPLX 100 m, LX start
+about 2196 m), the LX is released and BG22d at 2250 m is read in FS.
+Moved 3 sequences, 0 regressions: 4080300_02 SV21, SV22, SV30 from step
+176 to step 234 (S22ae7aef, onboard, B3520), traced at SV30 with DEBUG
+and a temporary print of the transition buffer: the RBC's message 3 of
+step 222 (L0 UN, 2800 m, level 2 announced by BG14d with D_LEVELTR 520,
+M_LEVELTR 3) is held in the transition buffer (Buffered 1); at BG17d at
+3000 m (packet 41, D_LEVELTR 0, M_LEVELTR 3, the same level: the order
+deleted and stored again, then the switch) the level becomes 2, the
+buffer is empty (Buffered 0, Has_Released False), no MA is in use and
+the mode stays UN where FS with "Entering FS" is expected; 4.8.5.4 a)
+deletes the sets only for an order to another level, 4.8.5.5 and
+4.8.5.6 release and re-evaluate them at the transition. Where the set is
+lost (the release or its re-evaluation in UN) is left to the on-board
+package (B3520).
+
+**B3360, the header's group names (tried and reverted; open).** Built
+as the brief's premise had it: in `S076_Run.Header_Holds`, a value
+"<BGn>" of NID_LRBG or NID_SOLR resolved to the 24-bit identity (NID_C,
+NID_BG of 7.4.1.1) of the sequence's telegrams tagged BGn with a suffix
+d or r when exactly one identity matches (the sv30 telegram tags are
+BG0d .. BGnd, LOOP and PACKETn: the letters never resolve). The whole
+runner: 24 regressions, 8 families in three versions (3070300_12 and
+_13 step 69, 3110300_01 step 148, 3110400_02 step 76, 3110600_01 step
+68, 3131100_11 step 69, 4060300_09 step 78, 5200800_02 step 51), each
+a header compared with another group's identity. The premise is wrong:
+a step's names are its test case's own, not the sequence's tags. At
+3110400_02 SV30, case 3110400 5 reads BG2d at 400 m (step 67) and BG3d
+at 600 m (step 74); its step 76 asks NID_SOLR=<BG2> Q_LRBG=2
+NID_LRBG=<BG1>, ours records SOLR 1048579 (NID_BG 3) and LRBG 1048578
+(NID_BG 2): the case's BG1 and BG2 are the sequence's BG2d and BG3d.
+Reverted; the line B3360 says what a resolution needs (the case's own
+numbering of its groups).
+
+**B3361, the Train Data categories from the packet 11 (not taken: the
+bound).**
