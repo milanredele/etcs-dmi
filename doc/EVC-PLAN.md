@@ -19907,3 +19907,15 @@ without a mode change, B3301 with the step-scoped flag, B3360 (the
 header's group names), B3361 (the runner's Train Data from the
 sequence's packet 11), B3340 (the user's decision); the review again
 (eight items, readings first, no backlog read).
+
+Decided by the user on 2026-11-05, after the sixty-fourth round:
+B3441, each qualifying error shall be reported: two balise group errors
+found while the connection to the supervising RBC is lost give two
+reports once the connection is set up again, one per detection
+(3.16.4.1, 3.6.5.1.4 l)), the reviewer's reading, to build in
+`EVC_Sessions.Reports`; B3340, the acknowledged Train Data values are
+kept per RBC, as recommended: the second bullet of 4.8.3 [3] compares
+the values sent with the ones that RBC acknowledged, one copy per
+session in `EVC_Radio.Session_Info_T`, `EVC_Radio_Authority.TD_Unacked`
+judging by it; with B3440 (the second bullet judged at the reception)
+these are build items of the next round.
