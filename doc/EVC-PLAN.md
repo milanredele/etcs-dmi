@@ -20193,3 +20193,113 @@ message carries packets 15, 21 and 27 is known only at `Buffer.Store`;
 the build is a flag per entry set there, an accessor, a field of
 `EVC_Procedures.Context_T` set in `EVC_Core.Modes`, D5 in
 `Train_Data_Step`, and a scenario in `EVC_Test_Procedures`.
+
+### Review of the sixty-fifth round: eight verdicts re-derived blind (e5/review-65) (2026-11-05)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items were taken. No
+code, no triage line and no line of the authors was changed (a
+temporary print in the runner's debug line, for item 6, was reverted).
+
+1. The acknowledged Train Data per RBC. Mine: the message 8 names the
+   set it acknowledges by the train's time stamp (8.7.4 field 6,
+   "Reference to received train data message"), so the second bullet
+   of 4.8.3 [3] compares with the values of the set sent under that
+   stamp, not with the current ones; they differ when the driver
+   changes the data while a set awaits its 8, or after a lost
+   connection (3.18.3.4.2 sends again, a new stamp). To whom: 3.18.3.4,
+   "modification of valid Train Data when a communication session is
+   already established", holds for each established session, so with
+   two sessions the changed set is due to both RBCs; 3.15.1.3.3 is the
+   one sending at the Accepting RBC's establishment. Ours sends the
+   change to the supervising RBC only and keeps one awaited set
+   (`TD_S`): a 3.15.1.3.3 set awaited from the Accepting RBC and then
+   superseded by a 129 to the other RBC leaves the Accepting RBC's 8
+   unmatched and its messages rejected. Author (e6/td-per-rbc): the
+   values sent (decision, the same reason); both gaps recorded as B3461
+   (onboard, open: the changed set to every established session, one
+   awaited set per session). Agree.
+2. Each error of a lost-connection wait. Mine: 3.6.5.1.4 l) makes each
+   error an event for a report, 8.4.1.5 allows one packet 4 per 136,
+   3.16.4.1 delays it to the connection: two balise group errors in a
+   wait give two 136 once set up, in the order found, one packet 4
+   each; radio errors M_ERROR 3 then 4 give two reports, 3 then 4.
+   Ours: `EVC_Sessions.Reports` queues per session (`Push`, `Pop`,
+   `Append`; `Bal` kept while the supervising connection is lost),
+   one 136 per session and cycle with the oldest code. Author (B3441):
+   the same. Agree (the decisions noted by both: two errors of one kind
+   in one cycle are one report, a full queue of 8 drops the oldest).
+3. A termination ordered while the connection is lost. Mine: the 156
+   is due at the order and considered sent (3.5.5.2 a), 3.5.4.5); the
+   session stays established until the 39, the last repetition
+   (3.5.5.3.1, 3.5.5.3.2) or the defined time (3.5.4.2.1); 3.5.4.3's
+   stop conditions do not name the order and only a connection brings
+   the 39, so the set-up requests and the connection status timer go on
+   (Lost at the timer's expiry, [2]), and stop when the session is
+   considered terminated ([3], No Connection). Author (B3381 with
+   B3442): decision, a session the on-board terminates is not
+   maintained: the requests and the timer stop at the order, Up to No
+   Connection by Table 2 [6]; ERA's 3050700_02 expects exactly that at
+   3020 m (ST03 removed, no ST04). Disagree on the reading; the
+   sequence supports the author's: B3540 (decision).
+4. The stored information's four cells after h). Mine: column "e, g -
+   j, l, m, o" of A.3.4.1.3: Linking, RBC transition order and
+   reversing area D[10] (beyond the max safe front end: an area ending
+   beyond is cut, one starting beyond deleted), the SH list D[9]
+   (deleted unless in SH). The next group marked linked whose link was
+   deleted: with a further link stored 3.4.4.4.2 rejects its message,
+   no error (3.16.4.3), no reaction; with none, linking consistency is
+   not checked (3.4.4.2.1.1) and the message is taken; never a linking
+   reaction. Ours (`EVC_Position.Delete_Linking_Beyond`,
+   `EVC_Procedures.Delete_Beyond`, `EVC_Core.Stored.Apply_Cut`) and the
+   author (B036): the same. Agree.
+5. The stop before a non-protected LX and the group names. Mine:
+   3.12.5.7, 3.12.5.8 and 5.16.2.1: the estimated front end anywhere in
+   the stopping area releases the temporary EOA and SvL, so the bench
+   driver stopping in its middle and moving on at the release is right.
+   Names: case 3110400 5 reads BG2d (400 m, comment NID 1048578) as its
+   BG1 and BG3d (600 m, 1048579) as its BG2: the step's names are the
+   case's own groups, not the tags. Author (B3301 done; B3360 tried with
+   the tags, 24 regressions, reverted, the same conclusion). Agree.
+6. 4080300_02 SV30 step 234. Mine: the message 3 of 2800 m is held in
+   the transition buffer (4.8.3 [2]); BG17d's order at 3000 m is for the
+   same level, so 4.8.5.4 a) does not delete the buffer and 4.8.5.5
+   releases it at the transition: MA in level 2, FS. Trace (a print of
+   `EVC_Radio_Authority.Buffered` per step): 1 from step 222 to 230,
+   the Train Data acknowledged (not the [3] gate), 0 after BG17d with no
+   MA and UN in level 2; the release path of
+   `EVC_Core.Stored.Release_Transition_Buffer` or the re-evaluation
+   loses it, not located to the line. Ours wrong. Author (S22ae7aef
+   onboard, B3520): the same, the same place. Agree.
+7. 3040400_03 SV30 step 67. Mine: ERA's PDF gives the linking's
+   Q_LINKREACTION 01 (service brake) for BGa (NID_BG 4) and BGb (5),
+   while step 50's comment says "No reaction"; with the data, BGb read
+   in BGa's window is 3.16.2.3.1 c) and the brake to 305 m is h), so
+   the table deletes the links beyond the max safe front end and
+   shortens the MA too (D[10] [11]: EOA the estimated front end, SvL
+   the max safe front end, no release speed). Ours has no MA at the
+   standstill (step 66), takes BGa's message (no linking left) and is
+   in TR at 321 m: the min safe front end past that EOA, not a linking
+   reaction. The sequence's continuation (FS, moving, BGa rejected)
+   holds only with its comment's "No reaction" (no h): BGa's expectation
+   ended by BGb, its message rejected by 3.4.4.4.2). Verdict: the table,
+   ours right, the sequence's data the defect. Author (Seb6766c6 s076,
+   B3500 decision pending): the same verdict; disagree that a decision
+   is pending: B3541.
+8. 3050700_02 SV30 step 139. Mine: packet 68 of the message 24 (LRBG
+   NID_BG 8, BG8d at 3900 m, D_TRACKCOND 890 m) starts the radio hole at
+   4790 m by the estimated front end (3.12.1.2.1.5); ERA's PDF has the
+   same values and 4731.0 m, 59 m before, about the over-reading of the
+   max safe front end over 831 m (3.12.1.2.1's general rule); the
+   connection status timer started at 4300 m expires before 4790 m.
+   Ours right, the sequence's location. Author (S44ed028d s076): the
+   same. Agree. Extra: at 3110400_02 SV30 steps 69, 76 and 79 pass, but
+   the runner prints no header value; the author's record gives SOLR
+   1048579 and LRBG 1048578 at step 76, matching the case's names.
+
+Counts: 8 items. Agreed: 6 whole (1, 2, 4, 5, 6, 8); item 7 agrees on
+the verdict and disagrees on the pending decision; item 3 disagrees
+(the reading of 3.5.4.3 at a termination; ERA's sequence on the
+author's side). Backlog lines: B3540 (decision: the set-up requests at
+a termination with the connection lost), B3541 (decision: B3500
+settled as the sequence's data). Calls: 95 of 130 at this point.
