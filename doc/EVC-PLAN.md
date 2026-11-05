@@ -19276,3 +19276,38 @@ area), B3302 (the speed information judged by the object a step
 names), the header check resolving a group's sequence name, packet 131
 by radio judged by its own session, B781's last two bullets, B1360's
 22; the review again (eight items, readings first, no backlog read).
+
+### The runner's chart and header: the speed information by object, the stop in a level crossing's stopping area, the header's group names resolved (e5/runner-chart-3) (2026-11-05)
+
+**B3302, the speed information judged by the object a step names
+(done; runner).** `S076_Run.Speed_Info_Object` before the whole
+judgement of `Speed_Info_Shown`: a step "speed and distance monitoring
+information removed / NOT displayed" whose comment names one object is
+judged by it, the rest of the information staying shown in FS and UN
+(DMI 8.2.1.5.7, Table 10): "Indication Status" or the Time to
+Indication by the DMI's own display condition of the TTI
+(`DMI_Status.TTI_Displayed`, 3.13.10.3.10: the TTI ends at the
+Indication location), the warning of over-speeding by the status of the
+speed message (neither Overspeed nor Warning), the former EOA deleted
+and the MA or the speed not updated not judged (R_Runner: the DMI shows
+nothing as gone); a comment naming none keeps the judgement of the
+whole information. 18 sequences moved, 0 regressions: 11 passed
+(3131030_23 in three versions, 3131030_24 SV30, 3160200_21 SV22 and
+SV30, 4080418_04 SV30, 5080400_02 in three versions); the seven others,
+each new step traced: 3131030_24 SV21 / SV22 step 56 (Sc70786e6, s076:
+the SV21 / SV22 file puts the 10 km/h restriction at 2000 m, D_STATIC
+1900, where the twin has 1827 m, keeps the twin's 730 m with "1270 m
+before the restriction", while its own workbook's Indication rows are
+the twin's, 992.0 m at 50 km/h: Indication near 900 m, ours in ceiling
+supervision at 790 m; a copy of the SV30 file with the SV21 comments
+passes, one of the SV21 file with the SV30 versions does not),
+5190300_01 in three versions step 73 (S862b2e14, s076: M_MODE 21 in LS,
+not a value of 7.5.1.72, ERA's PDF the same and M_MODE 12 for the same
+LS at step 103), 9990400_44 SV22 / SV30 step 91 (Seabc1f7c, model,
+B3361: the sequence changes NC_CDTRAIN 7 to A, the runner's driver
+enters the category from the workbook's brake position both times, so
+3.18.3.7 b) is not triggered, the RBC's buffered MA of step 66 with its
+linking is released at the immediate transition of step 83, ma 747 to
+2747 m, and BG3d, linked and not in it, is rejected; with Q_LINK 0 in a
+copy the text is shown), SV21 blocked at 89 (E7-version). The step 85
+of 9990400_44, now not judged, would show the same released MA.

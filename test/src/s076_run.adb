@@ -18,6 +18,7 @@ with DMI_Core;
 with DMI_Data_Entry;
 with DMI_Protocol;
 with DMI_Radio_Data;
+with DMI_Status;
 with DMI_System_Status;
 with DMI_Observe;
 with DMI_Windows;             use DMI_Windows;
@@ -3652,6 +3653,56 @@ package body S076_Run is
             User_Settings.Speed_Info_Visible,
          when others => False);
 
+   --  "removed" or "not displayed" judged by the one object of the speed
+   --  and distance monitoring information the step's comment names, the
+   --  rest of it staying shown in FS and UN (DMI 8.2.1.5.7, Table 10):
+   --  the Time to Indication (3.13.10.3.10; "coherent with Indication
+   --  Status": the TTI ends at the Indication location) by the DMI's own
+   --  display condition (DMI_Status.TTI_Displayed, Table 15a), the
+   --  warning of over-speeding by the supervision status of the speed
+   --  message (neither Overspeed nor Warning); the former EOA deleted and
+   --  the MA or the speed not updated say nothing the DMI shows as gone:
+   --  not judged. Matched in the corpus (sv30): the TTI 2 sequences
+   --  (3131030_23, _24), the warning 1 (5190300_01), not judged 4
+   --  (3160200_21, 4080418_04, 5080400_02, 9990400_44); a comment naming
+   --  no object keeps the judgement of the whole information (Matched
+   --  False)
+   function Speed_Info_Object (St : Step_T; St_W : State_Word_T;
+                               Matched : out Boolean) return Judgement_T is
+      C : constant String := " " & Image (St.Comment) & " ";
+      S : constant B.State_T := B.State;
+   begin
+      Matched := True;
+      if St_W not in Removed | Not_Displayed then
+         Matched := False;
+         return NJ (R_Runner, "speed information");
+      elsif Has (C, "Time to Indication") or else Has (C, " TTI ")
+        or else Has (C, "Indication Status")
+      then
+         return Shown (St_W, DMI_Status.TTI_Displayed,
+                       DMI_Status.TTI_Displayed,
+                       "speed information: the Time to Indication");
+      elsif Has (C, "warning") or else Has (C, "overspeed")
+        or else Has (C, "over-speed") or else Has (C, "over- speed")
+      then
+         --  MSG_SPEED_STATE status: 2 Overspeed, 3 Warning
+         return Shown (St_W, S.Sup_Status in 2 | 3, S.Sup_Status in 2 | 3,
+                       "speed information: the warning (status"
+                       & Img (S.Sup_Status) & ")");
+      elsif Has (C, "former EOA") then
+         return NJ (R_Runner,
+                    "speed information: the former EOA deleted not judged");
+      elsif Has (C, "not updated") or else Has (C, "not change")
+        or else (Has (C, "updated") and then Has (C, "not displayed"))
+      then
+         return NJ (R_Runner,
+                    "speed information: the MA or the speed not updated "
+                    & "not judged");
+      end if;
+      Matched := False;
+      return NJ (R_Runner, "speed information");
+   end Speed_Info_Object;
+
    function DMI_Expect (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
       St_W : constant State_Word_T := State_Of (W (4));
@@ -3769,7 +3820,12 @@ package body S076_Run is
               Speed_Info_Shown
               or else (St_W = Displayed
                        and then SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH);
+            Matched : Boolean;
+            J : constant Judgement_T := Speed_Info_Object (St, St_W, Matched);
          begin
+            if Matched then
+               return J;
+            end if;
             return Shown (St_W, Dial, Dial,
                           "speed and distance information on the DMI");
          end;
