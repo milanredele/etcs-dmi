@@ -1384,6 +1384,19 @@ is
 
    --  @req 5.22.2.1, 5.22.2.2, 5.22.5.1, 5.22.5.1 a), 5.22.5.1 b), 5.22.5.1 c)
    --  @req 5.22.5.2, 5.22.5.2.1
+   --  5.22.2, 5.22.3: the inhibition procedure triggered, by the driver
+   --  (BMM_Step) or at a reset of the big metal masses (BMM_Reset), the
+   --  train's estimated front end at From
+   procedure Start_BMM (From : Dist_T)
+     with Global => (Output => (BMM_On, BMM_From),
+                     In_Out => (Events, Event_N))
+   is
+   begin
+      BMM_On := True;
+      BMM_From := From;
+      Record_Event (Event_BMM, 1, 0);
+   end Start_BMM;
+
    procedure BMM_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (EVC_Driver_Requests.State,
                                 EVC_Track_Conditions.State,
@@ -1426,9 +1439,7 @@ is
         and then C.Level_Valid and then C.Level in L1 | L2
         and then C.Mode in M_SB | M_SH | M_SR
       then
-         BMM_On := True;
-         BMM_From := S.Train.Est_Front;
-         Record_Event (Event_BMM, 1, 0);
+         Start_BMM (S.Train.Est_Front);
       elsif BMM_On then
          --  5.22.5.1 a) in either direction (5.22.5.2), c)
          if EVC_Driver_Requests.BMM_Revoke_Selected
@@ -1966,6 +1977,36 @@ is
       end if;
    end Delete_On_Mode_Entry;
 
+   --  5.22.3.1: entering To resets the big metal masses of the store
+   --  (EVC_Core.Modes.Delete_On_Mode_Entry, after this unit's
+   --  Mode_Changed in the same Enter_Mode, 4.10) with the antenna in one
+   --  of them (its min and max safe positions against the area, as
+   --  EVC_Track_Conditions.BMM_At_Antenna): the inhibition started.
+   --  5.22.3.1.1: not on entering NP or RV. Decision: on entering SB, SH
+   --  or SR only, the modes of the reset in which the procedure is not
+   --  ended by the same switch (5.22.5.1 b): PS and SL end it at once)
+   --  @req 5.22.3.1, 5.22.3.1.1
+   procedure BMM_Reset (To : Mode_T; C : Context_T; S : Snapshot_T)
+     with Global => (Input  => (EVC_Track_Conditions.State, EVC_Origins.State,
+                                Orientation_Now),
+                     In_Out => (BMM_On, BMM_From, Events, Event_N))
+   is
+   begin
+      if To in M_SB | M_SH | M_SR and then not BMM_On
+        and then EVC_Track_Conditions.BMM_At_Antenna
+                   (Origin_Table,
+                    (Valid     => S.Train.Position_Valid,
+                     Sense     => Orientation_Now,
+                     Est_Front => S.Train.Est_Front,
+                     Min_Front => S.Train.Min_Safe_Front,
+                     Max_Front => S.Train.Max_Safe_Front,
+                     others    => <>),
+                    C.Antenna_Offset)
+      then
+         Start_BMM (S.Train.Est_Front);
+      end if;
+   end BMM_Reset;
+
    procedure Mode_Changed (From, To : Mode_T; C : Context_T;
                            S : Snapshot_T)
    is
@@ -2011,6 +2052,7 @@ is
          Status (SS_Balise_Read_Error_Brake, 1);
       end if;
       Delete_On_Mode_Entry (To);
+      BMM_Reset (To, C, S);
 
       if To = M_TR then
          Demand.EB := True;

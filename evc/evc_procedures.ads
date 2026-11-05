@@ -416,6 +416,8 @@ is
                            S : Snapshot_T)
      with Global => (In_Out => State,
                      Input  => (EVC_Sessions.State,
+                                EVC_Track_Conditions.State,
+                                EVC_Origins.State,
                                 EVC_Radio_Authority.State)),
           Post => (if To = M_TR then Brake_Demand.EB);
 

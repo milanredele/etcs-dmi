@@ -642,6 +642,46 @@ package body EVC_Test_Profiles is
              & "(3.8.5.1.5)");
    end Scenario_MA_Shortening;
 
+   --  A.3.4.1.3 [1], situation b) of A.3.4.1.2: a set of national values
+   --  not yet applicable, due D metres beyond the group at 100 m, and an
+   --  MA to 800 m; the MA shortened to 500 m by the group at 300 m. Due
+   --  at 700 m, beyond the new SvL: deleted; due at 400 m, in rear of
+   --  it: kept
+   procedure Scenario_NV_Shortening is
+      procedure Run (D : Natural) is
+         P : T3.Packet_T;
+      begin
+         Start_X;
+         P.Q_DIR := 2;
+         P.Q_SCALE := 1;
+         P.D_VALIDNV := ETCS_Variables.D_VALIDNV_T (D);
+         P.NID_C := 123;
+         Add_Group (Group (10, 100));
+         Add_Group (Group (20, 300));
+         Carry (1, 0, P);
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 1, MA_Of ((300, 400)));
+         Carry (2, 1, MA_Of ((1 => 200)));
+         Run_X (15_000);
+         Check (SI.Current.MA.EOA = 80_000 and then NVa.Pending,
+                "national values shortened: the MA to 800 m, a set due"
+                & D'Image & " m beyond the group stored");
+         Run_X (31_000);
+         Check (SI.Current.MA.EOA = 50_000,
+                "national values shortened: the MA shortened to 500 m");
+      end Run;
+   begin
+      Run (600);
+      Check (not NVa.Pending,
+             "national values shortened: the set due at 700 m, beyond the "
+             & "new SvL at 500 m, deleted (A.3.4.1.3 [1])");
+      Run (300);
+      Check (NVa.Pending,
+             "national values shortened: the set due at 400 m, in rear of "
+             & "the new SvL at 500 m, kept");
+   end Scenario_NV_Shortening;
+
    --  3.18.2: national values, now or at a location, the countries;
    --  A.3.2 defaults; the packet converted
    procedure Scenario_National_Values is

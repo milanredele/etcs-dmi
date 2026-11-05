@@ -1856,6 +1856,38 @@ package body EVC_Test_Procedures is
              & "announced BMM area");
    end Scenario_BMM;
 
+   --  5.22.3.1: in SR, level 1, a big metal mass from 40 m to 240 m (the
+   --  group at 20 m); the train stopped with its front at Front_M, the
+   --  driver selects Shunting: entering SH resets the big metal masses
+   --  (4.10). With the antenna in the area the inhibition is started as
+   --  if the driver had; with the antenna in rear of it, not
+   procedure Scenario_BMM_Reset is
+      procedure Run (Front_M : Integer) is
+      begin
+         Begin_Scenario (M_SR, L1);
+         Group (3, 20);
+         Add (ST.Big_Metal_Mass (20, 200));
+         Close;
+         Run_Front (Front_M, 25);
+         V_Cms := 0;
+         Cycle;
+         Cycle;
+         Driver (7);
+         Cycle;
+         Cycle;
+      end Run;
+   begin
+      Run (100);
+      Check (EVC_Core.Mode = M_SH and then EVC_Procedures.BMM_Inhibited
+             and then Status_BMM = 1,
+             "5.22.3.1: the big metal masses reset on entering SH with the "
+             & "antenna in the area: the inhibition started, indicated");
+      Run (25);
+      Check (EVC_Core.Mode = M_SH and then not EVC_Procedures.BMM_Inhibited,
+             "5.22.3.1: the same reset with the antenna in rear of the "
+             & "area: no inhibition");
+   end Scenario_BMM_Reset;
+
    --  3.15.7 Tolerance of big metal masses: the BTM alarm of the BTM port
    --  (EVC_Ports: one byte, 1 raised, 0 ended), ignored or answered by
    --  System Failure (3.15.7.6, EVC_BTM_Alarm; 4.6.3 [13] the cycle after)
@@ -2846,6 +2878,7 @@ package body EVC_Test_Procedures is
       Scenario_Text_Message_Room;
       Scenario_DMI_Restart_Displayed;
       Scenario_BMM;
+      Scenario_BMM_Reset;
       Scenario_BTM_Alarm;
       Scenario_Mode_Speeds;
       Scenario_Brake_Reevaluated;

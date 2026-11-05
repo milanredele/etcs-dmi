@@ -388,6 +388,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 Events, Event_N))
    is
    begin
@@ -419,6 +420,21 @@ is
            (T, O.Delete_X, O.Delete_To, O.Delete_Before);
          --  [8], [13]: the location based texts beyond the same location
          EVC_Text_Messages.Delete_Beyond (O.Delete_X);
+         --  [1], [10]: the national values not yet applicable, due at a
+         --  location beyond the same location
+         if EVC_National_Values.Pending then
+            declare
+               L : constant Location_T := EVC_National_Values.Pending_At;
+               S : constant Sense_T :=
+                 (if L.Origin /= 0 and then T (L.Origin).Used
+                  then T (L.Origin).Sense else Plus);
+            begin
+               if A (S, Frame (T, L, Estimated_Item)) >= A (S, O.Delete_X)
+               then
+                  EVC_National_Values.Delete_Pending;
+               end if;
+            end;
+         end if;
       end if;
    end Apply;
 
@@ -930,6 +946,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 Events, Event_N))
    is
       O : EVC_Movement_Authority.Outcome_T;
@@ -1021,6 +1038,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 EVC_LS_Display.State,
                                 Events, Event_N))
    is
@@ -1962,6 +1980,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 Events, Event_N, Stop_Q)),
           Pre => I <= EVC_Radio_Info.Count
    is
@@ -3051,6 +3070,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 Events, Event_N))
    is
       O : EVC_Movement_Authority.Outcome_T;
@@ -3113,6 +3133,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 Events, Event_N))
    is
       O : EVC_Movement_Authority.Outcome_T;
@@ -3155,6 +3176,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 Events, Event_N))
    is
       use type EVC_Modes.Mode_T;
@@ -3195,6 +3217,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_Text_Messages.State,
+                                EVC_National_Values.State,
                                 Events, Event_N))
    is
    begin

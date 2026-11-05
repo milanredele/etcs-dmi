@@ -47,6 +47,10 @@ package EVC_Test_Authority is
    --  5.8.4.1 f), g): the override ended by an MA of the RBC in level 2
    --  and by a group not in the SR list of packet 63
    procedure Scenario_Override_Ends_By_Radio;
+
+   --  A.3.5.2: a group read in the cycle that passes the EOA, the LOA or
+   --  the former EOA: its message taken first (its three examples)
+   procedure Scenario_Group_Read_At_EOA;
    procedure Scenario_Shunting_L2;
    procedure Scenario_Radio_Acceptance;
    procedure Scenario_Transition_Buffer;

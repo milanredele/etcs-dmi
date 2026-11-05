@@ -184,6 +184,7 @@ begin
    Scenario_End_Section_Timer;
    Scenario_LOA_Timer;
    Scenario_MA_Shortening;
+   Scenario_NV_Shortening;
    Scenario_National_Values;
    Scenario_National_Values_Kept;
    Scenario_Track_Conditions;
@@ -444,6 +445,7 @@ begin
    Scenario_PT_Acceptance_Level;
    Scenario_Linked_Group_At_EOA;
    Scenario_Override_Ends_By_Radio;
+   Scenario_Group_Read_At_EOA;
    Scenario_Shunting_L2;
    EVC_Test_Shapes.Scenario_Radio_SH_List;
    Scenario_Radio_Acceptance;

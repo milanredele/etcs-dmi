@@ -523,7 +523,8 @@ is
      with Global => (In_Out => (State, EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
-                                EVC_Text_Messages.State),
+                                EVC_Text_Messages.State,
+                                EVC_National_Values.State),
                      Input  => (EVC_Origins.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State));
 

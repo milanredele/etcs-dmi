@@ -19454,3 +19454,86 @@ case", B783): B783 is done, and b) has its scenario,
 requested each time); c) is a row of its own, deferred (no safety critical
 fault is detected by this on-board yet), so the parent row is set done and
 c) stays tracked by its row. Clauses left: 54 (two partial rows done).
+### The stored information's table: the columns of A.3.4.1.3 against the stores, the examples of A.3.5.2, the automatic BMM inhibition (e6/stored-columns) (2026-11-05)
+
+**A.3.4.1.3, the columns "a - d, f, n" and "e, g - j, l, m, o" (B036).**
+Every situation reaches the stores through
+`EVC_Stored_Information.Apply` with the location of the outcome: the
+new SvL ([1]; a) `Take_Stop`, b) f) `EVC_Movement_Authority.Accept_MA`,
+c) d) n) `MA_Timer_Deletion`) or the max safe front end ([10]; e)
+`MA_Timer_Deletion`, g) h) l) m) `Linking_Shortening`, i)
+`Contact_Shortening`, j) `Train_Data_Shortening`, o)
+`Consist_Shortening`, 4.4.21.1.12: built, so 3.7.3.3 and 3.8.2.5.1 no
+longer leave o)). The cells other than U, row by row (k was done):
+
+| Row (column 1 / column 2) | Store | Deleted / reset by | Built |
+|---|---|---|---|
+| Not yet applicable National Values D[1] / D[10] | `EVC_National_Values` (Pending_At) | `Apply` calls `EVC_National_Values.Delete_Pending` when the set is due at or beyond the location | fixed (`Scenario_NV_Shortening`, failed before) |
+| Linking D[1] / D[10] | `EVC_Position` (Links, against the SOLR) | none | left (B036) |
+| Movement Authority D[1][3] / D[10][11] | `EVC_Movement_Authority` | the MA operations; [11] `Shorten_To_Train` (Withdrawn EOA and SvL) | yes |
+| Gradient, International SSP, Axle load SP D[1] / D[10] | `EVC_Track_Description` | `Delete_Beyond` (Cut_Beyond) | yes |
+| List of balise groups for SH area D / D[9] | `EVC_Procedures` (SH_List) | only with the SH mode profile (3.12.4.4) | left (B036) |
+| Signalling related Speed Restriction D[1] / D[10] | `EVC_Movement_Authority` (Main_Finish) | `Delete_Beyond` | yes |
+| Route Suitability Data D[1] / D[10] | `EVC_Track_Description` | `Delete_Beyond` | yes |
+| Plain and Fixed Text (location based) D[8] / D[13] | `EVC_Text_Messages` | `Delete_Beyond` (start beyond the location) | yes |
+| Mode Profile D[1][7][14] / D[10][12] | `EVC_Movement_Authority` (Profiles, Ack_Start in the record) | `Delete_Beyond` (start beyond: the window goes with it) | yes |
+| RBC Transition Order D[1] / D[10] | `EVC_Sessions` (Take_Transition) | none | left (B036, not this package's unit) |
+| Radio Infill Area information D[1] / D[10] | not stored (infill not taken) | - | n/a |
+| Track Conditions, Big Metal Masses R[1] / R[10] | `EVC_Track_Conditions` | `Delete_Beyond` (Cond, Traction, BMM, Platform, Current) | yes |
+| Reversing Area Information D[1] / D[10] | `EVC_Procedures` (Rev) | none | left (B036) |
+| Permitted Braking Distance D[1] / D[10] | `EVC_Track_Description` (PBD_S) | `Delete_Beyond` | yes |
+| Default Gradient for TSR U[4], TAF U[6], SR list U[2] | - | unchanged | yes |
+
+The fix: a set of national values received with D_VALIDNV beyond the
+group and not yet applicable is deleted when the location where it
+becomes applicable is at or beyond the location of the deletion
+(compared as the stores compare their items: the estimated location of
+the item, in the sense of its origin). Scenario_NV_Shortening
+(`EVC_Test_Profiles`, next to Scenario_MA_Shortening: the groups at 100
+and 300 m, the MA from 800 to 500 m): the set due at 700 m deleted
+(failed before the fix), the set due at 400 m kept. Rows: A.3.4.1.3 b)
+c) d) and the footnotes [7] [8] [11] [12] [13] done; A.3.4.1.3, a),
+Table, [1], [9], [10] partial with the four cells left; 3.8.2.5.1 done
+(o) built); 3.7.3.3 partial for the cells left. B036 narrowed to them.
+
+**A.3.5.2 (B037).** In 4.0.0 there are three examples. Each is built
+in Scenario_Group_Read_At_EOA (`EVC_Test_Authority`, where the
+level 1 groups, the level 2 start, the override's driver requests and
+packet 137 have their helpers): the train stands at 285 m, then moves
+35 m in one cycle over the group 20 at 296 m and past the location at
+300 m with its min safe antenna and front end. Example 1, level 1: the
+group extends the MA of the group 10 from 300 to 800 m: FS, EOA 800 m;
+without the extension the same move trips. Example 2: the override
+selected at standstill at 285 m (SR, the former EOA 300 m), the group
+carries "stop if in SR": SR, no trip; the same group at 330 m, read
+after the former EOA is passed and the override ended (5.8.4.1 c):
+the trip by "stop if in SR" (Trip_Reason SR_Stop_Order). Example 3,
+level 2: the RBC's MA ends with an LOA at 300 m (V_EMA 20 km/h), the
+group carries an immediate order to level 0: level 0, no trip; without
+the order the trip. The cycle's order (`EVC_Core`'s header, tagged
+A.3.5.2: the ports, the position, the stored information, then the
+monitoring and the procedures) gives the three; no code changed. Row
+A.3.5.2 done; B037 closed.
+
+**5.22.3.1, the automatic BMM inhibition (B015).** The store of the big
+metal masses (`EVC_Track_Conditions`, BMM_S) is reset in four places:
+the deletions of `EVC_Stored_Information.Apply` (cut beyond the new
+SvL or the max safe front end: in advance of the max safe antenna, so
+the antenna is never in the part reset), the entry into NP, SB, PS, SH,
+SR, SL or RV (`EVC_Core.Modes.Delete_On_Mode_Entry`, 4.10), the desk
+closed in the start of mission (A.3.4.1.3 k) and the Supervised
+Manoeuvre authorisation in the opposite direction. Built: the mode
+entry. `EVC_Procedures.Mode_Changed`, called by `Enter_Mode` just before
+`Delete_On_Mode_Entry`, calls `BMM_Reset`: on entering SB, SH or SR with
+the antenna's min and max safe positions in a stored area
+(`EVC_Track_Conditions.BMM_At_Antenna`, the frame of the monitoring's
+BTM alarm), the inhibition starts through `Start_BMM`, the entry the
+driver's request now shares (JRU event Event_BMM, the DMI's status).
+Not on NP or RV (5.22.3.1.1); decision: not on PS or SL either, whose
+switch ends the procedure by 5.22.5.1 b). Scenario_BMM_Reset
+(`EVC_Test_Procedures`): SR in level 1, a big metal mass from 40 to
+240 m, the train stopped with its front at 100 m, the driver selects
+Shunting: SH and the inhibition indicated (failed before); front at
+25 m: SH, no inhibition. Rows: 5.22.3.1.1 done, 5.22.3.1 partial for
+the two resets without a mode change; B015 narrowed to them and to
+4.4.18.1.5.
