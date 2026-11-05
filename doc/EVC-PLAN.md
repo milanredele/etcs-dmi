@@ -19354,3 +19354,103 @@ outside the named subprograms: `EVC_Sessions.Messages_Rejected` and its
 counter (an accessor for the tests), `EVC_Sessions.Rejected_By_Tables` and
 `Take_Mission_Answer` (body-local, out of `Take_Message`), the spec of
 `EVC_Sessions.Take_Message` (its `@req`).
+### The safe radio connection's error report: M_ERROR 5 when re-established, the balise group error reports re-read, the rows A.3.1 and 4.4.6.1.10 (e6/sessions-contact) (2026-11-05)
+
+**B024, M_ERROR 5 once the connection is re-established (done).** The
+premise held at the source: `EVC_Sessions.Supervise_Contact` built
+3.16.3.4.1 to .5 and 3.16.3.4.3 (60 s after the expiry the connection
+released and asked again, `NV.Reconnected`), and no code requested M_ERROR
+5 (`Request_Error` with 3 and 4 in `EVC_Sessions`, 0, 1, 2, 7 to 10 in
+`Request_Balise_Errors`). 7.5.1.64 reads M_ERROR 5 "Radio: safe radio
+connection error (ref. 3.16.3.4, to be sent when communication links
+re-established)"; 3.16.4.1 reports an error in level 2 "as soon as the
+availability of a safe radio connection permits". Built: `NV.Released`,
+the session whose connection 3.16.3.4.3 released (kept while that session
+lasts, also through the reset of `NV` by a new message); `Take_Event` on
+Connection_Set_Up of that session from Connection_Lost calls
+`Reports.Request_Error (S, 5)` once, so the position report with packet 4
+goes in the next `Produce` (the session established again). Decision: no
+report when a new message ends the reaction before the 60 s: nothing was
+released, nothing "re-established". Scenario
+`Scenario_Contact_Error_Report` (EVC_Test_Sessions; T_NVCONTACT 10 s, no
+reaction): a message 20 s after the expiry, no release and no report; the
+next expiry and 60 s more, released, nothing while down; set up again, one
+136 with M_ERROR 5; lost and set up again, none more. Before the fix it
+failed at "once the connection is re-established" (0 reports) and at the
+check after it; after, green. Proof of `evc_sessions`: none unproved,
+margin 6641 steps.
+
+The runner: `S076_Run.Timer_Input` runs `<T_STEP>` for the seconds its
+comment gives (A.3.1's additional delay of 60 s, the connection status
+timer of 45 s, the 30 s of a DMI message). 32 sequences moved (12 of them
+SV30), 0 regressions; every new step traced: 4120100_06, _09, _11, _16
+and 5110400_02 pass; 3160400_01 fails at step 85 (the M_ERROR 1 of a
+balise group read while the connection was lost: B009 below);
+3160300_01 at 156 (a message marked "[faulty] MAC-Error" given decodable,
+B3380, Se794ff7e model); 3050700_02 at 113 (an order to terminate while the
+connection is down: ours sends 156 and keeps the set-up requests, the
+connection status timer not stopped, 3.5.7.4, B3381, Sffc229a2 onboard);
+3050700_03 at 73 (the RTM model gives no set-up failure after EURORADIO's
+40 s, B3382, Sa8a3ba1a model); 3050400_03 at 82 (no hour glass after an
+RBC data entry while terminating, B3383, S7e2edbdf onboard); 4120100_02 at
+239 (the release of 3.16.3.4.3 at 305.5 s comes before the 136 of 1625 m
+and the sequence confirms no connection; the 30 s of step 211 run from the
+step before, not from the display, B3384, S13c9beb3 model); 9990400_19 at
+120 (the reach-point of step 119 ignores D_LEVELTR 100 m, B3385, S863aab40
+model). 9990200_03 (step 97, the difference of two T_NVCONTACT) and
+9990200_04 (step 70, s076) did not move. Rows 3.16.3.4.3, 3.16.4.1 and
+3.6.5.1.4 l) noted; `@req 3.16.3.4.3` on `Take_Event`.
+
+**B009, the balise group error reports re-read (done, narrowed to one
+missing report).** The premise was old: the row 3.16.4.1 is done and
+`EVC_Sessions.Reports.Request_Balise_Errors` requests M_ERROR 0, 1, 2, 7,
+8, 9, 10. At the sequences: 3060100_01 SV30 (blocked at 135 by the
+extractor) passes its steps 72, 88 and 118 (136 with M_ERROR 0, 1, 2);
+3160200_15 passes; 4120100_06 and 4120100_09 pass since the T_STEP of
+B024; 3160200_02 is blocked at step 54 by a timer without a name (the
+emergency brake after a service brake that fails to apply, "implementation
+dependent" by its comment), a runner gap no fix of the reports touches.
+3160400_01 showed the report the sequences expect and ours did not send: a
+linked group's inconsistent message (BG2d, N_PIG 2 for the second
+telegram, step 77 at 1700 m) read while the safe radio connection was lost
+(SA-DISCONNECT at 700 m), M_ERROR 1 expected in the 136 after the
+SA-CONNECT.Confirm (step 85, 1900 m). Ours dropped it:
+`Request_Balise_Errors` took an error only while the supervising session
+was in the state Established, and `Produce` gave it to the established
+sessions of a report and forgot it. 3.16.4.1: "errors shall be reported as
+soon as the availability of a safe radio connection permits". Built:
+`Request_Balise_Errors` takes the error while the supervising session is
+Established or Connection_Lost (the session kept, 3.5.4.1); `Produce`
+keeps it while that session's connection is lost and gives it once the
+connection is set up again (decision: the last error of the wait, one
+report, as within a cycle). Scenario `Scenario_Balise_Error_While_Lost`
+(EVC_Test_Sessions): level 2, the connection lost, a linked group with a
+balise skipped at 300 m: nothing sent while lost; set up again, one 136
+with M_ERROR 1. Before the fix: 0 reports; after, 1. Proof of
+`evc_sessions-reports`: none unproved, margin 978 steps. Runner: 3160400_01
+moves from step 85 to 116 (SV22, SV30; SV21 blocked at 112 by the system
+version of BG5d), its steps 85 (M_ERROR 1) and 107 (M_ERROR 5, item B024)
+pass; step 116 traced: BG5d (marked linked, not in the linking
+information, packet 73 with Q_SCALE 11) is rejected and not reported
+(3.16.4.3), but no JRU 12 M_ERROR 1 is recorded: EVC_Position gives no
+event for it (B3386, S1291957a onboard). 0 regressions. Row 3.16.4.1
+noted.
+
+**The rows A.3.1 Table and 4.4.6.1.10 re-read (done, no code).** A.3.1
+Table was partial with three things left: B788 (the repetition of the mode
+change report) and B844 (the FRMCS registration time) are done in the
+backlog, and both distances of metal immunity are built: 300 m in levels 0
+/ NTC (`EVC_BTM_Alarm.Immunity_Distance_Cm`, 3.15.7.2) and 300 m set by
+procedure in level 1 or 2 (`EVC_Procedures.BMM_Step`, the rows 5.22.5.1 to
+5.22.5.2). The radio values of the page (218) against the constants:
+waiting for the system version and for the acknowledgement of the session
+15 s (`Wait_Ms`), the session kept 5 minutes (`Keep_Ms`), the additional
+delay 60 s (`Extra_Ms`), the connection status timer 45 s
+(`Status_Timer_Ms`), the registration times 40 s
+(`EVC_Sessions.Network.Registration_Time_Ms`): no value wrong. The note
+rewritten, the row set done. 4.4.6.1.10 was partial for b) ("no SL
+case", B783): B783 is done, and b) has its scenario,
+`Scenario_Session_Sleeping` (SL entered and left in level 2, the session
+requested each time); c) is a row of its own, deferred (no safety critical
+fault is detected by this on-board yet), so the parent row is set done and
+c) stays tracked by its row. Clauses left: 54 (two partial rows done).
