@@ -19276,3 +19276,81 @@ area), B3302 (the speed information judged by the object a step
 names), the header check resolving a group's sequence name, packet 131
 by radio judged by its own session, B781's last two bullets, B1360's
 22; the review again (eight items, readings first, no backlog read).
+
+### The acceptance of the session messages: the tables' rows looked up, the RBC transition order by its own session, the Train Data change procedure's D5 (e6/acceptance-sessions) (2026-11-05)
+
+**B843, the rows of the session messages (done).** At the source: the
+packets of message 24 were judged one by one already (the rows' notes);
+the session messages were not: `EVC_Radio_Acceptance.Info_Of` gave
+`Other` (accepted) for 8, 32, 38, 39, 40, 41, 43, and
+`EVC_Sessions.Take_Message` dispatched them with no table. The tables as
+printed (PDF pages 63-68 and 74-76 of SUBSET-026-4): "Acknowledgement of
+Train Data" (8) and "Acknowledgement of session termination" (39) A in
+every level; "Train Rejected" (40), "Train Accepted" (41), "SoM Position
+Report Confirmed by RBC" (43) R in 0, NTC, 1 and A in 2, no footnote. By
+the mode: the 8 A [2] in SB, A in FS, AD, LS, SR, OS, UN, TR, PT (no [1]),
+SN, RV, R in PS, SH, SM, SL, NL; the 39 A in every mode but NR in NP, SF,
+IS; the 40, 41, 43 A [2] in SB and R everywhere else. One premise of the
+brief was wrong: "Session Management" is packet 42 (Figure 3 and
+6.5.1.5.2 name it so), not the messages 32 and 38, which belong to the
+establishment of the session (3.5.3.7) and have no row: they stay
+`Other`. Built: `Info_T` values `Train_Data_Ack`, `Termination_Ack`,
+`Train_Rejected`, `Train_Accepted`, `SoM_Report_Confirmed` (subtype
+`Session_Info_T`), `Info_Of` mapping 8, 39, 40, 41, 43, `First_Filter`
+(the 8 and the 39 accepted in every level, a level not valid too, as the
+rows Radio Network transition order and co-ordinate system; the three
+others fall into the level 2 branch without [3]) and `Third_Filter` row
+by row (decision: NR rejected as in the other rows). In `Take_Message` one
+call before the `case`, `Rejected_By_Tables (Kind)`, through
+`Network.Accepts` (the mode of the last `Mode_Changed`, the cab, the
+level of `EVC_Levels`); a rejected message is counted
+(`EVC_Sessions.Messages_Rejected`, new, for the tests) and not
+dispatched. Decision: `R.Note_Received` and the acknowledgement (146) stay
+before the verdict: the message was received (3.16.3.3.3 orders the next
+ones by its time stamp, 3.16.3.4.1 supervises the radio by "the latest
+received message") and 3.16.3.5.1 exempts only an inconsistent message
+from the acknowledgement. A session being terminated still takes its 39
+before the tables (3.5.5.2 c)). The block of 8, 40, 41, 43 moved into
+`Take_Mission_Answer` so that `Take_Message` stays within 100 code lines.
+Scenario `EVC_Test_Radio.Scenario_Session_Rows`: the rows by the tables'
+function, then through the on-board in SB with the cab active and no level
+2: the 8 taken, the 41 rejected with its time stamp noted. Before the fix
+5 checks failed, after none. Proofs of `evc_radio_acceptance` and
+`evc_sessions`: none unproved (`evc_sessions-mission` not changed: the
+brief's `Mission.Take` is `Take_Answer`, untouched). Runner: 0 movements,
+0 regressions. Rows 4.8.3.1.1 Table and 4.8.4.2 Table set done (their
+"left" was B843; the [10] partial of 4.8.3 was stale, B840 done),
+`@req 4.8.3.1.1 Table, 4.8.4.2 Table` on `Take_Message`.
+
+**B3400, the RBC transition order by its own session (done).** Written
+from the brief, then checked: the premise was half right. The context
+`Transition_Order_Rejected` read is not "the last message judged by the
+authority" but the one the authority's `Evaluate` sets every cycle with
+`TD_Unacked (TD_Awaited, TD_Differ, EVC_Radio.Supervising)`, and the 131
+reaches `Take_Radio_Transition` only from the supervising session
+(`Take_Message` calls it when `R.Supervising = S`). What differed is the
+time: an 8 taken earlier in the same cycle (`Mission.Take_Answer`,
+`R.Note_Train_Data_Acknowledged`) was not seen, so a 131 received after it
+was rejected. Built: `Transition_Order_Rejected (S)` by `TD_Unacked
+(TD_Awaited, TD_Differ, S)` at the reception, as `Take_Message` judges a
+message; the consist part as before; the caller passes the message's
+session. Scenario: `Scenario_Handover_TD_Per_Session` extended: after the
+switch, the supervising RBC's 131 before its 8 rejected; its 8 and a 131
+in one cycle: rejected before the fix, taken after. Proofs of
+`evc_radio_authority` and `evc_sessions`: none unproved. Runner: 0
+movements. Row 4.8.3.1.1 Table-footnote [3] noted, `@req` on
+`Transition_Order_Rejected`.
+
+**B846, D5 of the Train Data change procedure (left).** Not taken: the
+bound came after the second item. The premise holds at the source
+(`EVC_Procedures`, the Train Data change: UN, SN, SR, TR go to A1 with
+SB and PT). No accessor says "an MA and track description of the RBC are
+stored for an ordered level 2 or RBC transition"
+(`EVC_Radio_Authority.Buffered` counts the messages of the transition
+buffer, not what they carry): the accessor is part of the item.
+
+Files of record: B843 and B3400 done, B846 noted and left open. Edits
+outside the named subprograms: `EVC_Sessions.Messages_Rejected` and its
+counter (an accessor for the tests), `EVC_Sessions.Rejected_By_Tables` and
+`Take_Mission_Answer` (body-local, out of `Take_Message`), the spec of
+`EVC_Sessions.Take_Message` (its `@req`).
