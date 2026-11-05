@@ -93,6 +93,42 @@ is
         (EVC_Position.Front_X, EVC_Position.Orientation,
          EVC_Odometry.Remaining_Estimated (SR_Distance)));
 
+   --  A.3.4.1.3 [1], [10]: a deletion beyond a location asked by the
+   --  stored information applied at once to the stores of the other
+   --  units, before they take the information of the cycle: the linking,
+   --  the SH list and the reversing area, the RBC transition order whose
+   --  border is beyond
+   procedure Apply_Cut
+     with Global => (Input    => Current_Mode,
+                     Proof_In => EVC_Odometry.State,
+                     In_Out   => (EVC_Stored_Information.State,
+                                EVC_Position.State, EVC_Procedures.State,
+                                EVC_Sessions.State, EVC_Radio.State)),
+          Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+                  and then EVC_Position.Status = EVC_Position.Status'Old
+   is
+   begin
+      if EVC_Stored_Information.Cut_Due then
+         EVC_Position.Delete_Linking_Beyond (EVC_Stored_Information.Cut_X);
+         EVC_Procedures.Delete_Beyond (EVC_Stored_Information.Cut_X,
+                                       In_SH => Current_Mode = M_SH);
+         if EVC_Position.Border_Beyond (EVC_Stored_Information.Cut_X) then
+            EVC_Sessions.Delete_RBC_Order;
+            EVC_Position.Delete_Border;
+         end if;
+         EVC_Stored_Information.Cut_Taken;
+      end if;
+   end Apply_Cut;
+
    procedure Evaluate_Stored_Information is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
@@ -147,6 +183,7 @@ is
       --  3.18.3.7 a): after the Train Data entered in the last cycle
       EVC_Stored_Information.Train_Data_Shortening
         (EVC_Mission.Categories_Changed);
+      Apply_Cut;
       --  3.18.3.7 b): the radio information held for a transition
       if EVC_Mission.Categories_Changed and then EVC_Odometry.Standstill then
          EVC_Radio_Authority.Delete_Transition_Information;
@@ -266,6 +303,7 @@ is
          Release_Unit_Packets;
          EVC_Stored_Information.Release_Balise_Buffer
            (Unsigned_64 (Clock_Ms), Ctx);
+         Apply_Cut;
       end if;
       if not EVC_Levels.Switched_To (L2)
         or else EVC_Radio_Authority.Buffered = 0
@@ -299,6 +337,7 @@ is
       EVC_Text_Messages.Take_Radio (First);
       EVC_Stored_Information.Evaluate_Released
         (First, Unsigned_64 (Clock_Ms), Ctx);
+      Apply_Cut;
    end Release_Transition_Buffer;
 
    procedure Take_Radio_Linking is

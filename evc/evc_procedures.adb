@@ -329,6 +329,8 @@ is
      with Refined_Global => Rev_Possible;
    function Reversing_Area_Known return Boolean is (Rev.Area)
      with Refined_Global => Rev;
+   function SH_List_Stored return Boolean is (SH_List_Known)
+     with Refined_Global => SH_List_Known;
    function Train_Data_Revalidation return Boolean is (TD_Revalidate)
      with Refined_Global => TD_Revalidate;
    function BMM_Inhibited return Boolean is (BMM_On)
@@ -2006,6 +2008,22 @@ is
          Start_BMM (S.Train.Est_Front);
       end if;
    end BMM_Reset;
+
+   procedure Delete_Beyond (X : Dist_T; In_SH : Boolean)
+     with Refined_Global => (In_Out => (SH_List_Known, Rev))
+   is
+   begin
+      if not In_SH then
+         SH_List_Known := False;
+      end if;
+      if Rev.Area then
+         if A (Rev.Sense, Rev.Start) > A (Rev.Sense, X) then
+            Rev.Area := False;
+         elsif A (Rev.Sense, Rev.Finish) > A (Rev.Sense, X) then
+            Rev.Finish := X;
+         end if;
+      end if;
+   end Delete_Beyond;
 
    procedure Mode_Changed (From, To : Mode_T; C : Context_T;
                            S : Snapshot_T)

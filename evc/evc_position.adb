@@ -24,6 +24,7 @@ package body EVC_Position
                                    Unlinked_Next,
                                    Seq_Counter,
                                    Links,
+                                   Linking_New,
                                    Passage,
                                    Pending,
                                    Pending_Stamp,
@@ -218,6 +219,8 @@ is
    Unlinked_Next      : Positive range 1 .. 2 := 1;
    Seq_Counter        : Natural := 0;
    Links              : EVC_Linking.Linking_T;
+   --  A linking was taken in the cycle (the information of its message)
+   Linking_New        : Boolean := False;
    Passage            : Passage_T;
    Pending            : Pending_T;
    Pending_Stamp      : Stamps_T := (others => 0);
@@ -1092,6 +1095,7 @@ is
    is
    begin
       EVC_Linking.Replace (Links, New_L);
+      Linking_New := True;
       Set_SOLR (A, 0);
       for Step in 1 .. EVC_Linking.Max_Links loop
          exit when not EVC_Linking.Checked (Links)
@@ -1887,6 +1891,7 @@ is
       Length_Known := False;
       Taken_List := (others => No_Taken);
       Taken_N := 0;
+      Linking_New := False;
       Taken_Tels := (others => ETCS_Telegram.No_Telegram);
       Taken_Tel_N := 0;
       Passage_Ms := 0;
@@ -2153,6 +2158,7 @@ is
       Now_Seen := Now_Ms;
       Taken_N := 0;
       Taken_Tel_N := 0;
+      Linking_New := False;
       Held := False;
       Event_N := 0;
       Reaction_Flag := False;
@@ -2703,6 +2709,7 @@ is
                      end if;
                      if OK then
                         Links := L;
+                        Linking_New := True;
                         Links.Solr := K;
                         Links.Expected := K + 1;
                         Skip_Passed_Windows;
@@ -2718,6 +2725,40 @@ is
    begin
       Links := (others => <>);
    end Delete_Linking;
+
+   procedure Delete_Linking_Beyond (X : Dist_T) is
+      Est  : Dist_T;
+      Keep : EVC_Linking.Link_Count_T;
+   begin
+      if not Links.Stored or else Linking_New or else not SOLR_A.Valid then
+         return;
+      end if;
+      Est := Estimated (SOLR_A, Links.Sense, X);
+      Keep := Links.Count;
+      for I in reverse 1 .. Links.Count loop
+         pragma Loop_Invariant (Keep = I);
+         exit when I <= Links.Solr
+           or else Links.Links (I).D
+                   - EVC_Linking.Distance (Links, Links.Solr) <= Est;
+         Keep := I - 1;
+      end loop;
+      if Keep = 0 then
+         --  no link left: no linking
+         Links := (others => <>);
+         return;
+      end if;
+      Links.Links (Keep + 1 .. EVC_Linking.Max_Links) :=
+        (others => EVC_Linking.No_Link);
+      Links.Count := Keep;
+      if Links.Expected > Keep + 1 then
+         Links.Expected := Keep + 1;
+      end if;
+   end Delete_Linking_Beyond;
+
+   function Border_Beyond (X : Dist_T) return Boolean is
+     (Border (1).Valid
+      and then Estimated (Border (1).Ref, Border (1).Sense, X)
+               < Border (1).D);
 
    procedure Delete_Geo
    is

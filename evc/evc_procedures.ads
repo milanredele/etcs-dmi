@@ -250,6 +250,10 @@ is
    function Reversing_Area_Known return Boolean
      with Global => State;
 
+   --  a list of balise groups for the SH area (packet 49) is stored
+   function SH_List_Stored return Boolean
+     with Global => State;
+
    --  5.22.4.1: the inhibition of the BTM alarm reaction is active
    --  (MSG_ONBOARD train bit 4)
    --  @req 5.22.4.1
@@ -420,6 +424,19 @@ is
                                 EVC_Origins.State,
                                 EVC_Radio_Authority.State)),
           Post => (if To = M_TR then Brake_Demand.EB);
+
+   --  A.3.4.1.3, a deletion of the stored information beyond the frame
+   --  position X (the new SvL [1] or the max safe front end [10],
+   --  EVC_Stored_Information.Cut_X): the list of balise groups for the
+   --  SH area deleted as a whole unless the train is in SH (In_SH, [9];
+   --  the situations of the first column come with an MA, never in SH);
+   --  the reversing area beyond X deleted: an area that starts beyond X
+   --  goes, one that ends beyond it ends at X (decision: as the stores
+   --  cut their profiles); the reversing supervision information is
+   --  unchanged (U)
+   --  @req A.3.4.1.3 Table-footnote [9]
+   procedure Delete_Beyond (X : Dist_T; In_SH : Boolean)
+     with Global => (In_Out => State);
 
    --  The brake demand and the outputs after the mode machine, in the
    --  mode of the end of the cycle

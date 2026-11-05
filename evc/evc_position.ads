@@ -667,6 +667,12 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
+   --  The border of the RBC transition order (for the front end's report)
+   --  lies beyond the frame position X: the order is beyond X
+   --  @req A.3.4.1.3 Table-footnote [1], A.3.4.1.3 Table-footnote [10]
+   function Border_Beyond (X : Dist_T) return Boolean
+     with Global => State;
+
    --  The border forgotten (the order deleted or executed)
    procedure Delete_Border
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
@@ -1005,6 +1011,25 @@ is
    --  @req 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b), 4.10.1.3 c), 4.10.1.3 d)
    --  @req 4.10.1.3 e), 4.10.1.3 Table, 4.10.1.3 Table-footnote [1]
    procedure Delete_Linking
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => Status = Status'Old and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old
+                  and then Active_Cab = Active_Cab'Old;
+
+   --  A.3.4.1.3, the linking deleted beyond the new SvL [1] or the max
+   --  safe front end [10], X (a frame position): the links whose
+   --  location lies beyond X removed, the ones in rear of it kept; the
+   --  window of a removed link is no longer supervised. Decision: a
+   --  linking taken in the cycle is the information of the message that
+   --  asks for the deletion (3.8.5.1.5) and is kept whole
+   --  @req A.3.4.1.3 Table-footnote [1], A.3.4.1.3 Table-footnote [10]
+   procedure Delete_Linking_Beyond (X : Dist_T)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
