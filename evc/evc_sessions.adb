@@ -806,12 +806,14 @@ is
    --  4.8.2.1 c) exception 2: not from the Accepting RBC (the caller);
    --  3.6.3.1.3: valid for the train orientation relative to that LRBG;
    --  4.8.3 [3], [17]: rejected while the Train Data or a message 133 are
-   --  not acknowledged (EVC_Radio_Authority.Transition_Order_Rejected)
+   --  not acknowledged by the RBC of S, the session of the message
+   --  (EVC_Radio_Authority.Transition_Order_Rejected)
    --  @req 3.6.3.1.3
-   procedure Take_Radio_Transition
+   procedure Take_Radio_Transition (S : EVC_Radio.Session_T)
      with Global => (In_Out => Handover.State,
                      Input  => (EVC_Received.Store, EVC_Position.State,
-                                EVC_Radio_Authority.State))
+                                EVC_Radio_Authority.State,
+                                EVC_Radio.State))
    is
       pragma Warnings
         (GNATprove, Off, """Rd"" is set by ""Decode"" but not used after*",
@@ -829,7 +831,7 @@ is
             if OK and then ETCS_Track_Packets.P131.Valid (P)
               and then P.Q_SCALE <= 2
               and then EVC_Position.Radio_Valid_For (Last_LRBG, P.Q_DIR)
-              and then not EVC_Radio_Authority.Transition_Order_Rejected
+              and then not EVC_Radio_Authority.Transition_Order_Rejected (S)
             then
                Handover.Take_Order
                  (RBC   => (NID_C => P.NID_C, NID_RBC => P.NID_RBC),
@@ -993,7 +995,7 @@ is
               (Kind, EVC_Position.Active_Cab /= EVC_Position.No_Cab,
                EVC_Levels.Valid, EVC_Levels.Level);
             if R.Supervising = R.Session_Ref_T (S) then
-               Take_Radio_Transition;
+               Take_Radio_Transition (S);
             end if;
             Verdict := Pass;
       end case;

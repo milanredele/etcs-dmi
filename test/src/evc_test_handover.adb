@@ -1381,6 +1381,13 @@ package body EVC_Test_Handover is
       Check (not LX_Of (9),
              "Train Data per session: the supervising RBC's level crossing "
              & "before its message 8 rejected (4.8.3 [3])");
+      --  its RBC transition order (packet 131), before its message 8:
+      --  rejected (4.8.3 [3], the row RBC Transition Order)
+      Give_Radio_Message (2, M24 (10, True, 2_000, 500));
+      Stand;
+      Check (not EVC_Sessions.RBC_Order_Stored,
+             "Train Data per session: the supervising RBC's transition "
+             & "order before its message 8 rejected (4.8.3 [3])");
       --  its 129 repeated (3.18.3.4), acknowledged
       for C in 1 .. 400 loop
          Stand;
@@ -1390,15 +1397,23 @@ package body EVC_Test_Handover is
               and then M.Kind = MCat.Train_M129
               and then Radio_Output (N).Session = 2
             then
-               V (3) := Now_T;
+               V (3) := Now_T - 1;
                V (7) := M.Values (3);
                Acked := True;
             end if;
          end loop;
          exit when Acked;
       end loop;
+      --  its message 8 and, in the same cycle after it, its transition
+      --  order: judged by the acknowledgement just received (the session
+      --  of the message, at its reception)
       Give_Radio_Message (2, Message_Of (MCat.Track_M8, V));
+      Give_Radio_Message (2, M24 (10, True, 2_000, 500));
       Stand;
+      Check (EVC_Sessions.RBC_Order_Stored,
+             "Train Data per session: the transition order received after "
+             & "the message 8 of its session in the same cycle taken "
+             & "(4.8.3 [3])");
       Give_Radio_Message (2, M24_LX (10, 10, 600));
       Stand;
       Check (Acked and then R.Info (2).TD_Acked and then LX_Of (10),

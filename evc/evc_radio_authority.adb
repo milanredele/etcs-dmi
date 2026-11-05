@@ -410,9 +410,11 @@ is
    function To_Buffer return Boolean is
      (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored);
 
-   function Transition_Order_Rejected return Boolean is
+   function Transition_Order_Rejected (S : EVC_Radio.Session_T)
+     return Boolean is
      (EVC_Radio_Acceptance.Packet_Rejected
-        (ETCS_Catalogue.Track_P131, Buffer.Context.Train_Data_Unacked,
+        (ETCS_Catalogue.Track_P131,
+         TD_Unacked (TD_Awaited, TD_Differ, EVC_Radio.Session_Ref_T (S)),
          Buffer.Context.Consist_Unacked));
 
    procedure Keep_Level_2_Part (S    : EVC_Radio.Session_T;
