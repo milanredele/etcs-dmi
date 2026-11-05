@@ -22,6 +22,7 @@ with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Text_Messages;
 with EVC_Track_Description;
+with EVC_Train_Data;
 with EVC_Stored_Information;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Sim_Telegrams;
@@ -1340,6 +1341,40 @@ package body EVC_Test_Handover is
         EVC_Track_Description.LX_Item (I).Used
         and then Natural (EVC_Track_Description.LX_Item (I).Id) = NID_LX);
 
+   --  The driver enters Train Data at standstill (MSG_DRIVER_DATA kind 2,
+   --  DMI Table 40: 200 m, 135 %, 160 km/h, NC_CDTRAIN 130 mm, a passenger
+   --  train, not airtight, loading gauge G1) with the axle load category
+   --  Axle (M_AXLELOADCAT)
+   procedure Enter_Axle_Load (Axle : Byte) is
+   begin
+      EVC_Core.Handle_Input
+        (DMI, Frame (16#41#, (2, 200, 0, 135, 0, 160, 0, 2, 4, 0, Axle, 0,
+                              1)));
+   end Enter_Axle_Load;
+
+   --  The time stamp of a Train Data message (129) the on-board sent on
+   --  session S in the last cycle, as field 7 of the message 8
+   --  acknowledging it (Found: one was sent)
+   procedure Find_129 (S     : Natural;
+                       V     : in out ETCS_Message.Value_Array;
+                       Found : out Boolean)
+   is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+   begin
+      Found := False;
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, St);
+         if ETCS_Message."=" (St, ETCS_Message.Accepted)
+           and then M.Kind = MCat.Train_M129
+           and then Radio_Output (N).Session = S
+         then
+            V (7) := M.Values (3);
+            Found := True;
+         end if;
+      end loop;
+   end Find_129;
+
    procedure Scenario_Handover_TD_Per_Session is
       M     : ETCS_Message.Message_T;
       St    : ETCS_Message.Status_T;
@@ -1388,7 +1423,10 @@ package body EVC_Test_Handover is
       Check (not EVC_Sessions.RBC_Order_Stored,
              "Train Data per session: the supervising RBC's transition "
              & "order before its message 8 rejected (4.8.3 [3])");
-      --  its 129 repeated (3.18.3.4), acknowledged
+      --  the driver changes the axle load category at standstill: its
+      --  129 sent again with values other than those the Handing Over RBC
+      --  acknowledged (3.18.3.4), then acknowledged
+      Enter_Axle_Load (1);
       for C in 1 .. 400 loop
          Stand;
          for N in 1 .. Radio_Outputs loop
@@ -1410,10 +1448,12 @@ package body EVC_Test_Handover is
       Give_Radio_Message (2, Message_Of (MCat.Track_M8, V));
       Give_Radio_Message (2, M24 (10, True, 2_000, 500));
       Stand;
-      Check (EVC_Sessions.RBC_Order_Stored,
+      Check (EVC_Sessions.RBC_Order_Stored
+             and then Natural (EVC_Train_Data.Categories.Axle_Load) = 1,
              "Train Data per session: the transition order received after "
-             & "the message 8 of its session in the same cycle taken "
-             & "(4.8.3 [3])");
+             & "the message 8 of its session in the same cycle taken, the "
+             & "axle load category changed and acknowledged by that 8 "
+             & "(4.8.3 [3] second bullet)");
       Give_Radio_Message (2, M24_LX (10, 10, 600));
       Stand;
       Check (Acked and then R.Info (2).TD_Acked and then LX_Of (10),
@@ -1421,6 +1461,79 @@ package body EVC_Test_Handover is
              & "its level crossing taken (4.8.3 [3]); acknowledged "
              & Acked'Image);
    end Scenario_Handover_TD_Per_Session;
+
+   procedure Scenario_Handover_TD_Values_Per_RBC is
+      V1, V2 : ETCS_Message.Value_Array := (others => 0);
+      F1, F2 : Boolean := False;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      --  RBC 300 (session 1) acknowledges the Train Data after its 32,
+      --  orders the handover to RBC 400 (session 2), which is sent the
+      --  same Train Data after its 32 (3.15.1.3.3) and acknowledges
+      --  them (3.5.3.7 b to e for session 2 as Establish, the 8 added)
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Give_Radio_Event (2, Connection_Set_Up);
+      Stand;
+      V2 (3) := Now_T;
+      V2 (7) := 48;
+      Give_Radio_Message (2, Message_Of (MCat.Track_M32, V2));
+      Stand;
+      Find_129 (2, V2, F2);
+      V2 (3) := Now_T;
+      Give_Radio_Message (2, Message_Of (MCat.Track_M8, V2));
+      Stand;
+      V2 := (others => 0);
+      V2 (3) := Now_T;
+      Give_Radio_Message (2, Message_Of (MCat.Track_M38, V2));
+      Stand;
+      Check (F2 and then R.Supervising = 1 and then R.Accepting = 2
+             and then R.Info (1).TD_Acked and then R.Info (2).TD_Acked
+             and then not EVC_Sessions.Train_Data_Awaited,
+             "Train Data per RBC: both RBCs acknowledged the Train Data "
+             & "(3.18.3.4.1, 3.15.1.3.3)");
+      --  the axle load category changed at standstill: the changed set
+      --  sent to the supervising RBC (3.18.3.4), not acknowledged yet
+      Enter_Axle_Load (1);
+      Stand;
+      Find_129 (1, V1, F1);
+      --  RBC 300's level crossing in the cycle after its 129: rejected
+      --  (the set awaited judged at the reception)
+      Give_Radio_Message (1, M24_LX (10, 14, 600));
+      Stand;
+      Check (not LX_Of (14),
+             "Train Data per RBC: RBC 300's level crossing received in the "
+             & "cycle after the changed set was sent rejected (4.8.3 [3])");
+      Check (F1 and then EVC_Sessions.Train_Data_Awaited
+             and then Natural (EVC_Train_Data.Categories.Axle_Load) = 1,
+             "Train Data per RBC: the changed set sent to RBC 300, its "
+             & "acknowledgement awaited");
+      Give_Radio_Message (1, M24_LX (10, 11, 600));
+      Stand;
+      Check (not LX_Of (11),
+             "Train Data per RBC: RBC 300's level crossing rejected, the "
+             & "changed values it was sent not acknowledged (4.8.3 [3] "
+             & "second bullet)");
+      --  RBC 400 acknowledged the values it was sent and was not sent the
+      --  changed ones: its level crossing, stored for the switch (the
+      --  transition buffer), taken there, RBC 300's 8 still awaited
+      Give_Radio_Message (2, M24_LX (10, 12, 600));
+      Stand;
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then EVC_Sessions.Train_Data_Awaited
+             and then LX_Of (12),
+             "Train Data per RBC: RBC 400's level crossing taken at the "
+             & "switch while RBC 300's acknowledgement of the changed "
+             & "values is awaited: RBC 400 acknowledged the values it was "
+             & "sent (4.8.3 [3] per RBC)");
+   end Scenario_Handover_TD_Values_Per_RBC;
 
    --  A.3.5.1 6th bullet over a relocation (3.6.4.2.5 a)): the group 10
    --  at 100 m (RBC 300's order, packet 42) links the group 20 at 300 m

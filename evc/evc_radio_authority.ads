@@ -29,7 +29,6 @@ with EVC_Radio;
 with EVC_Radio_Info;
 with EVC_Received;
 with EVC_Stored_Information;
-with EVC_Train_Data;
 
 --  @req 3.6.7.1 g), 3.10.2.4, 3.13.11.8, 4.4.11.1.3, 4.4.11.1.6.4
 --  @req 4.4.19.1.4.2 a), 4.6.3 Table, 4.8.3.1.1 Table-footnote [5]
@@ -203,8 +202,8 @@ is
       Shunting_Selected : Boolean := False;
       Standstill        : Boolean := False;
       --  4.8.4 [2], [4], [11]: a cab is active, valid Train Data, a valid
-      --  train running number; 4.8.3 [3]: Train Data sent to the RBC and
-      --  not acknowledged (the context of the acceptance of 4.8)
+      --  train running number; Train_Data_Unacked is not read (4.8.3 [3]
+      --  is judged per session at the reception, TD_Unacked)
       Cab_Active         : Boolean := False;
       Train_Data_Valid   : Boolean := False;
       TRN_Valid          : Boolean := False;
@@ -226,7 +225,7 @@ is
                                 EVC_Position.State, EVC_Radio.State,
                                 EVC_Levels.State, EVC_Odometry.State,
                                 EVC_Movement_Authority.State,
-                                EVC_Origins.State, EVC_Train_Data.State)),
+                                EVC_Origins.State)),
           Post => EVC_Radio_Info.Count <= 1;
 
    --  3.8.2: the reasons of the MA request applicable (Q_MARQSTREASON,

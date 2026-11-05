@@ -20117,3 +20117,79 @@ and 3.7.3.3 done. B036 closed.
 announced with a spare value) and 5.22.3.1's resets without a mode
 change (B015).** Neither was started; their premises were not checked
 at the source.
+### The Train Data acknowledgement per RBC: the acknowledged values per session, the second bullet at the reception, the Train Data change procedure's D5 (e6/td-per-rbc) (2026-11-05)
+
+B3340 (decided by the user: per RBC). At the source: `EVC_Radio.
+Session_Info_T` had `TD_Acked` (the first bullet per session) and the
+authority one shared `TD_Acked_Categories`, set in `Evaluate` from the
+current `EVC_Train_Data.Categories` in the cycle the acknowledgement was
+first seen, compared by `TD_Changed` into `TD_Differ`. Built: the
+session keeps the categories of the Train Data last sent on it
+(`TD_Sent`, from `EVC_Radio.Note_Train_Data_Sent`, called by
+`EVC_Sessions.Mission.Await_TD`, the one place a 129 or a position
+report with packet 11 starts waiting for its 8) and those its RBC
+acknowledged (`TD_Values`, copied from `TD_Sent` by
+`Note_Train_Data_Acknowledged` at the message 8), both forgotten with
+the session; `EVC_Radio_Authority.TD_Changed (S)` compares the four
+categories of 3.18.3.7 (train category as cant deficiency and other
+international categories, axle load, loading gauge, traction systems)
+and `TD_Unacked (Awaited, S)` judges by it at the reception; the shared
+copy, `TD_Ack_Seen` and `TD_Differ` are gone (nothing else read them),
+`Evaluate` no longer reads `EVC_Train_Data`. Decision: the values sent,
+not the current ones (the brief's alternative): the cycle reads the
+radio messages before the driver's entry (`EVC_Core.Inputs` before
+`EVC_Mission.Evaluate`), so within one cycle they agree, but the driver
+can change the data while the set sent waits for its 8 and the new set
+is not sent at once (the connection lost, 3.18.3.4.2; the start of
+mission's report due), and the 8 acknowledges the set its time stamp
+names. A premise of the brief was not what the on-board does: the
+changed set is not "sent to both" RBCs; `Evaluate_TD` sends it to the
+supervising RBC only, one set awaited at a time, and the Accepting RBC
+is sent the set once, after its 32 (3.15.1.3.3): B3461 (onboard, open).
+The discriminating case is therefore the RBC that was not sent the
+changed values: `EVC_Test_Handover.Scenario_Handover_TD_Values_Per_RBC`:
+RBC 300 (supervising) and RBC 400 (Accepting) each acknowledge the
+set they were sent, the driver changes the axle load category 0 to 1 at
+standstill, the 129 goes to RBC 300: RBC 300's level crossing (packet
+88, A [3] in level 2) rejected, RBC 400's stored for the switch and
+taken there with RBC 300's 8 still awaited. On master the last check
+failed (the shared copy, 0 against 1, rejected RBC 400's crossing). The
+row 4.8.3.1.1 Table-footnote [3] (done) has its second bullet's text
+rewritten. Proofs `evc_radio`, `evc_radio_authority`,
+`evc_sessions-mission`: no unproved check. Runner 1214 / 1045 / 931,
+0 movements.
+
+B3440 (the second bullet judged at the reception). At the source:
+`EVC_Sessions.Take_Message` dispatches the message 8 to
+`Mission.Take_Answer` (where `Note_Train_Data_Acknowledged` runs)
+before a later message's `Take_Radio_Transition`, so with B3340 the
+categories of a session are already updated when its 131 of the same
+cycle is judged: the case added to `Scenario_Handover_TD_Per_Session`
+(the axle load category changed, then the 8 and the 131 in one cycle,
+the 131 taken) failed on master and passes with B3340 alone. What was
+left was the gate: `TD_Unacked` was `Awaited and then (...)` with
+`Awaited` the authority's `TD_Awaited`, the facts of the last
+`Evaluate`; the 129 is sent by `Mission.Produce` after that `Evaluate`,
+so the messages of the next cycle did not see it awaited (B3460, found
+while building B3340: RBC 300's level crossing received in the cycle
+after its 129 was taken). Built: the set awaited per session,
+`EVC_Radio.Info (S).TD_Awaited`, set with `TD_Sent`, cleared by the 8
+and with the session; `TD_Unacked (S)` reads it at the reception; the
+authority's `TD_Awaited` removed (`Facts_T.Train_Data_Unacked` is no
+longer read; `EVC_Core.Modes` still sets it, not this package's unit).
+Decision: the first bullet now holds for the RBC the Train Data were
+sent to ("has been sent to the RBC"), no longer for every session while
+one set is awaited; the mission still awaits one set at a time
+(`TD_S`), so an RBC whose set was superseded by a 129 to the other one
+keeps its information rejected until the session ends (its 8 is not
+matched): part of B3461. The new case: RBC 300's crossing in the cycle
+after the 129 rejected (failed before the fix). Proofs `evc_radio`,
+`evc_radio_authority`: no unproved check. Runner 1214 / 1045 / 931, 0
+movements.
+
+B846 left at the bound (no new item after 120 calls), scoped: the
+transition buffer keeps raw bytes per message, so whether a buffered
+message carries packets 15, 21 and 27 is known only at `Buffer.Store`;
+the build is a flag per entry set there, an accessor, a field of
+`EVC_Procedures.Context_T` set in `EVC_Core.Modes`, D5 in
+`Train_Data_Step`, and a scenario in `EVC_Test_Procedures`.

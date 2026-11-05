@@ -675,14 +675,17 @@ is
      (GNATprove, Off, """W"" is set by ""Finish_And_Send"" but not used*",
       Reason => "the writer of one message is not used after it");
 
-   --  The Train Data are awaiting their acknowledgement (message 8)
+   --  The Train Data are awaiting their acknowledgement (message 8); the
+   --  session keeps the categories sent (4.8.3 [3] second bullet)
    procedure Await_TD (S    : R.Session_T; T : T_TRAIN_T;
                        Now  : R.Time_Ms_T;
                        Sent : Boolean)
      with Global => (In_Out => (R.State, N_TD),
-                     Output => (TD_Awaited, TD_Stamp, TD_Since, TD_S))
+                     Output => (TD_Awaited, TD_Stamp, TD_Since, TD_S),
+                     Input  => EVC_Train_Data.State)
    is
    begin
+      R.Note_Train_Data_Sent (S, EVC_Train_Data.Categories);
       TD_Awaited := True;
       --  3.16.3.3.2: the stamp EVC_Radio.Send gave the message
       TD_Stamp := (if Sent and then R.Info (S).Sent then R.Info (S).Last_Sent

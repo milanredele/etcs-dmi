@@ -133,9 +133,18 @@ is
       TD_Acked := Acked;
    end Set_Train_Data_Acknowledged;
 
+   procedure Note_Train_Data_Sent (S : Session_T;
+                                   C : EVC_Train_Data.Categories_T) is
+   begin
+      Table (S).TD_Sent := C;
+      Table (S).TD_Awaited := True;
+   end Note_Train_Data_Sent;
+
    procedure Note_Train_Data_Acknowledged (S : Session_T) is
    begin
       Table (S).TD_Acked := True;
+      Table (S).TD_Awaited := False;
+      Table (S).TD_Values := Table (S).TD_Sent;
    end Note_Train_Data_Acknowledged;
 
    procedure Set_Trip_Exit_Recognised (Recognised : Boolean) is

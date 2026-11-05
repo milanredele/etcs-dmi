@@ -419,6 +419,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Relocated;
    EVC_Test_Handover.Scenario_Handover_Message_Error;
    EVC_Test_Handover.Scenario_Handover_TD_Per_Session;
+   EVC_Test_Handover.Scenario_Handover_TD_Values_Per_RBC;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;
