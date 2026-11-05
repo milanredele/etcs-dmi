@@ -19767,3 +19767,143 @@ the reason. Backlog lines: B3440 (decision or onboard, settled by a
 scenario with the categories changed and an 8 plus a 131 in one cycle),
 B3441 (onboard: every error of the wait reported), B3442 (onboard: the
 reason for 3050700_02 settled before a fix).
+
+### E5 integration after the sixty-fourth round, the thirty-second of E6 (2026-11-05)
+
+Merged: e6/acceptance-sessions (B843: the session messages 8, 39, 40,
+41 and 43 looked up in the tables of 4.8.3.1.1 and 4.8.4.2 as printed
+(8 and 39 in every level, 40 / 41 / 43 in level 2 only; by mode 8 in SB
+with the cab active [2] and in FS, AD, LS, SR, OS, UN, TR, PT, SN, RV;
+39 everywhere but NP, SF, IS; 40 / 41 / 43 in SB with the cab active
+only), five `Info_T` values of `EVC_Radio_Acceptance`, `Rejected_By_
+Tables` before `Take_Message`'s dispatch, the time stamp noted and the
+acknowledgement sent before the verdict (3.16.3.3.3, 3.16.3.5.1);
+"Session Management" of the tables is packet 42, not the messages 32
+and 38, which have no row; `Scenario_Session_Rows`; B3400: packet 131
+by radio judged by the session that carries it at the moment of its
+reception, `Transition_Order_Rejected (S)` through `TD_Unacked`, the
+defect a message 8 and a 131 of the same cycle (the 131 was rejected
+because the context of the cycle's start did not see the 8); B846 left
+at the bound: no function says that an MA and track description of the
+RBC are stored for an ordered transition), e6/sessions-contact (B024:
+M_ERROR 5 with a position report when the connection released by
+3.16.3.4.3 is set up again, `NV.Released` and `Take_Event`, no report
+when a new message ends the reaction before the 60 s (nothing was
+re-established, 7.5.1.64); the runner's `Timer_Input` runs `<T_STEP>`
+by its comment's seconds; B009 was built already (3060100_01's M_ERROR
+0 / 1 / 2 steps pass before its block, 3160200_15 passes), one gap
+found and fixed: a balise group error found while the connection to the
+supervising RBC is lost is kept and reported once the connection is set
+up again (3.16.4.1), the last error of the wait only; `Scenario_
+Contact_Error_Report`, `Scenario_Balise_Error_While_Lost`; the rows
+A.3.1 Table and 4.4.6.1.10 done (B788, B844, B783 were done, both
+metal immunity distances built); 35 sequences moved: 4120100_06, _09,
+_11, _16 and 5110400_02 pass, seven new first failures each traced
+before its line (B3380 to B3386: four of the runner's model, three of
+ours: 3160400_01 step 116 no JRU 12 for a linked group not in the
+linking, 3050700_02 step 113 the connection status timer over a
+termination with the connection down, 3050400_03 step 82 no hour glass
+after an RBC data entry while terminating)), e6/stored-columns (B036:
+the table of A.3.4.1.3 re-read cell by cell for the first two columns
+of situations: 12 cells built through the stores' own `Delete_Beyond`
+and `Shorten_To_Train`, one fixed (the not yet applicable National
+Values due at or beyond the location, `EVC_National_Values.Delete_
+Pending` from `Apply`, `Scenario_NV_Shortening`), four left (the
+linking, the SH list [9], the RBC transition order, the reversing area:
+B036 narrowed); 14 rows, not 16: nine set done, five kept partial with
+the cells named; 3.8.2.5.1 done, o) was `Consist_Shortening`; B037: the
+three examples of A.3.5.2 as `Scenario_Group_Read_At_EOA`, each with a
+counterpart that trips without the group's information, no code
+change, the cycle's order gives them; 5.22.3.1: `EVC_Procedures.BMM_
+Reset` from `Mode_Changed` on entering SB, SH or SR with the antenna
+inside a stored BMM area, not NP or RV (5.22.3.1.1) nor PS or SL
+(5.22.5.1 b) ends the procedure), `Scenario_BMM_Reset`; 5.22.3.1.1 done,
+5.22.3.1 partial for the resets without a mode change), e5/runner-
+chart-3 (B3302: `Speed_Info_Object` judges a "removed / not displayed"
+step by the object its comment names: the Time to Indication by the
+DMI's own display condition, the warning by the supervision status,
+the former EOA and "not updated" not judged; 18 sequences moved, 11
+pass, 7 traced: 3131030_24 SV21 / SV22 the restriction at 2000 m
+against SV30's 1827 m with SV30's step location (the data), 5190300_01
+M_MODE 21 is no value of 7.5.1.72 (the data), 9990400_44 the runner
+enters the cant deficiency category from the workbook's brake position
+so the change of step 66 is not seen (B3361); B3301 scoped (the LX item's
+`Stop_Required`, `Stop_Length`, `Released` exist, the hook is `Drive_
+To`), built on a resumption of 35 calls and reverted at its cap: the
+stop on every supervised crossing regressed 4060300_09 and _12, which
+overpass the temporary EOA on purpose; left with the findings; the
+header names B3360 written, open), and e5/review-64 (the thirteenth
+blind review, below).
+
+The review (e5/review-64, 111 calls, 8.3 USD): eight items, all
+reached, fully blind; 5 agreed, 2 disagreed in part, 1 undecided.
+Undecided (B3440): a message 8 and a packet 131 of the same cycle after
+the Train Data changed: the first bullet of 4.8.3 [3] is now judged at
+the reception, the second (the categories differing from the
+acknowledged ones) still by the context the authority sets at the end
+of the cycle, so such a 131 is still rejected: a scenario settles it.
+Disagreed (B3441): two balise group errors found while the connection
+is lost: the package reports the last one, the reviewer reads 3.16.4.1
+"errors shall be reported" as one report per detection (3.6.5.1.4 l)):
+the user decides, or each is reported. Disagreed on the reason, agreed
+on ours (B3442): 3050700_02 step 113: the session is established when
+the termination is ordered with the connection down (the step's
+comment "being established" does not fit the flow), so the 156 is due
+and counts as sent, and the defect is `Terminate_Session` keeping
+`Requesting` and `Timer_On` in Connection_Lost against 3.5.7.4 and
+Table 2 [6]: B3381 is fixed by stopping the timer, not by withholding
+the 156. The rest agreed: the session rows and their footnotes, the
+packet 42 reading, the time stamp and the acknowledgement of a rejected
+message; M_ERROR 5 and the error kept over the lost connection; the
+four cells of A.3.4.1.3 left and the BMM trigger on SB, SH, SR; the
+object judgement and both sequences' data (M_MODE 21 spare, the SV21
+restriction at 1900 with the SV30 step); 3160400_01 ours (3.16.4.3
+exempts the RBC report, SUBSET-027 4.3.1.1 still wants the record 12);
+3050400_03 ours; 9990400_44 and 4120100_02 the runner's. Thirteen
+rounds of reviews: 107 items, 92 agreed, 18 disagreed, 8 undecided; 33
+lines, of which 8 became fixes; 85.8 USD.
+
+Verification of the merged tree: an early chain on the acceptance
+package green; the full chain after the four merges green: `test/check.
+sh` ok; the full proof 13948 checks, none unproved, margin 47726 steps;
+cross build and stack 32768 B budget, margin 6056 B; wasm and both
+smokes 0 failures; the runner 1214 / 1045 / 931 (from 1190 / 1039 /
+961), 0 regressions, no signature untriaged; the baseline the chain
+re-recorded was the merged one. The merge: acceptance-sessions and the
+review fast-forwarded; sessions-contact and runner-chart-3 conflicted
+on the plan and the backlog (three-way by id), runner-chart-3 on the
+triage (both tails kept); stored-columns on the plan; no code conflict:
+the shared units were split by subprogram in the briefs and the agents
+kept to theirs (`EVC_Sessions` by two, `EVC_Procedures` by two, `S076_
+Run` by two).
+
+Costs (doc/ROUNDS.csv): 50.9 USD with the review (42.5 for the four
+packages, 8.3 the review), 9 of 12 package items done (B3301 scoped and
+reverted on a capped resumption, B3360 written open, B846 left at the
+bound), 4 of 24 brief premises wrong ("Session Management" as the
+messages 32 / 38; the 131's context as the last message's; `Mission.
+Take`; "16 rows"), no agent over budget (the runner agent at 160 with
+its resumption), two agents past the bound with the third item in hand
+(148; 125 then the resumption). Lessons: a capped resumption builds a
+bench rule only when its scope is already narrow: the stop before a
+level crossing on every supervised crossing regressed two sequences
+that overpass the temporary EOA on purpose, and the step-scoped flag
+came too late for the cap: the next brief names the scope first (a
+flag set by the step whose comment asks for the stop, cleared at the
+next case line); a timer the runner did not know (`<T_STEP>`) blocked
+seven sequences and its one-line rule moved 35: the "runner" blocks of
+the corpus are worth a listing by their timer and input names.
+
+The matrix: clauses left 41 (todo 0, partial 41; done 2098: 15 rows
+set done this round, the first round without a todo row). Open items:
+doc/BACKLOG.csv (38 open after this round; 13 added of which 3 by the
+review, 6 closed). Next: B3440 (the 131's second bullet at the
+reception, a scenario), B3441 (the user's decision, or each error
+reported), B3381 with B3442 (the status timer stopped at a termination
+with the connection down), B3383 (the hour glass while terminating),
+B3386 (the record 12 of a linked group not announced), B846 (D5 with an
+accessor of the stored MA), B036's four cells, 5.22.3.1's resets
+without a mode change, B3301 with the step-scoped flag, B3360 (the
+header's group names), B3361 (the runner's Train Data from the
+sequence's packet 11), B3340 (the user's decision); the review again
+(eight items, readings first, no backlog read).
