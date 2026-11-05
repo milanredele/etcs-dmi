@@ -95,7 +95,18 @@ is
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_Outbox.Queue, EVC_Text_Messages.State,
                                 EVC_LS_Display.State,
-                                EVC_System_Version.State, EVC_VBC.State));
+                                EVC_System_Version.State, EVC_VBC.State)),
+          Post => EVC_Position.Orientation
+                    = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old;
 
    --  3a. 4.8.3 [1]: the linking held by
    --  Update_Position (its group carries its own level transition order)
