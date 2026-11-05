@@ -109,4 +109,10 @@ package EVC_Test_Handover is
    --  own acknowledgement of the Train Data, the Handing Over RBC's taken
    procedure Scenario_Handover_TD_Per_Session;
 
+   --  4.8.3 [3] second bullet per RBC: both RBCs acknowledged the Train
+   --  Data, the driver changes the axle load category: the RBC sent the
+   --  changed values has its information rejected until its message 8,
+   --  the RBC that acknowledged the values it was sent keeps its own
+   procedure Scenario_Handover_TD_Values_Per_RBC;
+
 end EVC_Test_Handover;

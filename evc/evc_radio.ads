@@ -45,6 +45,7 @@ with EVC_Bytes;
 with EVC_Config;
 with EVC_Modes;      use EVC_Modes;
 with EVC_Outbox;
+with EVC_Train_Data;
 with EVC_Ports;      use EVC_Ports;
 with ETCS_Variables; use ETCS_Variables;
 with Interfaces;     use Interfaces;
@@ -154,6 +155,12 @@ is
       --  4.8.3 [3] first bullet: the RBC acknowledged Train Data (message
       --  8) in this session (forgotten with the session, Reset_Session)
       TD_Acked      : Boolean := False;
+      --  4.8.3 [3] second bullet: the train category, axle load category,
+      --  loading gauge and traction systems of the Train Data last sent
+      --  in this session (TD_Sent) and of those its RBC acknowledged last
+      --  (TD_Values, with TD_Acked)
+      TD_Sent       : EVC_Train_Data.Categories_T;
+      TD_Values     : EVC_Train_Data.Categories_T;
    end record;
 
    No_Info : constant Session_Info_T :=
@@ -168,7 +175,9 @@ is
       Sent          => False,
       Last_Sent     => 0,
       Reported      => No_RBC,
-      TD_Acked      => False);
+      TD_Acked      => False,
+       TD_Sent       => (others => <>),
+       TD_Values     => (others => <>));
 
    --  The sessions this on-board handles (EVC_Config, taken at Clear)
    function Sessions return Session_Count_T
@@ -448,8 +457,25 @@ is
                   and then Accepting = Accepting'Old
                   and then Contact = Contact'Old;
 
+   --  4.8.3 [3]: the Train Data of categories C sent on the session S,
+   --  their acknowledgement awaited
+   procedure Note_Train_Data_Sent (S : Session_T;
+                                   C : EVC_Train_Data.Categories_T)
+     with Global => (In_Out => State),
+          Post => Info (S).TD_Acked = Info (S).TD_Acked'Old
+                  and then Info (S).State = Info (S).State'Old
+                  and then Info (S).Sent = Info (S).Sent'Old
+                  and then Info (S).Last_Sent = Info (S).Last_Sent'Old
+                  and then Train_Data_Acknowledged
+                           = Train_Data_Acknowledged'Old
+                  and then Sessions = Sessions'Old
+                  and then Engine_Id = Engine_Id'Old
+                  and then Supervising = Supervising'Old
+                  and then Accepting = Accepting'Old
+                  and then Contact = Contact'Old;
+
    --  4.8.3 [3]: the RBC of the session S acknowledged the Train Data
-   --  sent to it (message 8)
+   --  sent to it (message 8): the values sent are those it acknowledged
    procedure Note_Train_Data_Acknowledged (S : Session_T)
      with Global => (In_Out => State),
           Post => Info (S).TD_Acked
