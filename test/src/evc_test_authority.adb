@@ -3053,6 +3053,55 @@ package body EVC_Test_Authority is
              & "got" & M'Image);
    end Scenario_Text_Relocated;
 
+   --  A.3.5.1 3rd bullet, the stop over a relocation: the text from 209
+   --  to 309 m of the group 10, ended when the estimated front end passes
+   --  its end before the group 20 is read (3.12.3.4.3, location); the
+   --  relocation on the group 20 puts that front end in rear of the end;
+   --  forward over it again: the text neither shown again nor ended a
+   --  second time, no record of the texts
+   procedure Scenario_Text_Stop_Relocated is
+      M     : Natural := 0;
+      Front : Integer_64;
+   begin
+      Lay_Relocating_L2 (With_MA => True);
+      Give_Radio_Message (1, Text_At_Message (10, 209, L => 100));
+      Stand_X (100);
+      while EVC_Text_Messages.Displayed = 0 and then Train_Cm < 41_000 loop
+         Run_X (Train_Cm + 50, 50);
+      end loop;
+      Check (EVC_Text_Messages.Displayed = 1,
+             "text stop relocated: shown after its start");
+      while EVC_Text_Messages.Displayed = 1 and then Train_Cm < 41_000 loop
+         Run_X (Train_Cm + 50, 50);
+      end loop;
+      Front := Front_From_10;
+      Check (EVC_Text_Messages.Displayed = 0 and then SOLR_Group = 10
+             and then Front >= 30_900,
+             "text stop relocated: ended at its end before the group 20 is "
+             & "read, the front at" & Front'Image & " cm from the group 10");
+      while SOLR_Group /= 20 and then Train_Cm < 41_000 loop
+         Run_X (Train_Cm + 50, 50);
+         M := M + EVC_Text_Messages.Event_Count
+           + EVC_Text_Messages.Displayed;
+      end loop;
+      Front := Front_From_10;
+      Check (SOLR_Group = 20 and then Front < 30_900
+             and then EVC_Text_Messages.Displayed = 0 and then M = 0,
+             "text stop relocated: the estimated front end in rear of the "
+             & "end after the relocation on the group 20 (3.6.4.2.5 a)), "
+             & "not shown again (A.3.5.1 3rd bullet), the front at"
+             & Front'Image & " cm, records and cycles shown" & M'Image);
+      while Train_Cm < 42_000 loop
+         Run_X (Train_Cm + 50, 50);
+         M := M + EVC_Text_Messages.Event_Count
+           + EVC_Text_Messages.Displayed;
+      end loop;
+      Check (EVC_Text_Messages.Displayed = 0 and then M = 0
+             and then EVC_Core.Mode = M_FS,
+             "text stop relocated: forward over the end again, not shown, "
+             & "no record of the texts (A.3.5.1 3rd bullet), got" & M'Image);
+   end Scenario_Text_Stop_Relocated;
+
    --  A.3.5.1 9th bullet over a relocation: the track ahead free request
    --  (message 34, its display from 309 m of the group 10 over 100 m,
    --  3.15.5.2) in SR, shown when the estimated front end reaches its

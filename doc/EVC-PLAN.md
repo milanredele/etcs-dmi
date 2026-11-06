@@ -21039,3 +21039,23 @@ forward, 4 m back) not acknowledged at standstill, SM requested and
 authorised with Q_DIR 0: the brake revoked (failed with the first try).
 The STM rows stay out of scope (NTC). Rows 4.12.1.2, 4.12.1.2 Table and
 its footnote [2] set done. No sequence moved (1226 / 1032 / 932).
+
+**B781, the 3rd bullet's stop over a relocation (no defect).** The
+backlog line was ahead of the brief: the 3rd bullet's start over a
+relocation (`Scenario_Text_Relocated`) and the 12th bullet over a
+relocation (`Scenario_MA_Timers_Relocated`) were done by
+e6/sessions-shunting; left were the stop of the 3rd and the LS profile
+of the 4th. Reading: A.3.5.1 names "start and stop displaying" by
+3.12.3.4.3.1; of the end sub-conditions of 3.12.3.4.3 (location, time,
+mode, level) only the location is location based, and 3.12.3.4.3.1.2
+keeps a fulfilled sub-condition, so the stop not reverted is the text
+not shown again once its end location is passed.
+`Scenario_Text_Stop_Relocated` (`EVC_Test_Authority`, next to
+`Scenario_Text_Relocated`, with its `Lay_Relocating_L2`): the text from
+209 to 309 m of the group 10 ends when the estimated front end passes
+309 m before the group 20 (linked at 300 m, read 6 m late by the 2 %
+over-reading) is read; the relocation puts the front end in rear of
+309 m; forward again: not shown, no record of the texts. Passed at once:
+`EVC_Text_Messages.End_Condition` keeps the location once fulfilled.
+The 12th bullet: nothing to build (premise wrong). B781 left: the LS
+profile of the 4th bullet.

@@ -91,6 +91,7 @@ package EVC_Test_Authority is
    --  A.3.5.1 3rd bullet over a relocation: a text's start passed, the
    --  relocation on a linked group puts the front end in rear of it
    procedure Scenario_Text_Relocated;
+   procedure Scenario_Text_Stop_Relocated;
    --  A.3.5.1 9th bullet over a relocation: the track ahead free request's
    --  beginning passed, the relocation puts the front end in rear of it
    procedure Scenario_TAF_Relocated_In_Rear;
