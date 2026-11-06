@@ -278,6 +278,7 @@ begin
    Scenario_Train_Data_Movement;
    Scenario_Train_Data_Left;
    Scenario_SR_Data_Movement;
+   Scenario_SR_Data_Brake_Revoked;
    Scenario_E4_SR_Distance;
    Scenario_SR_National_Distance;
    Scenario_Driver_Adhesion;
@@ -378,6 +379,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Info;
    EVC_Test_Manoeuvre.Scenario_SM_Handover;
    EVC_Test_Manoeuvre.Scenario_SM_Direction;
+   EVC_Test_Manoeuvre.Scenario_SM_Brake_Reasons;
    EVC_Test_Manoeuvre.Scenario_SM_Post_Trip;
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;

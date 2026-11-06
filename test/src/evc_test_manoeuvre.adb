@@ -17,6 +17,7 @@ with ETCS_Track_Packets.P131;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P12;
 with ETCS_Variables;
+with EVC_Brake_Commands;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Distances;       use EVC_Distances;
@@ -818,6 +819,79 @@ package body EVC_Test_Manoeuvre is
              "SM direction: the authorisation opposite to the active "
              & "cab shown backward, SM02 (4.4.21.1.9, DMI 8.2.3.10)");
    end Scenario_SM_Direction;
+
+   --  4.12.1.2 Table: the brake command reasons over the mode changes of
+   --  SM. "Safe consist length information no longer available" (R in
+   --  SB): the consist lost in SM while moving, the desks closed (4.6.3
+   --  [28]) before standstill, SB revokes the service brake and ends the
+   --  DMI's entry 19. Footnote [2], "Roll Away Protection" (M [2] in SM):
+   --  the train rolls back in FS, the protection brakes, at standstill
+   --  without the acknowledgement the driver selects SM,
+   --  the authorisation opposite to the train orientation (Q_DIR 0)
+   --  revokes the brake
+   procedure Scenario_SM_Brake_Reasons is
+      function Reasons_Image return String is
+        (" RA " & Boolean'Image (Cmd.Reasons (EVC_Brake_Commands.Roll_Away))
+         & " DIR " & Boolean'Image (Cmd.Reasons (EVC_Brake_Commands.Direction))
+         & " SDM " & Boolean'Image
+                       (Cmd.Reasons (EVC_Brake_Commands.Speed_Distance))
+         & " SS " & Boolean'Image
+                      (Cmd.Reasons (EVC_Brake_Commands.Standstill_Supervision))
+         & " OPP " & Boolean'Image (EVC_Radio_Authority.SM_Opposite)
+         & " SBF " & Boolean'Image
+                       (Cmd.Reasons (EVC_Brake_Commands.Service_Brake_Failed)));
+      T     : Unsigned_64;
+      SCL   : constant Natural :=
+        Natural (EVC_DMI_Port.SS_Safe_Consist_Length);
+      Ended : Natural;
+   begin
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Run_X (Train_Cm + 5_000, 500);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      Run_X (Train_Cm + 500, 250);
+      Ended := SS_Ended (SCL);
+      Check (EVC_Core.Mode = M_SM
+             and then EVC_Stored_Information.Consist_Brake
+             and then EVC_Procedures.Brake_Demand.SB,
+             "SM brake reasons: the consist lost in SM while moving, the "
+             & "service brake (4.4.21.1.12)");
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Run_X (Train_Cm + 300, 100);
+      Run_X (Train_Cm + 300, 100);
+      Check (EVC_Core.Mode = M_SB
+             and then not EVC_Procedures.Brake_Demand.SB
+             and then SS_Ended (SCL) = Ended + 1,
+             "SM brake reasons: the desks closed while moving, SB revokes "
+             & "the consist's service brake, entry 19 ended (4.12.1.2 "
+             & "Table: R in SB); mode " & Mode_T'Image (EVC_Core.Mode)
+             & ", SB " & Boolean'Image (EVC_Procedures.Brake_Demand.SB)
+             & ", ended" & Natural'Image (SS_Ended (SCL) - Ended));
+      Start_L2_SM;
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Direction_Controller) + 1), 1));
+      Run_X (Train_Cm - 400, 100);
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_FS and then Cmd.EB
+             and then Cmd.Reasons (EVC_Brake_Commands.Roll_Away),
+             "SM brake reasons: the controller forward, the train rolls "
+             & "back 4 m in FS: the roll away protection (3.14.2); mode "
+             & Mode_T'Image (EVC_Core.Mode) & ", EB "
+             & Boolean'Image (Cmd.EB));
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM
+             and then not Cmd.Reasons (EVC_Brake_Commands.Roll_Away)
+             and then not Cmd.EB,
+             "SM brake reasons: SM entered by an authorisation that changes "
+             & "the train orientation revokes the protection (4.12.1.2 "
+             & "Table-footnote [2]); mode " & Mode_T'Image (EVC_Core.Mode)
+             & ", EB " & Boolean'Image (Cmd.EB) & Reasons_Image);
+   end Scenario_SM_Brake_Reasons;
 
    procedure Scenario_SM_Request is
       T : Unsigned_64;

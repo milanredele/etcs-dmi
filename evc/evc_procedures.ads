@@ -426,9 +426,12 @@ is
    --  The mode machine took the transition From -> To in this cycle
    --  (From /= To), the context of the cycle (EVC_Core.Enter_Mode). The
    --  reason of a trip is the first condition of 4.6.2 for From -> TR
-   --  (EVC_Modes.Conditions) that held in the cycle.
+   --  (EVC_Modes.Conditions) that held in the cycle. The brake reasons of
+   --  this unit revoked by the mode entered (4.12.1.2 Table): the linking
+   --  reaction and the safe consist length's service brake.
    --  @req 4.4.13.1.3, 4.4.14.1.2.1, 5.6.2.2 A050, 5.7.2.3, 5.7.3.6
    --  @req 5.8.4.1 i), 5.9.2.3, 5.17.2.2 D4, 5.17.2.2 S1
+   --  @req 4.12.1.2 Table, 4.12.1.2 Table-footnote [2]
    procedure Mode_Changed (From, To : Mode_T; C : Context_T;
                            S : Snapshot_T)
      with Global => (In_Out => State,

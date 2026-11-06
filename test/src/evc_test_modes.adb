@@ -644,6 +644,56 @@ package body EVC_Test_Modes is
              & "acknowledgement (3.14.1.5), the entered data end the entry");
    end Scenario_SR_Data_Movement;
 
+   --  4.12.1.2 Table, the rows "Train movement detected while the driver
+   --  is entering SR speed/distance limits" (R in FS) and "... while the
+   --  driver is modifying or revalidating the Train Data" (M in FS): in
+   --  SR, the brake of a movement during the SR entry is revoked when
+   --  the MA of a level 1 group gives FS while moving (4.6.3 [31]), the
+   --  brake of a movement during the Train Data entry is kept
+   procedure Scenario_SR_Data_Brake_Revoked is
+      Shown, Ended : Natural;
+   begin
+      Mission (L1_Code);
+      Group_With_MA (10, 100, (500, 400));
+      Send (Action (23));
+      Run_X (5_000, 100);
+      Shown := SS_Seen (9);
+      Ended := SS_Ended (9);
+      Check (EVC_Core.Mode = EVC_Modes.M_SR and then Cmd.EB
+             and then Cmd.Reasons (EVC_Brake_Commands.Data_Entry_Movement),
+             "SR data brake revoked: a movement during the SR entry "
+             & "commands the brake (4.4.11.1.5.1)");
+      Run_X (11_000);
+      --  the supervision runs before the mode machine: the commands of
+      --  the new mode from the next cycle on
+      Run_X (13_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_FS
+             and then not Cmd.Reasons
+                            (EVC_Brake_Commands.Data_Entry_Movement)
+             and then not Cmd.EB,
+             "SR data brake revoked: FS entered while moving revokes the "
+             & "brake of the SR entry (4.12.1.2 Table: R in FS); mode "
+             & Mode_T'Image (EVC_Core.Mode) & " reason "
+             & Boolean'Image (Cmd.Reasons
+                                (EVC_Brake_Commands.Data_Entry_Movement))
+             & " EB " & Boolean'Image (Cmd.EB) & " SR entry "
+             & Boolean'Image (EVC_Mission.Entering_SR_Data));
+      Check (SS_Seen (9) = Shown and then SS_Ended (9) = Ended + 1,
+             "SR data brake revoked: 'Runaway movement' ended with the "
+             & "reason revoked (DMI Table 68, 4.12.1.2)");
+      Mission (L1_Code);
+      Group_With_MA (10, 100, (500, 400));
+      Send (Action (21));
+      Run_X (5_000, 100);
+      Run_X (13_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_FS
+             and then Cmd.Reasons (EVC_Brake_Commands.Data_Entry_Movement)
+             and then Cmd.EB,
+             "SR data brake revoked: the brake of a movement during the "
+             & "Train Data entry in SR is maintained in FS (4.12.1.2 "
+             & "Table: M in FS); mode " & Mode_T'Image (EVC_Core.Mode));
+   end Scenario_SR_Data_Brake_Revoked;
+
    --  5.4.3.2 S22, S23, 5.4.5.3 h (level 2 without a session): the mode
    --  proposed after 'Start' in levels 0, NTC and 2; UN (4.4.10), SN
    --  (4.4.17); 4.6.3 [58], [60]

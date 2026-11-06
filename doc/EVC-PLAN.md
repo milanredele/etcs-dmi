@@ -20987,3 +20987,55 @@ distance's curve), B1840 (a fault the host reports: whether any host
 has one), B1360's records 21, 22, 33 to 37, 40, 41 left, the E7 lines
 when E7 opens; the review again (eight items, readings first, no
 backlog read).
+
+### The brake reasons and the bookkeeping over a relocation: the brake command reasons the on-board lacked, the texts and the MA timers over a relocation (e6/brake-reasons) (2026-11-06)
+
+**B470, the rows of 4.12.1.2 Table (done).** The premise ("reasons the
+on-board does not have") held for one row in four at the source. The BG
+message inconsistency (`EVC_Position.React_Inconsistent`, cause 7 with
+no link, `EVC_Procedures.Linking_Events` `Msg_SB`) and the RAMS
+functions (3.16.2.7.1.1, cause `Cause_Double_Missed`) already command
+the linking reaction's service brake, `Link_SB`, with the DMI's entry 1
+"Balise read error" (DMI Table 68 names 3.16.2.4.4.3, 3.16.2.5.3,
+3.16.2.6.1, 3.16.2.7.1.1, 3.16.2.7.2.2 for it); their two rows equal the
+linking inconsistency's cell by cell (R in NP and SB, M in SH, SM [2],
+FS, LS, SR, OS, UN, TR, SN) and 3.14.1.6 releases all three at
+standstill, so one reason is the reading (decision: no reason of their
+own, nothing a driver or the train interface could tell apart). The
+movement while the driver enters the SR limits (4.4.11.1.5.1) shared
+the latch of the Train Data entry in `EVC_Brake_Commands.Step` (one
+input, `Modifying_Data`, or-ed in `EVC_Core.Monitoring`): the Train
+Data row is M in FS, LS, SR, OS, UN, TR, SN where the SR row is R, so a
+mode change out of SR while braking kept the brake until standstill and
+the acknowledgement. Built: a second input and latch (`SR_Entry`), set
+in SR only, released per 3.14.1.5 like the first, revoked by
+`EVC_Core.Modes.Revoke_Brake_Reasons` entering any mode but SR; the
+reason reported stays `Data_Entry_Movement` (DMI entry 9 "Runaway
+movement" and the TIU's procedure reason are the same for both rows).
+`Scenario_SR_Data_Brake_Revoked` (in `EVC_Test_Modes`, next to
+`Scenario_SR_Data_Movement` whose helpers it uses): SR in level 1, the
+SR window opened, the train moves (EB), the group 10 at 100 m gives FS
+by its MA while moving: the reason, the EB and entry 9 ended; the same
+with the Train Data window: kept in FS. Before the fix it failed on the
+first two checks. The safe consist length (4.4.21.1.12) was a reason
+(`EVC_Procedures.Consist_SB`, from `EVC_Stored_Information.
+Consist_Brake`) that no mode change revoked: its row is R in NP, SB, SH
+and M in TR, and SB is reachable from SM while moving by the desks
+closed (4.6.3 [28], no standstill in it). Built: `EVC_Procedures.
+Mode_Changed` revokes it on NP, SB, SH (`Consist_Revoked` masks the
+stored information's brake until that brake falls) and ends the DMI's
+entry 19 (its end condition names the revocation by 4.12.1.2). Footnote
+[2] (R in SM when the SM authorisation changes the train orientation):
+`Revoke_Brake_Reasons` revokes roll away and unauthorised direction, and
+`Mode_Changed` the linking reaction, entering SM when
+`EVC_Radio_Authority.SM_Opposite` holds (decision: the last
+authorisation taken, SM being entered by [81] only; `SM_Taken` is
+consumed by the conditions before the mode machine, a first try with it
+did not revoke). `Scenario_SM_Brake_Reasons` (in `EVC_Test_Manoeuvre`,
+where the SM helpers are): the consist lost in SM while moving, the
+desks closed, SB without the service brake and entry 19 ended (failed
+without the fix: SB kept, no end); a roll away brake in FS (controller
+forward, 4 m back) not acknowledged at standstill, SM requested and
+authorised with Q_DIR 0: the brake revoked (failed with the first try).
+The STM rows stay out of scope (NTC). Rows 4.12.1.2, 4.12.1.2 Table and
+its footnote [2] set done. No sequence moved (1226 / 1032 / 932).

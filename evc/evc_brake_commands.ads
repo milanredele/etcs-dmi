@@ -78,6 +78,11 @@ is
       --  the Train Data commanded the brake, until standstill and
       --  acknowledgement (3.14.1.5)
       Data_Entry  : Boolean := False;
+      --  4.4.11.1.5.1: a movement while the driver enters the SR speed /
+      --  distance limits commanded the brake, until standstill and
+      --  acknowledgement (3.14.1.5); a reason of its own, revoked in
+      --  other modes than the Train Data one (4.12.1.2 Table)
+      SR_Entry    : Boolean := False;
    end record;
 
    type Inputs_T is record
@@ -95,6 +100,9 @@ is
       --  3.18.3.3.1: the driver is modifying or revalidating the Train
       --  Data after the start of mission (EVC_Mission)
       Modifying_Data : Boolean := False;
+      --  4.4.11.1.5.1: the driver is entering the SR speed / distance
+      --  limits (EVC_Mission)
+      Entering_SR_Data : Boolean := False;
    end record;
 
    --  @req 3.14.1.9
@@ -115,7 +123,7 @@ is
    function Direction_Mode (M : Mode_T) return Boolean is
      (M in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS | M_PT | M_RV);
 
-   --  @req 3.14.1.2
+   --  @req 3.14.1.2, 4.12.1.2 Table
    procedure Step (S      : Snapshot_T;
                    SDM    : EVC_SDM.Result_T;
                    Inputs : Inputs_T;
@@ -143,6 +151,9 @@ is
        and then (if State.Data_Entry'Old and then not State.Data_Entry
                  then S.Train.Standstill and then Inputs.Ack)
        and then (if State.Data_Entry then Output.EB)
+       and then (if State.SR_Entry'Old and then not State.SR_Entry
+                 then S.Train.Standstill and then Inputs.Ack)
+       and then (if State.SR_Entry then Output.EB)
        and then (if State.Roll_Away.Braking or else State.Direction.Braking
                    or else State.Standstill.Braking
                  then Output.EB);

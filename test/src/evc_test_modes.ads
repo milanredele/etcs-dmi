@@ -13,6 +13,7 @@ package EVC_Test_Modes is
       procedure Scenario_Train_Data_Movement;
       procedure Scenario_Train_Data_Left;
       procedure Scenario_SR_Data_Movement;
+      procedure Scenario_SR_Data_Brake_Revoked;
       procedure Scenario_E4_SR_Distance;
       procedure Scenario_SR_National_Distance;
       procedure Scenario_Driver_Adhesion;

@@ -123,6 +123,19 @@ is
       elsif Inputs.Modifying_Data and then Moving then
          State.Data_Entry := True;
       end if;
+      --  4.4.11.1.5.1: the same for a movement while the driver enters
+      --  the SR speed / distance limits, in SR only (the entry of the
+      --  cycle of a mode change ends in the next one, the brake being
+      --  revoked by the change, 4.12.1.2 Table)
+      if State.SR_Entry then
+         if T.Standstill and then Inputs.Ack then
+            State.SR_Entry := False;
+         end if;
+      elsif Inputs.Entering_SR_Data and then Inputs.Mode = M_SR
+        and then Moving
+      then
+         State.SR_Entry := True;
+      end if;
 
       --  3.14.1.2: the service brake alone, not applied: the emergency
       --  brake (released with the service brake command). The train must
@@ -152,18 +165,19 @@ is
          Roll_Away              => State.Roll_Away.Braking,
          Direction              => State.Direction.Braking,
          Standstill_Supervision => State.Standstill.Braking,
-         Data_Entry_Movement    => State.Data_Entry);
+         Data_Entry_Movement    => State.Data_Entry or else State.SR_Entry);
       Output.Protection :=
         State.Roll_Away.Braking or else State.Direction.Braking
         or else State.Standstill.Braking;
       Output.EB := SDM.EB or else State.SB_Failed or else Output.Protection
-                   or else State.Data_Entry;
+                   or else State.Data_Entry or else State.SR_Entry;
       Output.SB := SDM.SB;
       Output.TCO := SDM.TCO;
       --  3.14.1.9, 3.14.1.10.1: one acknowledgement for the reasons of
       --  3.14.1.5, asked at standstill
       Output.Ack_Required :=
-        (Output.Protection or else State.Data_Entry) and then T.Standstill;
+        (Output.Protection or else State.Data_Entry or else State.SR_Entry)
+        and then T.Standstill;
    end Step;
 
 end EVC_Brake_Commands;

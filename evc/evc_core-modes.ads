@@ -202,9 +202,13 @@ is
    --  7b. 4.12: the brake command reasons revoked on entering the mode To
    --  from From: the speed and distance monitoring, the roll away, the
    --  unauthorised direction movement and the standstill protections
-   --  (3.14.2, 3.14.3)
+   --  (3.14.2, 3.14.3, the first two also entering SM by an authorisation
+   --  that turns the train, Table-footnote [2]), the movements while the
+   --  driver modifies the Train Data and while he enters the SR limits
+   --  (two reasons, their rows differ)
    procedure Revoke_Brake_Reasons (From, To : Mode_T)
-     with Global => (In_Out => (Brake_State, SDM_State, EVC_Sessions.State));
+     with Global => (Input  => EVC_Radio_Authority.State,
+                     In_Out => (Brake_State, SDM_State, EVC_Sessions.State));
 
    --  7. What entering the mode To from From means: the data
    --  of 4.10 (the stores, the position, the level, the mission, the

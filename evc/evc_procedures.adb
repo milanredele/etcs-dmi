@@ -34,7 +34,7 @@ package body EVC_Procedures
                     Stop_On_Desk, SH_List_Known, SH_List_N, SH_List,
                     Now_Flags, Rev, Rev_Possible, RV_Over,
                     RV_EB, BMM_On, BMM_From, BTM_Failure, Link_SB, Consist_SB,
-                    Demand, Demand_Sent,
+                    Consist_Revoked, Demand, Demand_Sent,
                     Status_N, Status_List, Event_N, Events,
                     TD_Step, TD_Then_Revalidate, TD_Revalidate,
                     TD_Moving_Due, SH_Profile_Seen))
@@ -285,6 +285,9 @@ is
    --  while moving, released at standstill by the shortening
    --  (EVC_Stored_Information.Consist_Brake, 3.14.1.7.6)
    Consist_SB : Boolean := False;
+   --  4.12.1.2 Table: that brake revoked by a mode change, while the
+   --  stored information still holds it (until its release)
+   Consist_Revoked : Boolean := False;
 
    --  5.17: Train Data changed by another source. The step of the
    --  procedure (5.17.2.2: S1 waiting for the end of the trip, S2 / S4
@@ -467,6 +470,7 @@ is
       BTM_Failure := False;
       Link_SB := False;
       Consist_SB := False;
+      Consist_Revoked := False;
       Demand := (others => <>);
       Demand_Sent := (others => <>);
       Status_N := 0;
@@ -1633,18 +1637,22 @@ is
    --  @req 4.4.21.1.12
    procedure Consist_Step
      with Global => (Input  => EVC_Stored_Information.State,
-                     In_Out => (Consist_SB, Status_List, Status_N))
+                     In_Out => (Consist_SB, Consist_Revoked, Status_List,
+                                Status_N))
    is
       Brake : constant Boolean := EVC_Stored_Information.Consist_Brake;
       Lost  : constant Boolean := EVC_Stored_Information.Consist_Lost;
    begin
       if Lost then
          Status (SS_Safe_Consist_Length, 0);
+         Consist_Revoked := False;
+      elsif not Brake then
+         Consist_Revoked := False;
       end if;
       if (Lost or else Consist_SB) and then not Brake then
          Status (SS_Safe_Consist_Length, 1);
       end if;
-      Consist_SB := Brake;
+      Consist_SB := Brake and then not Consist_Revoked;
    end Consist_Step;
 
    --  Evaluate
@@ -2099,6 +2107,24 @@ is
       --  @req 3.16.2.6.1
       if Link_SB and then To in M_NP | M_SB then
          Status (SS_Balise_Read_Error_Brake, 1);
+      end if;
+      --  4.12.1.2 Table-footnote [2]: the brake of the linking and the
+      --  balise group message inconsistency and of the RAMS functions
+      --  (one reason, Link_SB, their rows being alike) revoked entering
+      --  SM by an authorisation that changes the train orientation (the
+      --  last one taken, SM being entered by one only, 4.6.3 [81])
+      if Link_SB and then To = M_SM and then EVC_Radio_Authority.SM_Opposite
+      then
+         Link_SB := False;
+         Status (SS_Balise_Read_Error_Brake, 1);
+      end if;
+      --  4.12.1.2 Table, "Safe consist length information no longer
+      --  available": revoked on NP, SB, SH (maintained in TR, the other
+      --  modes not relevant), the DMI's entry 19 ended with it
+      if Consist_SB and then To in M_NP | M_SB | M_SH then
+         Consist_SB := False;
+         Consist_Revoked := True;
+         Status (SS_Safe_Consist_Length, 1);
       end if;
       Delete_On_Mode_Entry (To);
       BMM_Reset (To, C, S);

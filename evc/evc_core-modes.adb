@@ -319,6 +319,10 @@ is
    end Delete_On_Mode_Entry;
 
    procedure Revoke_Brake_Reasons (From, To : Mode_T) is
+      --  4.12.1.2 Table-footnote [2]: the SM authorisation changes the
+      --  train orientation (SM is entered by an authorisation only, 4.6.3
+      --  [81], and this is the last one taken)
+      SM_Turned : constant Boolean := EVC_Radio_Authority.SM_Opposite;
    begin
       --  4.12: Speed & Distance monitoring revoked in NP, SB, TR (to be
       --  re-evaluated in the others: the monitoring runs again on the
@@ -336,11 +340,16 @@ is
       --  SN and, from PT, in FS, LS, SR, OS ([1]); the Standstill
       --  Supervision in NP, SH, SM, FS, LS, SR, OS, SL, UN, TR, SN; in IS
       --  the on-board is isolated from the brakes (4.4.3.1.1)
-      if To in M_NP | M_SB | M_TR | M_SN | M_IS then
+      --  [2]: both protections revoked entering SM by an authorisation
+      --  that changes the train orientation
+      if To in M_NP | M_SB | M_TR | M_SN | M_IS
+        or else (To = M_SM and then SM_Turned)
+      then
          Brake_State.Roll_Away := (others => <>);
       end if;
       if To in M_NP | M_SB | M_SH | M_UN | M_TR | M_SN | M_IS
         or else (From = M_PT and then To in M_FS | M_LS | M_SR | M_OS)
+        or else (To = M_SM and then SM_Turned)
       then
          Brake_State.Direction := (others => <>);
       end if;
@@ -353,6 +362,12 @@ is
       --  (3.18.3.3.1) in NP, SB, SH (4.12.1.2) and IS
       if To in M_NP | M_SB | M_SH | M_IS then
          Brake_State.Data_Entry := False;
+      end if;
+      --  the brake of a movement while the driver enters the SR speed /
+      --  distance limits in every mode other than SR (4.12.1.2 Table: R
+      --  in NP, SB, SH, FS, LS, OS, UN, TR, SN, the others not relevant)
+      if To /= M_SR then
+         Brake_State.SR_Entry := False;
       end if;
       --  the service brake of T_NVCONTACT revoked in NP, SB, SH, SR, UN,
       --  TR, SN (4.12.1.2 Table)

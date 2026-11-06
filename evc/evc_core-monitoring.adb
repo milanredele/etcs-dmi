@@ -90,8 +90,8 @@ is
              Dt_Ms      => Dt_Ms,
              A_Est      => SDM_State.A_Est,
              T_Bs       => SDM_Work.Model.Service_Target.Build_Up,
-             Modifying_Data => EVC_Mission.Modifying_Train_Data
-                             or else EVC_Mission.Entering_SR_Data),
+             Modifying_Data   => EVC_Mission.Modifying_Train_Data,
+             Entering_SR_Data => EVC_Mission.Entering_SR_Data),
             Brake_State, Brake_Output);
          Speed_State := To_Speed_State (S, SDM_Result);
       end Run;
