@@ -1468,7 +1468,8 @@ is
    end TD_Request_Revalidation;
 
    --  @req 3.14.1.7.2, 5.17.2.2 A1, 5.17.2.2 D0, 5.17.2.2 D1, 5.17.2.2 D2
-   --  @req 5.17.2.2 D3, 5.17.2.2 D7, 5.17.2.2 D9, 5.17.2.2 S0
+   --  @req 5.17.2.2 D3, 5.17.2.2 D5, 5.17.2.2 D7, 5.17.2.2 D9
+   --  @req 5.17.2.2 S0
    procedure Train_Data_Step (C : Context_T; S : Snapshot_T)
      with Global => (In_Out => (TD_Step, TD_Then_Revalidate, TD_Revalidate,
                                 TD_Moving_Due, Status_List, Status_N,
@@ -1543,9 +1544,12 @@ is
             end if;
          elsif not C.TD_Category then
             Inform;                                        -- D1, A1
-         elsif C.Mode in M_SB | M_PT | M_UN | M_SN | M_SR | M_TR then
-            --  D3; D5: the MA and track description of an RBC (level 2)
-            --  are not stored
+         elsif C.Mode in M_SB | M_PT
+           or else (C.Mode in M_UN | M_SN | M_SR | M_TR
+                    and then not C.TD_RBC_Stored)
+         then
+            --  D3; D5: the MA and track description of an RBC are not
+            --  both stored for an ordered transition
             Inform;                                        -- A1
          elsif Standstill then
             Inform;                                        -- D7, A1

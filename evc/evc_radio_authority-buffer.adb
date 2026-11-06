@@ -19,6 +19,10 @@ is
       --  4.8.5.2.1: a general message whose packets on the rows R [2]
       --  are the set kept, the others taken at the reception
       Part      : Boolean := False;
+      --  5.17.2.2 D5: the message carries an MA (packet 15), a track
+      --  description (the SSP and the gradient, packets 27 and 21)
+      MA        : Boolean := False;
+      Track     : Boolean := False;
    end record;
 
    --  the oldest first
@@ -124,7 +128,9 @@ is
    procedure Store (S         : EVC_Radio.Session_T;
                     Data      : EVC_Bytes.Byte_Array;
                     Accepting : Boolean := False;
-                    Part      : Boolean := False)
+                    Part      : Boolean := False;
+                    MA        : Boolean := False;
+                    Track     : Boolean := False)
      with Refined_Global => (In_Out => (Slots, Count))
    is
    begin
@@ -138,10 +144,16 @@ is
       end if;
       Count := Count + 1;
       Slots (Count) := (Session => S, Length => Data'Length, Data => <>,
-                        Accepting => Accepting, Part => Part);
+                        Accepting => Accepting, Part => Part,
+                        MA => MA, Track => Track);
 
       Slots (Count).Data (1 .. Data'Length) := Data;
    end Store;
+
+   function MA_And_Track_Stored return Boolean is
+     ((for some I in 1 .. Count => Slots (I).MA)
+      and then (for some I in 1 .. Count => Slots (I).Track))
+     with Refined_Global => (Slots, Count);
 
    procedure Take_Released (S    : out EVC_Radio.Session_T;
                             Data : in out EVC_Bytes.Byte_Array;

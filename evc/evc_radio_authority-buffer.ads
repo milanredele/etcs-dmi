@@ -81,10 +81,17 @@ is
    procedure Store (S         : EVC_Radio.Session_T;
                     Data      : EVC_Bytes.Byte_Array;
                     Accepting : Boolean := False;
-                    Part      : Boolean := False)
+                    Part      : Boolean := False;
+                    MA        : Boolean := False;
+                    Track     : Boolean := False)
      with Global => (In_Out => State),
           Pre  => EVC_Ports.Valid_RTM (Data),
           Post => Buffered >= 1;
+
+   --  5.17.2.2 D5: among the messages held, one carries an MA and one
+   --  (the same or another) a track description (MA and Track of Store)
+   function MA_And_Track_Stored return Boolean
+     with Global => State;
 
    --  4.8.2.1 c) exception 2: the oldest message was held from the
    --  Accepting RBC

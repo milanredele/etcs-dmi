@@ -188,6 +188,7 @@ is
          TD_Change         => Config_Changed,
          TD_Validation     => (Config and TIU_Config_Validation) /= 0,
          TD_Category       => (Config and TIU_Config_Category) /= 0,
+         TD_RBC_Stored     => EVC_Radio_Authority.Buffered_MA_Stored,
          SR_Distance_Passed => SR_Distance_Passed,
          SR_Listed         => EVC_Radio_Authority.Groups_Passed_Listed,
          SR_Unlisted       => EVC_Radio_Authority.Group_Passed_Unlisted,

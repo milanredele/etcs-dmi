@@ -132,6 +132,15 @@ is
    function Buffered return Natural
      with Global => State;
 
+   --  5.17.2.2 D5: an MA and a track description received from the RBC
+   --  are stored on-board for a level 2 or RBC transition ordered at a
+   --  further location: held in the transition buffer (4.8.5.1, 4.8.2.1
+   --  c)). Decision: both in the sets held, in one message or in two
+   --  (the MA, packet 15; the track description, packets 27 and 21)
+   --  @req 5.17.2.2 D5
+   function Buffered_MA_Stored return Boolean
+     with Global => State;
+
    --  1d. 4.8.5.5: the transition buffer is released (the level is 2):
    --  Take_Released gives its oldest message, with its session, into
    --  Data (Data'First .. Last); EVC_Core parses it and gives it to

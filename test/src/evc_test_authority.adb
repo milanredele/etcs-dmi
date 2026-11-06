@@ -2079,6 +2079,32 @@ package body EVC_Test_Authority is
              "buffer: an order to the announced level at distance 0 keeps "
              & "the set, released and used at the transition: FS "
              & "(4.8.5.4 a), 4.8.5.5, 4.8.5.6)");
+
+      --  5.17.2.2 D5: the train category changed by the train interface
+      --  (TIU input 13, bit 7) while moving in UN, an MA with its track
+      --  description of the RBC kept for the level 2 transition: D7, not
+      --  at standstill, S2 (the service brake); none kept: A1, no brake
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, Order_L2 (600));
+      Establish;
+      EVC_Core.Handle_Input (TIU, (13, 0));
+      Run_X (15_000);
+      EVC_Core.Handle_Input (TIU, (13, 128 + 1));
+      Run_X (16_000);
+      Check (not EVC_Procedures.Brake_Demand.SB,
+             "5.17.2.2 D3, D5: in UN with no MA of the RBC stored, A1 (no "
+             & "brake)");
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Run_X (20_000);
+      EVC_Core.Handle_Input (TIU, (13, 128 + 2));
+      Run_X (20_500);
+      Check (RA.Buffered = 1 and then EVC_Core.Mode = M_UN
+             and then EVC_Procedures.Brake_Demand.SB,
+             "5.17.2.2 D3, D5, D7, S2: in UN with the MA and track "
+             & "description of the RBC stored for the level 2 transition, "
+             & "moving: the service brake");
    end Scenario_Transition_Buffer;
 
    --  4.8.3, the rows of the axle load speed profile and the permitted

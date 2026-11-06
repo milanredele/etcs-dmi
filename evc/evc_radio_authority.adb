@@ -364,6 +364,19 @@ is
           in ETCS_Catalogue.Track_P41 | ETCS_Catalogue.Track_P46)
      with Global => EVC_Received.Store;
 
+   --  the last message carries a packet of the kind P
+   function In_Last (P : ETCS_Catalogue.Packet_Kind_T) return Boolean is
+     (for some I in 1 .. EVC_Received.Last_Packet_Count =>
+        ETCS_Catalogue."=" (EVC_Received.Last_Packet_Kind (I), P))
+     with Global => EVC_Received.Store;
+
+   --  5.17.2.2 D5: the last message carries a track description, the
+   --  SSP and the gradient (3.7.1.1 b), c), 3.7.3.1)
+   function Track_In_Last return Boolean is
+     (In_Last (ETCS_Catalogue.Track_P27)
+      and then In_Last (ETCS_Catalogue.Track_P21))
+     with Global => EVC_Received.Store;
+
    --  4.8.3, From RBC: R [2] outside level 2, A in level 2, for the
    --  packets a general message hands to their own units: linking (5,
    --  EVC_Position.Take_Radio_Linking), plain and fixed text (73, 74,
@@ -405,7 +418,9 @@ is
                                 Data : EVC_Bytes.Byte_Array) is
    begin
       if Holds_Level_2_Part then
-         Buffer.Store (S, Data, Part => True);
+         Buffer.Store (S, Data, Part => True,
+                       MA => In_Last (ETCS_Catalogue.Track_P15),
+                       Track => Track_In_Last);
       end if;
    end Keep_Level_2_Part;
 
@@ -437,8 +452,13 @@ is
          end if;
          return;
       end if;
-      Buffer.Store (S, Data, Accepting);
+      Buffer.Store (S, Data, Accepting,
+                    MA => In_Last (ETCS_Catalogue.Track_P15),
+                    Track => Track_In_Last);
    end Store_Message;
+
+   function Buffered_MA_Stored return Boolean is
+     (Buffer.MA_And_Track_Stored);
 
    function Buffered return Natural is (Buffer.Buffered);
 

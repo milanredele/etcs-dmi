@@ -20505,3 +20505,26 @@ order to level 2 at a further location was received), where
 the source; B3580, not mine to edit). The edit is in
 `EVC_Stored_Information`, outside the units of the brief (the trace put
 it there). Rows 4.8.5.4, 4.8.5.5, 4.8.5.6 noted.
+
+B846 (5.17.2.2 D5). The scoping held at the source: the buffer keeps
+raw bytes per message and the packets are known at `Store` only
+(`EVC_Received.Last_Packet_Kind`). D5 reads "MA and track description
+... are stored ... if not both stored, A1". Built: a flag per entry of
+`EVC_Radio_Authority.Buffer` set at `Store` by its two callers
+(`Store_Message`, `Keep_Level_2_Part`): the message carries an MA
+(packet 15), a track description (the SSP and the gradient, packets 27
+and 21); `Buffer.MA_And_Track_Stored` and the accessor
+`EVC_Radio_Authority.Buffered_MA_Stored` (decision: both among the sets
+held, in one message or in two); `EVC_Procedures.Context_T.TD_RBC_Stored`
+set in `EVC_Core.Modes` from it; in `Train_Data_Step` UN, SN, SR and TR
+go to D7 when it holds (at standstill A1, moving S2), else A1 as before.
+The scenario is in `EVC_Test_Authority.Scenario_Transition_Buffer`, not
+`EVC_Test_Procedures` as the brief has it: the session, the MA message
+and the announced level 2 are that package's helpers, the procedures'
+test has no radio; a train category change (TIU input 13) while moving
+in level 0 UN with level 2 announced: without an MA held A1 (no brake),
+with the MA and its track description held the service brake (failed
+before the build). Proofs of `evc_radio_authority-buffer`,
+`evc_radio_authority`, `evc_procedures`, `evc_core-modes`; the runner
+unchanged in sequences (21 steps more passed after a first failure).
+Row 5.17.2.2 D5 done; B846 closed.

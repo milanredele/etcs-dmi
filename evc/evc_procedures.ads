@@ -146,6 +146,10 @@ is
       TD_Change        : Boolean := False;
       TD_Validation    : Boolean := False;
       TD_Category      : Boolean := False;
+      --  5.17.2.2 D5: an MA and a track description of an RBC are stored
+      --  for an ordered level 2 or RBC transition
+      --  (EVC_Radio_Authority.Buffered_MA_Stored)
+      TD_RBC_Stored    : Boolean := False;
       --  4.6.3 [42], 5.8.4.1 h): the estimated front end passed the end
       --  of the SR distance (EVC_Mission)
       SR_Distance_Passed : Boolean := False;
