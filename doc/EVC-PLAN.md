@@ -21127,3 +21127,86 @@ scenario. No change in evc/ for this item.
 
 **B530, the operated system version in the JRU header: left.** The
 bound came with B540 finished; B530 was not started (no trace).
+### The runner's driver entries and timers: the second RBC data entry, a timer from the display time, the speed under the SR distance's curve (e5/runner-entry) (2026-11-06)
+
+B3560, the second RBC data entry (S390f221b). Traced on master at
+4080453_01 SV30: step 82 'enter RBC-data' confirmed the values shown
+with the 'Yes' (JRU 124 and the connect request at 258.3 s, in the
+windows of steps 81 and 82), so step 84 'validate RBC-data' met the
+Main window of DMI Table 50 S8 with its buttons disabled. The sequence
+splits one entry over three steps (82 the fields, 83 'Yes enabled', 84
+the 'Yes'), so `S076_Run.RBC_Data_Entry` now does the same: an 'enter
+RBC-data' whose next input is a 'validate' or 'confirm RBC-data' of the
+same case types the fields and leaves the 'Yes' to that step (6 steps
+per version). The comment "The new RBC contact information shall be
+different from the displayed one" (3180400_03 183, 3180400_05 93,
+4080453_01 82 and 136) enters the RBC ID shown and the phone number
+shown with its last digit changed (decision: the NID_RADIO is what step
+86 tells apart, "NOT (NID_RADIO=<previously stored>)"); the other
+comments of the corpus's 'enter RBC-data' steps name a value (RBC ID,
+phone, already read by `Radio_Values`) or the current session's data
+(the values shown), none says 'last known RBC' or 'short number' (those
+are the Radio data window's own buttons). Step 86's 'no-connect' was
+judged as no request at all, where the step means none with the
+replaced number: `S076_Run.Radio_Expect` (outside the units of the
+brief, the judgement of that step) counts, for a 'no-connect' whose
+comment says "previously stored" after such an entry, only the requests
+with the replaced NID_RADIO. 4080453_01 passes in the three versions
+(JRU 24 at 263.0 s in step 85's window, not judged as before by the
+Q_RBCENTRY coding of the Known list; the connect in step 87's); the
+other twelve steps are not reached (3180400_02 / _03 stop at step 49,
+_05 at step 83, unchanged). Runner 1229 / 1029 / 932, 3 improvements,
+0 regressions.
+
+B3384, a timer from the display time (S13c9beb3 of 4120100_02).
+Traced on master at 4120100_02 SV30: step 211's '<T_STEP>' 30 s ("The
+timer begins when the message starts to be displayed", the
+Communication error of the T_NVCONTACT expiry) ran from the standstill
+of step 206 (257.0 s), so the train reached 1625 m at 314.1 s, after
+the release of the safe radio connection 60 s after the expiry
+(3.16.3.4.3, 305.1 s) which the sequence never confirms again, and
+step 239's 136 of the mode change to PT waited for it. The runner knew
+no display time: `S076_Run.Run_Timer` now notes, cycle by cycle, when
+each system status message of the DMI starts to be shown during a
+timer's run (the expiry raises the message inside that run), and
+`Timer_Input` counts a '<T_STEP>' whose comment says "starts to be
+displayed" from the start of the message the next step names while it
+is still shown (`SS_Shown_Since`), else from the step before as
+before. The corpus has four such steps in SV30 (4120100_02 211,
+4120100_14 147 and 207, 4120100_16 155); only 4120100_02's message
+starts inside a timer's run (shown at 245.1 s, step 211 ends at
+275.6 s); 4120100_16's starts a cycle after its T_NVCONTACT run and
+keeps the old start (passes as before), 4120100_14 stops at step 64
+before its two. 4120100_02 SV30 moves to step 254 (S839261e1, s076):
+ours shows and records PT distance exceeded, the step expects
+SYSTEM_STATUS_MESSAGE Bit24, where SUBSET-027 4.0.0 4.2.4.23 has Bit 24
+FRMCS network registration failed and Bit 25 PT distance exceeded;
+ERA's step list (steps 254 and 271) has Bit24, the numbering before
+4.0.0. Runner 1229 / 1029 / 932, 1 improvement, 0 regressions.
+
+Sd56a8154 at 3180400_04, the speed under the SR distance's curve.
+Traced at SV30: step 204 "speed decrease V_TRAIN<=V_NVSTFF" (comment
+"speed under restriction of the braking curve to end of SR
+authorisation") took the national value's band, 40 - 5 = 35 km/h, so
+the train under the service brake at 21 km/h was raised to 35 km/h at
+1012 m, over the curve (emergency brake, the service brake still
+commanded at step 207). `S076_Run.ODO_Input` now gives such a decrease
+(the comment's words, 3180400_04 step 204 and 5080300_06 step 80, three
+versions each) the permitted speed the on-board shows less 2 km/h, at
+most the train's speed, the chart's and the named limit's band: 14 km/h
+at 1011 m (permitted 16), Indication, the service brake released,
+steps 204 to 210 pass. The speed is held, not recomputed as the train
+nears the target: at BG7d (1037 m, step 211, nothing judged there) the
+on-board brakes again (permitted 12 km/h, the train at 13), B3700 for
+a sequence that needs it. The three versions move to step 226
+(S7d250784, s076): the joined End of Mission case expects the 150 with
+Q_DESK=0 at the Shunting entry with desk A open, ours sends the 150 at
+199.8 s with Q_DESK 1 (7.5.1.102.2). 5080300_06 is blocked at step 53
+before its step 80. Runner 1229 / 1029 / 932, 3 improvements, 0
+regressions.
+
+Counts: 3 items of 3 done (B3560, B3384 closed; Sd56a8154 of 3180400_04
+fixed); backlog: 1 added (B3700), 2 closed; triage: S390f221b,
+S13c9beb3 (4120100_02), Sd56a8154 (3180400_04) rewritten, S7d250784
+extended, S839261e1 added. Edit outside the brief's subprograms:
+`S076_Run.Radio_Expect` (the 'no-connect' with the replaced NID_RADIO).
