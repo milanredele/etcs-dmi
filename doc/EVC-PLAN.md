@@ -20513,3 +20513,41 @@ is the same entry's 'Yes', which the runner enters a second time from the
 Radio data window, refused in the Main window of S8 (S390f221b, model,
 B3560: 18 such steps in the corpus; the runner is not this package's
 unit); the baseline re-recorded with these three understood.
+
+**B3461, the changed Train Data to every established session (done).**
+At the source the line held: `EVC_Sessions.Mission.Evaluate_TD` judged
+the supervising session only and the mission kept one awaited set
+(`TD_Due`, `TD_Awaited`, `TD_Stamp`, `TD_Since`, `TD_S`, `Was_Up`,
+`TD_Repeats` all single), so the set changed during a handover went to
+the supervising RBC only. Decision (the reading the round-65 report put
+forward, the text agrees): 3.18.3.4 sends the set "following any ...
+modification of valid Train Data when a communication session is
+already established" to "the RBC" of that session; with two sessions,
+3.15.1.3.3 makes the Accepting RBC one of them, so the changed set goes
+to both, each session awaiting, repeating (A.3.1, decision 4) and
+matching its own 8 (3.18.3.4.1). 3.15.1.3.4 to 3.15.1.3.6 (position
+reports to both, the End of Mission with both, the RBC transition
+order) do not address a change of Train Data during the handover.
+Built: the seven variables are arrays per session (`TD_S` gone);
+`Evaluate_TD` runs over the sessions of the supervising and the
+Accepting role (the first set after an establishment stays the
+supervising session's; the Accepting RBC's first set is still
+`EVC_Sessions.Handover`'s after its 32); `Produce` sends each session's
+129; `Take_Answer`'s 8 clears that session's set, and the flag
+`EVC_Radio.Train_Data_Acknowledged` is set when no session awaits a set
+any more; a session in neither role (the Handing Over RBC after the
+switch) is sent nothing and its awaited set is forgotten. `EVC_Radio`
+and `EVC_Radio_Authority` unchanged (`TD_Awaited` per session there
+already). Scenario `EVC_Test_Handover.Scenario_Handover_TD_Values_Per_RBC`
+extended: after the axle load change RBC 400 (Accepting) is sent the 129
+too with its set awaited (failed before the fix: no 129 on session 2),
+its 8 acknowledges its own while RBC 300's is still awaited, RBC 300's 8
+leaves none awaited, RBC 400's level crossing taken at the switch. Proof
+of `evc_sessions-mission`: no unproved check. Rows 3.18.3.4 and
+3.15.1.3.3 noted. Runner 1220 / 1039 / 931, 0 movements (49 SV30
+sequences match `grep -l 'NID_PACKET 8 131'`; none moved, so none
+reaches a step that tells the two behaviours apart).
+
+Outside the units: none in evc/ (`EVC_Level_Sessions` proved, not
+edited); the baseline and the triage lines of S7e2edbdf (3050400_03),
+S390f221b and Sd56a8154 (3180400_04).

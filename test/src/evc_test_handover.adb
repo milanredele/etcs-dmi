@@ -1463,8 +1463,8 @@ package body EVC_Test_Handover is
    end Scenario_Handover_TD_Per_Session;
 
    procedure Scenario_Handover_TD_Values_Per_RBC is
-      V1, V2 : ETCS_Message.Value_Array := (others => 0);
-      F1, F2 : Boolean := False;
+      V1, V2, V3 : ETCS_Message.Value_Array := (others => 0);
+      F1, F2, F3 : Boolean := False;
    begin
       Start_X;
       Order_Group (10, 100);
@@ -1503,6 +1503,7 @@ package body EVC_Test_Handover is
       Enter_Axle_Load (1);
       Stand;
       Find_129 (1, V1, F1);
+      Find_129 (2, V3, F3);
       --  RBC 300's level crossing in the cycle after its 129: rejected
       --  (the set awaited judged at the reception)
       Give_Radio_Message (1, M24_LX (10, 14, 600));
@@ -1514,24 +1515,42 @@ package body EVC_Test_Handover is
              and then Natural (EVC_Train_Data.Categories.Axle_Load) = 1,
              "Train Data per RBC: the changed set sent to RBC 300, its "
              & "acknowledgement awaited");
+      --  3.18.3.4 with 3.15.1.3.3: the session with the Accepting RBC is
+      --  established too, so it is sent the changed set as well
+      Check (F3 and then R.Info (2).TD_Awaited,
+             "Train Data per RBC: the changed set sent to RBC 400 too, "
+             & "each established session (3.18.3.4), its acknowledgement "
+             & "awaited");
       Give_Radio_Message (1, M24_LX (10, 11, 600));
       Stand;
       Check (not LX_Of (11),
              "Train Data per RBC: RBC 300's level crossing rejected, the "
              & "changed values it was sent not acknowledged (4.8.3 [3] "
              & "second bullet)");
-      --  RBC 400 acknowledged the values it was sent and was not sent the
-      --  changed ones: its level crossing, stored for the switch (the
-      --  transition buffer), taken there, RBC 300's 8 still awaited
+      --  each set acknowledged by its own 8: RBC 400's first
+      V3 (3) := Now_T;
+      Give_Radio_Message (2, Message_Of (MCat.Track_M8, V3));
+      Stand;
+      Check (not R.Info (2).TD_Awaited and then R.Info (1).TD_Awaited,
+             "Train Data per RBC: RBC 400's 8 acknowledges the set it was "
+             & "sent, RBC 300's still awaited (3.18.3.4.1 per session)");
+      --  RBC 400's level crossing, stored for the switch (the transition
+      --  buffer), taken there: it acknowledged the values it was sent
       Give_Radio_Message (2, M24_LX (10, 12, 600));
       Stand;
+      V1 (3) := Now_T;
+      Give_Radio_Message (1, Message_Of (MCat.Track_M8, V1));
+      Stand;
+      Check (not R.Info (1).TD_Awaited
+             and then not EVC_Sessions.Train_Data_Awaited,
+             "Train Data per RBC: RBC 300's 8 acknowledges its set, none "
+             & "awaited");
       Run_X (32_000);
       Stand;
-      Check (R.Supervising = 2 and then EVC_Sessions.Train_Data_Awaited
-             and then LX_Of (12),
+      Check (R.Supervising = 2 and then LX_Of (12)
+             and then not R.Info (2).TD_Awaited,
              "Train Data per RBC: RBC 400's level crossing taken at the "
-             & "switch while RBC 300's acknowledgement of the changed "
-             & "values is awaited: RBC 400 acknowledged the values it was "
+             & "switch: RBC 400 acknowledged the changed values it was "
              & "sent (4.8.3 [3] per RBC)");
    end Scenario_Handover_TD_Values_Per_RBC;
 
