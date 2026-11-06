@@ -240,6 +240,11 @@ def text_of(content):
                     if isinstance(c, dict) and c.get('type') == 'text')
 
 
+def is_outline(cmd):
+    """A run of the outline tool: `outline.py` of test/tools, or the Ada
+    `outline` of ~/dev/outline, called by its path."""
+    return 'outline.py' in cmd or re.search(r'(^|[\s/])outline\s', cmd + ' ') is not None
+
 def measure(path, briefs_map, plan_map, starts):
     agent = re.sub(r'^agent-|\.jsonl$|\.output$', '', os.path.basename(path))
     prompt = None
@@ -372,8 +377,8 @@ def measure(path, briefs_map, plan_map, starts):
         'write': tools.get('Write', 0),
         'read': tools.get('Read', 0),
         'other': sum(v for k, v in tools.items() if k not in ('Bash', 'Edit', 'Write', 'Read')),
-        'outline': sum(1 for c in bash_cmds if 'outline.py' in c and '--decl' not in c),
-        'outline_decl': sum(1 for c in bash_cmds if 'outline.py' in c and '--decl' in c),
+        'outline': sum(1 for c in bash_cmds if is_outline(c) and '--decl' not in c),
+        'outline_decl': sum(1 for c in bash_cmds if is_outline(c) and '--decl' in c),
         'clause': sum(1 for c in bash_cmds if 'clause.py' in c),
         'grep': sum(1 for c in bash_cmds if re.search(r'\bgrep\b', c)),
         'grep_src': sum(1 for c in bash_cmds if re.search(r'\bgrep\b', c) and SOURCE_PATH.search(c)),
@@ -544,7 +549,7 @@ def cmd_report(args):
               f'  calls {mean([num(r["calls"]) for r in rs]):5.1f}  final {mean([num(r["context_k"]) for r in rs]):5.1f}k'
               f'  cost {mean([num(r["cost_usd"]) for r in rs]):5.1f}')
     print()
-    print('Inside Bash (the numbered rounds), per agent: outline, --decl, clause, grep (of them on sources), sed -n (on sources), commits, proofs, runner runs, checks')
+    print('Inside Bash (the numbered rounds), per agent: outline (outline.py or the Ada outline), --decl, clause, grep (of them on sources), sed -n (on sources), commits, proofs, runner runs, checks')
     for kind in sorted({r['kind'] for r in numbered}):
         rs = [r for r in numbered if r['kind'] == kind]
         print(f'  {kind:9s} ' + '  '.join(
