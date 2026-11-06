@@ -20464,3 +20464,68 @@ ordered; the sequence 3050700_02 expects it at 3020 m (Connection Up
 removed, Connection Lost not displayed). No code change. The round also
 tries the Ada `outline` of ~/dev/outline in place of outline.py (the
 briefs name it; `rounds.py` counts both).
+
+### The runner's cases and data: the header's group names by the case's numbering, the Train Data categories from the packet 11, the reach-point that runs D_LEVELTR (e5/runner-cases) (2026-11-06)
+
+**B3360, the header's group names by the case's numbering (done;
+runner).** Scoped first on three sequences: at 3110400_02 SV30, case
+3110400 5 feeds BG2d (400 m), BG3d (600 m), BG4d (in that order); its
+step 76 asks NID_SOLR=<BG2> NID_LRBG=<BG1>, ours records 1048579 and
+1048578 (NID_C 64, NID_BG 3 and 2): the case's BG1 to BG3 are the
+groups it feeds, in order. The same at 3070300_12 step 69 (case
+3070300 20 feeds BG3d first) and 5200800_02 step 51 (case 5200700 3
+feeds BG2d then BG3d, NID_SOLR=<BG2> NID_LRBG=<BG1>). Built:
+`S076_Sequences.Telegram_T` carries the header's NID_C and NID_BG of
+each telegram; `S076_Run.Case_Group_Id` gives the identity (NID_C *
+2**14 + NID_BG) of the n-th distinct group fed by the steps of the
+step's case up to it, and `Header_Holds` compares NID_SOLR / NID_LRBG
+"<BGn>" to it; a letter name ("<BGa>") and a case that fed fewer groups
+stay the field known. Corpus, each version: 16 sequences, 72 fields,
+67 resolved; 4080300_16 steps 71 and 73 (case 4060300 96 feeds one
+group and calls it BG2, its BG1 being the MA's LRBG read before the
+case) and 4080442_01 steps 260 to 265 stay known. Moved 3 sequences,
+0 other: 3070300_12 SV21, SV22, SV30 from step 87 to step 69
+(Sc0f3b1e0, s076): the RBC's message 3 of step 62 (LRBG BG5d at 100 m)
+links NID_BG 4 at D_LINK 500 m (Q_LOCACC 12 m), while the group at
+600 m is NID_BG 3 (BG4d is at 700 m); ERA's PDF has the same values.
+With NID_BG 4 expected, the message of the linked group NID_BG 3 not
+in the linking is rejected (3.4.4.4.2) and the group is not LRBG
+compliant (3.6.2.2.2 a)): ours keeps SOLR 1048581, the step's comment
+("BG1 is linked and BG1 is the last BG announced by linking") wants
+the link to name NID_BG 3.
+
+**B3361, the Train Data categories from the packet 11 (done; runner).**
+Scoped at 9990400_44 SV30: its 129s at 100 m and 750 m carry
+NC_CDTRAIN 7 then A (hex) with NC_TRAIN 4, DMI Table 41's TILT 4 then
+TILT 7; the driver entered PASS 1 both times. Built:
+`S076_Sequences.Train_T` carries NC_CDTRAIN and NC_TRAIN of the packet
+11; `S076_Run.Cat_Row` picks the Table 41 row of the pair (the order of
+`DMI_Train_Data.Categories`), `Enter_Train_Data` keys it (rows 1 to 11
+direct, the rest after [More]); the workbook's brake position (PASS 1,
+FP 1, FG 1) only when the packet gives no pair a row has. Corpus sv30:
+430 sequences with a 129, 410 of them with 7 / 4 (TILT 4, PASS 1
+entered before), 7 changing the pair between two 129s (4080418_01,
+4080420_01, 4080421_01, _02, _03, 9990400_44, _46), 21 with a pair
+outside the table (NC_TRAIN 0); sv21 and sv22 355 each, 7 changing.
+Moved 2 sequences, 0 regressions: 9990400_44 SV22 and SV30 failed 91 ->
+passed (the category change of 3.18.3.7 entered, the text of BG3d
+shown at step 91; Seabc1f7c rewritten). TILT 4 in place of PASS 1 moved
+no other sequence.
+
+**B3385, the reach-point that runs D_LEVELTR (done; runner).** Scoped:
+the comment "Train runs the distance D_LEVELTR" is on 3 sequences in
+each version; 4100103_37 step 97 (BG4d at 700 m, D_LEVELTR 150 m) and
+4100103_38 step 85 (BG6d at 500 m, 300 m) are listed at the sum,
+9990400_19 step 119 at BG3d's 3700 m with D_LEVELTR 100 m (Q_SCALE 1
+m). `EVC_Levels` has no accessor of the announced transition location,
+so the sum is taken from the sequence's packet. Built:
+`S076_Sequences.Telegram_T.Leveltr_Cm` (D_LEVELTR by the Q_SCALE before
+it, none for 32767) and `S076_Run.Reach_Location`: that reach-point is
+placed at the last fed group's location plus its D_LEVELTR. Moved 3
+sequences, 0 regressions: 9990400_19 SV22 and SV30 failed 120 ->
+passed, SV21 failed 120 -> blocked 121 (E7-version: BG0d's packet 72
+with M_LEVELTEXTDISPLAY 5, the coding before 4.0.0); S863aab40's line
+of 9990400_19 rewritten.
+
+The runner after the package: 1221 / 1037 / 932 (from 1217 / 1042 /
+931), 0 regressions beyond the three of B3360 explained above.

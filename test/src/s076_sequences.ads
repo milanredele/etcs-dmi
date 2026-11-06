@@ -97,6 +97,10 @@ package S076_Sequences is
       --  the group's identity of its header, the first var rows NID_C and
       --  NID_BG (7.4.1.1, 7.5.1.85, 7.5.1.77); -1 when none
       NID_C, NID_BG : Integer := -1;
+      --  the D_LEVELTR of its packet 41 by the Q_SCALE before it, cm
+      --  (7.5.1.23, 7.5.1.130); -1 when none or 32767 (immediate)
+      Scale       : Natural := 1;
+      Leveltr_Cm  : Integer_64 := -1;
       --  the NID_PACKET of its var rows (255 left out)
       Packets   : Byte_Array (1 .. 24) := (others => 0);
       Packet_Count : Natural := 0;

@@ -2545,6 +2545,42 @@ package body S076_Run is
       end loop;
    end Reach_EOA_Antenna;
 
+   --  B3385: the location of a reach-point of the estimated front end
+   --  whose comment says the train runs the distance D_LEVELTR: the
+   --  location of the last group fed before step I whose packet 41 gives
+   --  a distance (not 32767), plus that D_LEVELTR (4.8.3: the transition
+   --  is where the estimated front end reaches it); else the step's
+   --  distance. Corpus (each version): 3 sequences; 9990400_19 step 119
+   --  is listed at 3700 m, the location of BG3d (D_LEVELTR 100 m): run
+   --  to 3800 m; 4100103_37 step 97 (BG4d 700 m + 150 m) and 4100103_38
+   --  step 85 (BG6d 500 m + 300 m) are listed at that sum already
+   function Reach_Location (I : Positive) return Integer_64 is
+      St : Step_T renames Seq.Steps (I);
+   begin
+      if not (Same (W (4), "estimated-front-end")
+              and then Has (Image (St.Comment),
+                            "Train runs the distance D_LEVELTR"))
+      then
+         return St.Dist_Cm;
+      end if;
+      for K in reverse 1 .. I - 1 loop
+         if Seq.Steps (K).IO = Input
+           and then Starts (Image (Seq.Steps (K).Line) & " ",
+                            "input BTM balise-group ")
+         then
+            for T in 1 .. Seq.Telegram_Count loop
+               if Seq.Telegrams (T).Step = Seq.Steps (K).Number
+                 and then Seq.Telegrams (T).Leveltr_Cm >= 0
+               then
+                  return Seq.Telegrams (T).Dist_Cm
+                    + Seq.Telegrams (T).Leveltr_Cm;
+               end if;
+            end loop;
+         end if;
+      end loop;
+      return St.Dist_Cm;
+   end Reach_Location;
+
    function ODO_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
    begin
@@ -2552,6 +2588,8 @@ package body S076_Run is
          declare
             Ok : Boolean;
             Off : Integer_64 := Point_Offset (W (4), Ok);
+            Dist : constant Integer_64 :=
+              (if Cur > 0 then Reach_Location (Cur) else St.Dist_Cm);
          begin
             if not Ok then
                return NJ (R_Runner, "ODO reach-point " & W (4));
@@ -2576,13 +2614,13 @@ package body S076_Run is
             end;
             --  the doubts grow with the move: a few rounds
             for Round in 1 .. 4 loop
-               Move_To (St.Dist_Cm - Off);
+               Move_To (Dist - Off);
                Off := Point_Offset (W (4), Ok);
-               exit when B.Position + Off >= St.Dist_Cm - 50;
+               exit when B.Position + Off >= Dist - 50;
             end loop;
             Reach_Border_Rear (St);
             Reach_EOA_Antenna (St);
-            return Pass ("ODO " & W (4) & " at" & Img (Integer (St.Dist_Cm)));
+            return Pass ("ODO " & W (4) & " at" & Img (Integer (Dist)));
          end;
       elsif Same (Kind, "reach") then
          Explicit_Speed := -1;

@@ -880,6 +880,15 @@ package body S076_Sequences is
                      T.NID_C := Integer (V mod 1024);
                   elsif Name = "NID_BG" and then T.NID_BG < 0 then
                      T.NID_BG := Integer (V mod 16384);
+                  elsif Name = "Q_SCALE" then
+                     T.Scale := Natural (V mod 4);
+                  elsif Name = "D_LEVELTR" and then V < 32767
+                    and then T.Leveltr_Cm < 0
+                  then
+                     T.Leveltr_Cm := Integer_64 (V)
+                       * (case T.Scale is
+                            when 0 => 10, when 2 => 1000,
+                            when others => 100);
                   end if;
                end;
             end if;
