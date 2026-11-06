@@ -269,6 +269,10 @@ package body S076_Sequences is
             T.Axle_Load := N;
          elsif Name = "M_LOADINGGAUGE" then
             T.Gauge := N;
+         elsif Name = "NC_CDTRAIN" then
+            T.CD_Train := N;
+         elsif Name = "NC_TRAIN" then
+            T.Other_Train := N;
          elsif Name = "M_VOLTAGE" and then N < 16 then
             if T.Voltages < 0 then
                T.Voltages := 0;

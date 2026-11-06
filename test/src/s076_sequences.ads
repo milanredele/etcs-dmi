@@ -335,11 +335,14 @@ package S076_Sequences is
    --  B471, B472: the train of the packet 11 (Validated train data) of a
    --  message 129: the distance of the message, M_AXLELOADCAT,
    --  M_LOADINGGAUGE and the M_VOLTAGE list as a bit mask (bit n for
-   --  M_VOLTAGE n, as EVC_Config.Voltages); -1 for a field not given
+   --  M_VOLTAGE n, as EVC_Config.Voltages), the cant deficiency and the
+   --  other international train categories NC_CDTRAIN and NC_TRAIN
+   --  (7.5.1.82.2, 7.5.1.84); -1 for a field not given
    Max_Trains : constant := 4;
    type Train_T is record
       Dist_Cm : Integer_64 := 0;
       Axle_Load, Gauge, Voltages : Integer := -1;
+      CD_Train, Other_Train : Integer := -1;
    end record;
    type Trains_T is array (1 .. Max_Trains) of Train_T;
 

@@ -1181,6 +1181,33 @@ package body S076_Run is
    function Brake_Percentage return Natural is
      (if Seq.WB_Lambda in 10 .. 250 then Seq.WB_Lambda else 109);
 
+   --  The row of DMI Table 41 (the order of DMI_Train_Data.Categories)
+   --  whose NC_CDTRAIN and NC_TRAIN are the packet 11's of T; when the
+   --  packet gives none or a pair no row has (NC_TRAIN 0, several bits),
+   --  PASS 1, FP 1 or FG 1 for the workbook's brake position. Corpus sv30:
+   --  430 sequences with a message 129, 410 of them with NC_CDTRAIN 7
+   --  and NC_TRAIN 4 (TILT 4) where PASS 1 was entered, 7 changing the
+   --  pair between two 129s (9990400_44: 7 then A, 3.18.3.7)
+   function Cat_Row (T : S076_Sequences.Train_T) return Positive is
+      type Pair_T is record
+         CD, Other : Natural;
+      end record;
+      Table_41 : constant array (1 .. 18) of Pair_T :=
+        ((0, 4), (2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 4), (8, 4),
+         (9, 4), (10, 4), (0, 1), (1, 1), (2, 1), (3, 1), (0, 2), (1, 2),
+         (2, 2), (3, 2));
+   begin
+      for C in Table_41'Range loop
+         if T.CD_Train = Table_41 (C).CD
+           and then T.Other_Train = Table_41 (C).Other
+         then
+            return C;
+         end if;
+      end loop;
+      return (case Seq.WB_Brake_Position is
+                 when 2 => 11, when 3 => 15, when others => 1);
+   end Cat_Row;
+
    --  11.3.9: the seven items of Table 40 over the two windows, then the
    --  entry ends (167, 440) and the validation window follows
    procedure Enter_Train_Data (At_Cm : Integer_64) is
@@ -1192,14 +1219,21 @@ package body S076_Run is
          return S (S'First + 1 .. S'Last);
       end Digits_Of;
    begin
-      --  the train category (Table 41, DMI_Train_Data): PASS 1 (key 1),
-      --  FP 1 (key 11) or FG 1 (key 4 after [More]) for the brake
-      --  position of the workbook's train
-      case Seq.WB_Brake_Position is
-         when 2 => Key (11);
-         when 3 => Key (12); Key (4);
-         when others => Key (1);
-      end case;
+      --  the train category (Table 41, DMI_Train_Data): the row of the
+      --  NC_CDTRAIN and NC_TRAIN of the sequence's packet 11 (Cat_Row),
+      --  else PASS 1, FP 1 or FG 1 for the brake position of the
+      --  workbook's train; rows 1 to 11 on the keys 1 to 11, the rest
+      --  after [More] (key 12) on the keys 1 to 7
+      declare
+         C : constant Positive := Cat_Row (T);
+      begin
+         if C <= 11 then
+            Key (C);
+         else
+            Key (12);
+            Key (C - 11);
+         end if;
+      end;
       Enter_Field (1);
       Type_Digits (Digits_Of (Train_Length_M)); Enter_Field (2);
       Type_Digits (Digits_Of (Brake_Percentage)); Enter_Field (3);
