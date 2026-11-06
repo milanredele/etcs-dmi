@@ -94,6 +94,9 @@ package S076_Sequences is
       Bits      : Natural := 0;
       Data      : Byte_Array (1 .. Max_Bytes) := (others => 0);
       M_Version : Integer := -1;                 -- -1: no var row
+      --  the group's identity of its header, the first var rows NID_C and
+      --  NID_BG (7.4.1.1, 7.5.1.85, 7.5.1.77); -1 when none
+      NID_C, NID_BG : Integer := -1;
       --  the NID_PACKET of its var rows (255 left out)
       Packets   : Byte_Array (1 .. 24) := (others => 0);
       Packet_Count : Natural := 0;

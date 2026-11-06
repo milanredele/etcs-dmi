@@ -4446,13 +4446,77 @@ package body S076_Run is
       elsif Same (Name, "M_VERSION") then F = 0
       else False);
 
+   --  The identity (NID_C * 2**14 + NID_BG, the header of its first
+   --  telegram) of the N-th distinct balise group fed by the steps of
+   --  step I's test case up to it (the steps since its "case" line: the
+   --  same Case_Feature and Case_No in a row); -1 when the case fed fewer
+   --  or the step is before any case line. Decision: a step's group names
+   --  "<BG1>", "<BG2>" are its test case's own numbering, BG1 the first
+   --  group the case reads, not the sequence's telegram tags (BG1d ..):
+   --  3110400_02 SV30 case 3110400 5 reads BG2d (400 m) and BG3d
+   --  (600 m), its step 76 asks NID_SOLR=<BG2> NID_LRBG=<BG1> and ERA's
+   --  record gives 1048579 and 1048578; 3070300_12 case 3070300 20 reads
+   --  BG3d as its BG1 (step 69), 5200800_02 case 5200700 3 BG2d and BG3d
+   --  as its BG1 and BG2 (step 51). Corpus (each version): 16 sequences,
+   --  72 fields NID_SOLR or NID_LRBG "<BGn>" of JRU records ALL and 20,
+   --  67 resolved; the other 5 (4080300_16 steps 71 and 73: its case
+   --  4060300 96 reads one group, its BG2, the BG1 being the MA's LRBG
+   --  read before the case; 4080442_01 steps 260 to 265) stay the field
+   --  known
+   function Case_Group_Id (I : Positive; N : Positive) return Integer is
+      St    : Step_T renames Seq.Steps (I);
+      First : Positive := I;
+      Ids   : array (1 .. 9) of Integer := (others => -1);
+      Count : Natural := 0;
+   begin
+      if St.Case_Feature = 0 or else N > Ids'Last then
+         return -1;
+      end if;
+      while First > 1
+        and then Seq.Steps (First - 1).Case_Feature = St.Case_Feature
+        and then Seq.Steps (First - 1).Case_No = St.Case_No
+      loop
+         First := First - 1;
+      end loop;
+      for K in First .. I loop
+         if Seq.Steps (K).IO = Input
+           and then Starts (Image (Seq.Steps (K).Line) & " ",
+                            "input BTM balise-group ")
+         then
+            for T in 1 .. Seq.Telegram_Count loop
+               declare
+                  G  : Telegram_T renames Seq.Telegrams (T);
+                  Id : constant Integer :=
+                    Integer'Max (G.NID_C, 0) * 2 ** 14 + G.NID_BG;
+               begin
+                  if G.Step = Seq.Steps (K).Number and then G.NID_BG >= 0
+                  then
+                     if (for all J in 1 .. Count => Ids (J) /= Id) then
+                        Count := Count + 1;
+                        Ids (Count) := Id;
+                        if Count = N then
+                           return Id;
+                        end if;
+                     end if;
+                     exit;
+                  end if;
+               end;
+            end loop;
+         end if;
+      end loop;
+      return -1;
+   end Case_Group_Id;
+
    --  A header field against a value of a step: a number ("16777215",
    --  the unknown NID whichever way coded; "0" for V_TRAIN also its
    --  standstill 1023, 4.2.3.6), alternatives ("1/2"), "<>N" not that
    --  number, M_VERSION's seven bits (X judged, see Header_Field),
    --  the passed group for NID_LRBG / NID_SOLR as in Header_Field; no
-   --  value or a name of the sequence ("<BG2>", "<updated>", "<D0>"):
-   --  the field known (decision: the names are not resolved)
+   --  value or a name of the sequence ("<BGa>", "<updated>", "<D0>"):
+   --  the field known (decision: these names are not resolved); a name
+   --  "<BGn>" (n a digit) of NID_LRBG / NID_SOLR: the identity of the
+   --  n-th group of the step's test case (Case_Group_Id) when the case
+   --  fed that many, else the field known
    function Header_Holds (Name, Value : String; F : Integer)
                           return Boolean
    is
@@ -4465,8 +4529,20 @@ package body S076_Run is
         and then (for all C of Num => C in '0' .. '9' | '/');
       Result : Boolean := False;
       First : Natural := Num'First;
+      Case_Id : constant Integer :=
+        (if (Same (Name, "NID_LRBG") or else Same (Name, "NID_SOLR"))
+           and then Value'Length = 5
+           and then Value (Value'First .. Value'First + 2) = "<BG"
+           and then Value (Value'First + 3) in '1' .. '9'
+           and then Value (Value'Last) = '>'
+           and then Cur > 0
+         then Case_Group_Id (Cur, Character'Pos (Value (Value'First + 3))
+                                    - Character'Pos ('0'))
+         else -1);
    begin
-      if Same (Name, "M_VERSION") and then Num'Length = 7
+      if Case_Id >= 0 then
+         Result := F = Case_Id or else (F < 2 ** 14 and then F = Case_Id mod 2 ** 14);
+      elsif Same (Name, "M_VERSION") and then Num'Length = 7
         and then (for all C of Num => C in '0' .. '1')
       then
          Result := F / 16 = Natural'Value ("2#" & Num (Num'First .. Num'First + 2) & "#");

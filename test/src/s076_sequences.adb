@@ -868,6 +868,17 @@ package body S076_Sequences is
             then
                S.Telegrams (S.Telegram_Count).M_Version := Integer (V mod 128);
             end if;
+            if OK and then Block = 1 and then S.Telegram_Count > 0 then
+               declare
+                  T : Telegram_T renames S.Telegrams (S.Telegram_Count);
+               begin
+                  if Name = "NID_C" and then T.NID_C < 0 then
+                     T.NID_C := Integer (V mod 1024);
+                  elsif Name = "NID_BG" and then T.NID_BG < 0 then
+                     T.NID_BG := Integer (V mod 16384);
+                  end if;
+               end;
+            end if;
             if OK and then Block = 1 and then Name = "M_LEVELTR"
               and then V = 4 and then S.Telegram_Count > 0
             then
