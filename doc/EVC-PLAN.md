@@ -21398,3 +21398,135 @@ Counts: 8 items and the extra. Agreed: eight (2 to 8 and the extra);
 disagreed: one (item 1, the release order of the transition buffer's
 balise and radio sets, a decision); undecided: none. Backlog line:
 B3740. Calls: 88 of 130 at this point.
+
+### E5 integration after the sixty-seventh round, the thirty-fifth of E6 (2026-11-06)
+
+Merged: e6/brake-reasons (B470, row by row of the 4.12.1.2 Table: the
+BG message inconsistency and the RAMS functions already command the
+linking reaction's brake, `Link_SB`, and share its reason (decision: one
+reason, the driver's text and the TIU cannot tell them apart); the
+movement while the driver enters the SR limits shared the Train Data
+entry's latch in `EVC_Brake_Commands.Step` (the Train Data row is M in
+FS, LS, OS, UN, TR, SN where the SR row is R): a latch of its own,
+`Entering_SR_Data`, set in SR and revoked by `EVC_Core.Modes.
+Revoke_Brake_Reasons` on entering any other mode; the safe consist
+length reason `Consist_SB` existed but no mode change revoked it:
+`EVC_Procedures.Mode_Changed` revokes it in NP, SB and SH (SB reachable
+while moving by 4.6.3 [28]); footnote [2]: the roll away, the
+unauthorised direction and `Link_SB` revoked on entering SM when the
+authorisation is in the opposite direction (`EVC_Radio_Authority.
+SM_Opposite`, read from the last authorisation taken); scenarios in
+`EVC_Test_Modes` and `EVC_Test_Manoeuvre` where the helpers are; B781's
+3rd bullet over a relocation and a stop: no defect, `EVC_Text_Messages.
+End_Condition` keeps a fulfilled sub-condition (3.12.3.4.3.1.2),
+`Scenario_Text_Stop_Relocated`; the 12th bullet was done already
+(`Scenario_MA_Timers_Relocated`): the line was stale), e6/acceptance-lx
+(B3580: the 4.8.3 exception [2] has [1]'s words, so the balise sets
+read in level 0 or NTC with level 2 announced are held in `EVC_Stored_
+Information.Balise_Buffer` with the level they are held for
+(`For_Level`), deleted when that level is no longer announced (4.8.5.4
+a)), released by `EVC_Core.Stored.Release_Transition_Buffer` at the
+switch to level 2 before the radio sets (decision: the two buffers not
+interleaved; the review disagrees, B3740), `Level_Stores` covering the
+rows with [2] (the LX in both levels; in NTC the TSR, its revocation,
+the default gradient, packet 79, the texts); 4080300_02 moved from step
+245 to 247 in three versions, traced: the stop in rear of the crossing
+asked at the last step of a case and cleared by the next `case` line,
+B3660 runner; B540 traced, not ours: the runner enters D2 and
+`Unsuitable` reads bit 7 against the bitset A, HS17, B1 rightly
+(7.5.1.67.2); the message 24 of step 67 has L_MESSAGE 51 (408 bits) for
+411 bits of header and packets, ERA's PDF the same, so the packet 70
+runs past the message (8.4.4.2.1): the data, S49bc1c1a s076, B3661 asks
+the runner to block such a message; the older versions' 7-bit
+M_AXLELOADCAT is the chapter 6 translation (E7); `Scenario_Suitability_
+By_Radio` passes on master; B530 left at the bound), e5/runner-entry
+(B3560: the sequence splits the RBC data entry over three steps (the
+fields typed, the Yes enabled, the Yes pressed): `RBC_Data_Entry` types
+the fields when a validate step follows, a contact "different from the
+displayed one" is the shown one with the phone's last digit changed,
+`Radio_Expect` counts a 'no-connect ... previously stored' by the
+replaced NID_RADIO; 4080453_01 passes in three versions; B3384:
+`Run_Timer` notes when each system status message starts to be shown,
+a '<T_STEP>' whose comment says "starts to be displayed" counts from it;
+4120100_02 moved from 239 to 254, traced: the sequence expects Bit24 for
+PT distance exceeded where SUBSET-027 4.0.0 has Bit 25 (Bit 24 FRMCS
+registration failed), ERA's PDF the same: s076 S839261e1; 3180400_04
+step 207: the 35 km/h came from the named limit V_NVSTFF less 5, not
+the decrease rule: a decrease "under restriction of the braking curve"
+takes the permitted speed shown less 2 km/h, capped (2 sequences);
+3180400_04 moved to 226, traced: the 150 at the Shunting entry with
+Q_DESK 0 and desk A open (7.5.1.102.2 gives 1): s076, the family added
+to S7d250784; B3700 the speed not recomputed as the target nears),
+e5/runner-radio (B3382: `S076_Bench` keeps EURORADIO's Testab per
+session (SUBSET-037 6.2.4.2.16, 6.3.2.3.1: 40 s), started by a set-up
+request, stopped by any event, message or release of the session, giving
+`Set_Up_Failed` at the time-out; a "NOT SA-CONNECT.Request" step judged
+by the requests after the window's input took effect (`Input_Ms`; six
+regressions of the first run, 4060300_10 step 48 and 3050300_05 step 52
+among them, explained and fixed before the commit); 172 sequences have
+more than one request; 3050700_05 passes in three versions; 3050700_03
+moved to step 79 (s076: a case testing the SOLR at the exit from No
+Power placed before the power-down, ours right by 3.6.2.2.2 b), PDF the
+same); 3050300_05 moved to step 56, traced to ours: at the min safe rear
+end over the border `Abort_Being_Established` releases the session to
+the Accepting RBC too, because `Handover.Find_Accepting` gives the role
+only while a supervising session exists (3.5.3.8 f) against 3.15.1.3.1
+a)), B3720 onboard; B2862: the bench keeps the texts the DMI shows
+across windows, "displayed" passes on a text of the class shown,
+"removed" when none is left after one was; 3120300_03 moved from 62 to
+70, traced: the third text, to be acknowledged, is hidden behind the
+first by the DMI (5.4.1.9), the runner judges "not displayed" by the
+on-board's sending: B3721 runner; B3380 left at the bound) and the
+review e5/review-67.
+
+Review (the sixteenth): nine verdicts, eight agree, one disagrees on a
+decision: B3740, the release order of the transition buffer at the
+level transition: the reviewer reads 4.8.5.1 as one buffer of three
+sets from three filtered messages, balise and radio together, released
+"in the sequence they have been received" (4.8.5.5); the author built
+two buffers of three each, the balise sets first. Two remarks without
+a line (a scenario's heading; a request caused inside `Apply_Input`'s
+own cycles would escape a negative). Sixteen rounds of reviews: 133
+items, 115 agreed, 21 disagreed, 8 undecided; 36 lines, of which 8
+became fixes; 106.2 USD.
+
+Verification of the merged tree: an early chain on the brake-reasons
+package green; the full chain after the four merges green at once:
+`test/check.sh` ok; the full proof 14041 checks, none unproved, margin
+47726 steps; cross build and stack 32768 B budget, margin 6024 B (32 B
+less: the SR latch and the consist revocation); wasm and both smokes 0
+failures; the runner 1232 / 1026 / 932 (from 1226 / 1032 / 932), 0
+regressions against the merged baseline, no signature untriaged. The
+merge: brake-reasons and the review fast-forwarded; the other three
+conflicted on the plan (both subsections kept), two on the backlog
+(three-way by id), one on the triage (two lines rewritten by one side,
+two added by the other); the two runner packages both edited
+`S076_Run` and `Radio_Expect` without a conflict.
+
+Costs (doc/ROUNDS.csv): 42.5 USD with the review (36.6 for the four
+packages, 5.9 the review), 10 of 12 package items done (B530 and B3380
+left at the bound), 4 of 15 brief premises wrong (the BG inconsistency
+and RAMS "missing"; the 12th bullet "left"; the validate "as already
+pressed"; the "decrease" rule), no agent over budget, two agents past
+the bound with the last item in hand (117, 120), two under it (111,
+108). Lessons: a backlog line's "left" is checked against the scenarios
+that exist before it becomes an item (`grep -rn Relocated test/src`
+would have shown the 12th bullet done); a runner rule that counts
+requests or sendings against a negative step is bounded by the time the
+input took effect, or it sees the repeats made on the way (the Testab
+run found it with six regressions before the commit); a sequence's
+message whose packets outrun L_MESSAGE is the sequence's defect to
+block, not a trace to run twice (B3661).
+
+The matrix: clauses left 28 (todo 0, partial 28; done 2111: 3 rows set
+done this round). Open items: doc/BACKLOG.csv (25 open after this
+round; 6 added of which 1 by the review, 7 closed). Next: B3740 (the
+user's decision), B530 (the operated version in the JRU header), B3380
+(the message failing the Euroradio check: the port's input), B3720 (the
+Accepting role without a supervising session, 3.15.1.3.1 a)), B3660
+(the LX stop asked at the last step of a case), B3661 (a message longer
+than its L_MESSAGE blocked), B3700 (the speed under the curve
+recomputed), B3721 (the runner judging "not displayed" by the DMI's
+state), B781's LS profile over a relocation, B1840 (a fault the host
+reports), B1360's records left; the review again (eight items, readings
+first, no backlog read).
