@@ -46,10 +46,18 @@ function Radio_Expect (St : Step_T) return Judgement_T is
    Base : constant String :=
      (if Neg then Kind (Kind'First + 3 .. Kind'Last) else Kind);
 
+   --  a request of the window; for a negative, one made after the
+   --  window's input took effect (Input_Ms): the set-up requests the
+   --  bench's Testab repeats on the way to the input's place are the
+   --  input's window but not its effect (4060300_10 step 48, the
+   --  requests of 110 s and 150 s on the way to the desk closure at
+   --  550 m; 3050300_05 step 52, every 40 s on the way to the border)
    function Request_Seen (Code : Natural) return Natural is
    begin
       for I in 1 .. B.Radio_Count loop
-         if B.Radio (I).Is_Request and then B.Radio (I).Code = Code then
+         if B.Radio (I).Is_Request and then B.Radio (I).Code = Code
+           and then not (Neg and then B.Radio (I).At_Ms <= Input_Ms)
+         then
             return I;
          end if;
       end loop;

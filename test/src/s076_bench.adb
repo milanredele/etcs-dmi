@@ -143,6 +143,16 @@ package body S076_Bench is
 
    Texts   : array (1 .. Max_Events) of Text_Event_T;
    Texts_N : Natural := 0;
+   --  The texts the DMI shows since the power-up, across windows: put by
+   --  MSG_TEXT, taken off by MSG_TEXT_REMOVE of their identity; and the
+   --  classes of which one was ever put (S076_Run.Text_Message)
+   type Shown_Text_T is record
+      Id    : Natural := 0;
+      Class : Natural := 0;
+   end record;
+   Shown   : array (1 .. Max_Events) of Shown_Text_T;
+   Shown_N : Natural := 0;
+   Ever_Shown : array (0 .. 3) of Boolean := (others => False);
    SSs     : array (1 .. Max_Events) of SS_Event_T;
    SSs_N   : Natural := 0;
    Sent_N  : Natural := 0;
@@ -163,6 +173,17 @@ package body S076_Bench is
    --  silent in all)
    Registering : array (1 .. RTM_Max_Sessions) of Boolean :=
      (others => False);
+   --  EURORADIO's connection establishment timer Testab (SUBSET-037
+   --  6.2.4.2.16, 40 s by 6.3.2.3.1): set at each set-up request of a
+   --  session, stopped by any RTM event or message given for it or by a
+   --  release request; at its time-out the safety layer's
+   --  Sa-DISCONNECT.indication, the RTM port's Set_Up_Failed, which the
+   --  on-board answers with a new request (3050700_03 step 73: the
+   --  request of 147.0 s repeated at 187.0 s)
+   Testab_Ms : constant := 40_000;
+   Set_Up_Pending : array (1 .. RTM_Max_Sessions) of Boolean :=
+     (others => False);
+   Set_Up_At      : Per_Session_U64 := (others => 0);
    --  The FRMCS on-board, where installed, reports itself connected and
    --  not registered to the FRMCS Radio Network in the first cycle after
    --  each power-up (3.5.6.1.3, the RTM port's event 8), never
@@ -183,7 +204,11 @@ package body S076_Bench is
       Last_Ms := (others => 0);
       Last_Req := (others => 0);
       Registering := (others => False);
+      Set_Up_Pending := (others => False);
       T_By_Nid := (others => (others => -1));
+      --  the DMI starts with no text at the power-up
+      Shown_N := 0;
+      Ever_Shown := (others => False);
    end Clear_Radio;
 
    ---------------------------------------------------------------------
@@ -333,6 +358,15 @@ package body S076_Bench is
                  (Remove => False, Id => Get16 (P, B),
                   Class  => Natural (P (B + 2)) / 4 mod 4,
                   Ack    => P (B + 2) mod 2 = 1);
+               Ever_Shown (Texts (Texts_N).Class) := True;
+               if Shown_N < Shown'Last
+                 and then (for all K in 1 .. Shown_N =>
+                             Shown (K).Id /= Texts (Texts_N).Id)
+               then
+                  Shown_N := Shown_N + 1;
+                  Shown (Shown_N) := (Texts (Texts_N).Id,
+                                      Texts (Texts_N).Class);
+               end if;
             end if;
          when 16#04# =>   -- MSG_TEXT_REMOVE
             if P'Length >= 2 and then Texts_N < Max_Events then
@@ -340,6 +374,12 @@ package body S076_Bench is
                Texts (Texts_N) :=
                  (Remove => True, Id => Get16 (P, B), Class => 0,
                   Ack => False);
+               for K in reverse 1 .. Shown_N loop
+                  if Shown (K).Id = Texts (Texts_N).Id then
+                     Shown (K .. Shown_N - 1) := Shown (K + 1 .. Shown_N);
+                     Shown_N := Shown_N - 1;
+                  end if;
+               end loop;
             end if;
          when 16#0C# =>   -- MSG_SYSTEM_STATUS
             if P'Length >= 2 and then SSs_N < Max_Events then
@@ -491,6 +531,12 @@ package body S076_Bench is
          R.Length := Natural'Min (P'Length - 3, Max_Radio_Bytes);
          R.Data (1 .. R.Length) := P (P'First + 3 .. P'First + 2 + R.Length);
          Last_Req (R.Session) := R.Code;
+         if R.Code = RTM_Request_T'Pos (Request_Set_Up) + 1 then
+            Set_Up_Pending (R.Session) := True;
+            Set_Up_At (R.Session) := Clock;
+         elsif R.Code = RTM_Request_T'Pos (Request_Release) + 1 then
+            Set_Up_Pending (R.Session) := False;
+         end if;
          if R.Code = RTM_Request_T'Pos (Request_Registration) + 1 then
             Registering (R.Session) := True;
             GSMR_Order_At := Clock;
@@ -1246,6 +1292,13 @@ package body S076_Bench is
                         Byte (RTM_Event_T'Pos (Registered) + 1)));
             end if;
          end loop;
+         for S in Set_Up_Pending'Range loop
+            if Set_Up_Pending (S) and then Clock - Set_Up_At (S) >= Testab_Ms
+            then
+               RTM_Input ((RTM_Tag_Event, Byte (S),
+                           Byte (RTM_Event_T'Pos (Set_Up_Failed) + 1)));
+            end if;
+         end loop;
          if FRMCS_Due then
             FRMCS_Due := False;
             FRMCS_Detected_At := Clock;
@@ -1766,12 +1819,23 @@ package body S076_Bench is
 
    function Text_Count return Natural is (Texts_N);
    function Text (I : Positive) return Text_Event_T is (Texts (I));
+   function Text_Shown (Class : Natural) return Boolean is
+     (for some K in 1 .. Shown_N => Shown (K).Class = Class);
+   function Text_Ever_Shown (Class : Natural) return Boolean is
+     (Class in Ever_Shown'Range and then Ever_Shown (Class));
    function SS_Count return Natural is (SSs_N);
    function SS (I : Positive) return SS_Event_T is (SSs (I));
    function DMI_Sent return Natural is (Sent_N);
 
    procedure RTM_Input (Payload : Byte_Array) is
    begin
+      if Payload'Length >= 2
+        and then Payload (Payload'First) in RTM_Tag_Event | RTM_Tag_Message
+        and then Payload (Payload'First + 1) in 1 .. RTM_Max_Sessions
+      then
+         --  the connection's establishment over (Testab stopped)
+         Set_Up_Pending (Natural (Payload (Payload'First + 1))) := False;
+      end if;
       if Is_Powered then
          EVC_Core.Handle_Input (RTM, Payload);
       end if;

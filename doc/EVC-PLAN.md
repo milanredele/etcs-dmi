@@ -21210,3 +21210,62 @@ fixed); backlog: 1 added (B3700), 2 closed; triage: S390f221b,
 S13c9beb3 (4120100_02), Sd56a8154 (3180400_04) rewritten, S7d250784
 extended, S839261e1 added. Edit outside the brief's subprograms:
 `S076_Run.Radio_Expect` (the 'no-connect' with the replaced NID_RADIO).
+### The bench's radio model and the text judgement: the set-up failure at the establishment timer, a text shown and not removed, a message failing the Euroradio check (e5/runner-radio) (2026-11-06)
+
+B3382, the set-up failure at EURORADIO's connection establishment
+timer. The premise held at the trace: 3050700_03 SV30 requests the
+connection at 146.8 s (step 69), the bench never answers, the 45 s of
+step 70 run, and no request follows to step 73 (219.9 s);
+`EVC_Sessions.Take_Event` answers `Set_Up_Failed` in Connecting with a
+new request at once (`Set_Up_Failed`, capped only in a start of
+mission or a mode change to report). SUBSET-037 6.2.4.2.16: the safety
+layer sets Testab at the Sa-CONNECT.request and stops it before the
+confirmation; at its time-out a Sa-DISCONNECT.indication; 40 s by
+6.3.2.3.1. Built in `S076_Bench`: Testab per session from each set-up
+request (`Observe_RTM`), stopped by any RTM event or message given for
+the session (`RTM_Input`, the held one included) or by a release
+request, and `Set_Up_Failed` at its time-out in the cycle. The first
+corpus run gave 6 regressions, all the same kind: a negative 'NOT
+SA-CONNECT.Request' judged over a window that holds the repeats made on
+the way to the input's place (4060300_10 step 48: requests of 110 s and
+150 s on the way to the desk closure at 550 m, ours releasing at the
+closure; 3050300_05 step 52: a request every 40 s on the way to the
+border). `Radio_Expect` now judges a negative request by the requests
+after the window's input took effect (`S076_Run.Input_Ms`, set after
+`Apply_Input`), not for a balise group input, whose reading comes
+before the end of `Apply_Input`'s move (4090100_01 step 131: the
+request of 273.8 s follows BG7d's reading, the input done at
+274.3 s; with groups included it passed for that reason, so they stay
+out). Upper bound: 172 SV30 sequences carry more than one
+SA-CONNECT.Request. Moved, 9, 0 regressions, each new step traced:
+3050700_05 (SV21, SV22, SV30) passes (step 81, "Repetition of the
+request" after the 40 s timer of step 80); 3050700_03 (SV21, SV22,
+SV30) to step 79 (S63231d20, s076: case 3060400 19, 3.6.4.2.2.1 the
+SOLR at the exit from No Power, checked at 1100 m in L2 SR before the
+power-down of step 81; ours records NID_SOLR BG1, Q_LRBG 1 by
+3.6.4.2.2 b), ERA's PDF has the same order); 3050300_05 (SV21, SV22,
+SV30) to step 56 (Scb79aeb3, onboard, B3720: at the min safe rear end
+over the RBC/RBC border 3.5.3.8 f) releases the session to the
+Accepting RBC 1616 too, which never got the Accepting role because no
+supervising session existed; the confirm of step 55 meets a released
+session).
+
+B2862, a text shown and not removed. The premise held: 3120300_03 SV30
+reads BG1d's text (packet 73, no condition, Q_TEXTCONFIRM 1) in step
+59's window, the reach-point of step 61 at the same 400 m opens a new
+one, and step 62 found no sending. Built: `S076_Bench` keeps the texts
+the DMI shows across windows (`Text_Shown`, `Text_Ever_Shown`: put by
+MSG_TEXT, taken off by MSG_TEXT_REMOVE of the identity, cleared at the
+power-up); `S076_Run.Text_Message` passes 'displayed' by a sending of
+the window or a text of the class shown, 'removed' by a removal of the
+window or none of the class shown after one was ('not displayed' and
+'not removed' unchanged, by the window's sendings). Moved, 2, 0
+regressions: 3120300_03 (SV22, SV30) to step 70 (Se341da87, model,
+B3721: the third text, also to acknowledge, expected hidden behind the
+first; ours sends it and the DMI shows the next one 1 s after the
+current one is acknowledged, ERA_ERTMS_015560 5.4.1.9; the runner
+judges 'not displayed' by the sending, not by what DMI_Core shows).
+
+B3380, the radio message failing the Euroradio check: not taken, the
+bound of the package was reached with B2862 in hand; left for the
+next round as its brief gives it (a scoping and a line).
