@@ -160,6 +160,7 @@ is
    --  and taken by the stores before the procedures and the mode machine
    --  of the cycle (an MA kept for the transition: no trip by [39])
    --  @req 4.8.3.1.1 Table-footnote [1], 4.8.5.5, 3.18.4.5.3
+   --  @req 4.8.3.1.1 Table-footnote [2]
    procedure Release_Transition_Buffer
      with Global => (Input  => (Clock_Ms, Current_Mode,
                                 EVC_Odometry.State, EVC_Train_Data.State,

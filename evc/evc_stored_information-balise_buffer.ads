@@ -14,6 +14,7 @@
 with ETCS_Bits;
 with ETCS_Catalogue;
 with EVC_Balise_Groups;
+with EVC_Modes;
 with EVC_Origins;
 
 --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [1], 4.8.5.1, 4.8.5.4 a)
@@ -43,6 +44,9 @@ is
       --  the group, the reference of a linking
       --  (packet 5) kept in the set
       Group    : EVC_Balise_Groups.Identity_T := (others => <>);
+      --  the announced level the set is kept for (4.8.3 [1] level 1,
+      --  [2] level 2; 4.8.5.4 a)
+      For_Level : EVC_Modes.Level_T := EVC_Modes.L1;
    end record;
 
    function Count return Natural

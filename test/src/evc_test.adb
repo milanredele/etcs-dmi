@@ -443,6 +443,7 @@ begin
    Scenario_Shortening_Cover;
    Scenario_Emergency_Stops;
    Scenario_LX_By_Radio;
+   Scenario_Suitability_By_Radio;
    Scenario_Track_Condition_By_Radio;
    Scenario_Conditional_Stop_Ends;
    Scenario_SR_Authorisation;
@@ -456,6 +457,7 @@ begin
    EVC_Test_Shapes.Scenario_Radio_SH_List;
    Scenario_Radio_Acceptance;
    Scenario_Transition_Buffer;
+   Scenario_L2_Balise_Buffer_LX;
    Scenario_PBD_By_Radio_Buffered;
    Scenario_Buffer_Three_Sets;
    Scenario_Own_Units_Stored;

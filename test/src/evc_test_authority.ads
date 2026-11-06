@@ -30,6 +30,8 @@ package EVC_Test_Authority is
    procedure Scenario_Shortening_Cover;
    procedure Scenario_Emergency_Stops;
    procedure Scenario_LX_By_Radio;
+   --  3.12.2.3 c), 3.12.2.4: route suitability data of message 24
+   procedure Scenario_Suitability_By_Radio;
    --  8.7.9, 4.8.3 [3]: a track condition of message 24 to the stores
    procedure Scenario_Track_Condition_By_Radio;
    --  3.10.2.2 b) 2nd and 4th bullets: a conditional stop between the EOA
@@ -54,6 +56,9 @@ package EVC_Test_Authority is
    procedure Scenario_Shunting_L2;
    procedure Scenario_Radio_Acceptance;
    procedure Scenario_Transition_Buffer;
+   --  4.8.3 [2], 4.8.5.5: a balise level crossing kept in level 0 for
+   --  the transition to level 2
+   procedure Scenario_L2_Balise_Buffer_LX;
    procedure Scenario_PBD_By_Radio_Buffered;
    procedure Scenario_Buffer_Three_Sets;
    procedure Scenario_Own_Units_Stored;
