@@ -20987,3 +20987,34 @@ distance's curve), B1840 (a fault the host reports: whether any host
 has one), B1360's records 21, 22, 33 to 37, 40, 41 left, the E7 lines
 when E7 opens; the review again (eight items, readings first, no
 backlog read).
+
+### The runner's driver entries and timers: the second RBC data entry, a timer from the display time, the speed under the SR distance's curve (e5/runner-entry) (2026-11-06)
+
+B3560, the second RBC data entry (S390f221b). Traced on master at
+4080453_01 SV30: step 82 'enter RBC-data' confirmed the values shown
+with the 'Yes' (JRU 124 and the connect request at 258.3 s, in the
+windows of steps 81 and 82), so step 84 'validate RBC-data' met the
+Main window of DMI Table 50 S8 with its buttons disabled. The sequence
+splits one entry over three steps (82 the fields, 83 'Yes enabled', 84
+the 'Yes'), so `S076_Run.RBC_Data_Entry` now does the same: an 'enter
+RBC-data' whose next input is a 'validate' or 'confirm RBC-data' of the
+same case types the fields and leaves the 'Yes' to that step (6 steps
+per version). The comment "The new RBC contact information shall be
+different from the displayed one" (3180400_03 183, 3180400_05 93,
+4080453_01 82 and 136) enters the RBC ID shown and the phone number
+shown with its last digit changed (decision: the NID_RADIO is what step
+86 tells apart, "NOT (NID_RADIO=<previously stored>)"); the other
+comments of the corpus's 'enter RBC-data' steps name a value (RBC ID,
+phone, already read by `Radio_Values`) or the current session's data
+(the values shown), none says 'last known RBC' or 'short number' (those
+are the Radio data window's own buttons). Step 86's 'no-connect' was
+judged as no request at all, where the step means none with the
+replaced number: `S076_Run.Radio_Expect` (outside the units of the
+brief, the judgement of that step) counts, for a 'no-connect' whose
+comment says "previously stored" after such an entry, only the requests
+with the replaced NID_RADIO. 4080453_01 passes in the three versions
+(JRU 24 at 263.0 s in step 85's window, not judged as before by the
+Q_RBCENTRY coding of the Known list; the connect in step 87's); the
+other twelve steps are not reached (3180400_02 / _03 stop at step 49,
+_05 at step 83, unchanged). Runner 1229 / 1029 / 932, 3 improvements,
+0 regressions.

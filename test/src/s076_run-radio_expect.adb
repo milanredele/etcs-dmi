@@ -61,8 +61,51 @@ function Radio_Expect (St : Step_T) return Judgement_T is
    is
       Found : constant Natural :=
         Request_Seen (EVC_Ports.RTM_Request_T'Pos (R) + 1);
+
+      --  The digits of the NID_RADIO of request I (bytes 5 to 12 after
+      --  the code, BCD up to the first F: EVC_Ports, request 1)
+      function Phone_Of (I : Positive) return String is
+         S : String (1 .. 16);
+         N : Natural := 0;
+         D : Natural;
+      begin
+         for K in 0 .. 15 loop
+            D := Natural (B.Radio (I).Data (5 + K / 2));
+            D := (if K mod 2 = 0 then D / 16 else D mod 16);
+            exit when D > 9;
+            N := N + 1;
+            S (N) := Character'Val (48 + D);
+         end loop;
+         return S (1 .. N);
+      end Phone_Of;
    begin
-      if Neg then
+      if Neg and then R = EVC_Ports.Request_Set_Up
+        and then Length (Replaced_Phone) > 0
+        and then Has (Image (St.Comment), "previously stored")
+      then
+         --  4080453_01 steps 86 and 140: "No communication session shall
+         --  be established with the previously stored RBC Info: NOT
+         --  (NID_RADIO=<previously stored>)", after the driver entered
+         --  another contact (RBC_Data_Entry): a request with the new
+         --  NID_RADIO is the next step's
+         declare
+            Seen : Unbounded_String;
+         begin
+            for I in 1 .. B.Radio_Count loop
+               if B.Radio (I).Is_Request and then B.Radio (I).Code = 1 then
+                  if Phone_Of (I) = To_String (Replaced_Phone) then
+                     return Fail ("RTM a request connect with the replaced"
+                                  & " NID_RADIO "
+                                  & To_String (Replaced_Phone));
+                  end if;
+                  Seen := Seen & " " & Phone_Of (I);
+               end if;
+            end loop;
+            return Pass ("RTM no request connect with the replaced"
+                         & " NID_RADIO " & To_String (Replaced_Phone)
+                         & " (requests:" & To_String (Seen) & ")");
+         end;
+      elsif Neg then
          return Check (Found = 0, "RTM no request " & What, "one");
       elsif Found = 0 then
          return Fail ("not requested");
