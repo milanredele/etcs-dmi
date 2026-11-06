@@ -20449,3 +20449,18 @@ to the Accepting RBC), B3360 (the header names by the case's
 numbering), B3361 (the Train Data categories from the packet 11), the
 runner's model lines B3380, B3382, B3384, B3385; the review again
 (eight items, readings first, no backlog read).
+
+Decided by the user on 2026-11-06, after the sixty-fifth round: B3540, a
+termination ordered (packet 42, Q_RBC 0, from a balise group or the RBC)
+while the safe radio connection is lost: the build is the intended
+behaviour and is kept. The set-up requests stop at the order and the
+"connection status" timer with them (3.5.7.4), the indication is No
+Connection at once (Table 2 [6]); the Termination message is sent as
+considered sent (3.5.4.5), repeated and the session ends at the end of
+the waits (3.5.5.3.1, 3.5.5.3.2). Reading: 3.5.4.1 maintains a session
+only "if the disconnection has not been ordered (see 3.5.5.1)", so
+3.5.4.3's attempts have nothing to maintain once the termination is
+ordered; the sequence 3050700_02 expects it at 3020 m (Connection Up
+removed, Connection Lost not displayed). No code change. The round also
+tries the Ada `outline` of ~/dev/outline in place of outline.py (the
+briefs name it; `rounds.py` counts both).
