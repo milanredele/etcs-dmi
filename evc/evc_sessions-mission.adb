@@ -20,10 +20,11 @@ package body EVC_Sessions.Mission
        Refined_State => (State => (Step, SoM_RBC, SoM_S, Report_Valid,
                                    Reject_Due, Reject_S, Awaiting_Network,
                                    TD_Due, TD_Awaited, TD_Stamp, TD_Since,
-                                   TD_S, Was_Up, TD_Repeats,
+                                   Was_Up, TD_Repeats,
                                    EoM_Due, EoM_Awaited, EoM_Since,
                                    EoM_Repeats, EoM_S, EoM_Also,
-                                   Confirm, Delete, N_TD, N_Rep, N_EoM))
+                                   Confirm, Delete, N_TD, N_Rep, N_EoM,
+                                   Entry_Waiting, Entry_RBC))
 is
    package R renames EVC_Radio;
    use type R.Session_State_T;
@@ -66,17 +67,21 @@ is
    Awaiting_Network : Boolean := False;
    Reject_S     : R.Session_T := 1;
 
-   --  3.18.3.4: the Train Data to send (TD_Due), sent and awaiting their
-   --  acknowledgement (message 8 with TD_Stamp) in TD_S since TD_Since;
-   --  Was_Up: the supervising session was established at the last cycle;
+   --  3.18.3.4, per session: the Train Data to send (TD_Due), sent and
+   --  awaiting their acknowledgement (message 8 with TD_Stamp) since
+   --  TD_Since; Was_Up: the session was established at the last cycle;
    --  TD_Repeats: the repetitions of the awaited set sent (A.3.1)
-   TD_Due       : Boolean := False;
-   TD_Awaited   : Boolean := False;
-   TD_Stamp     : T_TRAIN_T := 0;
-   TD_Since     : R.Time_Ms_T := 0;
-   TD_S         : R.Session_T := 1;
-   Was_Up       : Boolean := False;
-   TD_Repeats   : Natural range 0 .. Max_Repeats := 0;
+   type Flags_T is array (R.Session_T) of Boolean;
+   type Stamps_T is array (R.Session_T) of T_TRAIN_T;
+   type Times_T is array (R.Session_T) of R.Time_Ms_T;
+   subtype Repeat_Count_T is Natural range 0 .. Max_Repeats;
+   type Repeats_T is array (R.Session_T) of Repeat_Count_T;
+   TD_Due       : Flags_T := (others => False);
+   TD_Awaited   : Flags_T := (others => False);
+   TD_Stamp     : Stamps_T := (others => 0);
+   TD_Since     : Times_T := (others => 0);
+   Was_Up       : Flags_T := (others => False);
+   TD_Repeats   : Repeats_T := (others => 0);
 
    --  5.5.3.1.3, 5.5.4.1.1: End of Mission to send, sent and repeated
    --  while the desk is open until the RBC terminates the session
@@ -96,12 +101,19 @@ is
    N_Rep        : Natural := 0;
    N_EoM        : Natural := 0;
 
+   --  3.5.3.4 h): the session the driver's RBC data outside the start of
+   --  mission open with Entry_RBC is awaited (MSG_ONBOARD waiting 2)
+   Entry_Waiting : Boolean := False;
+   Entry_RBC     : R.RBC_Id_T := R.No_RBC;
+
    function Position_Confirmed return Boolean is (Confirm)
      with Refined_Global => Confirm;
    function Position_To_Delete return Boolean is (Delete)
      with Refined_Global => Delete;
    function Opening return Boolean is (Step = Opening)
      with Refined_Global => Step;
+   function Entry_Opening return Boolean is (Entry_Waiting)
+     with Refined_Global => Entry_Waiting;
    function Awaiting_Registration return Boolean is
      (Step = Decided and then Awaiting_Network)
      with Refined_Global => (Step, Awaiting_Network);
@@ -114,7 +126,8 @@ is
      with Refined_Global => N_Rep;
    function EoM_Sent return Natural is (N_EoM)
      with Refined_Global => N_EoM;
-   function Train_Data_Awaited return Boolean is (TD_Awaited)
+   function Train_Data_Awaited return Boolean is
+     (for some S in R.Session_T => TD_Awaited (S))
      with Refined_Global => TD_Awaited;
 
    procedure Bump (N : in out Natural) is
@@ -142,13 +155,12 @@ is
       Reject_Due := False;
       Reject_S := 1;
       Awaiting_Network := False;
-      TD_Due := False;
-      TD_Awaited := False;
-      TD_Stamp := 0;
-      TD_Since := 0;
-      TD_S := 1;
-      Was_Up := False;
-      TD_Repeats := 0;
+      TD_Due := (others => False);
+      TD_Awaited := (others => False);
+      TD_Stamp := (others => 0);
+      TD_Since := (others => 0);
+      Was_Up := (others => False);
+      TD_Repeats := (others => 0);
       EoM_Due := False;
       EoM_Awaited := False;
       EoM_Since := 0;
@@ -160,6 +172,8 @@ is
       N_TD := 0;
       N_Rep := 0;
       N_EoM := 0;
+      Entry_Waiting := False;
+      Entry_RBC := R.No_RBC;
    end Clear;
 
    --  1. The answers of the RBC
@@ -187,15 +201,18 @@ is
             --  3.18.3.4.1, decision 3: the second T_TRAIN, field 6 of
             --  8.7.4, is the catalogue's seventh value (NID_LRBG is its
             --  NID_C and NID_BG; before, it read NID_BG)
-            if TD_Awaited and then S = TD_S
+            if TD_Awaited (S)
               and then T_TRAIN_T (EVC_Received.Last_Field (7)
-                                  and 16#FFFF_FFFF#) = TD_Stamp
+                                  and 16#FFFF_FFFF#) = TD_Stamp (S)
             then
-               TD_Awaited := False;
+               TD_Awaited (S) := False;
                --  4.8.3 [3]: for the session too (EVC_Radio_Authority
-               --  judges each RBC's messages by its own)
+               --  judges each RBC's messages by its own); acknowledged
+               --  when no session awaits a set any more
                R.Note_Train_Data_Acknowledged (S);
-               R.Set_Train_Data_Acknowledged (True);
+               if (for all X in R.Session_T => not TD_Awaited (X)) then
+                  R.Set_Train_Data_Acknowledged (True);
+               end if;
             end if;
          when Track_M43 =>
             --  A35: the reported position is valid
@@ -290,6 +307,15 @@ is
       end if;
       RBC := C.RBC;
       Radio := C.Radio;
+      --  the session it opens is awaited, unless already established
+      --  with that RBC (3.5.3.4.1: nothing to exchange); a new entry
+      --  replaces the one awaited
+      if Found then
+         Entry_RBC := C.RBC;
+         Entry_Waiting :=
+           (for all S in R.Session_T =>
+              not (Up (S) and then R.Info (S).RBC = C.RBC));
+      end if;
    end Take_Radio_Data;
 
    --  A31: the session with RBC opened, three attempts (A.3.1)
@@ -455,53 +481,68 @@ is
    --  4, A.3.1: four sendings in all; then the acknowledgement is still
    --  awaited but nothing more is sent: the RBC's silence is the
    --  session's own supervision, T_NVCONTACT of 3.16.3.4, no brake or
-   --  mode action of its own), by the supervising session only: the set
-   --  sent to the Accepting RBC (3.15.1.3.3) is repeated once that RBC
-   --  supervises, never to the Handing Over RBC; the acknowledgement is
-   --  forgotten with the session
-   --  @req A.3.1 Table
+   --  mode action of its own). Decision: each established session of the
+   --  supervising and the Accepting RBC awaits and repeats its own set
+   --  (3.18.3.4 "the RBC" of any established session; with two,
+   --  3.15.1.3.3 makes the Accepting RBC one of them): a validation or a
+   --  change is sent to both, each acknowledged by its own 8; the first
+   --  set of the Accepting RBC is sent by EVC_Sessions.Handover after
+   --  its 32; a session in neither role (the Handing Over RBC after the
+   --  switch) is sent nothing and its awaited set is forgotten, as with
+   --  the session
+   --  @req A.3.1 Table, 3.18.3.4, 3.15.1.3.3
    procedure Evaluate_TD (Ctx : R.Context_T)
      with Global => (In_Out => (TD_Due, TD_Awaited, Was_Up, TD_Repeats,
                                 R.State),
-                     Input  => (TD_Since, TD_S, Step, EVC_Train_Data.State,
+                     Input  => (TD_Since, Step, EVC_Train_Data.State,
                                 EVC_Mission.State))
    is
       Sv    : constant R.Session_Ref_T := R.Supervising;
-      Is_Up : constant Boolean :=
-        Sv /= R.No_Session and then Up (R.Session_T (Sv));
+      Ac    : constant R.Session_Ref_T := R.Accepting;
+      Is_Up : Boolean;
       First : Boolean;
    begin
-      if not TD_Awaited then
-         TD_Repeats := 0;
-      end if;
-      if not Is_Up then
-         if not (Sv /= R.No_Session
-                 and then R.Info (R.Session_T (Sv)).State
-                            = R.Connection_Lost)
-         then
-            TD_Awaited := False;
-            TD_Due := False;
-            if R.Train_Data_Acknowledged then
-               R.Set_Train_Data_Acknowledged (False);
-            end if;
-         end if;
-         Was_Up := False;
-         return;
-      end if;
-      First := (not Was_Up
-                and then (TD_Awaited or else not R.Train_Data_Acknowledged))
-               or else EVC_Mission.Train_Data_Validated;
-      if EVC_Train_Data.Valid and then Step not in Opening | Report_Due
-        and then (First
-                  or else (TD_Awaited and then Sv = R.Session_Ref_T (TD_S)
-                           and then TD_Repeats < Max_Repeats
-                           and then Elapsed (TD_Since, Ctx.Now_Ms)
-                                      >= Repeat_Ms))
+      if not (Sv /= R.No_Session
+              and then (Up (R.Session_T (Sv))
+                        or else R.Info (R.Session_T (Sv)).State
+                                  = R.Connection_Lost))
+        and then R.Train_Data_Acknowledged
       then
-         TD_Due := True;
-         TD_Repeats := (if First then 0 else TD_Repeats + 1);
+         R.Set_Train_Data_Acknowledged (False);
       end if;
-      Was_Up := True;
+      for S in R.Session_T loop
+         pragma Loop_Invariant (True);
+         if not TD_Awaited (S) then
+            TD_Repeats (S) := 0;
+         end if;
+         Is_Up := (R.Session_Ref_T (S) = Sv or else R.Session_Ref_T (S) = Ac)
+           and then Up (S);
+         if not Is_Up then
+            if not (R.Usable (S)
+                    and then R.Info (S).State = R.Connection_Lost)
+            then
+               TD_Awaited (S) := False;
+               TD_Due (S) := False;
+            end if;
+            Was_Up (S) := False;
+         else
+            First := (R.Session_Ref_T (S) = Sv and then not Was_Up (S)
+                      and then (TD_Awaited (S)
+                                or else not R.Train_Data_Acknowledged))
+                     or else EVC_Mission.Train_Data_Validated;
+            if EVC_Train_Data.Valid and then Step not in Opening | Report_Due
+              and then (First
+                        or else (TD_Awaited (S)
+                                 and then TD_Repeats (S) < Max_Repeats
+                                 and then Elapsed (TD_Since (S), Ctx.Now_Ms)
+                                            >= Repeat_Ms))
+            then
+               TD_Due (S) := True;
+               TD_Repeats (S) := (if First then 0 else TD_Repeats (S) + 1);
+            end if;
+            Was_Up (S) := True;
+         end if;
+      end loop;
    end Evaluate_TD;
 
    --  5. The end of mission (5.5.3.1.3, 5.5.3.1.4, 5.5.4.1.1)
@@ -534,12 +575,48 @@ is
       end if;
    end Evaluate_EoM;
 
+   --  3.5.3.4 h), 3.5.3.4.2: the session of the driver's RBC data is
+   --  awaited while one with Entry_RBC is being established, or is
+   --  terminating or queued (Queued, Queued_RBC) to be opened after it;
+   --  decision: the wait ends when it is established (3.5.3.7 d), when no
+   --  session with that RBC is left or queued (the order refused, the
+   --  set-up given up), when level 2 is left and in the modes where the
+   --  selection is forgotten (EVC_Level_Sessions: SB, the end of mission;
+   --  SL, PS, SF, IS, NP)
+   --  @req 3.5.3.4.2
+   procedure Evaluate_Entry (Ctx        : R.Context_T;
+                             Queued     : Boolean;
+                             Queued_RBC : R.RBC_Id_T)
+     with Global => (In_Out => Entry_Waiting,
+                     Input  => (Entry_RBC, R.State, EVC_Levels.State))
+   is
+      Any : Boolean := Queued and then Queued_RBC = Entry_RBC;
+   begin
+      if not Entry_Waiting then
+         return;
+      end if;
+      for S in R.Session_T loop
+         pragma Loop_Invariant (True);
+         if R.Usable (S) and then R.Info (S).RBC = Entry_RBC then
+            if Up (S) then
+               Entry_Waiting := False;
+               return;
+            end if;
+            Any := Any or else R.Info (S).State /= R.Idle;
+         end if;
+      end loop;
+      Entry_Waiting := Any
+        and then EVC_Levels.Valid and then EVC_Levels.Level = L2
+        and then Ctx.Mode not in M_SB | M_SL | M_PS | M_SF | M_IS | M_NP;
+   end Evaluate_Entry;
+
    procedure Evaluate (Ctx        : EVC_Radio.Context_T;
                        Queued     : Boolean;
                        Queued_RBC : EVC_Radio.RBC_Id_T;
                        Req        : out Request_T) is
    begin
       Req := (others => <>);
+      Evaluate_Entry (Ctx, Queued, Queued_RBC);
       Evaluate_SoM (Ctx, Queued, Queued_RBC, Req);
       Evaluate_TD (Ctx);
       Evaluate_EoM (Ctx, Req);
@@ -680,18 +757,17 @@ is
    procedure Await_TD (S    : R.Session_T; T : T_TRAIN_T;
                        Now  : R.Time_Ms_T;
                        Sent : Boolean)
-     with Global => (In_Out => (R.State, N_TD),
-                     Output => (TD_Awaited, TD_Stamp, TD_Since, TD_S),
+     with Global => (In_Out => (R.State, N_TD, TD_Awaited, TD_Stamp,
+                                TD_Since),
                      Input  => EVC_Train_Data.State)
    is
    begin
       R.Note_Train_Data_Sent (S, EVC_Train_Data.Categories);
-      TD_Awaited := True;
+      TD_Awaited (S) := True;
       --  3.16.3.3.2: the stamp EVC_Radio.Send gave the message
-      TD_Stamp := (if Sent and then R.Info (S).Sent then R.Info (S).Last_Sent
-                   else T);
-      TD_Since := Now;
-      TD_S := S;
+      TD_Stamp (S) :=
+        (if Sent and then R.Info (S).Sent then R.Info (S).Last_Sent else T);
+      TD_Since (S) := Now;
       R.Set_Train_Data_Acknowledged (False);
       if Sent then
          Bump (N_TD);
@@ -704,7 +780,7 @@ is
    --  @req 5.4.3.2 A33, 5.4.3.2 A34
    procedure Send_Report (S : R.Session_T; Ctx : R.Context_T; T : T_TRAIN_T)
      with Global => (In_Out => (R.State, R.Queue, N_TD, N_Rep, TD_Awaited,
-                                TD_Stamp, TD_Since, TD_S),
+                                TD_Stamp, TD_Since),
                      Output => Report_Valid,
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State, EVC_Train_Data.State,
@@ -747,8 +823,8 @@ is
 
    --  3.18.3.4: message 129 with packets 0 and 11
    procedure Send_TD (S : R.Session_T; Ctx : R.Context_T; T : T_TRAIN_T)
-     with Global => (In_Out => (R.State, R.Queue, N_TD),
-                     Output => (TD_Awaited, TD_Stamp, TD_Since, TD_S),
+     with Global => (In_Out => (R.State, R.Queue, N_TD, TD_Awaited, TD_Stamp,
+                                TD_Since),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State, EVC_Train_Data.State))
    is
@@ -803,7 +879,6 @@ is
 
    procedure Produce (Ctx : EVC_Radio.Context_T) is
       T  : constant T_TRAIN_T := R.T_Train_At (Ctx.Now_Ms);
-      Sv : constant R.Session_Ref_T := R.Supervising;
    begin
       if Step = Report_Due then
          if Up (SoM_S) then
@@ -811,12 +886,15 @@ is
          end if;
          Step := Reported;
       end if;
-      if TD_Due then
-         TD_Due := False;
-         if Sv /= R.No_Session and then Up (R.Session_T (Sv)) then
-            Send_TD (R.Session_T (Sv), Ctx, T);
+      for S in R.Session_T loop
+         pragma Loop_Invariant (True);
+         if TD_Due (S) then
+            TD_Due (S) := False;
+            if Up (S) then
+               Send_TD (S, Ctx, T);
+            end if;
          end if;
-      end if;
+      end loop;
       if EoM_Due then
          EoM_Due := False;
          if Up (EoM_S) then

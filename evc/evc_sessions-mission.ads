@@ -99,7 +99,7 @@ is
    procedure Take_Radio_Data (Found : out Boolean;
                               RBC   : out EVC_Radio.RBC_Id_T;
                               Radio : out ETCS_Variables.NID_RADIO_T)
-     with Global => (In_Out => EVC_Radio.State,
+     with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => EVC_Driver_Requests.State);
 
    --  5.5.2.1, 5.5.2.3: the change From -> To ends a mission (also what
@@ -139,6 +139,11 @@ is
    --  A31 / D31: the session of the start of mission is being opened
    --  (MSG_ONBOARD waiting 2)
    function Opening return Boolean
+     with Global => State;
+
+   --  3.5.3.4 h): the session the driver's RBC data opened outside the
+   --  start of mission is awaited (MSG_ONBOARD waiting 2)
+   function Entry_Opening return Boolean
      with Global => State;
 
    --  5.4.3.2 D7 -> S4 in level 2 without a known RBC contact: the

@@ -143,8 +143,9 @@ is
    procedure Take_Radio_Data (Found : out Boolean;
                               RBC   : out EVC_Radio.RBC_Id_T;
                               Radio : out ETCS_Variables.NID_RADIO_T)
-     with Global => (In_Out => EVC_Radio.State,
-                     Input  => EVC_Driver_Requests.State);
+     with Global => (In_Out => (State, EVC_Radio.State),
+                     Input  => EVC_Driver_Requests.State),
+          Post   => Has_Released = Has_Released'Old;
 
    --  1b. The transition buffer (4.8.5) has a message to release
    function Has_Released return Boolean
@@ -257,6 +258,11 @@ is
    function Handing_Over_Retained return Boolean
      with Global => State;
    function SoM_Opening return Boolean
+     with Global => State;
+   --  3.5.3.4 h), 3.5.3.4.2: the session the driver's RBC data opened
+   --  outside the start of mission is awaited, also while the one it
+   --  replaces is terminating (MSG_ONBOARD waiting 2)
+   function Entry_Opening return Boolean
      with Global => State;
    --  5.4.3.2 D7 -> S4 without a known RBC contact (MSG_ONBOARD waiting 1
    --  until the registration ends or times out)
