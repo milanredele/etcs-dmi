@@ -94,6 +94,13 @@ package S076_Sequences is
       Bits      : Natural := 0;
       Data      : Byte_Array (1 .. Max_Bytes) := (others => 0);
       M_Version : Integer := -1;                 -- -1: no var row
+      --  the group's identity of its header, the first var rows NID_C and
+      --  NID_BG (7.4.1.1, 7.5.1.85, 7.5.1.77); -1 when none
+      NID_C, NID_BG : Integer := -1;
+      --  the D_LEVELTR of its packet 41 by the Q_SCALE before it, cm
+      --  (7.5.1.23, 7.5.1.130); -1 when none or 32767 (immediate)
+      Scale       : Natural := 1;
+      Leveltr_Cm  : Integer_64 := -1;
       --  the NID_PACKET of its var rows (255 left out)
       Packets   : Byte_Array (1 .. 24) := (others => 0);
       Packet_Count : Natural := 0;
@@ -332,11 +339,14 @@ package S076_Sequences is
    --  B471, B472: the train of the packet 11 (Validated train data) of a
    --  message 129: the distance of the message, M_AXLELOADCAT,
    --  M_LOADINGGAUGE and the M_VOLTAGE list as a bit mask (bit n for
-   --  M_VOLTAGE n, as EVC_Config.Voltages); -1 for a field not given
+   --  M_VOLTAGE n, as EVC_Config.Voltages), the cant deficiency and the
+   --  other international train categories NC_CDTRAIN and NC_TRAIN
+   --  (7.5.1.82.2, 7.5.1.84); -1 for a field not given
    Max_Trains : constant := 4;
    type Train_T is record
       Dist_Cm : Integer_64 := 0;
       Axle_Load, Gauge, Voltages : Integer := -1;
+      CD_Train, Other_Train : Integer := -1;
    end record;
    type Trains_T is array (1 .. Max_Trains) of Train_T;
 

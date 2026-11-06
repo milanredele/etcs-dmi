@@ -269,6 +269,10 @@ package body S076_Sequences is
             T.Axle_Load := N;
          elsif Name = "M_LOADINGGAUGE" then
             T.Gauge := N;
+         elsif Name = "NC_CDTRAIN" then
+            T.CD_Train := N;
+         elsif Name = "NC_TRAIN" then
+            T.Other_Train := N;
          elsif Name = "M_VOLTAGE" and then N < 16 then
             if T.Voltages < 0 then
                T.Voltages := 0;
@@ -867,6 +871,26 @@ package body S076_Sequences is
               and then S.Telegram_Count > 0
             then
                S.Telegrams (S.Telegram_Count).M_Version := Integer (V mod 128);
+            end if;
+            if OK and then Block = 1 and then S.Telegram_Count > 0 then
+               declare
+                  T : Telegram_T renames S.Telegrams (S.Telegram_Count);
+               begin
+                  if Name = "NID_C" and then T.NID_C < 0 then
+                     T.NID_C := Integer (V mod 1024);
+                  elsif Name = "NID_BG" and then T.NID_BG < 0 then
+                     T.NID_BG := Integer (V mod 16384);
+                  elsif Name = "Q_SCALE" then
+                     T.Scale := Natural (V mod 4);
+                  elsif Name = "D_LEVELTR" and then V < 32767
+                    and then T.Leveltr_Cm < 0
+                  then
+                     T.Leveltr_Cm := Integer_64 (V)
+                       * (case T.Scale is
+                            when 0 => 10, when 2 => 1000,
+                            when others => 100);
+                  end if;
+               end;
             end if;
             if OK and then Block = 1 and then Name = "M_LEVELTR"
               and then V = 4 and then S.Telegram_Count > 0
