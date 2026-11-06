@@ -21269,3 +21269,132 @@ judges 'not displayed' by the sending, not by what DMI_Core shows).
 B3380, the radio message failing the Euroradio check: not taken, the
 bound of the package was reached with B2862 in hand; left for the
 next round as its brief gives it (a scoping and a line).
+
+### Review of the sixty-seventh round: eight verdicts re-derived blind (e5/review-67) (2026-11-06)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items and the extra one
+were taken. No code, no triage line and no line of the authors was
+changed.
+
+1. The balise level crossing in level 0 with level 2 announced. Mine:
+   4.8.3's row (balise, non-infill) is R [1] [2] in levels 0 and NTC,
+   [2] "stored onboard if an order to switch to level 2 at a further
+   location has been received"; 4.8.5.2.1 makes such a part of a
+   message a set of the transition buffer, 4.8.5.1 one buffer of three
+   sets "obtained from three filtered messages" (balise or radio);
+   deleted by 4.8.5.4 a) when the order is deleted or replaced by one
+   for a different level (a level 1 order: deleted; c) concerns radio
+   sets); released at the transition and re-evaluated "in the sequence
+   they have been received" (4.8.5.5) by the rules of level 2 (4.8.5.6
+   b), A there). Ours: `EVC_Acceptance.Level_Stores` carries [2] for
+   the Level Crossing in levels 0 and NTC with `L2_Announced`,
+   `Level_Accepts` lets it through; a set of
+   `EVC_Stored_Information.Balise_Buffer` keeps `For_Level` and the
+   balise buffer is deleted when that level is no longer announced;
+   `EVC_Core.Stored.Release_Transition_Buffer` releases the balise sets
+   first, then the radio sets, from two buffers of three each.
+   Author (B3580): the same storing, deletion and judgement, with the
+   decision "the two buffers are not interleaved by time; the LX of a
+   group does not depend on a radio set". Agree on the LX; disagree on
+   the decision: 4.8.5.5 orders the release by reception across the
+   sets and 4.8.5.1 bounds them to three in all, so a radio set
+   received before a balise set is re-evaluated before it (the same
+   NID_LX from both, the later one wins). B3740 (decision).
+2. The brake command reasons of 4.12.1.2. Mine: the SR limits row is R
+   in NP, SB, SH, FS, LS, OS, UN, TR, SN (SR not relevant), the Train
+   Data row R in NP, SB, SH and M in FS, LS, SR, OS, UN, TR, SN: (a)
+   the SR brake revoked and the Train Data one kept entering FS, LS,
+   OS, UN, TR, SN; (b) the safe consist length R in NP, SB, SH, M in
+   TR, the rest not relevant, and SB is entered by 4.6.3 [28] (desks
+   closed) without a standstill condition, so while moving; (c) [2]
+   stands in the SM column of roll away, unauthorised direction,
+   linking, BG message inconsistency and RAMS: all five revoked by an
+   SM authorisation that turns the train; (d) the last three rows are
+   equal cell by cell, 3.14.1.6 releases them alike and DMI chapter 15
+   gives "Balise read error" for 3.16.2.4.4.3, 3.16.2.5.3, 3.16.2.6.1,
+   3.16.2.7.x: one reason. Ours: `EVC_Brake_Commands.State_T.SR_Entry`
+   a latch of its own, revoked by `EVC_Core.Modes.Revoke_Brake_Reasons`
+   (called by `Enter_Mode` only) for any mode but SR, `Data_Entry` in
+   NP, SB, SH, IS; `EVC_Procedures.Mode_Changed` revokes `Link_SB` (one
+   reason for the three) on SM with `SM_Opposite`, `Consist_SB` on NP,
+   SB, SH. Author (B470): the same. Agree.
+3. A text over a relocation. Mine: A.3.5.1's 3rd bullet, the stop
+   neither reverted nor executed twice, and 3.12.3.4.3.1.2, a fulfilled
+   sub-condition no longer evaluated: not shown again, no second
+   record. Ours: `EVC_Text_Messages.End_Condition` latches `Loc_Done`
+   (and the time, mode and level) and computes `Ended` from the
+   latches. Author (B781): the same, `Scenario_Text_Stop_Relocated`
+   passing at once. Agree (the scenario's spec has no heading of its
+   own: the comment above it heads `Scenario_Text_Relocated`).
+4. The connection establishment timer in the bench. Mine: SUBSET-037
+   6.2.4.2.16, Testab set at the Sa-CONNECT.request, 40 s; at its
+   time-out a Sa-DISCONNECT.indication, after which "the application
+   is supposed to request a new connection establishment"; 3.5.3.7 a)
+   repeats the request at once (a defined number of times in a start
+   of mission or for 3.5.3.4 c), else until successful). A 'NOT
+   SA-CONNECT.Request' after an input counts the requests after the
+   input took effect. Ours: `S076_Bench` Testab per session, stopped by
+   any RTM event or message or a release, `Set_Up_Failed` at time-out;
+   `EVC_Sessions.Set_Up_Failed` sets the request due at once;
+   `Request_Seen` counts for a negative the requests after `Input_Ms`
+   (0 for a balise group input). Author (B3382): the same. Agree;
+   remark: `Input_Ms` is read after `Apply_Input` returns, so a request
+   that the input itself causes inside `Apply_Input`'s own cycles would
+   escape a negative; no sequence of the round shows it.
+5. 9990400_28 SV30 step 69. Mine: D2 is bit 7 (value 128), 0000 0000
+   0000 0111 holds A, HS17, B1: unsuitable by 3.12.2.3 c), so 3.12.2.4
+   would apply; but the message 24 of step 67 is 75 + 180 + 92 + 64 =
+   411 bits, 52 bytes, for L_MESSAGE 51, the same in ERA's PDF (its
+   like message of step 85 has 52); by 8.4.4.2.1 the computed length
+   differs from L_MESSAGE and the message is not taken. The sequence's
+   data; the runner should block the message as S076-defect. Author
+   (S49bc1c1a s076, B3661): the same. Agree.
+6. The RBC data entry over three steps. Mine: Table 50 S5-3, the
+   fields entered, the 'Yes' enabled once every field holds a value,
+   its press to S8: step 82 types, 83 sees the 'Yes' enabled, 84
+   presses it; any changed field is another contact, but step 86 names
+   NID_RADIO, so the bench changes the phone number, and the NOT
+   SA-CONNECT is judged by the NID_RADIO of the requests. Ours:
+   `S076_Run.RBC_Data_Entry` leaves the 'Yes' to the 'validate' step of
+   the same case, changes the phone's last digit for "different from
+   the displayed one"; `Radio_Expect`'s 'no-connect' fails a request
+   with the replaced NID_RADIO. Author (B3560): the same. Agree.
+7. 3050300_05 SV30 step 56. Trace: BG2d's packet 42 (RBC 1515) opens
+   session 1 at 88.7 s, repeated every 40 s and never answered (the
+   sequence's own situation, step 45: "repeated for more than 45
+   seconds"); BG3d's packet 131 (RBC 1616) opens session 2 at 125.8 s,
+   repeated likewise; at the min safe rear end over the border at
+   1000 m (404.4 s) both are released, no request follows, step 53
+   passes on the window's earlier requests and step 55's confirm meets
+   a released session. Mine: 3.5.3.8 f) aborts the establishment with
+   the Handing Over RBC; 3.15.1.1.6 defines the Accepting RBC by the
+   order and the Handing Over RBC as the one considered supervising
+   when it comes (1515, still being set up); 3.15.1.3.1 a) opens the
+   Accepting's session at once and at the border it becomes the
+   supervising one, its set-up going on. Ours:
+   `EVC_Sessions.Handover.Find_Accepting` returns while there is no
+   supervising session, so session 2 has no role and
+   `Abort_Being_Established (Keep_Roles => True)` at `Rear_Passed`
+   closes it. Verdict: ours. Author (Scb79aeb3 onboard, B3720): the
+   same. Agree.
+8. 3120300_03 SV30 step 70. Trace: BG1d's plain text (Q_TEXTCONFIRM 1)
+   shown at 400 m, BG2d's fixed text not sent (step 66 passes), BG3d's
+   plain text (Q_TEXTCONFIRM 1) sent at 500 m: "not sent, got sent".
+   Mine: DMI 5.4.1.9 queues the texts to acknowledge in a FIFO, the
+   next shown 1 s after the current one is acknowledged or revoked; the
+   queue is the DMI's (`DMI_Ack`, `DMI_Text_Messages`), so the on-board
+   sends rightly and `S076_Run.Text_Message` judging 'not displayed' by
+   the sendings is the runner's: it should look at what `DMI_Core`
+   shows. Author (Se341da87 model, B3721): the same. Agree.
+
+Extra, 4120100_02 SV30 step 254. Mine: SUBSET-027 4.0.0 4.2.4.23 has
+Bit 24 "FRMCS network registration failed" and Bit 25 "PT distance
+exceeded"; ERA's PDF of the sequence has Bit24 at step 254, the
+numbering before the FRMCS row. The sequence's data. Author (S839261e1
+s076): the same. Agree.
+
+Counts: 8 items and the extra. Agreed: eight (2 to 8 and the extra);
+disagreed: one (item 1, the release order of the transition buffer's
+balise and radio sets, a decision); undecided: none. Backlog line:
+B3740. Calls: 88 of 130 at this point.
