@@ -21030,3 +21030,29 @@ L_STOPLX 100), supervised as the temporary EOA (target 0 at 103 m at
 Sbfa49d0b model). Nothing else moved. Row 4.8.3.1.1 Table-footnote [2]
 noted; proofs of `evc_acceptance`, `evc_stored_information-balise_buffer`,
 `evc_stored_information`, `evc_core-stored`.
+
+**B540, the route unsuitability by axle load category: a trace, not
+ours.** The candidates of the line were the radio path to
+`EVC_Track_Description.Take_Suitability` and the comparison; both hold.
+The runner enters the train's D2 (printed in a temporary trace:
+`EVC_Train_Data.Categories.Axle_Load` 7 from step 19 on); 3.12.2.3 c)
+and 7.5.1.67.2 make D2 (bit 7) unsuitable for the bitset 0000 0000 0000
+0111 (A, HS17, B1), which `Unsuitable` computes. The new scenario
+`evc_test_authority Scenario_Suitability_By_Radio` (level 2 FS, the
+Train Data acknowledged, D2, a message 24 with that packet 70 500 m from
+the group) passes on master: the packet is taken, the unsuitability
+exists, its location is the temporary EOA (3.12.2.4). In the runner no
+suitability data is stored at steps 67 to 70 (printed): the message 24
+of step 67 has L_MESSAGE 51, 408 bits, while its header (75 bits) and
+packets 73 (180), 74 (92) and 70 (64) are 411 bits, in the scn file and
+in ERA's PDF of the sequence alike, so the packet 70 runs 3 bits past
+the message. Triage S49bc1c1a s076 (9990400_28 SV30; the runner could
+block such a message as S076-defect, B3661) and E7 for its other
+family members: 9990400_28 SV21 and 3120200_05 SV21, SV22 carry the
+older system version's packet 70 with M_AXLELOADCAT (7 bits, 6.6.3.2.3
+[18]), the translation of chapter 6 (B010); 3120200_05 SV30 passes the
+step. B540 closed; rows 3.12.2.3 c) and 3.12.2.4 noted with the
+scenario. No change in evc/ for this item.
+
+**B530, the operated system version in the JRU header: left.** The
+bound came with B540 finished; B530 was not started (no trace).

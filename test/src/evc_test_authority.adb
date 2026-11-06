@@ -35,6 +35,7 @@ with EVC_Radio_Authority;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Track_Description;
+with EVC_Train_Data;
 with EVC_Track_Conditions;
 with EVC_Text_Messages;
 with EVC_Position;
@@ -1093,6 +1094,75 @@ package body EVC_Test_Authority is
              "LX by radio: the former temporary EOA passed without override "
              & "trips the train (4.6.3 [43], 5.8.1.9, 3.12.5.8)");
    end Scenario_LX_By_Radio;
+
+   --  Message 24 referring to the group NID_BG with route suitability
+   --  data (packet 70) D m from it: the axle load categories Cats
+   function Suitability_Message (NID_BG : Natural; D : Natural;
+                                 Cats   : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      RS : T70.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      RS.Q_DIR := 1;
+      RS.Q_SCALE := 1;
+      RS.Q_TRACKINIT := 0;
+      RS.Has_D_SUITABILITY := True;
+      RS.D_SUITABILITY := ETCS_Variables.D_SUITABILITY_T (D);
+      RS.Q_SUITABILITY := 1;
+      RS.Has_M_LINEAXLELOADCAT := True;
+      RS.M_LINEAXLELOADCAT := ETCS_Variables.M_LINEAXLELOADCAT_T (Cats);
+      RS.N_ITER := 0;
+      T70.Encode (RS, W, OK);
+      Check (OK, "authority: packet 70 encoded");
+      return Message_Bytes (W);
+   end Suitability_Message;
+
+   --  SUBSET-076 9990400_28: level 2 FS, the Train Data acknowledged, the
+   --  axle load category D2 (M_AXLELOADCAT 7); a message 24 gives
+   --  route suitability data 500 m from the group 10 permitting the
+   --  categories A, HS17 and B1 only (M_LINEAXLELOADCAT 7): 3.12.2.3 c)
+   --  an unsuitability, 3.12.2.4 its location the temporary EOA and SvL
+   procedure Scenario_Suitability_By_Radio is
+      Cat  : EVC_Train_Data.Categories_T := EVC_Train_Data.Categories;
+      Keep : constant EVC_Train_Data.Categories_T := Cat;
+      Data : constant SIn.Train_Data_T := EVC_Train_Data.Data;
+   begin
+      Start_X;
+      Input (DMI, (16#41#, 6, 0, 0, 0, 1, 4, 49, 50, 51, 52));
+      Stand_X (100);
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Run_X (11_000);
+      Ack_Train_Data;
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400), 600),
+                                         Stamp));
+      Run_X (20_000);
+      Check (EVC_Core.Mode = M_FS and then not SI.Current.Temporary.Present,
+             "suitability by radio: FS, no temporary EOA");
+      Cat.Axle_Load := 7;
+      EVC_Train_Data.Set (Data, Cat);
+      Give_Radio_Message (1, Suitability_Message (10, 500, 7));
+      Stand_X (200);
+      Check (EVC_Track_Description.Unsuitable_Kind
+               (1, EVC_Train_Data.Categories),
+             "suitability by radio: the packet 70 of message 24 taken, D2 "
+             & "not among A, HS17, B1 (3.12.2.3 c))");
+      Check (SI.Current.Temporary.Present
+             and then SI.Current.Temporary.EOA = 60_000,
+             "suitability by radio: the unsuitable location the temporary "
+             & "EOA (3.12.2.4)");
+      EVC_Train_Data.Set (Data, Keep);
+   end Scenario_Suitability_By_Radio;
 
    --  3.10.2.2 b), with the group at 100 m, the MA to 800 m, the train at
    --  standstill at 200 m: 2nd bullet, a danger point 100 m beyond the EOA
