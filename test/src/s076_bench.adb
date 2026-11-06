@@ -163,6 +163,17 @@ package body S076_Bench is
    --  silent in all)
    Registering : array (1 .. RTM_Max_Sessions) of Boolean :=
      (others => False);
+   --  EURORADIO's connection establishment timer Testab (SUBSET-037
+   --  6.2.4.2.16, 40 s by 6.3.2.3.1): set at each set-up request of a
+   --  session, stopped by any RTM event or message given for it or by a
+   --  release request; at its time-out the safety layer's
+   --  Sa-DISCONNECT.indication, the RTM port's Set_Up_Failed, which the
+   --  on-board answers with a new request (3050700_03 step 73: the
+   --  request of 147.0 s repeated at 187.0 s)
+   Testab_Ms : constant := 40_000;
+   Set_Up_Pending : array (1 .. RTM_Max_Sessions) of Boolean :=
+     (others => False);
+   Set_Up_At      : Per_Session_U64 := (others => 0);
    --  The FRMCS on-board, where installed, reports itself connected and
    --  not registered to the FRMCS Radio Network in the first cycle after
    --  each power-up (3.5.6.1.3, the RTM port's event 8), never
@@ -183,6 +194,7 @@ package body S076_Bench is
       Last_Ms := (others => 0);
       Last_Req := (others => 0);
       Registering := (others => False);
+      Set_Up_Pending := (others => False);
       T_By_Nid := (others => (others => -1));
    end Clear_Radio;
 
@@ -491,6 +503,12 @@ package body S076_Bench is
          R.Length := Natural'Min (P'Length - 3, Max_Radio_Bytes);
          R.Data (1 .. R.Length) := P (P'First + 3 .. P'First + 2 + R.Length);
          Last_Req (R.Session) := R.Code;
+         if R.Code = RTM_Request_T'Pos (Request_Set_Up) + 1 then
+            Set_Up_Pending (R.Session) := True;
+            Set_Up_At (R.Session) := Clock;
+         elsif R.Code = RTM_Request_T'Pos (Request_Release) + 1 then
+            Set_Up_Pending (R.Session) := False;
+         end if;
          if R.Code = RTM_Request_T'Pos (Request_Registration) + 1 then
             Registering (R.Session) := True;
             GSMR_Order_At := Clock;
@@ -1246,6 +1264,13 @@ package body S076_Bench is
                         Byte (RTM_Event_T'Pos (Registered) + 1)));
             end if;
          end loop;
+         for S in Set_Up_Pending'Range loop
+            if Set_Up_Pending (S) and then Clock - Set_Up_At (S) >= Testab_Ms
+            then
+               RTM_Input ((RTM_Tag_Event, Byte (S),
+                           Byte (RTM_Event_T'Pos (Set_Up_Failed) + 1)));
+            end if;
+         end loop;
          if FRMCS_Due then
             FRMCS_Due := False;
             FRMCS_Detected_At := Clock;
@@ -1772,6 +1797,13 @@ package body S076_Bench is
 
    procedure RTM_Input (Payload : Byte_Array) is
    begin
+      if Payload'Length >= 2
+        and then Payload (Payload'First) in RTM_Tag_Event | RTM_Tag_Message
+        and then Payload (Payload'First + 1) in 1 .. RTM_Max_Sessions
+      then
+         --  the connection's establishment over (Testab stopped)
+         Set_Up_Pending (Natural (Payload (Payload'First + 1))) := False;
+      end if;
       if Is_Powered then
          EVC_Core.Handle_Input (RTM, Payload);
       end if;

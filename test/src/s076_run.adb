@@ -3357,6 +3357,10 @@ package body S076_Run is
    --  there, not at the start of the move (4090100_01 step 115: a 132
    --  sent in level 2 on the way to the transition's group)
    Group_Input_Ms : Unsigned_64 := 0;
+   --  The time the window's input other than a balise group's took
+   --  effect, after its move (Radio_Expect's negative request
+   --  judgement); 0 for a group input
+   Input_Ms : Unsigned_64 := 0;
 
    function Radio_Expect (St : Step_T) return Judgement_T is separate;
 
@@ -7451,6 +7455,7 @@ package body S076_Run is
       --  time left by the previous one would hide this one's sendings
       --  from its negative expectations until the clock passes it
       Group_Input_Ms := 0;
+      Input_Ms := 0;
       Loc_Copied := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);
@@ -7669,6 +7674,11 @@ package body S076_Run is
                      if W (2) = "BTM" then
                         Group_Input_Ms := B.Now_Ms;
                      end if;
+                     --  not a group's: its reading comes before the end of
+                     --  Apply_Input's move (4090100_01 step 131, the
+                     --  request of 273.8 s after BG7d, the input done at
+                     --  274.3 s)
+                     Input_Ms := (if W (2) = "BTM" then 0 else B.Now_Ms);
                      if J.Verdict = Failed
                        and then (Starts (Image (St.Comment), "Optional step")
                                  or else Has (Image (St.Comment),
