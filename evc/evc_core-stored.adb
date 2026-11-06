@@ -295,9 +295,10 @@ is
          SR_End      => SR_End);
    begin
       --  4.8.5.5: the sets of balise groups kept for
-      --  the transition to level 1 (4.8.3 [1]), released and taken in
-      --  the cycle of the transition as the radio ones in level 2
-      if EVC_Levels.Switched_To (L1)
+      --  the transition to level 1 (4.8.3 [1]) or level 2 ([2], before
+      --  the radio messages kept for it), released and taken in the
+      --  cycle of the transition as the radio ones in level 2
+      if (EVC_Levels.Switched_To (L1) or else EVC_Levels.Switched_To (L2))
         and then EVC_Stored_Information.Balise_Buffered > 0
       then
          Release_Unit_Packets;

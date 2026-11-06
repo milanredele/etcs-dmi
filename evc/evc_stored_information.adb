@@ -1489,7 +1489,9 @@ is
                                     Has_41   => Has_41,
                                     Count    => 0,
                                     --  set by Keep_Unit_Packets
-                                    Group    => (others => <>)));
+                                    Group    => (others => <>),
+                                    For_Level =>
+                                      EVC_Levels.Announced_Level));
             Set_Open := True;
          end if;
          EVC_Position.Open_Taken_Packet (J, P, R);
@@ -1578,7 +1580,9 @@ is
                                              Linked   => Tk.Group.Linked,
                                              Has_41   => Has_41,
                                              Count    => 0,
-                                             Group    => Tk.Group.Id));
+                                             Group    => Tk.Group.Id,
+                                             For_Level =>
+                                               EVC_Levels.Announced_Level));
                      Set_Open := True;
                   end if;
                   EVC_Position.Open_Taken_Packet (J, P, R);
@@ -3341,10 +3345,16 @@ is
       end if;
 
       --  2. the groups of the cycle; 4.8.5.4 a): the
-      --  balise transition buffer deleted when level 1 is no longer
-      --  announced (the order deleted or replaced by one to another
-      --  level; at the transition the buffer was released before)
-      if not EVC_Levels.L1_Announced then
+      --  balise transition buffer deleted when the level its sets are
+      --  kept for is no longer announced (the order deleted or replaced
+      --  by one to another level; at the transition the buffer was
+      --  released before)
+      if Balise_Buffer.Count > 0
+        and then not (EVC_Levels.Announced
+                      and then EVC_Modes."="
+                                 (EVC_Levels.Announced_Level,
+                                  Balise_Buffer.Info (1).For_Level))
+      then
          Balise_Buffer.Delete_All;
       end if;
       for G in 1 .. EVC_Position.Taken_Count loop

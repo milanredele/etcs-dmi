@@ -24,7 +24,11 @@
 --      it at once, as before (the linking, packet 5, in EVC_Position;
 --      the reversing packets 138 and 139 in EVC_Procedures); the
 --      stores ask Stored first.
---    4.8.3 [2] (level 2 at a further location): RBC information.
+--    4.8.3 [2] (level 2 at a further location): the RBC information
+--      (EVC_Radio_Acceptance), and from a balise group the rows that
+--      carry it in levels 0 and NTC (the Level Crossing information):
+--      Stored with Context.L2_Announced, kept in the same buffer and
+--      judged again at the transition to level 2.
 --    4.8.3 [4] the SSP and gradient cover the MA: 3.7.2.3 in
 --      EVC_Stored_Information.
 --    4.8.3 [11] (conditional order): Context.Order_In_Message,
@@ -178,9 +182,9 @@ is
              and then not (L = L2 and then C.Unlinked_Group),
           when TSR | TSR_Revocation | Default_Gradient
              | Geographical_Position | Text_Message =>
-             L /= NTC or else C.L1_Announced,
+             L /= NTC or else C.L1_Announced or else C.L2_Announced,
           when Level_Crossing =>
-             L in L1 | L2 or else C.L1_Announced,
+             L in L1 | L2 or else C.L1_Announced or else C.L2_Announced,
           --  R R A R, no exception
           when Repositioning => L = L1,
           --  R R A A: no exception [1]
@@ -307,28 +311,43 @@ is
    --  NTC; the infill information in level 2 only, the level transition
    --  order apart). Every case is one Level_Accepts accepts (the
    --  exception taken at once by the units that keep no buffer, see the
-   --  header).
+   --  header). 4.8.3 [2] "stored onboard if an order to switch to level
+   --  2 at a further location has been received", in levels 0 and NTC
+   --  (C.L2_Announced), the rows from a balise group that carry it: the
+   --  Level Crossing information in both; TSR, its revocation, the
+   --  default gradient, packet 79 and the texts in NTC (no infill row
+   --  carries it)
    --  @req 4.4.19.1.4.2 c), 4.8.3.1.1 Table-footnote [1]
+   --  @req 4.8.3.1.1 Table-footnote [2]
    function Level_Stores (I : Info_T; L : Level_T; C : Context_T)
      return Boolean
-   is (C.L1_Announced and then L /= L1
-       and then
-       (if C.Infill and then Has_Infill_Row (I)
-        then L = L2 and then I /= Level_Order
-        else
-       (case I is
-           when Linking | Signalling_Speed | Movement_Authority
-              | Gradient_Profile | International_SSP | Axle_Load_Profile
-              | Route_Suitability | Track_Conditions | Braking_Distance
-              | Reversing_Area | Reversing_Supervision => True,
-           --  the LSSMA toggle on order, R [1] in
-           --  levels 0, NTC and 2 (the off order, R there, is kept with it
-           --  as one packet 180 and rejected at the release)
-           when LSSMA_Toggle => True,
-           when Adhesion | Level_Crossing => L /= L2,
-           when TSR | TSR_Revocation | Default_Gradient
-              | Geographical_Position | Text_Message => L = NTC,
-           when others => False)));
+   is ((C.L1_Announced and then L /= L1
+        and then
+        (if C.Infill and then Has_Infill_Row (I)
+         then L = L2 and then I /= Level_Order
+         else
+        (case I is
+            when Linking | Signalling_Speed | Movement_Authority
+               | Gradient_Profile | International_SSP | Axle_Load_Profile
+               | Route_Suitability | Track_Conditions | Braking_Distance
+               | Reversing_Area | Reversing_Supervision => True,
+            --  the LSSMA toggle on order, R [1] in
+            --  levels 0, NTC and 2 (the off order, R there, is kept with it
+            --  as one packet 180 and rejected at the release)
+            when LSSMA_Toggle => True,
+            when Adhesion | Level_Crossing => L /= L2,
+            when TSR | TSR_Revocation | Default_Gradient
+               | Geographical_Position | Text_Message => L = NTC,
+            when others => False)))
+       or else
+       (C.L2_Announced and then L in L0 | NTC
+        and then not (C.Infill and then Has_Infill_Row (I))
+        and then
+        (case I is
+            when Level_Crossing => True,
+            when TSR | TSR_Revocation | Default_Gradient
+               | Geographical_Position | Text_Message => L = NTC,
+            when others => False)));
 
    --  4.8.3, 4.8.5.1: the first filter's third verdict, "stored in the
    --  transition buffer" (the third filter applies when the set is

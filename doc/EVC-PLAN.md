@@ -20987,3 +20987,46 @@ distance's curve), B1840 (a fault the host reports: whether any host
 has one), B1360's records 21, 22, 33 to 37, 40, 41 left, the E7 lines
 when E7 opens; the review again (eight items, readings first, no
 backlog read).
+
+### The acceptance's level exceptions and two traces: the level crossing from a balise held for level 2, the route unsuitability by axle load, the operated version in the header (e6/acceptance-lx) (2026-11-06)
+
+**B3580, the level crossing from a balise in level 0 with level 2
+announced.** The claim held at the source: 4.8.3's row Level Crossing
+information, From RBC: No, Non-infill, reads R [1] [2] in levels 0 and
+NTC, and [2] is "stored onboard if an order to switch to level 2 at a
+further location has been received", the words of [1] for level 1;
+4.8.5.2.1 names both footnotes as the sets of the transition buffer.
+`EVC_Acceptance.Level_Accepts` took Level_Crossing in levels 1 and 2 or
+with level 1 announced, `Level_Stores` carried [1] only, and the header
+said "[2]: RBC information". Decision (the text says stored, so the
+buffer): [2] is held like [1] in the same balise buffer and judged again
+at the transition to level 2. `Level_Stores` gains the rows of the
+balise table that carry [2] in levels 0 and NTC with
+`Context_T.L2_Announced` (the Level Crossing information in both; TSR,
+its revocation, the default gradient, packet 79 and the texts in NTC;
+no infill row carries [2]), `Level_Accepts` accepts them there as it
+does the [1] cases; a set of `EVC_Stored_Information.Balise_Buffer`
+keeps the level it is held for (the announced level when it opens), so
+the buffer is deleted when that level is no longer announced, also when
+an order to level 1 is replaced by one to level 2 (4.8.5.4 a));
+`EVC_Core.Stored.Release_Transition_Buffer` releases the balise sets at
+the switch to level 1 or 2, in level 2 before the radio sets (decision:
+the two buffers are not interleaved by time; the LX of a group does not
+depend on a radio set). Scenario `evc_test_authority
+Scenario_L2_Balise_Buffer_LX` (in the authority package, where
+`Order_L2`, `Establish` and the RBC's MA are; failed on master in both
+checks): level 0 UN, the group 10 at 100 m announces level 2 at 700 m
+and gives a packet 88 (Q_LXSTATUS 1, Q_STOPLX 1) at 750 m, the RBC's
+MA kept; the LX kept, not taken; at the transition FS with the LX
+stored. A first version in `EVC_Test_Levels` without an RBC MA went to
+TR at the transition (no MA in level 2), so the case moved. Runner:
+4080300_02 (SV21, SV22, SV30) passes step 245 and fails at step 247
+(Sbfa49d0b), traced: BG16d's LX starts at 3200 m (D_LX 300 from 2900 m,
+L_STOPLX 100), supervised as the temporary EOA (target 0 at 103 m at
+3080 m); step 246's comment asks the stop in rear of the LX, but step
+247 at 3700 m opens the next test case and `S076_Run` clears the stop
+(`LX_Stop_Asked`) before it drives there, so the train runs on at
+19 km/h and trips at the temporary EOA: the runner's (B3660, triage
+Sbfa49d0b model). Nothing else moved. Row 4.8.3.1.1 Table-footnote [2]
+noted; proofs of `evc_acceptance`, `evc_stored_information-balise_buffer`,
+`evc_stored_information`, `evc_core-stored`.

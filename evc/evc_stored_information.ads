@@ -480,8 +480,9 @@ is
 
    --  the sets of the balise transition buffer (4.8.3
    --  [1], 4.8.5.1: level 1 information of groups read in level 0 or 2
-   --  with level 1 announced), deleted by Evaluate when level 1 is no
-   --  longer announced (4.8.5.4 a)
+   --  with level 1 announced; [2]: the level crossing of groups read in
+   --  level 0 with level 2 announced), deleted by Evaluate when the level
+   --  they are kept for is no longer announced (4.8.5.4 a)
    function Balise_Buffered return Natural
      with Global => State;
 
@@ -513,7 +514,8 @@ is
      with Global => State,
           Pre => S <= Balise_Buffered and then P <= Balise_Set_Packets (S);
 
-   --  4.8.5.5, 4.8.5.6 at the transition to level 1: the sets released
+   --  4.8.5.5, 4.8.5.6 at the transition to the level the sets are kept
+   --  for (level 1, or level 2 for the rows of 4.8.3 [2]): the sets released
    --  and judged in the order received, each like a new group in the
    --  new level, the stores updated in that order; the buffer emptied.
    --  As Evaluate_Released, the snapshot is the next cycle's.
