@@ -3634,13 +3634,22 @@ package body S076_Run is
             Put := True;
          end if;
       end loop;
+      --  displayed: sent in the window, or shown and not removed (the
+      --  bench's DMI state: 3120300_03 step 62, the text of BG1d read
+      --  in step 59's window at 400 m, the reach-point of step 61 at the
+      --  same place opening a new one); removed: a removal sent in the
+      --  window, or none of the class shown any more after one was
       case St_W is
          when Displayed =>
-            return Check (Put, What & " sent", "none");
+            return Check (Put or else B.Text_Shown (Class),
+                          What & " sent", "none");
          when Not_Displayed =>
             return Check (not Put, What & " not sent", "sent");
          when Removed =>
-            return Check (Removed_W, What & " removed", "not removed");
+            return Check (Removed_W
+                          or else (B.Text_Ever_Shown (Class)
+                                   and then not B.Text_Shown (Class)),
+                          What & " removed", "not removed");
          when Not_Removed =>
             return Check (not Removed_W, What & " not removed", "removed");
          when others =>

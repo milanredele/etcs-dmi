@@ -143,6 +143,16 @@ package body S076_Bench is
 
    Texts   : array (1 .. Max_Events) of Text_Event_T;
    Texts_N : Natural := 0;
+   --  The texts the DMI shows since the power-up, across windows: put by
+   --  MSG_TEXT, taken off by MSG_TEXT_REMOVE of their identity; and the
+   --  classes of which one was ever put (S076_Run.Text_Message)
+   type Shown_Text_T is record
+      Id    : Natural := 0;
+      Class : Natural := 0;
+   end record;
+   Shown   : array (1 .. Max_Events) of Shown_Text_T;
+   Shown_N : Natural := 0;
+   Ever_Shown : array (0 .. 3) of Boolean := (others => False);
    SSs     : array (1 .. Max_Events) of SS_Event_T;
    SSs_N   : Natural := 0;
    Sent_N  : Natural := 0;
@@ -196,6 +206,9 @@ package body S076_Bench is
       Registering := (others => False);
       Set_Up_Pending := (others => False);
       T_By_Nid := (others => (others => -1));
+      --  the DMI starts with no text at the power-up
+      Shown_N := 0;
+      Ever_Shown := (others => False);
    end Clear_Radio;
 
    ---------------------------------------------------------------------
@@ -345,6 +358,15 @@ package body S076_Bench is
                  (Remove => False, Id => Get16 (P, B),
                   Class  => Natural (P (B + 2)) / 4 mod 4,
                   Ack    => P (B + 2) mod 2 = 1);
+               Ever_Shown (Texts (Texts_N).Class) := True;
+               if Shown_N < Shown'Last
+                 and then (for all K in 1 .. Shown_N =>
+                             Shown (K).Id /= Texts (Texts_N).Id)
+               then
+                  Shown_N := Shown_N + 1;
+                  Shown (Shown_N) := (Texts (Texts_N).Id,
+                                      Texts (Texts_N).Class);
+               end if;
             end if;
          when 16#04# =>   -- MSG_TEXT_REMOVE
             if P'Length >= 2 and then Texts_N < Max_Events then
@@ -352,6 +374,12 @@ package body S076_Bench is
                Texts (Texts_N) :=
                  (Remove => True, Id => Get16 (P, B), Class => 0,
                   Ack => False);
+               for K in reverse 1 .. Shown_N loop
+                  if Shown (K).Id = Texts (Texts_N).Id then
+                     Shown (K .. Shown_N - 1) := Shown (K + 1 .. Shown_N);
+                     Shown_N := Shown_N - 1;
+                  end if;
+               end loop;
             end if;
          when 16#0C# =>   -- MSG_SYSTEM_STATUS
             if P'Length >= 2 and then SSs_N < Max_Events then
@@ -1791,6 +1819,10 @@ package body S076_Bench is
 
    function Text_Count return Natural is (Texts_N);
    function Text (I : Positive) return Text_Event_T is (Texts (I));
+   function Text_Shown (Class : Natural) return Boolean is
+     (for some K in 1 .. Shown_N => Shown (K).Class = Class);
+   function Text_Ever_Shown (Class : Natural) return Boolean is
+     (Class in Ever_Shown'Range and then Ever_Shown (Class));
    function SS_Count return Natural is (SSs_N);
    function SS (I : Positive) return SS_Event_T is (SSs (I));
    function DMI_Sent return Natural is (Sent_N);

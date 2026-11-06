@@ -430,6 +430,10 @@ package S076_Bench is
    Max_Events : constant := 256;
    function Text_Count return Natural;
    function Text (I : Positive) return Text_Event_T;
+   --  A text of Class shown by the DMI now (put and not removed since the
+   --  power-up, across windows); one of Class put since the power-up
+   function Text_Shown (Class : Natural) return Boolean;
+   function Text_Ever_Shown (Class : Natural) return Boolean;
 
    type SS_Event_T is record
       Entry_Number, Event : Natural := 0;
