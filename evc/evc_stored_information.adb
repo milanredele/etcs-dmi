@@ -3438,6 +3438,14 @@ is
          pragma Loop_Invariant (True);
          Take_Radio (I, T, Train, Context, Now_Ms);
       end loop;
+      --  4.8.5.6 a), c): the mode machine of this cycle judges the
+      --  released information (4.6.3 [25], the level switches to 2 with
+      --  the MA, SSP and gradient on-board), not the conditions built
+      --  before the release
+      Build_Mode_Conditions
+        (T, Train,
+         (if EVC_Movement_Authority.MA_Present
+          then EVC_Movement_Authority.MA_Sense else Train.Sense));
    end Evaluate_Released;
 
    function Balise_Buffered return Natural is (Balise_Buffer.Count)

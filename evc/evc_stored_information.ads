@@ -460,7 +460,9 @@ is
    --  on (the transition buffer released at the transition to level 2,
    --  after the levels), taken as Evaluate takes the cycle's radio
    --  messages, before the procedures and the mode machine of the cycle.
-   --  The snapshot (Current) is not built again: the next cycle's.
+   --  The snapshot (Current) is not built again: the next cycle's; the
+   --  conditions of the mode machine (4.6.3 [25]: MA_On_Board) are, so
+   --  the mode of the transition comes from the released information.
    --  @req 4.8.5.5, 4.8.5.6
    procedure Evaluate_Released (First   : Positive;
                                 Now_Ms  : Unsigned_64;

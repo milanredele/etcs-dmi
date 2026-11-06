@@ -20464,3 +20464,44 @@ ordered; the sequence 3050700_02 expects it at 3020 m (Connection Up
 removed, Connection Lost not displayed). No code change. The round also
 tries the Ada `outline` of ~/dev/outline in place of outline.py (the
 briefs name it; `rounds.py` counts both).
+
+### The transition buffer and the Train Data procedure: the buffered MA at an order to the announced level, the stored RBC information in D5 (e6/buffer-d5) (2026-11-06)
+
+B3520 (4080300_02, all three versions, step 234, S22ae7aef). The premise
+"the set is lost" checked at the source and in a scenario first
+(`EVC_Test_Authority.Scenario_Transition_Buffer`, its last part: level 0
+UN, level 2 announced by the group 10 at 700 m, an MA of the RBC kept,
+the group 11 at 300 m ordering level 2 at D_LEVELTR 0; FS expected,
+failed before the fix), traced cycle by cycle there: the set is neither
+deleted nor lost. The order to the level already announced is not one
+"for a different level" (4.8.5.4 a)): `EVC_Levels.Take_Order` deletes the
+order and stores it again (the JRU's order deleted / stored), so
+`EVC_Levels.Announced` is True when `EVC_Radio_Authority.Buffer.Update`
+runs at the end of the cycle and the set stays. At the switch
+`EVC_Core.Stored.Release_Transition_Buffer` releases it in the same
+cycle (4.8.5.5), `EVC_Radio_Authority.Take_Message` accepts it in level
+2 UN (4.8.4, the MA row: A in UN; the brief's "the MA in UN rejected" is
+wrong) and the stores take the MA (`Messages_Taken` 1,
+`Radio_MAs_Accepted` 1, `EVC_Movement_Authority.MA_Present`). The mode
+machine of that cycle runs after the release (`EVC_Core.Tick`: the
+levels, the release, then the procedures and the mode machine), but 4.6.3
+[25] ("the level switches to 1 or 2" AND "MA+SSP+gradient are on-board")
+read `EVC_Stored_Information.MA_On_Board` as built in
+`Evaluate_Stored_Information` before the release (False); from the next
+cycle "switches" no longer holds and the mode stayed UN. So the mode
+change to FS comes from the released MA, in the cycle of the transition,
+as 4.8.5.6 a) to c) say (the information resulting from the sequential
+update is the one used). Fix: `EVC_Stored_Information.Evaluate_Released`
+builds the mode conditions again after the released messages
+(`Build_Mode_Conditions`, the snapshot stays the next cycle's). Proof of
+`evc_stored_information` clean (644 checks; margin 2515 steps). The
+runner: 1217 / 1042 / 931, 0 regressions, 4080300_02 SV21, SV22, SV30
+from step 234 to step 245 (Sfdbcfbea): the LX not protected symbol at
+3080 m; the only packet 88 of the case is BG16d's at 2900 m, read in
+level 0 with level 2 announced, and 4.8.3's row Level Crossing
+information from a balise is R [1] [2] in level 0 ([2]: stored if an
+order to level 2 at a further location was received), where
+`EVC_Acceptance.Level_Accepts` / `Level_Stores` carry [1] only (read at
+the source; B3580, not mine to edit). The edit is in
+`EVC_Stored_Information`, outside the units of the brief (the trace put
+it there). Rows 4.8.5.4, 4.8.5.5, 4.8.5.6 noted.

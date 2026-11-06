@@ -2053,6 +2053,32 @@ package body EVC_Test_Authority is
       Check (RA.Buffered = 0,
              "buffer: the session that gave the messages terminated, the "
              & "buffer deleted (4.8.5.4 c)");
+
+      --  Level 0 in UN, level 2 announced by the group 10 at 700 m, an MA
+      --  of the RBC kept; the group 11 at 300 m orders level 2 at its own
+      --  location (D_LEVELTR 0): an order to the level already announced,
+      --  not to a different one, so the set is kept (4.8.5.4 a)), released
+      --  at the transition and used in level 2 (4.8.5.5, 4.8.5.6): FS
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, Order_L2 (600));
+      Add_Group (Group (11, 300));
+      Carry (Track_N, 0, Order_L2 (0));
+      Establish;
+      Run_X (15_000);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (EVC_Levels.Level = L0 and then EVC_Levels.Announced
+             and then RA.Buffered = 1,
+             "buffer: in level 0 UN with level 2 announced, the MA of the "
+             & "RBC kept (4.8.3 [2], 4.8.5.1)");
+      Run_X (35_000);
+      Check (EVC_Levels.Level = L2 and then RA.Buffered = 0
+             and then SI.Current.MA.Present and then EVC_Core.Mode = M_FS,
+             "buffer: an order to the announced level at distance 0 keeps "
+             & "the set, released and used at the transition: FS "
+             & "(4.8.5.4 a), 4.8.5.5, 4.8.5.6)");
    end Scenario_Transition_Buffer;
 
    --  4.8.3, the rows of the axle load speed profile and the permitted
