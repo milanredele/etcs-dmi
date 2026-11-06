@@ -51,6 +51,8 @@ package body EVC_Test_Procedures is
    Level_Ann_Ack : Natural := 0;
    --  MSG_SPEED_STATE: the permitted speed, km/h
    V_Perm        : Natural := 0;
+   --  MSG_SPEED_STATE: the target distance, m
+   D_Target      : Natural := 0;
    --  MSG_STATUS: brake, BMM, reversing (the last one sent)
    Status_Brake  : Natural := 0;
    Status_BMM    : Natural := 0;
@@ -216,6 +218,7 @@ package body EVC_Test_Procedures is
                      Override_Byte := P (11);
                   when 16#01# =>
                      V_Perm := P (8) + 256 * P (9);
+                     D_Target := P (18) + 256 * P (19) + 65_536 * P (20);
                      Monitoring := P (22);
                   when 16#05# =>
                      LX_Shown := False;
@@ -1522,6 +1525,11 @@ package body EVC_Test_Procedures is
              "3.11.7.1.2: the RV speed limit from the trackside");
       Run_Front (160, 10);
       Check (not EB, "4.4.18.1.3 b): within the distance to run");
+      Check (D_Target in 9 .. 11,
+             "4.4.18.1.5: the remaining distance to run in RV to the DMI "
+             & "(MSG_SPEED_STATE d_target, DMI 8.2.2.1.8, 8.2.2.2.7: RV "
+             & "yes), the front end at 160 m, the limit at 150 m, got"
+             & D_Target'Image);
       Run_Front (140, 10);
       Check (EB and then Why (EVC_Ports.TIU_Reason_Procedure)
              and then Seen_SS (27, 0),

@@ -20464,3 +20464,70 @@ ordered; the sequence 3050700_02 expects it at 3020 m (Connection Up
 removed, Connection Lost not displayed). No code change. The round also
 tries the Ada `outline` of ~/dev/outline in place of outline.py (the
 briefs name it; `rounds.py` counts both).
+
+### The position's errors and the big metal mass reset: the record 12 for a linked group not announced, the inhibition at a reset without a mode change, the remaining distance in Reversing (e6/position-bmm) (2026-11-06)
+
+**B3386, the record 12 of a linked group not announced (done).** The
+premise held at the source: 3160400_01 step 116 (SV22, SV30) expects JRU
+12 BALISE GROUP ERROR with M_ERROR 1 for BG5d at 4800 m (Q_LINK 1, not in
+the linking information, packet 73 with Q_SCALE 11, a spare value) and
+step 117 no message 136; `EVC_Position.React_Inconsistent` gave no event
+when linking is checked and the expected group is another known one.
+Reading: 3.16.4 is headed "Error reporting to RBC", so 3.16.4.3 removes
+the report to the RBC only; SUBSET-027 4.3.1.1 writes the record 12
+"when a balise group error is detected", and M_ERROR 1 is the message
+consistency error of a linked group (7.5.1.64). Decision: the error is
+recorded and not reported. Built: the event `Inconsistent_Not_Announced`
+(JRU event code 12 like `Inconsistent_Linked`, so the record 12 with
+M_ERROR 1), given for a group whose identity `EVC_Linking.Find` does not
+find in the linking information; `EVC_Sessions.Reports` reports only
+`Inconsistent_Linked`, so no 136 (no change there). A group in the
+linking information but not the expected one still gives no event (left
+as it was). Scenario: `Scenario_Consistency_Error_Report`'s last case
+(`EVC_Test_Consistency`, where the error report cases live, not
+`EVC_Test_Position`): group 25 marked linked between 20 and 30
+announced, a balise missed: JRU 12 once, no report (failed before: 0 0).
+3160400_01 passes in SV22 and SV30 (from step 116); triage S1291957a
+rewritten as fixed; rows 3.16.2.4.3 and 3.16.4.3 noted.
+
+**5.22.3.1, the resets without a mode change (done).** Table A.3.4.1.3:
+the big metal masses are R[1] in columns "a - d, f, n", R[10] in "e, g -
+j, l, m, o" and R in k. [1] and [10] cut beyond the new SvL or the max
+safe front end, in advance of the max safe antenna, so the antenna is
+never in the part reset; k) (the driver closes the desk during the start
+of mission, in SB) resets the whole store without a mode change
+(`EVC_Core.Modes.Evaluate_Modes_And_Levels`). The other reset outside
+`Delete_On_Mode_Entry`, the Supervised Manoeuvre authorisation in the
+opposite direction (`EVC_Core.Modes.Adjust_For_Manoeuvre`), comes with the
+switch to SM, which ends the procedure (5.22.5.1 b): decision, no
+trigger, as for PS and SL. Built: `EVC_Procedures.BMM_Store_Reset`
+(BMM_Reset's check in the current mode) called just before the store's
+reset at the desk closure, with this cycle's snapshot (the monitoring's)
+and the last cycle's context (its antenna offset only);
+`Evaluate_Modes_And_Levels`' Global widened (EVC_Procedures.State In_Out,
+Proc_Ctx and Snapshot Input), so the parent was proved too. Scenario:
+`Scenario_BMM_Reset`'s third case: SR, a big metal mass from 40 to 240
+m, the front at 100 m, the mode set to SB with the store kept, the desk
+closed: SB, the inhibition started and indicated, the store empty
+(failed before). Row 5.22.3.1 done.
+
+**4.4.18.1.5, the remaining distance in Reversing (done).** Scope: the DMI
+draws the distance to target bar and digital in RV (DMI 8.2.2.1.8 Table
+13, 8.2.2.2.7 Table 14: RV "yes"; `Display.A_Area` draws A2 and A3 in RV
+without a condition) from MSG_SPEED_STATE's d_target, which the protocol
+carries already; in RV it was the monitoring's (0 in the test). Built:
+`EVC_Procedures.RV_Distance_Left`, set by `Reversing_Step` in RV (the
+estimated front end to the end of the distance allowed, Finish less
+D_REVERSE, 3.15.4.2.1, in m, at most 32766; none without a limit), and
+`EVC_Core.Outputs.Send_Supervision` puts it into the frame's d_target in
+RV; the JRU's record of what is displayed (`Shown_Now`) is unchanged.
+Scenario: `Scenario_Reversing` (`EVC_Test_Procedures`, where the RV
+scenario lives, not `EVC_Test_Core`): the front at 160 m, the limit at
+150 m: d_target 10 (failed before: 0). Row 4.4.18.1.5 done; B015 closed
+(every part done).
+
+Proofs: evc_position, evc_procedures, evc_core-modes, evc_core-outputs
+and evc_core, no unproved check. The runner: 1219 / 1040 / 931 (from
+1217 / 1042 / 931), 0 regressions, the two versions of 3160400_01 the
+only movement. Edits outside the units: `EVC_Test_Consistency` (a case
+in an existing scenario), `EVC_Test_Procedures`' capture of d_target.

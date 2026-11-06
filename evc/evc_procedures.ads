@@ -250,6 +250,15 @@ is
    function Reversing_Area_Known return Boolean
      with Global => State;
 
+   --  4.4.18.1.5: in RV, the remaining distance to run in m (the
+   --  estimated front end to the end of the distance allowed, 3.15.4.2.1,
+   --  at most 32766), of the last cycle of the procedures; No_RV_Distance
+   --  outside RV or without a limit
+   No_RV_Distance : constant Interfaces.Unsigned_32 := 16#FFFF_FFFF#;
+   --  @req 4.4.18.1.5
+   function RV_Distance_Left return Interfaces.Unsigned_32
+     with Global => State;
+
    --  a list of balise groups for the SH area (packet 49) is stored
    function SH_List_Stored return Boolean
      with Global => State;

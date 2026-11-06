@@ -843,6 +843,10 @@ is
       Text_SB, Text_EB : Boolean) is
       Commands : constant EVC_Bytes.Byte :=
         TIU_Commands (D, Text_SB, Text_EB);
+      --  4.4.18.1.5: in RV the target distance is the remaining distance
+      --  to run, which the DMI shows in RV (DMI 8.2.2.1.8, 8.2.2.2.7)
+      RV_Left  : constant Unsigned_32 := EVC_Procedures.RV_Distance_Left;
+      Shown    : Speed_State_T := Speed_State;
       Why      : constant TIU_Reasons_T :=
         TIU_Reasons (D, Text_SB, Text_EB);
       Supervision_Now : constant Unsigned_32 :=
@@ -873,7 +877,11 @@ is
             then Unsigned_32'Min (Speed_State.D_Target, 32_766)
             else 32_767));
    begin
-      EVC_Outbox.Put (DMI, Speed_State_Frame (Speed_State));
+      if Current_Mode = M_RV and then RV_Left /= EVC_Procedures.No_RV_Distance
+      then
+         Shown.D_Target := RV_Left;
+      end if;
+      EVC_Outbox.Put (DMI, Speed_State_Frame (Shown));
       if Commands /= TIU_Sent or else Why /= TIU_Reasons_Sent then
          Put_Brake_States (Commands, TIU_Sent);
          Put_Event (JRU_Brake_Commands,
