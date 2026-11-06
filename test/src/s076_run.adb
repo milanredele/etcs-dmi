@@ -2202,6 +2202,16 @@ package body S076_Run is
    Timer_Expiry_Ms : Unsigned_64 := 0;
    Timer_Period_Ms : Unsigned_64 := 0;
 
+   --  The bench time at which the DMI began to show each system status
+   --  message (DMI_System_Status entries 1 to 38) while a timer ran
+   --  (Run_Timer watches them cycle by cycle: a timer's expiry is what
+   --  raises such a message, the Communication error of T_NVCONTACT,
+   --  3.16.3.4.1), 0 when not seen starting; the timer of a step whose
+   --  comment says it "begins when the message starts to be displayed"
+   --  counts from there (Timer_Input)
+   type SS_Start_T is array (1 .. 38) of Unsigned_64;
+   SS_Started_Ms : SS_Start_T := (others => 0);
+
    --  The timer is taken to have started when the step before ended (the
    --  time the train took to reach the step's distance counts), or at
    --  From_Ms when given (not 0)
@@ -2210,16 +2220,61 @@ package body S076_Run is
         (if From_Ms in 1 .. B.Time_Ms then From_Ms else Step_Start_Ms);
       Elapsed : constant Unsigned_64 := B.Time_Ms - Start;
       Due     : constant Unsigned_64 := Unsigned_64 (Seconds) * 1000 + 200;
+      Was     : array (SS_Start_T'Range) of Boolean;
    begin
       Timer_Expiry_Ms := Start + Unsigned_64 (Seconds) * 1000;
       Timer_Period_Ms := Unsigned_64 (Seconds) * 1000;
+      for E in Was'Range loop
+         Was (E) := DMI_System_Status.Active (DMI_System_Status.Entry_T (E));
+      end loop;
       if Elapsed < Due then
          for K in 1 .. (Natural (Due - Elapsed) + B.Cycle_Ms - 1) / B.Cycle_Ms
          loop
             Wait_Cycle;
+            for E in Was'Range loop
+               if DMI_System_Status.Active (DMI_System_Status.Entry_T (E))
+                 and then not Was (E)
+               then
+                  SS_Started_Ms (E) := B.Time_Ms;
+                  Was (E) := True;
+               end if;
+            end loop;
          end loop;
       end if;
    end Run_Timer;
+
+   --  The start of the display of the system status message of the step
+   --  after St (the one whose removal it expects, else whose display),
+   --  or of the last one seen starting, while still shown; 0 when not
+   --  known
+   function SS_Shown_Since return Unsigned_64 is
+      Latest : Unsigned_64 := 0;
+      Named  : Numbers_T;
+   begin
+      if Cur < Seq.Step_Count
+        and then Starts (Image (Seq.Steps (Cur + 1).Line),
+                         "expect DMI system-status-message ")
+      then
+         declare
+            L : constant String := Image (Seq.Steps (Cur + 1).Line);
+            P : constant Natural :=
+              Ada.Strings.Fixed.Index (L, " ", L'Last, Ada.Strings.Backward);
+         begin
+            Named := SS_Entries (L (P + 1 .. L'Last));
+         end;
+      end if;
+      for E in SS_Started_Ms'Range loop
+         if SS_Started_Ms (E) > Latest
+           and then DMI_System_Status.Active (DMI_System_Status.Entry_T (E))
+           and then (Named.Count = 0
+                     or else (for some I in 1 .. Named.Count =>
+                                Named.List (I) = E))
+         then
+            Latest := SS_Started_Ms (E);
+         end if;
+      end loop;
+      return Latest;
+   end SS_Shown_Since;
 
    --  "N seconds", "N second", "N sec", "N s" or "Ns" in a text (the
    --  first one), -1 without
@@ -2313,6 +2368,25 @@ package body S076_Run is
       --  delay to disconnection on supervision of the safe radio
       --  connection, 60 s (3.16.3.4.3; 3160300_01 step 96, 3160400_01 step
       --  94), or the "Connection status" timer, 45 s (3160400_01 step 97)
+      --  "The timer begins when the message starts to be displayed"
+      --  (Table 68's 30 s of a system status message: 4120100_02 step
+      --  211, 4120100_14 steps 147 and 207, 4120100_16 step 155): from
+      --  the time the DMI began to show it, when seen (SS_Shown_Since)
+      if Same (Name, "<T_STEP>")
+        and then Text_Seconds (Image (St.Comment)) >= 0
+        and then Has (Image (St.Comment), "starts to be displayed")
+        and then SS_Shown_Since > 0
+      then
+         declare
+            From : constant Unsigned_64 := SS_Shown_Since;
+         begin
+            Run_Timer (Text_Seconds (Image (St.Comment)), From_Ms => From);
+            return Pass ("T_STEP"
+                         & Integer'Image (Text_Seconds (Image (St.Comment)))
+                         & " s elapsed from the display at"
+                         & Unsigned_64'Image (From) & " ms");
+         end;
+      end if;
       if Same (Name, "<T_STEP>")
         and then Text_Seconds (Image (St.Comment)) >= 0
       then
@@ -7539,6 +7613,7 @@ package body S076_Run is
       Loc_Count := 0;
       Loc_Window := Unsigned_64'Last;
       Timer_Expiry_Ms := 0;
+      SS_Started_Ms := (others => 0);
       --  the bench's clock starts again with the sequence: a group input
       --  time left by the previous one would hide this one's sendings
       --  from its negative expectations until the clock passes it

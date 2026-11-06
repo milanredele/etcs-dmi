@@ -21018,3 +21018,29 @@ Q_RBCENTRY coding of the Known list; the connect in step 87's); the
 other twelve steps are not reached (3180400_02 / _03 stop at step 49,
 _05 at step 83, unchanged). Runner 1229 / 1029 / 932, 3 improvements,
 0 regressions.
+
+B3384, a timer from the display time (S13c9beb3 of 4120100_02).
+Traced on master at 4120100_02 SV30: step 211's '<T_STEP>' 30 s ("The
+timer begins when the message starts to be displayed", the
+Communication error of the T_NVCONTACT expiry) ran from the standstill
+of step 206 (257.0 s), so the train reached 1625 m at 314.1 s, after
+the release of the safe radio connection 60 s after the expiry
+(3.16.3.4.3, 305.1 s) which the sequence never confirms again, and
+step 239's 136 of the mode change to PT waited for it. The runner knew
+no display time: `S076_Run.Run_Timer` now notes, cycle by cycle, when
+each system status message of the DMI starts to be shown during a
+timer's run (the expiry raises the message inside that run), and
+`Timer_Input` counts a '<T_STEP>' whose comment says "starts to be
+displayed" from the start of the message the next step names while it
+is still shown (`SS_Shown_Since`), else from the step before as
+before. The corpus has four such steps in SV30 (4120100_02 211,
+4120100_14 147 and 207, 4120100_16 155); only 4120100_02's message
+starts inside a timer's run (shown at 245.1 s, step 211 ends at
+275.6 s); 4120100_16's starts a cycle after its T_NVCONTACT run and
+keeps the old start (passes as before), 4120100_14 stops at step 64
+before its two. 4120100_02 SV30 moves to step 254 (S839261e1, s076):
+ours shows and records PT distance exceeded, the step expects
+SYSTEM_STATUS_MESSAGE Bit24, where SUBSET-027 4.0.0 4.2.4.23 has Bit 24
+FRMCS network registration failed and Bit 25 PT distance exceeded;
+ERA's step list (steps 254 and 271) has Bit24, the numbering before
+4.0.0. Runner 1229 / 1029 / 932, 1 improvement, 0 regressions.
