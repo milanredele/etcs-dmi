@@ -20866,3 +20866,124 @@ its "NOT (NID_RADIO=<previously stored>)" needs a different one.
 
 Counts: 8 items and the extra. Agreed: all nine; disagreed: none;
 undecided: none. Backlog lines: none. Calls: 84 of 130 at this point.
+
+### E5 integration after the sixty-sixth round, the thirty-fourth of E6 (2026-11-06)
+
+Merged: e6/buffer-d5 (B3520: the set was not lost; the order to the
+announced level at D_LEVELTR 0 keeps it (4.8.5.4 a) names a different
+level), the release accepts the MA in level 2 UN (Table 4.8.4 reads A),
+and the mode machine of that cycle read `MA_On_Board` built before the
+release, so 4.6.3 [25] never held again: `EVC_Stored_Information.
+Evaluate_Released` rebuilds the mode conditions after the released
+messages (4.8.5.6 c)), a last part of `Scenario_Transition_Buffer`;
+4080300_02 moved from step 234 to 245 in three versions, traced: BG16d's
+packet 88 read in level 0 with level 2 announced is rejected, the 4.8.3
+exception [2] of the Level Crossing row not built, B3580; B846: D5 of
+5.17.2.2 built, two flags per buffer entry at `Store` (packet 15; 27
+with 21), `EVC_Radio_Authority.Buffered_MA_Stored`, `EVC_Procedures.
+Context_T.TD_RBC_Stored` set in `EVC_Core.Modes`, `Train_Data_Step` to
+D7 in UN, SN, SR and TR when both are held, in one message or two
+(decision), the service brake while moving in UN with the MA held),
+e5/runner-cases (B3360: the case's numbering checked on three sequences
+first (3110400_02: the case feeds BG2d, BG3d, BG4d, its BG1 to BG3;
+3070300_12; 5200800_02), `S076_Run.Case_Group_Id` the n-th distinct
+group fed since the step's `case` line, `Telegram_T` with NID_C and
+NID_BG, 67 of 72 fields resolved in 16 sequences per version, two
+unresolved (4080300_16's case feeds one group and calls it BG2;
+4080442_01); 3070300_12 moved from step 87 to 69 in three versions,
+traced with ERA's PDF: the message 3 links NID_BG 4 at 500 m from BG5d,
+the group at 600 m is NID_BG 3, so ours rejects it (3.4.4.4.2) and keeps
+the SOLR (3.6.2.2.2 a)): the data, Sc0f3b1e0 s076; B3361: `Train_T`
+carries NC_CDTRAIN and NC_TRAIN, `Cat_Row` picks the Table 41 row, 410
+sv30 sequences now enter TILT 4 instead of PASS 1, 7 change the pair,
+21 carry a pair the table lacks (the brake position then); 9990400_44
+passes in SV22 and SV30; B3385: `Reach_Location` places a reach-point
+whose comment runs D_LEVELTR at the group's location plus the scaled
+distance (3 sequences; `EVC_Levels` has no accessor for the announced
+location, the packet's value is used); 9990400_19 passes in SV22 and
+SV30, SV21 blocked at step 121 (E7-version, packet 72 with
+M_LEVELTEXTDISPLAY 5)), e6/sessions-td (B3383: the deferral of
+3.5.3.4.2 existed (`EVC_Sessions.Establish` keeps the entry Pending
+while the session terminates), the waiting byte did not: `Mission.
+Take_Radio_Data` records the entry's RBC, `Evaluate_Entry` keeps the
+wait while a session with it is being established, terminating or
+queued, `EVC_Sessions.Entry_Opening` is read by `Send_Onboard` (waiting
+2, Table 50 S8: the Main window disabled with ST05), the wait ending at
+the 32, when no such session is left, when level 2 is left and in SB,
+SL, PS, SF, IS, NP (decision), `Scenario_Session_Entry_Terminating`;
+3050400_03 passes in three versions; 3180400_04 moved from 54 to 207
+(the runner's 35 km/h above the SR distance's curve, Sd56a8154 model);
+4080453_01 from 87 back to 84: the sequence's 'validate RBC-data' is the
+'Yes' of the same entry and the runner enters the data a second time
+into the disabled Main window (S390f221b model, B3560: 18 steps); B3461:
+the changed set to every established session, the seven Train Data
+variables per session, `Evaluate_TD` over the supervising and the
+Accepting session, each matching its own 8 with its own repetitions,
+nothing to the Handing Over RBC after the switch (decision: 3.18.3.4
+names the RBC of any established session, 3.15.1.3.3 makes the
+Accepting RBC one), `Scenario_Handover_TD_Values_Per_RBC` extended; 0
+movements over 49 handover sequences), e6/position-bmm (B3386: a new
+event `EVC_Position.Inconsistent_Not_Announced` when `EVC_Linking.Find`
+has no row for the inconsistent linked group, record 12 with M_ERROR 1,
+no 136 (decision: 3.16.4 is the reporting to the RBC, SUBSET-027
+4.3.1.1 writes the record when the error is detected), a case in
+`Scenario_Consistency_Error_Report`; 3160400_01 passes in SV22 and
+SV30; 5.22.3.1: of the resets without a mode change only the desk
+closure in the start of mission (A.3.4.1.3 k) can leave the antenna in
+the reset area, the [1] and [10] cuts lie beyond it and the SM
+authorisation in the opposite direction ends the procedure by 5.22.5.1
+b): `EVC_Procedures.BMM_Store_Reset` called by `EVC_Core.Modes.
+Evaluate_Modes_And_Levels` before the store's reset, its Global widened
+and `evc_core` proved with it, a third case of `Scenario_BMM_Reset`;
+4.4.18.1.5: the DMI draws A2 and A3 in RV from d_target (DMI Tables 13
+and 14), `EVC_Procedures.RV_Distance_Left` from `Reversing_Step` into
+`Send_Supervision`'s d_target in RV, a case of `Scenario_Reversing`;
+B015 closed) and the review e5/review-66.
+
+Review (the fifteenth): nine verdicts, all agree (the eight items and
+the extra, 4080453_01 step 84), no backlog line; one gap noted on
+B3560's planned fix (4080453_01 step 86 needs a different contact than
+the displayed one). Fifteen rounds of reviews: 124 items, 107 agreed,
+20 disagreed, 8 undecided; 35 lines, of which 8 became fixes; 100.3
+USD.
+
+Verification of the merged tree: an early chain on the buffer-d5
+package green; the full chain after the four merges green at once:
+`test/check.sh` ok; the full proof 14037 checks, none unproved, margin
+47726 steps; cross build and stack 32768 B budget, margin 6056 B; wasm
+and both smokes 0 failures; the runner 1226 / 1032 / 932 (from 1217 /
+1042 / 931), 0 regressions against the merged baseline, no signature
+untriaged. The merge: buffer-d5 and the review fast-forwarded; the
+other three conflicted on the plan (both subsections kept), two on the
+backlog (three-way by id) and the triage (once both tails, once two
+rewritten lines, one of each side); no code conflict.
+
+Costs (doc/ROUNDS.csv): 43.7 USD with the review (36.9 for the four
+packages, 6.8 the review), 10 of 10 package items done (a first), 4 of
+16 brief premises wrong ("the set is lost"; "the MA in UN rejected";
+the deferral missing; the SM authorisation as a reset to cover), no
+agent over budget, three agents past the bound with the last item in
+hand (126, 131, 119 of 160), the runner agent at 115. The Ada `outline`
+of ~/dev/outline replaced outline.py for the five agents (139 runs):
+nothing differed, no agent reported a surprise. Lessons: the trace of
+B3520 found the cause two steps away from the line's candidates (the
+release and the re-evaluation were right; the stale condition was the
+mode machine's input), so a brief lists candidates and asks for a
+scenario that says where the set went, as this one did; a test
+package named in the brief is a default, the agent puts the case where
+the helpers are (three did, said so in the report: no edit outside
+without a reason); the runner agent's first check of the numbering on
+three sequences cost 10 calls and saved the corpus run of last round.
+
+The matrix: clauses left 31 (todo 0, partial 31; done 2108: 3 rows set
+done this round). Open items: doc/BACKLOG.csv (26 open after this
+round; 2 added, 9 closed). Next: B3580 (the 4.8.3 exception [2] for a
+balise level crossing in level 0: kept for the transition or taken),
+B3560 (the runner's second RBC data entry, 18 steps), the runner's
+model lines B3380 (a corrupted radio message), B3382 (the RTM's set-up
+failure at the connection establishment timer), B3384 (a timer from
+the display time), Sd56a8154 (the runner's 35 km/h over the SR
+distance's curve), B1840 (a fault the host reports: whether any host
+has one), B1360's records 21, 22, 33 to 37, 40, 41 left, the E7 lines
+when E7 opens; the review again (eight items, readings first, no
+backlog read).
