@@ -23,7 +23,8 @@ package body EVC_Sessions.Mission
                                    TD_S, Was_Up, TD_Repeats,
                                    EoM_Due, EoM_Awaited, EoM_Since,
                                    EoM_Repeats, EoM_S, EoM_Also,
-                                   Confirm, Delete, N_TD, N_Rep, N_EoM))
+                                   Confirm, Delete, N_TD, N_Rep, N_EoM,
+                                   Entry_Waiting, Entry_RBC))
 is
    package R renames EVC_Radio;
    use type R.Session_State_T;
@@ -96,12 +97,19 @@ is
    N_Rep        : Natural := 0;
    N_EoM        : Natural := 0;
 
+   --  3.5.3.4 h): the session the driver's RBC data outside the start of
+   --  mission open with Entry_RBC is awaited (MSG_ONBOARD waiting 2)
+   Entry_Waiting : Boolean := False;
+   Entry_RBC     : R.RBC_Id_T := R.No_RBC;
+
    function Position_Confirmed return Boolean is (Confirm)
      with Refined_Global => Confirm;
    function Position_To_Delete return Boolean is (Delete)
      with Refined_Global => Delete;
    function Opening return Boolean is (Step = Opening)
      with Refined_Global => Step;
+   function Entry_Opening return Boolean is (Entry_Waiting)
+     with Refined_Global => Entry_Waiting;
    function Awaiting_Registration return Boolean is
      (Step = Decided and then Awaiting_Network)
      with Refined_Global => (Step, Awaiting_Network);
@@ -160,6 +168,8 @@ is
       N_TD := 0;
       N_Rep := 0;
       N_EoM := 0;
+      Entry_Waiting := False;
+      Entry_RBC := R.No_RBC;
    end Clear;
 
    --  1. The answers of the RBC
@@ -290,6 +300,15 @@ is
       end if;
       RBC := C.RBC;
       Radio := C.Radio;
+      --  the session it opens is awaited, unless already established
+      --  with that RBC (3.5.3.4.1: nothing to exchange); a new entry
+      --  replaces the one awaited
+      if Found then
+         Entry_RBC := C.RBC;
+         Entry_Waiting :=
+           (for all S in R.Session_T =>
+              not (Up (S) and then R.Info (S).RBC = C.RBC));
+      end if;
    end Take_Radio_Data;
 
    --  A31: the session with RBC opened, three attempts (A.3.1)
@@ -534,12 +553,48 @@ is
       end if;
    end Evaluate_EoM;
 
+   --  3.5.3.4 h), 3.5.3.4.2: the session of the driver's RBC data is
+   --  awaited while one with Entry_RBC is being established, or is
+   --  terminating or queued (Queued, Queued_RBC) to be opened after it;
+   --  decision: the wait ends when it is established (3.5.3.7 d), when no
+   --  session with that RBC is left or queued (the order refused, the
+   --  set-up given up), when level 2 is left and in the modes where the
+   --  selection is forgotten (EVC_Level_Sessions: SB, the end of mission;
+   --  SL, PS, SF, IS, NP)
+   --  @req 3.5.3.4.2
+   procedure Evaluate_Entry (Ctx        : R.Context_T;
+                             Queued     : Boolean;
+                             Queued_RBC : R.RBC_Id_T)
+     with Global => (In_Out => Entry_Waiting,
+                     Input  => (Entry_RBC, R.State, EVC_Levels.State))
+   is
+      Any : Boolean := Queued and then Queued_RBC = Entry_RBC;
+   begin
+      if not Entry_Waiting then
+         return;
+      end if;
+      for S in R.Session_T loop
+         pragma Loop_Invariant (True);
+         if R.Usable (S) and then R.Info (S).RBC = Entry_RBC then
+            if Up (S) then
+               Entry_Waiting := False;
+               return;
+            end if;
+            Any := Any or else R.Info (S).State /= R.Idle;
+         end if;
+      end loop;
+      Entry_Waiting := Any
+        and then EVC_Levels.Valid and then EVC_Levels.Level = L2
+        and then Ctx.Mode not in M_SB | M_SL | M_PS | M_SF | M_IS | M_NP;
+   end Evaluate_Entry;
+
    procedure Evaluate (Ctx        : EVC_Radio.Context_T;
                        Queued     : Boolean;
                        Queued_RBC : EVC_Radio.RBC_Id_T;
                        Req        : out Request_T) is
    begin
       Req := (others => <>);
+      Evaluate_Entry (Ctx, Queued, Queued_RBC);
       Evaluate_SoM (Ctx, Queued, Queued_RBC, Req);
       Evaluate_TD (Ctx);
       Evaluate_EoM (Ctx, Req);

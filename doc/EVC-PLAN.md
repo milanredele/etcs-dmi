@@ -20464,3 +20464,52 @@ ordered; the sequence 3050700_02 expects it at 3020 m (Connection Up
 removed, Connection Lost not displayed). No code change. The round also
 tries the Ada `outline` of ~/dev/outline in place of outline.py (the
 briefs name it; `rounds.py` counts both).
+
+### The session's driver entry and Train Data: the hour glass while the session terminates, the changed set to every established session (e6/sessions-td) (2026-11-06)
+
+**B3383, the hour glass after the driver's RBC data (done).** At the
+source the premise was half right: the deferral of 3.5.3.4.2 existed
+(`EVC_Sessions.Establish` keeps the entry as `Pending` while the session
+with that RBC is Terminating; the trace of 3050400_03 SV30 passed steps
+84 to 96: no SA-CONNECT and no 155 before the 39 at 211.3 s, then the
+new session), and `Driver_Contact` does nothing particular with a
+terminating session (it only decodes the entry). What was missing was the
+waiting byte of MSG_ONBOARD: `EVC_Core.Outputs` set it to 2 only while the
+start of mission's session opens (`EVC_Sessions.Mission.Opening`), never
+for an entry outside it. The DMI side settles the shape: DMI Table 50
+S5-3 ('Yes' of the RBC data window) and S5-1 ('Contact last RBC', 'Use
+short number') go to S8, the Main window with all buttons disabled and
+ST05 "the onboard awaits an answer from the RBC", left at D3 when the
+opening succeeds or fails; the protocol's value 2 already names Table 50
+S8 (no new value). Built: `EVC_Sessions.Mission.Take_Radio_Data` notes
+the entry's RBC (`Entry_RBC`, `Entry_Waiting`) unless a session with that
+RBC is already established (3.5.3.4.1: nothing is exchanged), a new entry
+replacing it; `Evaluate_Entry` (first step of `Mission.Evaluate`, after
+`Apply_Order`) keeps it while a session with that RBC is being
+established, terminating or queued (`Pending`), and ends it (decision)
+when that session is established (the 32, as `Opening`), when none is
+left or queued (the order refused, the set-up given up), when level 2 is
+left, and in SB, SL, PS, SF, IS and NP (where `EVC_Level_Sessions`
+forgets the selection); `EVC_Sessions.Entry_Opening` is read by
+`EVC_Core.Outputs.Send_Onboard` (waiting 2, after the start of mission's
+values). `EVC_Sessions.Take_Radio_Data`'s Global names `State` now, with
+`Post => Has_Released = Has_Released'Old` for `EVC_Level_Sessions`.
+Scenario `EVC_Test_Sessions.Scenario_Session_Entry_Terminating`: L2 SR,
+established with RBC 300, its order to terminate read (Terminating), the
+driver enters RBC 300: no other session and waiting 2; the 39: the new
+session being established, waiting 2; established: waiting 0. Before the
+fix it failed at the entry's and the 39's checks (waiting 0); after,
+green. Proofs `evc_sessions-mission`, `evc_sessions`, `evc_core-outputs`,
+`evc_level_sessions`: no unproved check (no Global of a child of
+`EVC_Core` widened). Row 3.5.3.4.2 noted (the matrix has no DMI row).
+Runner 1220 / 1039 / 931: 3050400_03 SV21, SV22, SV30 pass (the hour
+glass at 211.0 s, removed after the 32 at 211.9 s); 3180400_04 (three
+versions) passes its hour glass after 'Use short number' at step 54
+and fails at step 207, traced: the runner's speed of 35 km/h for "speed
+decrease V_TRAIN<=V_NVSTFF" at 1010 m above the SR distance's curve
+(Sd56a8154, model); 4080453_01 (three versions) stops at step 84 instead
+of 87, traced: the sequence's "validate RBC-data" after "enter RBC-data"
+is the same entry's 'Yes', which the runner enters a second time from the
+Radio data window, refused in the Main window of S8 (S390f221b, model,
+B3560: 18 such steps in the corpus; the runner is not this package's
+unit); the baseline re-recorded with these three understood.

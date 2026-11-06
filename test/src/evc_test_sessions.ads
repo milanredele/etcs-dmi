@@ -138,4 +138,8 @@ package EVC_Test_Sessions is
    --  radio connection is lost
    procedure Scenario_Session_Terminate_Lost;
 
+   --  3.5.3.4 h), 3.5.3.4.2, DMI 11.2.1.6: the driver's RBC data of the
+   --  RBC whose session is terminating
+   procedure Scenario_Session_Entry_Terminating;
+
 end EVC_Test_Sessions;

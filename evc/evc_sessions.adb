@@ -1857,6 +1857,7 @@ is
    function Handing_Over_Retained return Boolean is
      (Handover.Old_Contact.Known);
    function SoM_Opening return Boolean is (Mission.Opening);
+   function Entry_Opening return Boolean is (Mission.Entry_Opening);
    function SoM_Awaiting_Registration return Boolean is
      (Mission.Awaiting_Registration or else Network.Type_Awaited);
    function Train_Data_Sent return Natural is (Mission.Train_Data_Sent);

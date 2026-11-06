@@ -619,6 +619,10 @@ is
                         and then not EVC_Sessions.Network_Ready
                         and then not EVC_Sessions.Registration_Timed_Out
                       then Waiting_Registration
+                      --  3.5.3.4 h): the session of the driver's RBC
+                      --  data, also while the one it replaces terminates
+                      --  (3.5.3.4.2; DMI 11.2.1.6, the Main window)
+                      elsif EVC_Sessions.Entry_Opening then Waiting_RBC
                       elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),
          Answer   => EVC_Bytes.Byte

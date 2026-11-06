@@ -3639,4 +3639,60 @@ package body EVC_Test_Sessions is
              & "terminated (3.5.5.3.2), no set-up requested in the wait");
    end Scenario_Session_Terminate_Lost;
 
+   --  3.5.3.4 h), 3.5.3.4.2: in level 2 outside the start of mission the
+   --  driver enters the contact of the RBC whose session is terminating
+   --  (156 sent): the new session once the 39 has ended the former one
+   --  and the connection is released; from the entry until the new
+   --  session is established the on-board awaits the RBC, MSG_ONBOARD
+   --  waiting 2: the Main window with the hour glass ST05 (DMI 11.2.1.6)
+   procedure Scenario_Session_Entry_Terminating is
+      Id : Unsigned_32;
+
+      function Other_Active return Boolean is
+        (for some S in R.Session_T =>
+           S /= 1 and then R.Info (S).State /= R.Idle);
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Order_Group (20, 300, Q_RBC => 0, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      Stand;
+      Check (Onboard_Byte (12) = 0,
+             "entry terminating: established, nothing awaited");
+      Run_X (35_000);
+      Check (R.Info (1).State = R.Terminating,
+             "entry terminating: the order to terminate read, 156 sent "
+             & "(3.5.5.2 a)");
+      Id := Unsigned_32 (R.Info (1).RBC.NID_C) * 16_384
+        + Unsigned_32 (R.Info (1).RBC.NID_RBC);
+      Send (RBC_Entry (0, Id, "0077"));
+      Check (R.Info (1).State = R.Terminating and then not Other_Active
+             and then Onboard_Byte (12) = 2,
+             "entry terminating: the same RBC entered: no new session "
+             & "while terminating (3.5.3.4.2), MSG_ONBOARD waiting 2 (the "
+             & "hour glass, DMI 11.2.1.6), got waiting"
+             & Natural'Image (Onboard_Byte (12)));
+      Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
+      Stand;
+      Stand;
+      Check ((for some S in R.Session_T =>
+                R.Being_Established (S)
+                and then R.Info (S).RBC.NID_RBC = 300)
+             and then Onboard_Byte (12) = 2,
+             "entry terminating: terminated by the 39, the new session "
+             & "being established (3.5.3.4.2), still waiting 2, got"
+             & Natural'Image (Onboard_Byte (12)));
+      for S in R.Session_T loop
+         if R.Being_Established (S) then
+            Establish (Natural (S));
+         end if;
+      end loop;
+      Stand;
+      Check (Onboard_Byte (12) = 0,
+             "entry terminating: the new session established, nothing "
+             & "awaited, got waiting" & Natural'Image (Onboard_Byte (12)));
+   end Scenario_Session_Entry_Terminating;
+
 end EVC_Test_Sessions;
