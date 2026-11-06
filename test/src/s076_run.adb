@@ -2887,7 +2887,32 @@ package body S076_Run is
                   end if;
                end;
             end if;
-            if Has (E, "EBI") then
+            if Below and then Same (W (4), "decrease")
+              and then (Has (Image (St.Comment),
+                             "under restriction of the braking curve")
+                        or else Has (Image (St.Comment),
+                                     "below the braking curve"))
+            then
+               --  "speed under restriction of the braking curve to end of
+               --  SR authorisation" (3180400_04 step 204, 5080300_06 step
+               --  80, three versions each): the driver brakes under the
+               --  curve the on-board supervises where the train is, its
+               --  permitted speed less 2 km/h, never above the speed the
+               --  train runs at, the chart's or the named limit's band
+               Kmh := Integer'Min (S.V_Perm - 2, S.V_Cur);
+               if Chart_Kmh >= 0.0 then
+                  Kmh := Integer'Min (Kmh, Integer (Chart_Kmh));
+               end if;
+               if Named_Limit (E) >= 0 then
+                  Kmh := Integer'Min (Kmh, Named_Limit (E) - 5);
+               end if;
+               Kmh := Integer'Max (Kmh, 1);
+               Explicit_Speed := Kmh_To_Cms (Long_Float (Kmh));
+               B.Set_Speed (Explicit_Speed);
+               return Pass ("ODO speed" & Integer'Image (Kmh)
+                            & " km/h, under the braking curve (permitted"
+                            & S.V_Perm'Image & ")");
+            elsif Has (E, "EBI") then
                Kmh := (S.V_Perm) + 8;
             elsif Has (E, "SBI") then
                Kmh := (if Below then S.V_SBI - 1 else S.V_SBI + 1);

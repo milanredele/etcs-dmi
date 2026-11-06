@@ -21044,3 +21044,30 @@ SYSTEM_STATUS_MESSAGE Bit24, where SUBSET-027 4.0.0 4.2.4.23 has Bit 24
 FRMCS network registration failed and Bit 25 PT distance exceeded;
 ERA's step list (steps 254 and 271) has Bit24, the numbering before
 4.0.0. Runner 1229 / 1029 / 932, 1 improvement, 0 regressions.
+
+Sd56a8154 at 3180400_04, the speed under the SR distance's curve.
+Traced at SV30: step 204 "speed decrease V_TRAIN<=V_NVSTFF" (comment
+"speed under restriction of the braking curve to end of SR
+authorisation") took the national value's band, 40 - 5 = 35 km/h, so
+the train under the service brake at 21 km/h was raised to 35 km/h at
+1012 m, over the curve (emergency brake, the service brake still
+commanded at step 207). `S076_Run.ODO_Input` now gives such a decrease
+(the comment's words, 3180400_04 step 204 and 5080300_06 step 80, three
+versions each) the permitted speed the on-board shows less 2 km/h, at
+most the train's speed, the chart's and the named limit's band: 14 km/h
+at 1011 m (permitted 16), Indication, the service brake released,
+steps 204 to 210 pass. The speed is held, not recomputed as the train
+nears the target: at BG7d (1037 m, step 211, nothing judged there) the
+on-board brakes again (permitted 12 km/h, the train at 13), B3700 for
+a sequence that needs it. The three versions move to step 226
+(S7d250784, s076): the joined End of Mission case expects the 150 with
+Q_DESK=0 at the Shunting entry with desk A open, ours sends the 150 at
+199.8 s with Q_DESK 1 (7.5.1.102.2). 5080300_06 is blocked at step 53
+before its step 80. Runner 1229 / 1029 / 932, 3 improvements, 0
+regressions.
+
+Counts: 3 items of 3 done (B3560, B3384 closed; Sd56a8154 of 3180400_04
+fixed); backlog: 1 added (B3700), 2 closed; triage: S390f221b,
+S13c9beb3 (4120100_02), Sd56a8154 (3180400_04) rewritten, S7d250784
+extended, S839261e1 added. Edit outside the brief's subprograms:
+`S076_Run.Radio_Expect` (the 'no-connect' with the replaced NID_RADIO).
