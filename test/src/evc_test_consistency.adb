@@ -858,6 +858,39 @@ package body EVC_Test_Consistency is
              & "not in the linking information, no error report "
              & "(3.16.4.3), got" & Img (Count) & Img (Error)
              & Img (Natural (EVC_Position.LRBG.Id.NID_BG)));
+      --  the same with group 25's message inconsistent (a balise
+      --  missed): the balise group error recorded (JRU 12 with M_ERROR
+      --  1, SUBSET-027 4.3.1.1 "when a balise group error is detected"),
+      --  still no report to the RBC (3.16.4.3)
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 300));
+      Add_Group (Group (25, 400));
+      Track (Track_N).Skip := 1;
+      Add_Group (Group (30, 500));
+      Run_X (15_000);
+      Establish_Session_Acked (1);
+      Give_Radio_Message
+        (1, Radio_Linked_MA (10, Link_To ((200, 200), (20, 30), 5, 1)));
+      Stand;
+      declare
+         C, E, Rec_12 : Natural := 0;
+      begin
+         Count := 0;
+         while Train_Cm < 60_000 loop
+            Step_X (1_000);
+            Rec_12 := Rec_12 + JRU_Count (12);
+            Balise_Error_Reports (0, C, E);
+            Count := Count + C;
+         end loop;
+         Check (Count = 0 and then Rec_12 = 1,
+                "error report: linking checked, the inconsistent message "
+                & "of a group marked linked and not in the linking "
+                & "information: JRU 12 with M_ERROR 1 once (SUBSET-027 "
+                & "4.2.4.12, 7.5.1.64), no error report (3.16.4.3), got"
+                & Img (Count) & Img (Rec_12));
+      end;
    end Scenario_Consistency_Error_Report;
 
    --  The JRU records of the last Take of a balise group error

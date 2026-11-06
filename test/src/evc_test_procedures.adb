@@ -11,6 +11,7 @@ with EVC_JRU_Messages;
 with EVC_Ports;     use EVC_Ports;
 with EVC_Procedures;
 with EVC_Text_Messages;
+with EVC_Track_Conditions;
 with Interfaces;    use Interfaces;
 with Sim_Telegrams;
 
@@ -50,6 +51,8 @@ package body EVC_Test_Procedures is
    Level_Ann_Ack : Natural := 0;
    --  MSG_SPEED_STATE: the permitted speed, km/h
    V_Perm        : Natural := 0;
+   --  MSG_SPEED_STATE: the target distance, m
+   D_Target      : Natural := 0;
    --  MSG_STATUS: brake, BMM, reversing (the last one sent)
    Status_Brake  : Natural := 0;
    Status_BMM    : Natural := 0;
@@ -215,6 +218,7 @@ package body EVC_Test_Procedures is
                      Override_Byte := P (11);
                   when 16#01# =>
                      V_Perm := P (8) + 256 * P (9);
+                     D_Target := P (18) + 256 * P (19) + 65_536 * P (20);
                      Monitoring := P (22);
                   when 16#05# =>
                      LX_Shown := False;
@@ -1521,6 +1525,11 @@ package body EVC_Test_Procedures is
              "3.11.7.1.2: the RV speed limit from the trackside");
       Run_Front (160, 10);
       Check (not EB, "4.4.18.1.3 b): within the distance to run");
+      Check (D_Target in 9 .. 11,
+             "4.4.18.1.5: the remaining distance to run in RV to the DMI "
+             & "(MSG_SPEED_STATE d_target, DMI 8.2.2.1.8, 8.2.2.2.7: RV "
+             & "yes), the front end at 160 m, the limit at 150 m, got"
+             & D_Target'Image);
       Run_Front (140, 10);
       Check (EB and then Why (EVC_Ports.TIU_Reason_Procedure)
              and then Seen_SS (27, 0),
@@ -1886,6 +1895,33 @@ package body EVC_Test_Procedures is
       Check (EVC_Core.Mode = M_SH and then not EVC_Procedures.BMM_Inhibited,
              "5.22.3.1: the same reset with the antenna in rear of the "
              & "area: no inhibition");
+      --  the reset without a mode change: the start of mission in SB
+      --  (the mode set, the store kept), the desk closed (A.3.4.1.2 k),
+      --  column k: R) with the antenna in the area
+      Begin_Scenario (M_SR, L1);
+      Group (3, 20);
+      Add (ST.Big_Metal_Mass (20, 200));
+      Close;
+      Run_Front (100, 25);
+      V_Cms := 0;
+      Cycle;
+      Cycle;
+      EVC_Core.Set_Mode_For_Test (M_SB, L1);
+      Cycle;
+      Cycle;
+      Check (EVC_Core.Mode = M_SB and then not EVC_Procedures.BMM_Inhibited
+             and then EVC_Track_Conditions.BMM_Count = 1,
+             "5.22.3.1: in SB in the start of mission, the big metal mass "
+             & "stored, no inhibition yet");
+      TIU_In (1, 0);
+      Cycle;
+      Cycle;
+      Check (EVC_Core.Mode = M_SB and then EVC_Procedures.BMM_Inhibited
+             and then Status_BMM = 1
+             and then EVC_Track_Conditions.BMM_Count = 0,
+             "5.22.3.1: the desk closed in the start of mission resets the "
+             & "big metal masses (A.3.4.1.3 column k) with the antenna in "
+             & "the area: the inhibition started, indicated");
    end Scenario_BMM_Reset;
 
    --  3.15.7 Tolerance of big metal masses: the BTM alarm of the BTM port

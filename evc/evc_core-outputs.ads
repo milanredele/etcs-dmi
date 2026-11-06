@@ -284,7 +284,8 @@ is
       Text_SB, Text_EB : Boolean)
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 SDM_Result, Brake_Output, Speed_State,
-                                Status_TTI_Sent, EVC_Levels.State),
+                                Status_TTI_Sent, EVC_Levels.State,
+                                EVC_Procedures.State),
                      In_Out => (TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, SDM_Shown_Reported,
                                 Overrun_Reported, EVC_Outbox.Queue));

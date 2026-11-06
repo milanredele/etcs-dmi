@@ -22,7 +22,8 @@ package body EVC_Procedures
   with SPARK_Mode => On,
        Refined_State =>
          (State => (Conds, Pending, Reason, Version_Seen, Ctx,
-                    Orientation_Now, Ovr, Ovr_Since, Ovr_Run, Ovr_Last,
+                    Orientation_Now, RV_Left,
+                    Ovr, Ovr_Since, Ovr_Run, Ovr_Last,
                     Ovr_Selected_Now, Ovr_Selectable, Ovr_For_Trips,
                     Ovr_In_SR, Former,
                     Former_X,
@@ -268,6 +269,8 @@ is
    Rev_Possible : Boolean := False;
    RV_Over      : Boolean := False;
    RV_EB        : Boolean := False;
+   --  in RV, the remaining distance to run in m (RV_Distance_Left)
+   RV_Left      : Unsigned_32 := No_RV_Distance;
 
    --  5.22: the inhibition of the BTM alarm reaction, from where
    BMM_On   : Boolean := False;
@@ -421,6 +424,7 @@ is
       Version_Seen := False;
       Ctx := (others => <>);
       Orientation_Now := Plus;
+      RV_Left := No_RV_Distance;
       Ovr := False;
       Ovr_Since := 0;
       Ovr_Run := 0;
@@ -1324,8 +1328,12 @@ is
    end Post_Trip_Step;
 
    --  @req 3.14.1.7.1, 3.15.4.4, 3.15.4.7, 3.15.4.8, 4.4.18.1.4, 5.13.1.3
+   function RV_Distance_Left return Unsigned_32 is (RV_Left)
+     with Refined_Global => RV_Left;
+
    procedure Reversing_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (Rev, Orientation_Now),
+                     Output => RV_Left,
                      In_Out => (Rev_Possible, RV_Over, RV_EB, Ack_On, Ack_M,
                                 Ack_After, Ack_Since, Status_List, Status_N,
                                 Events, Event_N))
@@ -1359,10 +1367,19 @@ is
       end if;
       --  4.4.18.1.3 b), 3.15.4.8: in RV, the end of the distance to run
       --  (3.15.4.2.1: from the end of the area) passed by the front end
+      RV_Left := No_RV_Distance;
       if C.Mode = M_RV then
          RV_Over :=
            Rev.Sup and then not Rev.Infinite
            and then Est < Diff (A (Rev.Sense, Rev.Finish), Rev.Distance);
+         --  4.4.18.1.5: the remaining distance to run, the front end to
+         --  that end, in m
+         if Rev.Sup and then not Rev.Infinite then
+            RV_Left := Unsigned_32
+              (Dist_T'Max (0, Dist_T'Min
+                 (Diff (Est, Diff (A (Rev.Sense, Rev.Finish), Rev.Distance))
+                  / 100, 32_766)));
+         end if;
          --  3.14.1.7.1: released when the distance is no longer
          --  overpassed, or at standstill after acknowledgement
          if RV_EB
@@ -2012,6 +2029,16 @@ is
          Start_BMM (S.Train.Est_Front);
       end if;
    end BMM_Reset;
+
+   procedure BMM_Store_Reset (Mode : Mode_T; C : Context_T;
+                              S : Snapshot_T)
+     with Refined_Global => (Input  => (EVC_Track_Conditions.State,
+                                        EVC_Origins.State, Orientation_Now),
+                             In_Out => (BMM_On, BMM_From, Events, Event_N))
+   is
+   begin
+      BMM_Reset (Mode, C, S);
+   end BMM_Store_Reset;
 
    procedure Delete_Beyond (X : Dist_T; In_SH : Boolean)
      with Refined_Global => (In_Out => (SH_List_Known, Rev))

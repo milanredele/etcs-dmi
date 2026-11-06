@@ -1511,7 +1511,7 @@ is
    --  @req 3.16.1.4, 3.16.2.4.1, 3.16.2.4.3, 3.16.2.4.3.1, 3.16.2.4.3.1 a)
    --  @req 3.16.2.4.3.1 b)
    --  @req 3.16.2.4.4, 3.16.2.4.4.1 b), 3.16.2.4.4.3, 3.16.2.4.4.4
-   --  @req 3.16.2.5.1, 3.16.2.5.1.1, 3.16.2.5.3
+   --  @req 3.16.2.5.1, 3.16.2.5.1.1, 3.16.2.5.3, 3.16.4.3
    procedure React_Inconsistent (Id : Identity_T; Orientation : Direction_T)
      with Global => (Input  => (Check_Linking, Passage),
                      In_Out => (Links, Events, Event_N, Reaction_Flag,
@@ -1541,6 +1541,10 @@ is
                Put_Identity_Event (Inconsistent_Linked, Id);
                Request_Reaction (L.Reaction, Cause_Inconsistent, E);
                Next_Window;
+            elsif EVC_Linking.Find (Links, Id, 1) = 0 then
+               --  3.4.4.4.2, 3.16.2.4.3: rejected, no reaction; the error
+               --  recorded, not reported (3.16.4.3)
+               Put_Identity_Event (Inconsistent_Not_Announced, Id);
             end if;
          end;
       else
