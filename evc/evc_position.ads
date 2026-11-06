@@ -138,12 +138,16 @@ is
       Cold_Movement,      -- 1: a cold movement was detected
       New_LRBG,           -- identity
       Inconsistent_Linked,    -- identity (3.16.2.4: M_ERROR 1)
-      Inconsistent_Unlinked); -- identity (3.16.2.5: M_ERROR 2)
+      Inconsistent_Unlinked,  -- identity (3.16.2.5: M_ERROR 2)
+      Inconsistent_Not_Announced);
+   --  The last: identity; the message of a group marked linked and not in
+   --  the linking information, linking checked: recorded with M_ERROR 1
+   --  like Inconsistent_Linked, not reported to the RBC (3.16.4.3)
 
    --  The JRU event code of a kind: Event_Kind_T'Pos + 4 up to New_LRBG,
-   --  then 12 and 13 (11 is the driver's actions, EVC_JRU_Messages)
+   --  then 12, 13 and 12 (11 is the driver's actions, EVC_JRU_Messages)
    function Event_Code (K : Event_Kind_T) return Unsigned_8 is
-     (if K = Inconsistent_Linked then 12
+     (if K in Inconsistent_Linked | Inconsistent_Not_Announced then 12
       elsif K = Inconsistent_Unlinked then 13
       else Event_Kind_T'Pos (K) + 4);
 
