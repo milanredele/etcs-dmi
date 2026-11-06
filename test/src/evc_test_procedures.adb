@@ -11,6 +11,7 @@ with EVC_JRU_Messages;
 with EVC_Ports;     use EVC_Ports;
 with EVC_Procedures;
 with EVC_Text_Messages;
+with EVC_Track_Conditions;
 with Interfaces;    use Interfaces;
 with Sim_Telegrams;
 
@@ -1886,6 +1887,33 @@ package body EVC_Test_Procedures is
       Check (EVC_Core.Mode = M_SH and then not EVC_Procedures.BMM_Inhibited,
              "5.22.3.1: the same reset with the antenna in rear of the "
              & "area: no inhibition");
+      --  the reset without a mode change: the start of mission in SB
+      --  (the mode set, the store kept), the desk closed (A.3.4.1.2 k),
+      --  column k: R) with the antenna in the area
+      Begin_Scenario (M_SR, L1);
+      Group (3, 20);
+      Add (ST.Big_Metal_Mass (20, 200));
+      Close;
+      Run_Front (100, 25);
+      V_Cms := 0;
+      Cycle;
+      Cycle;
+      EVC_Core.Set_Mode_For_Test (M_SB, L1);
+      Cycle;
+      Cycle;
+      Check (EVC_Core.Mode = M_SB and then not EVC_Procedures.BMM_Inhibited
+             and then EVC_Track_Conditions.BMM_Count = 1,
+             "5.22.3.1: in SB in the start of mission, the big metal mass "
+             & "stored, no inhibition yet");
+      TIU_In (1, 0);
+      Cycle;
+      Cycle;
+      Check (EVC_Core.Mode = M_SB and then EVC_Procedures.BMM_Inhibited
+             and then Status_BMM = 1
+             and then EVC_Track_Conditions.BMM_Count = 0,
+             "5.22.3.1: the desk closed in the start of mission resets the "
+             & "big metal masses (A.3.4.1.3 column k) with the antenna in "
+             & "the area: the inhibition started, indicated");
    end Scenario_BMM_Reset;
 
    --  3.15.7 Tolerance of big metal masses: the BTM alarm of the BTM port

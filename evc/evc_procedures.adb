@@ -2009,6 +2009,16 @@ is
       end if;
    end BMM_Reset;
 
+   procedure BMM_Store_Reset (Mode : Mode_T; C : Context_T;
+                              S : Snapshot_T)
+     with Refined_Global => (Input  => (EVC_Track_Conditions.State,
+                                        EVC_Origins.State, Orientation_Now),
+                             In_Out => (BMM_On, BMM_From, Events, Event_N))
+   is
+   begin
+      BMM_Reset (Mode, C, S);
+   end BMM_Store_Reset;
+
    procedure Delete_Beyond (X : Dist_T; In_SH : Boolean)
      with Refined_Global => (In_Out => (SH_List_Known, Rev))
    is

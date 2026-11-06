@@ -425,6 +425,23 @@ is
                                 EVC_Radio_Authority.State)),
           Post => (if To = M_TR then Brake_Demand.EB);
 
+   --  5.22.3.1: the big metal masses of the store are about to be reset
+   --  in Mode without a mode change, the whole store: the desk closed in
+   --  the start of mission (A.3.4.1.2 k), A.3.4.1.3 column k: R,
+   --  EVC_Core.Modes.Evaluate_Modes_And_Levels). The inhibition started
+   --  as at a reset by a mode entry (BMM_Reset). The other resets
+   --  without a mode change reach no antenna or end the procedure at
+   --  once: the cuts of columns 1 and 2 lie beyond the new SvL or the max
+   --  safe front end (A.3.4.1.3 [1], [10]), so beyond the max safe
+   --  antenna; the Supervised Manoeuvre authorisation in the opposite
+   --  direction comes with the switch to SM (5.22.5.1 b)
+   --  @req 5.22.3.1
+   procedure BMM_Store_Reset (Mode : Mode_T; C : Context_T;
+                              S : Snapshot_T)
+     with Global => (In_Out => State,
+                     Input  => (EVC_Track_Conditions.State,
+                                EVC_Origins.State));
+
    --  A.3.4.1.3, a deletion of the stored information beyond the frame
    --  position X (the new SvL [1] or the max safe front end [10],
    --  EVC_Stored_Information.Cut_X): the list of balise groups for the

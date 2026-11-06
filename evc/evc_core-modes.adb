@@ -76,6 +76,10 @@ is
              TSR         => True,
              Adhesion    => True));
          EVC_Movement_Authority.Delete_MA;
+         --  5.22.3.1 before the reset: the antenna in a big metal mass
+         --  (the snapshot of this cycle's monitoring; of the context of
+         --  the last cycle only the antenna's offset is read)
+         EVC_Procedures.BMM_Store_Reset (Current_Mode, Proc_Ctx, Snapshot);
          EVC_Track_Conditions.Reset (Rest => True, Horn => True,
                                      BMM => True);
          EVC_Position.Delete_Linking;
