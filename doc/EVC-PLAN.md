@@ -20744,3 +20744,125 @@ and evc_core, no unproved check. The runner: 1219 / 1040 / 931 (from
 1217 / 1042 / 931), 0 regressions, the two versions of 3160400_01 the
 only movement. Edits outside the units: `EVC_Test_Consistency` (a case
 in an existing scenario), `EVC_Test_Procedures`' capture of d_target.
+### Review of the sixty-sixth round: eight verdicts re-derived blind (e5/review-66) (2026-11-06)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items and the extra one
+were taken. No code, no triage line and no line of the authors was
+changed.
+
+1. The buffered MA at an order to the announced level. Mine: 4.8.5.4
+   a) deletes the sets only for an order "for a different level", so
+   an order to level 2 at D_LEVELTR 0 with level 2 announced keeps
+   them; 4.6.3 [25] is an event ("the level switches to 1 or 2") true
+   in the cycle of the switch only, and 4.8.5.6 makes the re-evaluation
+   a prerequisite of any use, so the released MA brings FS in that
+   cycle (the MA row of 4.8.4: A in UN). Ours: `Buffer.Update` deletes
+   only when level 2 is neither the level nor announced;
+   `EVC_Core.Stored.Release_Transition_Buffer` runs after
+   `Evaluate_Modes_And_Levels` and before the procedures and the mode
+   machine; `EVC_Stored_Information.Evaluate_Released` builds the mode
+   conditions again after the released messages. Author (B3520): the
+   same, the rebuild being the fix (the mode stayed UN before it).
+   Agree.
+2. D5. Mine: "MA and track description ... stored ... not both stored,
+   A1": both are needed, in one message or in several; the MA alone or
+   the track description alone go to A1 (the track description's
+   mandatory part, the SSP and the gradient, 3.7.1.1). Ours: a flag MA
+   (packet 15) and a flag Track (packets 27 and 21 of one message) per
+   buffer entry, `Buffer.MA_And_Track_Stored` true when some entry has
+   each; `Train_Data_Step` takes D7 for UN, SN, SR, TR then. Author
+   (B846): the same decision. Agree (an edge: an SSP and a gradient in
+   two different messages count as no track description).
+3. The hour glass while the session with that RBC terminates. Mine:
+   3.5.3.4.1 forbids a new session while one is established with no
+   156 sent; with the 156 sent, 3.5.3.4.2 opens the new one once the
+   former is terminated and the safe radio connection released. DMI
+   Table 50: S5-3's 'Yes' goes to S8, the Main window with all buttons
+   disabled and ST05 "awaits an answer from the RBC", left at D3 when
+   the opening succeeds (the session established, the 32: 3.5.3.7 d)
+   or fails; the 38 does not end it. Ours: `Evaluate_Entry` keeps the
+   wait while a session with that RBC is not Idle (Terminating is its
+   own state, not `Up`) or queued, ends it at `Up` (established with the
+   version known), when none is left or queued, when level 2 is left
+   and in SB, SL, PS, SF, IS, NP; `Send_Onboard` gives waiting 2.
+   Author (B3383): the same. Agree.
+4. The changed Train Data with two sessions. Mine: 3.18.3.4 holds for
+   each established session: the change goes to the Handing Over and
+   the Accepting RBC, each acknowledging (3.18.3.4.1) and sent again
+   after its own lost connection (3.18.3.4.2), the Accepting RBC's 8
+   accepted at once (3.15.1.3.6); after the switch only a disconnection
+   order is accepted from the Handing Over RBC (3.15.1.3.5), so nothing
+   more is sent to it. Ours: `Evaluate_TD` over the sessions of the
+   supervising and the Accepting role, the seven variables per session,
+   a session in neither role sent nothing. Author (B3461): the same.
+   Agree.
+5. The record 12 for a linked group not in the linking information.
+   Mine: the message is rejected (3.4.4.4.2, the expected group's
+   identity known), no reaction (3.16.2.4.3), no 136 with packet 4
+   (3.16.4.3, which removes the report only; 3.16.4.2 counts an error
+   "regardless if there is an error reaction"); SUBSET-027 4.3.1.1
+   writes the record 12 "when a balise group error is detected" and
+   M_ERROR 1 names the message consistency error of a linked group:
+   recorded. Ours: `React_Inconsistent` gives `Inconsistent_Not_Announced`
+   (JRU code 12) when `EVC_Linking.Find` does not find the group;
+   `EVC_Sessions.Reports` reports `Inconsistent_Linked` and
+   `Inconsistent_Unlinked` only. Author (B3386): the same decision.
+   Agree (both note that a group in the linking information but not the
+   expected one still gives no event).
+6. The inhibition at a reset without a mode change. Mine: R[1] cuts
+   beyond the new SvL or the accepted CES's stop location, R[10] beyond
+   the max safe front end: both ahead of the max safe antenna (a CES is
+   accepted ahead of the train, a new SvL behind it trips), so neither
+   reaches the antenna; column k, the desk closed during the start of
+   mission in SB, resets the whole store and can, and the Inhibition
+   runs in SB (5.22.5.1 b) ends it only outside SB, SH, SR); the SM
+   authorisation in the opposite direction is not in the table, comes
+   with the switch to SM, which ends the procedure at once. Ours:
+   `EVC_Procedures.BMM_Store_Reset` at the desk closure only
+   (`EVC_Core.Modes.Evaluate_Modes_And_Levels`, before the store's
+   reset); `Scenario_BMM_Reset`'s third case. Author: the same. Agree.
+7. 3070300_12 SV30 step 69. Mine: the message 3 of step 62 (LRBG
+   1048581, BG5d at 100 m) links NID_BG 4 at D_LINK 500 (Q_SCALE 1 m),
+   reaction "none"; the group at 600 m is NID_BG 3 (Q_LINK 1), NID_BG 4
+   is at 700 m; ERA's PDF prints the same (pages 33 and 34). `<BG1>` is
+   BG3d, the first group fed since `case 3070300 20`, so the runner
+   resolves the name rightly. Ours rejects BG3's message (3.4.4.4.2;
+   JRU event 5 for NID_BG 3), reports BG4 not found in its window (JRU
+   event 4, cause 2; a 136 with packet 4), and keeps SOLR 1048581: BG3
+   is not LRBG compliant (3.6.2.2.2 a), marked linked and not in the
+   linking information). Verdict: the sequence's data. Author
+   (Sc0f3b1e0 s076): the same. Agree.
+8. 4080300_02 SV30 step 245. Mine: BG14d (2500 m) announces level 2 at
+   D_LEVELTR 520 (3020 m); BG16d (2900 m) carries packet 88 (NID_LX 5,
+   D_LX 300, L_LX 100, Q_LXSTATUS 1, Q_STOPLX 1, L_STOPLX 100: the LX at
+   3200 m); BG17d (3000 m) orders level 2 at once. 4.8.3, the row Level
+   Crossing information from a balise in level 0: R [1] [2], [2] "stored
+   onboard if an order to switch to level 2 at a further location has
+   been received": stored, and accepted in level 2; the transition
+   buffer of 4.8.5.1 holds filtered messages, not this. Ours: rejected
+   at step 229 (JRU 32 for packet 88), no track condition at 3080 m:
+   `EVC_Acceptance.Level_Accepts` takes `Level_Crossing` in levels 1 and
+   2 or with level 1 announced, `Level_Stores` carries [1] only; [2] is
+   missing in levels 0 and NTC (the NTC rows R [1] [2] of TSR, its
+   revocation, the default gradient, the texts and the geographical
+   position carry [1] only too, NTC being out of scope). Ours wrong.
+   Author (Sfdbcfbea onboard, B3580 open): the same, the same place.
+   Agree.
+
+Extra, 4080453_01 SV30 step 84. Mine: in Table 50 S5-3 the driver
+enters the fields, the 'Yes' is enabled, and its press goes to S8; the
+sequence's step 82 ("enters", its comment: values different from the
+displayed ones), 83 (Yes enabled) and 84 ("validates") are that one
+entry. The trace with DEBUG: the runner's step 82 confirms the
+displayed values with the 'Yes' (JRU 124 and the SA-CONNECT request at
+258.3 s, inside the windows of steps 81 and 82), so step 84 meets the
+Main window of S8 with its buttons disabled and is refused rightly;
+step 85's JRU 24 and step 87's connect lie before their windows.
+Verdict: the runner. Author (S390f221b model, B3560): the same. Agree;
+B3560's fix (the step passed as the entry of the step before) leaves
+step 86 untested while the runner enters the displayed contact, since
+its "NOT (NID_RADIO=<previously stored>)" needs a different one.
+
+Counts: 8 items and the extra. Agreed: all nine; disagreed: none;
+undecided: none. Backlog lines: none. Calls: 84 of 130 at this point.
