@@ -21628,3 +21628,78 @@ extension of `Scenario_SM_Post_Trip`, where the SM helpers are),
 `EVC_Test_Mission` has no SoM helper), row 5.11.2.2 S140 c) (deferred
 with a note made stale by the SM packages). The runner: 1232 / 1026 /
 932, no movement.
+### The runner's judgements and blocks: a message outrunning its L_MESSAGE, a text judged by the DMI's state, the level crossing stop held across a case line (e5/runner-judge) (2026-11-07)
+
+B3661, a message whose packets run past its L_MESSAGE. The premise held
+at the trace: 9990400_28 SV30 step 67 gives the message 24 of 411 bits
+(75 of header, packets 73 180, 74 92, 70 64) with L_MESSAGE 51, 408
+bits (8.4.4.2), and step 69 fails for the packet 70 the on-board does
+not read past the message (8.4.4.2.1). The corpus: 46 message blocks
+have more bits than 8 x L_MESSAGE, most of them the train's messages a
+step expects (131, 159), inputs of four sequences that stop before them
+(4080425_01, 4080430_01, 4080455_07, 4080500_02) and one input reached
+and passing, 4080431_02 SV30 step 73 (message 4, 826 bits for 440: four
+packets 131 where the step names one, the first within L_MESSAGE; the
+message is refused for its time stamp, the step's purpose). Built in
+`S076_Run.Radio_Input`: `Packet_Outrun` finds the header's length after
+which the packets of the var rows follow one another by their L_PACKET
+(the 13 bits after NID_PACKET and Q_DIR, 7.4.2) to the message's last
+bit, and the step is blocked as S076-defect when a packet the step's
+line names has no copy ending within 8 x L_MESSAGE ("RTM message 24 of
+411 bits for L_MESSAGE 51 (408 bits): packet 70 runs past it"); a
+message whose bits past L_MESSAGE are a further copy or a packet the
+step does not name is given as before, which tells 4080431_02 from
+9990400_28. One sequence moved: 9990400_28 SV30 failed at 69 -> blocked
+at 67 (S076-defect); the triage line S49bc1c1a s076 rewritten, its E7
+line (SV21, 3120200_05) unchanged.
+
+B3721, a text judged "not displayed" by the DMI's state. The premise
+held at the trace: 3120300_03 SV30 step 70 expects BG3d's plain text
+(500 m, Q_TEXTCONFIRM 1) not displayed while BG1d's (400 m,
+Q_TEXTCONFIRM 1) awaits its acknowledgement; ours sends both to the
+DMI, which offers one text to be acknowledged at a time and the next 1 s
+after the current one is acknowledged (ERA_ERTMS_015560 5.4.1.9,
+5.4.1.10). The DMI's state was readable without a new accessor:
+`DMI_Text_Messages.Holds`, `Ack_Pending` and `DMI_Ack.Current_Text_ID`
+are public (no edit in dmi/, no golden touched). Built:
+`S076_Bench.Text_On_DMI (Class)`, the text of the class the on-board put
+last and has not removed, presented when the DMI holds it and, while a
+text awaits its acknowledgement, when it is the one on offer; the newest
+of the class because the steps name no text (the first try, any text of
+the class, still failed step 70: BG1d's plain text is the one on offer).
+`S076_Run.Text_Message` judges "displayed" and "not displayed" by it;
+the fixed and plain texts are both presented by the DMI as texts, so no
+class needs the on-board's sending as a fallback (it stays in the
+failure's text, "sent, not shown"); "removed" and "not removed" are
+judged as before. The corpus: 408 sequences carry a text step (141 at
+SV30); 3120300_03 SV22 and SV30 moved from step 70 to step 76, nothing
+else moved (two steps after a first failure changed judgement). Step 76
+traced at SV30: record 18 START DISPLAYING PLAIN TEXT MESSAGE (SUBSET-027
+4.2.4.18, 4.3.1.1) is expected once the third text appears after the
+first's acknowledgement (65.3 s); ours records it when it sends the text
+(61.9 s, the window of step 68): the on-board's, triage Sea60e1d6
+onboard, backlog B3820 (hold a second text to be acknowledged until the
+first is, by the driver's seat rule). Triage Se341da87 model rewritten.
+
+B3660, the stop in rear of a non-protected level crossing held across a
+case line. The premise held at the trace: 4080300_02 SV30 step 246 at
+3080 m asks the stop ("Then, the train shall stop in rear of the
+non-protected LX") as the last step of its case; step 247 (3700 m) opens
+the next case, the runner ended the stop there and drove the train at
+19 km/h past BG16d's LX start (3200 m, stopping area from 3100 m): TR at
+the temporary EOA. 5.16.2.1: once the train has stopped with its
+estimated front end in the stopping area, the on-board no longer
+supervises the LX start as temporary EOA and SvL and includes the LX
+speed in the MRSP. Built in `S076_Run`: `LX_Stop_Before (To_Cm)`, the
+on-board's LX with Q_STOPLX 1 and its temporary EOA still ahead of the
+estimated front end and short of the step's location; at a step of
+another case the stop holds while it is true (a step whose comment says
+the train overpasses still ends it, 4060300_09 step 100). Corpus sv30:
+9 steps of 5 sequences ask the stop, 7 of them before a case line
+(4060300_09 99, 4080300_02 77, 246, 251, 4080300_07 125, 187, 4080300_16
+173). Scoped on 4080300_02 SV30 first: the train stops in rear after
+step 246 (516.2 s), the on-board substitutes the LX speed at the
+standstill and the train reaches 3700 m in FS at 623.8 s; steps 247 to
+253 pass. Full run: 4080300_02 SV21, SV22, SV30 failed at 247 -> passed,
+no other sequence moved; triage Sbfa49d0b model rewritten (its s076
+line is another package's family and unchanged).

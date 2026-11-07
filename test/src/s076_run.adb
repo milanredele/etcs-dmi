@@ -452,12 +452,18 @@ package body S076_Run is
    --  B3301: the stop in rear of a non-protected level crossing that a
    --  step's comment asks for ("Then, the train shall stop in rear of the
    --  non-protected LX"), held from that step to the next step of another
-   --  test case or whose comment says the train overpasses (set and
-   --  cleared in Run_Loaded's step loop). Corpus sv30: the comment in 5
-   --  sequences, 9 steps; 7 of them are followed at once by a case line
+   --  test case whose location lies before the crossing's start
+   --  (LX_Stop_Before) or whose comment says the train overpasses (set
+   --  and cleared in Run_Loaded's step loop). Corpus sv30: the comment in
+   --  5 sequences, 9 steps; 7 of them are followed at once by a case line
    --  (4060300_09 step 99: the next case overpasses the temporary EOA on
-   --  purpose), so the stop is driven at 4080300_02 step 176 (the three
-   --  versions) and at 9990500_05 steps 101 to 107 (blocked before them)
+   --  purpose); the stop is held across it when the LX start lies ahead
+   --  (4080300_02 step 246: the train stops in rear before step 247 at
+   --  3700 m; the others, 4080300_02 steps 77 and 251, 4080300_07 steps
+   --  125 and 187, pass either way, 4080300_16 step 173 is not reached);
+   --  driven within its case at
+   --  4080300_02 step 176 and 9990500_05 steps 101 to 107 (blocked
+   --  before them)
    LX_Stop_Asked : Boolean := False;
    LX_Stop_Feature, LX_Stop_Case : Natural := 0;
 
@@ -490,6 +496,33 @@ package body S076_Run is
       return (if Middle < 100 then 0
               else Integer (Integer_64'Min (Middle / 2, 10_000)));
    end LX_Stop_Cms;
+
+   --  Whether the level crossing start whose stop is asked (LX_Stop_Cms)
+   --  still lies ahead of the train's estimated front end and short of
+   --  To_Cm, a step's location (the antenna's, as the runner drives
+   --  it): the stop holds across a case line until the train has stopped
+   --  in rear and the on-board released the crossing (5.16.2.1), as the
+   --  train cannot reach the next case's location without passing it
+   --  (4080300_02 step 246 asks the stop at 3080 m as the last step of
+   --  its case, the next case's step 247 lies at 3700 m past the LX
+   --  start at 3200 m)
+   function LX_Stop_Before (To_Cm : Integer_64) return Boolean is
+      S : constant EVC_Supervision_Input.Snapshot_T :=
+        EVC_Stored_Information.Current;
+      Ahead : Integer_64;
+   begin
+      if not (S.LX.Present and then S.LX.Stop and then S.Temporary.Present)
+      then
+         return False;
+      end if;
+      Ahead := (if EVC_Distances."=" (S.Train.Ahead, EVC_Distances.Plus)
+                then Integer_64 (S.Temporary.EOA)
+                     - Integer_64 (S.Train.Est_Front)
+                else Integer_64 (S.Train.Est_Front)
+                     - Integer_64 (S.Temporary.EOA));
+      return Ahead > 0
+        and then Ahead + B.Front_Offset < abs (To_Cm - B.Position);
+   end LX_Stop_Before;
 
    --  B262: the speed asked for is the chart's; the train's is that of
    --  the bench's braking model (lower under a brake command, regaining
@@ -3824,17 +3857,20 @@ package body S076_Run is
             Put := True;
          end if;
       end loop;
-      --  displayed: sent in the window, or shown and not removed (the
-      --  bench's DMI state: 3120300_03 step 62, the text of BG1d read
-      --  in step 59's window at 400 m, the reach-point of step 61 at the
-      --  same place opening a new one); removed: a removal sent in the
-      --  window, or none of the class shown any more after one was
+      --  displayed and not displayed: what the DMI in the loop presents
+      --  at the step (3120300_03 step 62, the text of BG1d read in step
+      --  59's window, the reach-point of step 61 at the same place
+      --  opening a new one; step 70, the text of BG3d sent while BG1d's
+      --  awaits its acknowledgement, not shown by ERA_ERTMS_015560
+      --  5.4.1.9); removed: a removal sent in the window, or none of the
+      --  class put and not removed any more after one was
       case St_W is
          when Displayed =>
-            return Check (Put or else B.Text_Shown (Class),
-                          What & " sent", "none");
+            return Check (B.Text_On_DMI (Class), What & " shown",
+                          (if Put then "sent, not shown" else "none"));
          when Not_Displayed =>
-            return Check (not Put, What & " not sent", "sent");
+            return Check (not B.Text_On_DMI (Class), What & " not shown",
+                          "shown");
          when Removed =>
             return Check (Removed_W
                           or else (B.Text_Ever_Shown (Class)
@@ -7702,13 +7738,16 @@ package body S076_Run is
          begin
             Cur := I;
             --  B3301: the stop in rear of a non-protected LX, asked by a
-            --  step's comment, ends at a step of another test case or one
-            --  whose comment says the train overpasses (4060300_09 step
-            --  100: the temporary EOA overpassed on purpose)
+            --  step's comment, ends at a step whose comment says the
+            --  train overpasses (4060300_09 step 100: the temporary EOA
+            --  overpassed on purpose), or at a step of another test case
+            --  unless the crossing's start lies between the train and that
+            --  step's location (LX_Stop_Before)
             if LX_Stop_Asked
-              and then (St.Case_Feature /= LX_Stop_Feature
-                        or else St.Case_No /= LX_Stop_Case
-                        or else Has (Image (St.Comment), "overpass"))
+              and then (Has (Image (St.Comment), "overpass")
+                        or else ((St.Case_Feature /= LX_Stop_Feature
+                                  or else St.Case_No /= LX_Stop_Case)
+                                 and then not LX_Stop_Before (St.Dist_Cm)))
             then
                LX_Stop_Asked := False;
             end if;

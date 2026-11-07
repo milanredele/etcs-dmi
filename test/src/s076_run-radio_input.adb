@@ -171,6 +171,94 @@ function Radio_Input (St : Step_T) return Judgement_T is
    end Packet_Missing;
 
    function Get_Bits (Data : B.Byte_Array; At_Bit, Width : Natural)
+     return Unsigned_64;
+
+   --  The NID_PACKET of a packet the step's input line names of which
+   --  no copy in message I ends within its 8 x L_MESSAGE bits (8.4.4.2:
+   --  the on-board reads no further, 8.4.4.2.1), -1 when every named
+   --  packet has one. The packets' ends come from their L_PACKET (the
+   --  13 bits after NID_PACKET and Q_DIR of a packet to the train,
+   --  7.4.2), from the header's length after which the packets of the
+   --  var rows follow one another to the message's last bit; -1 when no
+   --  such length is found. A message whose bits past L_MESSAGE are a
+   --  packet the step does not name, or a further copy of one it names,
+   --  is not judged by it (4080431_02 step 73: four packets 131 for
+   --  the one named, the first within L_MESSAGE)
+   function Packet_Outrun (I : Positive) return Integer is
+      M     : Message_T renames Seq.Messages (I);
+      Limit : constant Natural := 8 * L_Message (I);
+      Data  : B.Byte_Array (1 .. (M.Bits + 7) / 8);
+      Ends  : array (1 .. M.Packet_Count) of Natural := (others => 0);
+      Fits  : Boolean := False;
+      K     : Positive := 6;
+
+      --  whether the packets follow one another from bit H to the last
+      --  bit of the message, their ends put in Ends
+      function Walk (H : Natural) return Boolean is
+         At_Bit : Natural := H;
+      begin
+         for J in 1 .. M.Packet_Count loop
+            if At_Bit + 23 > M.Bits
+              or else Get_Bits (Data, At_Bit, 8)
+                        /= Unsigned_64 (M.Packets (J))
+            then
+               return False;
+            end if;
+            At_Bit := At_Bit + Natural (Get_Bits (Data, At_Bit + 10, 13));
+            Ends (J) := At_Bit;
+         end loop;
+         return At_Bit = M.Bits;
+      end Walk;
+
+      --  the NID of word Word ("72/73") when an alternative of it is
+      --  present and none of its copies ends within Limit, else -1
+      function Outrun (Word : String) return Integer is
+         From  : Positive := Word'First;
+         Seen  : Integer := -1;
+      begin
+         for C in Word'Range loop
+            if Word (C) = '/' or else C = Word'Last then
+               for J in 1 .. M.Packet_Count loop
+                  if Img (Natural (M.Packets (J)))
+                    = Word (From .. (if Word (C) = '/' then C - 1 else C))
+                  then
+                     if Ends (J) <= Limit then
+                        return -1;
+                     end if;
+                     Seen := Natural (M.Packets (J));
+                  end if;
+               end loop;
+               From := C + 1;
+            end if;
+         end loop;
+         return Seen;
+      end Outrun;
+   begin
+      for J in Data'Range loop
+         Data (J) := M.Data (J);
+      end loop;
+      if W (5) /= "packets" or else M.Bits <= Limit then
+         return -1;
+      end if;
+      for H in 51 .. M.Bits loop
+         if Walk (H) then
+            Fits := True;
+            exit;
+         end if;
+      end loop;
+      if not Fits then
+         return -1;
+      end if;
+      while W (K) /= "" and then not Has (W (K), "=") loop
+         if Outrun (W (K)) >= 0 then
+            return Outrun (W (K));
+         end if;
+         K := K + 1;
+      end loop;
+      return -1;
+   end Packet_Outrun;
+
+   function Get_Bits (Data : B.Byte_Array; At_Bit, Width : Natural)
      return Unsigned_64
    is
       V : Unsigned_64 := 0;
@@ -356,6 +444,21 @@ begin
                     & " bits for L_MESSAGE"
                     & Natural'Image (L_Message (Msg))
                     & " (truncated in the extraction)");
+      elsif Packet_Outrun (Msg) >= 0 then
+         --  8.4.4.2: the header and packets of the sequence's message
+         --  run past its L_MESSAGE, so a packet the step names is cut
+         --  (8.4.4.2.1) and a later step that needs it fails for the
+         --  sequence's data (9990400_28 SV30 step 67: 411 bits for
+         --  L_MESSAGE 51, its packet 70 3 bits past it, in ERA's step
+         --  list too)
+         return NJ (R_S076_Defect, "RTM message " & Nid & " of"
+                    & Natural'Image (Seq.Messages (Msg).Bits)
+                    & " bits for L_MESSAGE"
+                    & Natural'Image (L_Message (Msg)) & " ("
+                    & Img (8 * L_Message (Msg))
+                    & " bits): packet"
+                    & Integer'Image (Packet_Outrun (Msg))
+                    & " runs past it");
       elsif Seq.Messages (Msg).NID = 38 and then L_Message (Msg) /= 7 then
          --  8.7.16: message 38 is NID_MESSAGE, L_MESSAGE, T_TRAIN and
          --  M_ACK, 51 bits in 7 bytes; a 38 of another length is the

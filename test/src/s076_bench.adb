@@ -4,8 +4,10 @@
 pragma Ada_2012;
 with Ada.Environment_Variables;
 with Ada.Streams;     use Ada.Streams;
+with DMI_Ack;
 with DMI_Core;
 with DMI_Protocol;
+with DMI_Text_Messages;
 with EVC_Braking;
 with EVC_Build_Up;
 with EVC_Core;
@@ -1823,6 +1825,24 @@ package body S076_Bench is
      (for some K in 1 .. Shown_N => Shown (K).Class = Class);
    function Text_Ever_Shown (Class : Natural) return Boolean is
      (Class in Ever_Shown'Range and then Ever_Shown (Class));
+   function Text_On_DMI (Class : Natural) return Boolean is
+      Id : Natural := 0;
+      Found : Boolean := False;
+   begin
+      for K in 1 .. Shown_N loop
+         if Shown (K).Class = Class then
+            Id := Shown (K).Id;
+            Found := True;
+         end if;
+      end loop;
+      return Found
+        and then DMI_Text_Messages.Holds (Id)
+        and then (not DMI_Text_Messages.Ack_Pending
+                  or else (DMI_Ack.Current_Valid
+                           and then DMI_Ack.Current_Kind
+                                      in DMI_Ack.Text_Kind_T
+                           and then DMI_Ack.Current_Text_ID = Id));
+   end Text_On_DMI;
    function SS_Count return Natural is (SSs_N);
    function SS (I : Positive) return SS_Event_T is (SSs (I));
    function DMI_Sent return Natural is (Sent_N);
