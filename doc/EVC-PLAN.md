@@ -21778,3 +21778,115 @@ telegrams carry 2.2 and its on-board supports 2.x only; ours supports
 of `evc_sessions-handover`, `evc_sessions`.
 
 **B530 left** (the bound reached with the second item): not traced.
+
+### Review of the sixty-eighth round: eight verdicts re-derived blind (e5/review-68) (2026-11-07)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items and the extra one
+were taken. No code, no triage line and no line of the authors was
+changed.
+
+1. The transition buffer's order. Mine: 4.8.5.1 one buffer (figure 3,
+   first filter) of three sets in all, balise or radio; 4.8.5.3 a
+   fourth replaces the oldest of all; 4.8.5.5 released in the sequence
+   received across both kinds; 4.8.5.4 a) deleted with the order. When
+   a balise set is "received" the clauses do not say (its location is
+   the first balise, its message complete at the last): either reading
+   is allowed, and so is either order at the same time. Author
+   (`EVC_Core.Stored.Bound_Transition_Buffer`,
+   `Release_Transition_Buffer`, `Balise_Oldest_Ms` the group's first
+   balise, `Stamp_Buffered` the cycle the port is read, the radio set
+   the older at a tie; `Scenario_Transition_Buffer_Order` radio,
+   radio, balise, the balise level crossing stored): one buffer, three
+   in all, released by reception. Agree.
+
+2. The Accepting RBC without a supervising session. Mine: 3.15.1.1.6
+   defines the Accepting RBC by the order alone; 3.15.1.3.1 a) its
+   session set up at once; 3.5.3.8 f) at the RBC/RBC border aborts the
+   set-up with the RBC whose area is left (aborting the Accepting one
+   would undo 3.15.1.3.1 a)); the order's session completing alone
+   stays Accepting until a report with the max safe front end past the
+   border goes to it (3.15.1.3.5). Author (`EVC_Sessions.Handover.
+   Find_Accepting` on any non-idle session with the order's RBC; at the
+   system version a non-Accepting session takes the supervising role,
+   the Accepting keeps its own; `Scenario_Handover_Unanswered_Rear`):
+   the same. Agree.
+
+3. The driver's entries of A.3.11. Mine: (a) the driver ID from 0-9
+   and a-z (A.3.11; DMI 10.3.5.17's keyboard has no capital, space or
+   sign): refused by the on-board; (b) A.3.11's ranges are 0-4095 m and
+   0-600 km/h, so a length or a speed of 0 is inside them, and the
+   DMI's operational range check (10.3.4.5) is one the driver may
+   overrule (10.3.4.5.5, .6): the on-board should take 0; (c) the
+   ranges A.3.11's, checked by the DMI at entry and by the on-board on
+   reception, the resolutions the DMI's (10.3.4.3); (d) the train
+   running number from the train interface is optional (SUBSET-034
+   3.1.1.4). Author (`EVC_Mission.Valid_Driver_ID`, the rows A.3.11
+   Table and 3.18.4.5.1): (a), (c), (d) the same; (b) a decision to
+   refuse 0 (`Train_Data_Of`: 1 .. 4_095, 5 .. 600). Disagree on (b),
+   a decision for the user (B3840).
+
+4. Two matrix rows. Mine: (a) 3.14.1.11 with the 4.12.1.2 Table: every
+   row is handled at mode entry (speed and distance monitoring, roll
+   away, direction, standstill, the Train Data and SR entries in
+   `EVC_Core.Modes.Revoke_Brake_Reasons`; T_NVCONTACT in
+   `Revoke_Contact_Brake`; linking, balise message and RAMS, the safe
+   consist and the OS/SH/LS acknowledgements in
+   `EVC_Procedures.Mode_Changed`; PT and RV distances in `Leave_Mode`;
+   Train Data from other sources in `Train_Data_Mode_Entered`; texts in
+   `EVC_Text_Messages.Mode_Changed`; level 0 in `EVC_Levels`), the STM
+   and level NTC rows out of scope: done. (b) 4.6.3 [81] built
+   (`EVC_Radio_Authority.SM_Authorised`), [83] in `Not_Evaluated_T`:
+   the row partial with [83] left. Author: 3.14.1.11 done, 4.6.3 Table
+   partial with [83] left (B3762). Agree.
+
+5. A message whose packets outrun L_MESSAGE. Mine: 9990400_28 step
+   67's message 24 is 75 header bits and packets 73 (180), 74 (92), 70
+   (64): 411 bits for L_MESSAGE 51 (408), packet 70 3 bits past it, the
+   length check of 8.4.4.2.1 fails and the message is inconsistent
+   (3.16.3.1.1 c)): rejected; 4080431_02 step 73's message 4 ends its
+   header, 15, 21, 27 and one 131 within L_MESSAGE 55 (440 bits), the
+   three other 131 outside the message. The runner blocks step 67 as
+   the sequence's defect and runs step 73. Author
+   (`S076_Run.Radio_Input.Packet_Outrun`): the same rule. Agree; its
+   comment calls packet 70 "cut", where 8.4.4.2.1 with 3.16.3.1.1 c)
+   rejects the whole message (same outcome for the runner).
+
+6. A second text to acknowledge while the first awaits it. Mine: DMI
+   5.4.1.9 queues the texts to acknowledge, the next shown 1 s after
+   the current one is acknowledged; SUBSET-027 4.3.1.1 writes record 18
+   "when a plain text message is shown to the driver". In 3120300_03
+   ours records the third text's start at its sending (500 m, step 70's
+   window) while the DMI shows it at step 75 (66.0 s, after the
+   acknowledgement at 65.3 s): no record 18 at step 76. (a) the DMI
+   hides it today; by the user's rule the on-board should hold it and
+   send it when the queue frees, so that the sending, the display and
+   record 18 coincide; (b) record 18 at the display; (c) the runner
+   judges by the DMI's state. Author (`S076_Bench.Text_On_DMI`,
+   Sea60e1d6 onboard, B3820): the same. Agree.
+
+7. 4060300_11 SV30 step 132. Mine: packet 80 of step 128's message 3
+   (LRBG BG1 at 50 m): LS at D_MAMODE 500 for 660 m, then OS at
+   D_MAMODE 1160 incremental (7.5.1.14, 3.6.3.2.4 a)), i.e. 1660 m past
+   BG1; the train at 1210 m overlaps the LS area only, [72] holds: the
+   LS acknowledgement is due, ours right; the sequence reads 1160 from
+   the LRBG (500 + 660), ERA's PDF too, while its later message is
+   incremental. The sequence's data. Author (S79f8dcc0 s076): the
+   same. Agree.
+
+8. 3050300_19 SV30 step 72. Mine: message 3 of step 70 refers to BG2
+   (NID_C 64, NID_BG 2, 100 m), the LRBG ours holds; its gradient
+   starts at D_GRADIENT 200 (300 m) while the estimated front end is at
+   200 m and no gradient is on board: 3.7.2.3, 3.7.2.3.1 refuse the MA
+   and its mode profile; ours stays in SR, right; ERA's PDF has 200
+   too. The sequence's data. Author (S9e1b46dc s076): the same. Agree.
+
+Extra, 4080417_01 SV30 step 151. Mine: SUBSET-027 4.2.4.21 bit 01 is
+LE01, Level 0 (DMI 13.2.1.1), bit 03 LE03, Level 1; the step expects
+Bit03 where its comment records Level 0; ours is in UN level 0. The
+sequence's data. Author (S301ac019 s076): the same. Agree.
+
+Counts: 8 items and the extra. Agreed: eight (1, 2, 4 to 8 and the
+extra); disagreed: one (item 3 (b), a Train Data length or speed of
+0, a decision); undecided: none. Backlog line: B3840. Calls: 102 of
+130 at this point.
