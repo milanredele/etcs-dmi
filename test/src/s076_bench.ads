@@ -434,6 +434,16 @@ package S076_Bench is
    --  power-up, across windows); one of Class put since the power-up
    function Text_Shown (Class : Natural) return Boolean;
    function Text_Ever_Shown (Class : Natural) return Boolean;
+   --  The DMI in the loop presents in area E now the text of Class the
+   --  on-board put last and has not removed (Text_Shown): held by
+   --  DMI_Text_Messages and, while a text there awaits its
+   --  acknowledgement, the one DMI_Ack offers (ERA_ERTMS_015560
+   --  5.4.1.9, 5.4.1.10: one at a time, the others not shown, the next
+   --  1 s after the current one is acknowledged). The newest of the
+   --  class, as the steps name no text: 3120300_03 step 70 expects the
+   --  third text not displayed while the first, of the same class, is
+   --  on offer
+   function Text_On_DMI (Class : Natural) return Boolean;
 
    type SS_Event_T is record
       Entry_Number, Event : Natural := 0;

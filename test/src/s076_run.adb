@@ -3824,17 +3824,20 @@ package body S076_Run is
             Put := True;
          end if;
       end loop;
-      --  displayed: sent in the window, or shown and not removed (the
-      --  bench's DMI state: 3120300_03 step 62, the text of BG1d read
-      --  in step 59's window at 400 m, the reach-point of step 61 at the
-      --  same place opening a new one); removed: a removal sent in the
-      --  window, or none of the class shown any more after one was
+      --  displayed and not displayed: what the DMI in the loop presents
+      --  at the step (3120300_03 step 62, the text of BG1d read in step
+      --  59's window, the reach-point of step 61 at the same place
+      --  opening a new one; step 70, the text of BG3d sent while BG1d's
+      --  awaits its acknowledgement, not shown by ERA_ERTMS_015560
+      --  5.4.1.9); removed: a removal sent in the window, or none of the
+      --  class put and not removed any more after one was
       case St_W is
          when Displayed =>
-            return Check (Put or else B.Text_Shown (Class),
-                          What & " sent", "none");
+            return Check (B.Text_On_DMI (Class), What & " shown",
+                          (if Put then "sent, not shown" else "none"));
          when Not_Displayed =>
-            return Check (not Put, What & " not sent", "sent");
+            return Check (not B.Text_On_DMI (Class), What & " not shown",
+                          "shown");
          when Removed =>
             return Check (Removed_W
                           or else (B.Text_Ever_Shown (Class)

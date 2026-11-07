@@ -21555,3 +21555,31 @@ step does not name is given as before, which tells 4080431_02 from
 9990400_28. One sequence moved: 9990400_28 SV30 failed at 69 -> blocked
 at 67 (S076-defect); the triage line S49bc1c1a s076 rewritten, its E7
 line (SV21, 3120200_05) unchanged.
+
+B3721, a text judged "not displayed" by the DMI's state. The premise
+held at the trace: 3120300_03 SV30 step 70 expects BG3d's plain text
+(500 m, Q_TEXTCONFIRM 1) not displayed while BG1d's (400 m,
+Q_TEXTCONFIRM 1) awaits its acknowledgement; ours sends both to the
+DMI, which offers one text to be acknowledged at a time and the next 1 s
+after the current one is acknowledged (ERA_ERTMS_015560 5.4.1.9,
+5.4.1.10). The DMI's state was readable without a new accessor:
+`DMI_Text_Messages.Holds`, `Ack_Pending` and `DMI_Ack.Current_Text_ID`
+are public (no edit in dmi/, no golden touched). Built:
+`S076_Bench.Text_On_DMI (Class)`, the text of the class the on-board put
+last and has not removed, presented when the DMI holds it and, while a
+text awaits its acknowledgement, when it is the one on offer; the newest
+of the class because the steps name no text (the first try, any text of
+the class, still failed step 70: BG1d's plain text is the one on offer).
+`S076_Run.Text_Message` judges "displayed" and "not displayed" by it;
+the fixed and plain texts are both presented by the DMI as texts, so no
+class needs the on-board's sending as a fallback (it stays in the
+failure's text, "sent, not shown"); "removed" and "not removed" are
+judged as before. The corpus: 408 sequences carry a text step (141 at
+SV30); 3120300_03 SV22 and SV30 moved from step 70 to step 76, nothing
+else moved (two steps after a first failure changed judgement). Step 76
+traced at SV30: record 18 START DISPLAYING PLAIN TEXT MESSAGE (SUBSET-027
+4.2.4.18, 4.3.1.1) is expected once the third text appears after the
+first's acknowledgement (65.3 s); ours records it when it sends the text
+(61.9 s, the window of step 68): the on-board's, triage Sea60e1d6
+onboard, backlog B3820 (hold a second text to be acknowledged until the
+first is, by the driver's seat rule). Triage Se341da87 model rewritten.
