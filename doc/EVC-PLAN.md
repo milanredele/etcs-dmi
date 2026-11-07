@@ -21890,3 +21890,147 @@ Counts: 8 items and the extra. Agreed: eight (1, 2, 4 to 8 and the
 extra); disagreed: one (item 3 (b), a Train Data length or speed of
 0, a decision); undecided: none. Backlog line: B3840. Calls: 102 of
 130 at this point.
+
+### E5 integration after the sixty-eighth round, the thirty-sixth of E6 (2026-11-07)
+
+Merged: e6/traces-modes (three "first look" lines of earlier rounds
+traced, all three the sequences' data: 4080417_01 step 151 expects
+DMI_SYMB_STATUS bit 03 (LE03, Level 1) where its comment records Level 0
+(bit 01), ours is in UN level 0 as the sequence says (the "TR" of the
+old line was the runner's mode7 = `Mode_T'Pos (M_UN)`); 4060300_11 step
+132: the second mode profile of step 128's message 3 starts D_MAMODE
+1160 beyond the first (incremental, 7.5.1.14, 3.6.3.2.4 a)), so only the
+LS area is overlapped and LS is acknowledged first (5.19.5.1, 4.6.3
+[72]), the sequence reads it from the LRBG; 3050300_19 step 72: the
+message 3 refers to the LRBG ours holds (BG2d) and its MA is refused
+because its gradient starts at 300 m while the estimated front end is at
+200 m (3.7.2.3, 3.7.2.3.1), the step's own comment asks for packets 21
+and 27 from the front end; ERA's PDF the same each time; no code change),
+e6/partials-left (17 partial rows re-read against the code and the
+scenarios: 12 set done, among them 3.7.3.1 m) (B033 done), 3.14.1.11
+(B014 and last round's B470), 5.8.4.1 (B845), 4.4.21.1.7 (B950), the
+three 4.7.2.1.x rows (B013, B090, B091 done), 5.4.3.2 S10 (the claim "SM
+missing" wrong: `EVC_Sessions.Manoeuvre.Possible` held in SB, no scenario
+showed it: `Scenario_SM_Start_Of_Mission`), 5.11.2.2 S140 and its c) (a
+deferred row with the stale note "SM is not built": `Scenario_SM_Post_
+Trip` extended to the SM entry), A.3.11 Table (built: `EVC_Mission.
+Valid_Driver_ID` takes 1 to 16 characters from 0 to 9 and a to z, the
+capitals, spaces and signs it took as printable refused, DMI 10.3.5.17
+offering no capitals; decisions: a Train Data length or speed of 0
+refused by the on-board after the DMI's operational check, the ranges
+ours and the resolutions the DMI's; `Scenario_Driver_ID_Characters`),
+3.18.4.5.1 (decision: the train interface's running number of
+SUBSET-034 2.7.1 is optional, 3.1.1.4, not offered); 6 left partial
+with open ids only: A.3.5.1 7th bullet (B2341's "not called yet" was
+stale, B781's relocation left), 3.18.3.2 c) 1st bullet (B3760: the
+traction cut-off time is a 1 s default no format of the image carries),
+3.6.5.2.5 and its Tables 2a, 2b (B3761: `EVC_Sessions.Integrity`
+decision 2 still reads [10] and the SM terms as never true, buildable
+from `SM_Opposite` and `SM_Consist_Awaited`), 4.6.3 Table ([81] built,
+[83] in `Not_Evaluated_T`: B3762); `EVC_Mission` proved; clauses left 28
+to 17), e5/runner-judge (B3661: `S076_Run.Radio_Input.Packet_Outrun`
+blocks a step as S076-defect when a packet it names has no copy ending
+within 8 x L_MESSAGE, both numbers in the reason; 46 message blocks of
+the corpus exceed their L_MESSAGE, most of them train messages a step
+expects, one reached input passes (4080431_02 step 73, four packets 131
+of which the named one lies within); 9990400_28 SV30 failed at 69 to
+blocked at 67 (S49bc1c1a s076 rewritten); B3721: `S076_Bench.Text_On_
+DMI` reads what `DMI_Core` presents (`DMI_Text_Messages.Holds`,
+`Ack_Pending`, `DMI_Ack.Current_Text_ID`, all public: nothing in dmi/
+changed), `Text_Message` judges "displayed" and "not displayed" by it;
+3120300_03 moved from 70 to 76 in two versions, traced to ours: the
+JRU record 18 of the third text is written at its sending (61.9 s)
+where SUBSET-027 4.3.1.1 records it when shown to the driver (after the
+first text's acknowledgement at 65.3 s plus 1 s): Sea60e1d6 onboard,
+B3820 (by the driver's-seat rule the on-board holds a second text to be
+acknowledged until the first is acknowledged); B3660: `LX_Stop_Before`
+keeps the stop in rear of a non-protected LX across a case line while
+the on-board's temporary EOA lies ahead of the front end and short of
+the next step (9 steps in 5 SV30 sequences ask it, 7 right before a case
+line); 4080300_02 passes in three versions; the changed wording of the
+text judgement renamed three signatures (Seabc1f7c to Sde099aa7,
+S776cef6c to S30d22b77, Se341da87 to S4b4be9f1), left untriaged on the
+merged tree and re-keyed at the integration), e6/sessions-accepting
+(B3740 built as decided: both storages kept, a balise set received at
+its group's first balise (`Set_Info_T.Start_Ms`), a radio message in
+the cycle read from the port (`EVC_Radio_Authority.Stamp_Buffered`),
+`EVC_Core.Stored.Bound_Transition_Buffer` after the stores deletes the
+oldest set of either kind while both hold more than three (4.8.5.3),
+`Release_Transition_Buffer` at the switch to level 2 releases one set at
+a time in the order received, a balise set first only when strictly
+older than the oldest radio message (decision: at the same time the
+radio set is older, the port being read before the groups are
+evaluated), each applied before the next (4.8.5.5); `Balise_Buffered`
+bounded to 3 in its postcondition; `EVC_Test_Authority.Scenario_
+Transition_Buffer_Order` (an RBC level crossing, an MA, a group's
+crossing for the same NID_LX: the group's wins; a fourth set deletes
+the RBC's crossing), 3 checks failing on master; no sequence moved;
+B3720: 3.15.1.1.6 defines the Accepting RBC by the transition order, so
+`EVC_Sessions.Handover.Find_Accepting` no longer needs a supervising
+session and a session established while only an Accepting one exists
+takes the supervising role at the system version; `EVC_Test_Handover.
+Scenario_Handover_Unanswered_Rear`; 3050300_05 passes step 56 in three
+versions and moves to 63 in SV30 (ours: no JRU record 23 Bit09 for
+"Trackside not compatible" shown, S832505af, B3780) and to 62 in SV21
+and SV22 (the sequence's on-board supports 2.x only, ours 3.0: E7,
+Sad696360); B530 left at the bound, not traced) and the review
+e5/review-68.
+
+Review (the seventeenth): nine verdicts, eight agree (the buffer's one
+order and the author's two choices the clauses leave open; the
+Accepting role by the order; the rows 3.14.1.11 done and 4.6.3 Table
+partial; the L_MESSAGE rule, with the remark that 8.4.4.2.1 and
+3.16.3.1.1 c) reject the whole message, not the packet, the runner's
+outcome the same; the third text's record 18 ours; the three traces the
+sequences' data), one disagrees on a decision: B3840, a Train Data
+length or maximum speed of 0, inside A.3.11's ranges (0 to 4095 m, 0 to
+600 km/h), warned by the DMI's operational check the driver may overrule
+(10.3.4.5.5, 10.3.4.5.6) and then refused by `EVC_Mission.Train_Data_Of`
+(1 .. 4095, 5 .. 600): the reviewer would accept it or make the DMI's
+check technical; the author refuses it. Seventeen rounds of reviews:
+142 items, 123 agreed, 22 disagreed, 8 undecided; 37 lines, of which 8
+became fixes; 113.3 USD.
+
+Verification of the merged tree: an early chain on the partials-left
+package green (traces-modes changed no code); the full chain after the
+four merges green at once but for three signatures without a triage
+(the renamed text signatures, re-keyed in a commit of the integration,
+the runner then with none): `test/check.sh` ok; the full proof 14090
+checks (49 more: the buffer's stamps and bound, the identity check),
+none unproved, margin 47726 steps; cross build and stack 32768 B budget,
+margin 6024 B (unchanged); wasm and both smokes 0 failures; the runner
+1235 / 1022 / 933 (from 1232 / 1026 / 932), 0 regressions against the
+merged baseline. The merge: traces-modes and the review fast-forwarded;
+partials-left conflicted on the plan, runner-judge on the plan and the
+backlog, sessions-accepting on the plan, the backlog and the triage
+(both sides had rewritten Scb79aeb3: the author's kept, the other side's
+new line added); the two agents in `EVC_Radio_Authority` and the two in
+the matrix file did not conflict.
+
+Costs (doc/ROUNDS.csv): 47.8 USD with the review (40.7 for the four
+packages, 7.1 the review), 11 of 12 package items done (B530 left at the
+bound, for the third time), 3 of 20 brief premises wrong ("ours in TR";
+"the LRBG of the unlinked groups"; "SM missing from S10"), no agent over
+budget, three agents past the bound with the last item in hand (127,
+128, 139), one under it (106); the review took its extra item at 97 of
+100. Lessons: a change of a judgement's wording renames its failure
+signatures, and the runner's triage must be re-keyed in the same commit
+(the chain's untriaged count caught it, `test/check.sh` did not: B3860);
+a partial row whose note cites a closed backlog id is done work hidden
+by a stale note (12 of 17 this round), worth a check of the matrix
+against the backlog's states (B3861); a decision of the user taken in
+the morning was built and reviewed the same day (B3740).
+
+The matrix: clauses left 17 (todo 0, partial 17; done 2123: 12 rows set
+done this round, one of them from deferred). Open items:
+doc/BACKLOG.csv (26 open after this round, 28 with B3860 and B3861; 6
+added of which 1 by the review, 5 closed). Next: B3840 (the user's
+decision), B530 (the operated version in the JRU header: a brief of its
+own first item), B3780 (the record 23 of Trackside not compatible),
+B3820 (the second text to be acknowledged held by the on-board, its
+record 18), B3761 and B3762 (the SM terms of the integrity table and
+condition [83]), B3760 (the traction cut-off time in the image), B3700
+(the speed under the curve recomputed), B3380 (the message failing the
+Euroradio check: the port's input), B781's relocation, B1840 (a fault
+the host reports), B1360's records left; the review again (eight items,
+readings first, no backlog read).
