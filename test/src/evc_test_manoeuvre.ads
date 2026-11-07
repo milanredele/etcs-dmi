@@ -40,6 +40,10 @@ package EVC_Test_Manoeuvre is
    --  4.8.4 [1]: in PT the exit from TR with a more recent time stamp
    procedure Scenario_SM_Post_Trip;
 
+   --  5.4.3.2 S10: in the Start of Mission in level 2 the driver selects
+   --  SM (E34), refused by the RBC back to S10 (E35), then authorised
+   procedure Scenario_SM_Start_Of_Mission;
+
    --  3.6.4.1.5 last sentence: gamma 1 in Stand-By without valid Train
    --  Data with the safe consist length, in a Supervised Manoeuvre
    --  request and from the first authorisation to Non Leading

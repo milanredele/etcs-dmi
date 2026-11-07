@@ -711,7 +711,7 @@ efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageIn.SystemVersion
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode PT (E165)
 clause E4 done 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
+clause E4 done 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
 step Mode PT (E165)
 sub Sub-step1 - Set PT mode
 efs: Testing.SetPTMode(False)
@@ -723,7 +723,7 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S140 @ de
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode SB (E13)
 clause E4 done 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1.1
+clause E4 done 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1.1
 step Mode SB (E13)
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.S050

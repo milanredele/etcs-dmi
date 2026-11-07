@@ -381,6 +381,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Direction;
    EVC_Test_Manoeuvre.Scenario_SM_Brake_Reasons;
    EVC_Test_Manoeuvre.Scenario_SM_Post_Trip;
+   EVC_Test_Manoeuvre.Scenario_SM_Start_Of_Mission;
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;
