@@ -21530,3 +21530,55 @@ recomputed), B3721 (the runner judging "not displayed" by the DMI's
 state), B781's LS profile over a relocation, B1840 (a fault the host
 reports), B1360's records left; the review again (eight items, readings
 first, no backlog read).
+
+### Three traces of the modes: Unfitted expected in level 0 where ours trips, the On Sight acknowledgement symbol, the Movement Authority in Staff Responsible from a reference read unlinked (e6/traces-modes) (2026-11-07)
+
+**S301ac019, 4080417_01 step 151 (s076).** The premise ("ours is in
+TR, the JRU header mode 7") was wrong: the 7 the runner prints is
+`Mode_T'Pos (M_UN)`, and ours is in UN level 0 from the packet 41 of
+BG20d at 1600 m (M_LEVELTR 0, D_LEVELTR 0), as the sequence's steps 149
+and 150 say (both passed). Step 151 expects the record 21 with
+DMI_SYMB_STATUS bit 03 set, which is LE03, the Level 1 symbol (SUBSET-027
+4.2.4.21: bits 01 to 04 are LE01 to LE04; ERA_ERTMS_015560 13.2.1.1:
+LE01 is Level 0), where its comment says "Level 0 is RECORDED"; the same
+comment in 3050300_01 step 47 and 3120300_04 step 75 gives bit 01.
+ERA's PDF (page 23) has bit 03. The three versions alike. Triaged s076.
+
+**S79f8dcc0, 4060300_11 step 132 (s076).** Ours asks to acknowledge LS
+(DMI mode code 5) where the sequence expects OS. The message 3 of step
+128 (NID_LRBG = BG1d at 50 m, the train in PT at standstill at 1210 m)
+carries packet 80: D_MAMODE 500 LS over L_MAMODE 660, then one
+iteration D_MAMODE 1160 OS over 1000. D_MAMODE is the incremental
+distance to the start of the next mode profile (7.5.1.14, 3.6.3.2.4 a)),
+so the OS area starts 1660 m past BG1d; the profile ours stores is LS
+from 550 to 1210 m and OS from 1710 to 2710 m (read with a temporary
+print, not committed). The confidence interval at standstill (1139 to
+1187 m in ours) overlaps the LS area only, the furthest one, so 5.19.5.1
+and 4.6.3 [72] ask the LS acknowledgement first: right. The step's
+comment places the max safe front end in the OS area, reading 1160 m
+from the LRBG (the LS length 660 = 1160 - 500); the sequence's own
+message 3 at 1510 m is incremental (D_MAMODE 0 over 210, then
+D_MAMODE 210). ERA's PDF has the same values (the step on page 20, the
+message on page 41); the three versions alike. A scenario of the
+reading (a Limited Supervision area and an On Sight area from its end,
+the train over both in PT level 2: On Sight asked) passed on master and
+was not kept: no fix.
+
+**S9e1b46dc, 3050300_19 step 72 (s076).** The message 3 of step 70 (at
+200 m, SR level 2, standstill) passes 4.8.3 and 4.8.4 and refers to
+the LRBG ours holds: NID_LRBG 1048578 is NID_C 64, NID_BG 2, BG2d read
+at 100 m (two balises, Q_LINK 1, no linking information on board, so
+LRBG compliant by 3.6.2.2.2 a), its orientation known). The premise (a
+group read in SR not taken as the LRBG) was wrong. The stored
+information refuses the MA (`EVC_Stored_Information.Store_MA`): its
+packet 21 starts at D_GRADIENT 200 m from BG2d, at 300 m, while the
+estimated front end is at 200 m and no gradient was on board, so the
+gradient does not cover the MA from the estimated front end (3.7.2.3,
+3.7.2.3.1) and neither the MA nor its On Sight profile is accepted;
+ours stays SR without an MA, right. The step's comment asks for packets
+21 and 27 from at least the front end of the train; ERA's PDF has the
+same D_GRADIENT 200; the three versions alike (the baseline has SV21
+too, three sequences, not two).
+
+No change in evc/, no sequence moved (1232 / 1026 / 932). Three triage
+lines rewritten as s076; no backlog line.
