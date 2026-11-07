@@ -21530,3 +21530,28 @@ recomputed), B3721 (the runner judging "not displayed" by the DMI's
 state), B781's LS profile over a relocation, B1840 (a fault the host
 reports), B1360's records left; the review again (eight items, readings
 first, no backlog read).
+
+### The runner's judgements and blocks: a message outrunning its L_MESSAGE, a text judged by the DMI's state, the level crossing stop held across a case line (e5/runner-judge) (2026-11-07)
+
+B3661, a message whose packets run past its L_MESSAGE. The premise held
+at the trace: 9990400_28 SV30 step 67 gives the message 24 of 411 bits
+(75 of header, packets 73 180, 74 92, 70 64) with L_MESSAGE 51, 408
+bits (8.4.4.2), and step 69 fails for the packet 70 the on-board does
+not read past the message (8.4.4.2.1). The corpus: 46 message blocks
+have more bits than 8 x L_MESSAGE, most of them the train's messages a
+step expects (131, 159), inputs of four sequences that stop before them
+(4080425_01, 4080430_01, 4080455_07, 4080500_02) and one input reached
+and passing, 4080431_02 SV30 step 73 (message 4, 826 bits for 440: four
+packets 131 where the step names one, the first within L_MESSAGE; the
+message is refused for its time stamp, the step's purpose). Built in
+`S076_Run.Radio_Input`: `Packet_Outrun` finds the header's length after
+which the packets of the var rows follow one another by their L_PACKET
+(the 13 bits after NID_PACKET and Q_DIR, 7.4.2) to the message's last
+bit, and the step is blocked as S076-defect when a packet the step's
+line names has no copy ending within 8 x L_MESSAGE ("RTM message 24 of
+411 bits for L_MESSAGE 51 (408 bits): packet 70 runs past it"); a
+message whose bits past L_MESSAGE are a further copy or a packet the
+step does not name is given as before, which tells 4080431_02 from
+9990400_28. One sequence moved: 9990400_28 SV30 failed at 69 -> blocked
+at 67 (S076-defect); the triage line S49bc1c1a s076 rewritten, its E7
+line (SV21, 3120200_05) unchanged.

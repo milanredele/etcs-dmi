@@ -3035,7 +3035,7 @@ Subset-076-6-3_9990400_27_v400_SV22,passed,0,-
 Subset-076-6-3_9990400_27_v400_SV30,passed,0,-
 Subset-076-6-3_9990400_28_v400_SV21,failed,69,S49bc1c1a
 Subset-076-6-3_9990400_28_v400_SV22,blocked,67,extractor
-Subset-076-6-3_9990400_28_v400_SV30,failed,69,S49bc1c1a
+Subset-076-6-3_9990400_28_v400_SV30,blocked,67,S076-defect
 Subset-076-6-3_9990400_29_v400_SV21,passed,0,-
 Subset-076-6-3_9990400_29_v400_SV22,passed,0,-
 Subset-076-6-3_9990400_29_v400_SV30,passed,0,-
