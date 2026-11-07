@@ -1083,7 +1083,56 @@ package body EVC_Test_Manoeuvre is
              "SM post trip: the stop revoked, Initiate SM offered "
              & "(5.11.2.2 E135, S140 c)); rbc"
              & Natural'Image (Onboard_Field (3)));
+      --  5.11.2.2 S140 c): the driver selects SM (E190), the procedure of
+      --  5.21 runs from PT; refused (E200), back to S140, then authorised
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Waiting,
+             "SM post trip: 'Initiate SM' in PT sends message 131 "
+             & "(5.11.2.2 S140 c) E190, 5.21.2.2 A045)");
+      Give_Radio_Message (1, SM_Refused (T));
+      Stand_X (200);
+      Check (EVC_Core.Mode = M_PT and then not EVC_Sessions.SM_Waiting,
+             "SM post trip: SM refused, back to S140 in PT (5.11.2.2 "
+             & "E200)");
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (T /= 0 and then EVC_Core.Mode = M_SM,
+             "SM post trip: the authorisation, SM entered from PT (5.11.2.2 "
+             & "S140 c), 4.6.3 [81])");
    end Scenario_SM_Post_Trip;
+
+   procedure Scenario_SM_Start_Of_Mission is
+      T : Unsigned_64;
+   begin
+      Start_L2_SM;
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SB and then EVC_Position.LRBG.Valid
+             and then EVC_Train_Data.Consist_Available,
+             "SM at S10: Stand-By in level 2, the position referred to an "
+             & "LRBG, the safe consist length available (5.4.3.2 S10)");
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Check (T /= 0 and then EVC_Sessions.SM_Waiting,
+             "SM at S10: 'Initiate SM' in Stand-By sends message 131 "
+             & "(5.4.3.2 S10 E34, 5.21.2.2 A045)");
+      Give_Radio_Message (1, SM_Refused (T));
+      Stand_X (200);
+      Check (EVC_Core.Mode = M_SB and then not EVC_Sessions.SM_Waiting,
+             "SM at S10: SM refused, back to S10 in Stand-By (5.4.3.2 "
+             & "E35)");
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (T /= 0 and then EVC_Core.Mode = M_SM
+             and then EVC_Mission.Mission,
+             "SM at S10: the authorisation, the mission starts in SM "
+             & "(5.4.3.2 S10 E34, 4.6.3 [81])");
+   end Scenario_SM_Start_Of_Mission;
 
    procedure Scenario_SM_Gamma is
       T   : Unsigned_64;

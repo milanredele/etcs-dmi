@@ -4,7 +4,7 @@
 frame Override
 sequence End of Override: Balise group giving proceed information is passed
 case End of Override: Stop in SH is received
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 clause E4 done 5.8.4.1 e) ; efs 5.8.4.1.e
 step Setup - Trigger Override
 sub Setup
@@ -150,7 +150,7 @@ sub Check Override is not activate anymore
 expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Balise group not in the list of expected balises in SH mode is passed
 case End of Override: Balise group not in the list of expected balises in SH mode is passed
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 clause E4 done 5.8.4.1 g) ; efs 5.8.4.1.g
 step Setup - Trigger Override
 sub Setup
@@ -298,7 +298,7 @@ sub Check Override is not activate anymore
 expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Balise group not in the list of expected balises in SR mode is passed
 case End of Override: Balise group not in the list of expected balises in SR mode is passed
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 clause E4 done 5.8.4.1 g) ; efs 5.8.4.1.g
 step Setup - Trigger Override
 sub Setup
@@ -446,7 +446,7 @@ sub Check Override is not activate anymore
 expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Distance for train trip suppression exceeded
 case End of Override: Distance for train trip suppression exceeded
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 clause E4 done 5.8.4.1 b) ; efs 5.8.4.1.b
 step Setup - Trigger Override
 sub Setup
@@ -585,7 +585,7 @@ sub Check Override is not active anymore
 expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Former EoA has been passed
 case End of Override: Former EoA has been passed
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 clause E4 done 5.8.4.1 c) ; efs 5.8.4.1.c
 step Setup - Trigger Override
 sub Setup
@@ -730,7 +730,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 expect efs: Kernel.Override.OverrideSupervision.FormerEOA < BTM.AntennaDistance( aPointOfInterest => DistanceIntervalEnum.Min ) @ deadline=1
 sequence End of Override: MA is received from the RBC
 case End of Override: MA is received from the RBC
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 clause E4 done 5.8.4.1 f) ; efs 5.8.4.1.f
 step Setup - Trigger Override
 sub Setup
@@ -876,7 +876,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Max time exceeded
 case End of Override: Max time exceeded
 clause E4 done 5.8.4.1 a) ; efs 5.8.4.1.a
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 step Setup - Trigger Override
 sub Setup
 init 0.0 FS
@@ -1014,7 +1014,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Mode switches to LS
 case End of Override: Mode switches to LS
 clause E4 done 5.8.4.1 i) ; efs 5.8.4.1.i
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 step Setup - Trigger Override
 sub Setup
 init 0.0 FS
@@ -1159,7 +1159,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Mode switches to OS
 case End of Override: Mode switches to OS
 clause E4 done 5.8.4.1 i) ; efs 5.8.4.1.i
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 step Setup - Trigger Override
 sub Setup
 init 0.0 FS
@@ -1304,7 +1304,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Mode switches to SH
 case End of Override: Mode switches to SH
 clause E4 done 5.8.4.1 i) ; efs 5.8.4.1.i
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 step Setup - Trigger Override
 sub Setup
 init 0.0 FS
@@ -1449,7 +1449,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Mode switches to TR
 case End of Override: Mode switches to TR
 clause E4 done 5.8.4.1 i) ; efs 5.8.4.1.i
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 step Setup - Trigger Override
 sub Setup
 init 0.0 FS
@@ -1588,7 +1588,7 @@ expect efs: Kernel.Mode == ModeEnum.TR @ deadline=1
 expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: SR distance supervised is overpassed
 case End of Override: SR distance supervised is overpassed
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 clause E4 done 5.8.4.1 h) ; efs 5.8.4.1.h
 step Setup - Trigger Override
 sub Setup
@@ -1737,7 +1737,7 @@ expect efs: Kernel.Override.OverrideSupervision.FormerSRDistance < Kernel.TrainP
 sequence End of Override: Stop in SH is received
 case End of Override: Stop in SH is received
 clause E4 done 5.8.4.1 d) ; efs 5.8.4.1.d
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 step Setup - Trigger Override
 sub Setup
 init 0.0 SH
@@ -1883,7 +1883,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: Stop in SR is received
 case End of Override: Stop in SR is received
 clause E4 done 5.8.4.1 d) ; efs 5.8.4.1.d
-clause E4 partial 5.8.4.1 ; efs 5.8.4.1
+clause E4 done 5.8.4.1 ; efs 5.8.4.1
 step Setup - Trigger Override
 sub Setup
 init 0.0 FS

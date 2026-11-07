@@ -2659,7 +2659,7 @@ end init
 sub SubStep2
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
 case Offer driver selection
-clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.1
+clause E4 done 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.1
 step Offer driver selection, valid train data
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S140.RequestDriverSelection
@@ -2679,7 +2679,7 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S140.Driv
 expect efs: DMI.MasterDMI().In_Start.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: DMI.MasterDMI().In_ShuntingRequest.InputInformation.RequestStatus == RequestEnum.Request
 case Driver selects Start, level 1
-clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.2
+clause E4 done 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.2
 step Start selected, level 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S140.DriverSelectionRequested
@@ -2689,7 +2689,7 @@ efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S160
 expect efs: DMI.MasterDMI().In_Start.InputInformation.RequestStatus == RequestEnum.Disabled
 case Driver selects Start, level 2 or 3
-clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.3
+clause E4 done 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.3
 step Start selected, level 2
 sub Sub-step1
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
@@ -2707,7 +2707,7 @@ efs: DMI.MasterDMI().In_Start.ProvideDriverResponse()
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S150
 expect efs: DMI.MasterDMI().In_Start.InputInformation.RequestStatus == RequestEnum.Disabled
 case Driver selects SH
-clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
+clause E4 done 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
 step SH selected
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S140.DriverSelectionRequested

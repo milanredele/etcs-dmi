@@ -4854,7 +4854,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Offer selection of SH, NL or Data Entry
-clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10
+clause E4 done 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10
 step Offer possibility to select SH, NL or Data Entry
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -4864,7 +4864,7 @@ expect efs: DMI.MasterDMI().In_ShuntingRequest.InputInformation.RequestStatus ==
 expect efs: DMI.MasterDMI().In_NonLeadingRequest.InputInformation.RequestStatus == RequestEnum.Request
 expect efs: Kernel.MissionIsOngoing == False
 case Driver selects SH
-clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1
+clause E4 done 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1
 clause - absent Entry 5.4.3.3.18 ; efs Entry 5.4.3.3.18
 step Driver selects SH (E12), Level 0
 sub Sub-step1 - Set HandleModeChange and Mode
@@ -4908,8 +4908,8 @@ expect efs: DMI.MasterDMI().In_TrainData.InputInformation.RequestStatus == Reque
 expect efs: DMI.MasterDMI().In_NonLeadingRequest.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Unknown
 case Driver selects NL
-clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2
-clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2.1
+clause E4 done 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2
+clause E4 done 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2.1
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 clause - absent Entry 5.4.3.3.17 ; efs Entry 5.4.3.3.17
 step Driver selects NL (E10), Level0
@@ -4993,7 +4993,7 @@ expect efs: Kernel.Mode == ModeEnum.NL
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Unknown
 expect efs: Kernel.MissionIsOngoing
 case Driver selects Train Data Entry
-clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.3
+clause E4 done 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.3
 step Driver selects Train Data Entry
 sub Sub-step1 - Set HandleModeChange and Mode
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedureSM.StartOfMission.S10.DriverSelectionRequested

@@ -26,24 +26,24 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | JRU | jru.scn | 29 | 99 | 35 / 54 | 0 / 136 | 0 | other 30 |
 | LX | lx.scn | 9 | 44 | 40 / 33 | 0 / 126 | 0 | absent 20, done 19 |
 | Level transitions | level-transitions.scn | 10 | 33 | 52 / 36 | 0 / 42 | 0 | absent 8, done 8, other 1 |
-| Linking | linking.scn | 12 | 34 | 64 / 23 | 0 / 93 | 0 | absent 19, done 38, partial 1 |
+| Linking | linking.scn | 12 | 34 | 64 / 23 | 0 / 93 | 0 | absent 19, done 39 |
 | MA | ma.scn | 18 | 64 | 85 / 84 | 0 / 208 | 0 | absent 34, deferred 4, done 15 |
 | MRSP | mrsp.scn | 10 | 11 | 14 / 7 | 35 / 2 | 0 | absent 18, done 9 |
 | Mode Profile | mode-profile.scn | 14 | 54 | 42 / 30 | 0 / 63 | 0 | absent 5, deferred 1, done 7, other 3 |
 | Movement | movement.scn | 6 | 20 | 17 / 49 | 0 / 45 | 0 | other 12 |
 | National and default data | national-and-default-data.scn | 110 | 131 | 21 / 30 | 7 / 179 | 0 | absent 134, done 10 |
 | On Sight | on-sight.scn | 3 | 12 | 12 / 17 | 0 / 20 | 0 | absent 2, done 7 |
-| Override | override.scn | 23 | 63 | 118 / 153 | 0 / 155 | 0 | absent 2, done 43, partial 14 |
+| Override | override.scn | 23 | 63 | 118 / 153 | 0 / 155 | 0 | absent 2, done 57 |
 | Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, deferred 1, done 50 |
 | Pre-indication location | pre-indication-location.scn | 2 | 4 | 4 / 3 | 4 / 4 | 0 | absent 2 |
 | Release speed | release-speed.scn | 1 | 2 | 2 / 1 | 0 / 4 | 0 | done 3 |
 | Reversing | reversing.scn | 5 | 13 | 16 / 15 | 0 / 30 | 0 | absent 8, done 8 |
 | Route suitability | route-suitability.scn | 7 | 23 | 36 / 47 | 0 / 50 | 0 | absent 3, done 10 |
-| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | done 59, n/a 3, partial 2 |
+| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | done 61, n/a 3 |
 | Speed and distance monitoring | speed-and-distance-monitoring.scn | 15 | 22 | 51 / 14 | 49 / 5 | 2 | absent 19, done 7 |
 | Speed restriction to ensure permitted braking distance | speed-restriction-to-ensure-permitted-braking-distance.scn | 5 | 18 | 10 / 7 | 0 / 43 | 0 | absent 4, done 4 |
 | Staff Responsible | staff-responsible.scn | 3 | 6 | 6 / 16 | 0 / 12 | 0 | absent 3, done 6 |
-| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 1, done 129, partial 5 |
+| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 1, done 134 |
 | Static Speed Profile | static-speed-profile.scn | 3 | 9 | 10 / 6 | 15 / 18 | 0 | absent 6, done 9 |
 | Supervision limits | supervision-limits.scn | 22 | 48 | 59 / 12 | 51 / 32 | 8 | absent 19, done 30 |
 | System Version 1 Translations | system-version-1-translations.scn | 30 | 64 | 30 / 34 | 0 / 34 | 0 | absent 41 |
@@ -52,7 +52,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Targets and brake deceleration curves | targets-and-brake-deceleration-curves.scn | 7 | 14 | 34 / 8 | 15 / 6 | 0 | absent 4 |
 | Text messages | text-messages.scn | 5 | 10 | 11 / 36 | 0 / 44 | 0 | absent 21, done 5 |
 | Track conditions | track-conditions.scn | 1 | 13 | 14 / 3 | 0 / 18 | 0 | absent 3, done 2 |
-| Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 33, n/a 1, partial 4 |
+| Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 37, n/a 1 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 12, done 669, n/a 5, other 52, partial 26 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 12, done 695, n/a 5, other 52 |

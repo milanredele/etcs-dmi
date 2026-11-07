@@ -289,6 +289,7 @@ begin
    EVC_Test_Train_Data.Scenario_Engine_Length;
    EVC_Test_Train_Data.Scenario_Released_TRN;
    EVC_Test_Train_Data.Scenario_Train_Type;
+   EVC_Test_Train_Data.Scenario_Driver_ID_Characters;
    Scenario_Driver_Level_Table;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_0_Ack_In_SH;
@@ -381,6 +382,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Direction;
    EVC_Test_Manoeuvre.Scenario_SM_Brake_Reasons;
    EVC_Test_Manoeuvre.Scenario_SM_Post_Trip;
+   EVC_Test_Manoeuvre.Scenario_SM_Start_Of_Mission;
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;
