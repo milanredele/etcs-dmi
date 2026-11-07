@@ -61,6 +61,17 @@ is
       N := 0;
    end Delete_All;
 
+   procedure Delete_Oldest
+     with Refined_Global => (In_Out => (Sets, N))
+   is
+   begin
+      for S in 1 .. Max_Sets - 1 loop
+         pragma Loop_Invariant (True);
+         Sets (S) := Sets (S + 1);
+      end loop;
+      N := N - 1;
+   end Delete_Oldest;
+
    --  4.8.5.1, 4.8.5.3
    procedure New_Set (I : Set_Info_T)
      with Refined_Global => (In_Out => (Sets, N))

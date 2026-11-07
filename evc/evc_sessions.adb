@@ -759,6 +759,12 @@ is
          if R.Supervising = R.No_Session and then R.Accepting = R.No_Session
          then
             R.Set_Roles (R.Session_Ref_T (S), R.No_Session);
+         elsif R.Supervising = R.No_Session and then R.Roles_Consistent
+           and then R.Accepting /= R.Session_Ref_T (S)
+         then
+            --  3.15.1.1.6: the RBC of the contact, the Handing Over one,
+            --  when the order came before its session was established
+            R.Set_Roles (R.Session_Ref_T (S), R.Accepting);
          end if;
       else
          --  3.5.3.7 d) second bullet: the driver informed (DMI

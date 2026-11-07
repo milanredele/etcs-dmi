@@ -135,9 +135,11 @@ is
    --  level 1, the packets of the balise transition buffer the units take
    --  themselves, before the stores' release deletes the sets: the
    --  linking to EVC_Position (it replaces the RBC's now), the reversing
-   --  packets 138, 139 to EVC_Procedures, in the order received
+   --  packets 138, 139 to EVC_Procedures, in the order received; the
+   --  first Sets sets (the oldest one when the balise and radio sets are
+   --  released one by one in the order received, 4.8.5.5)
    --  @req 4.8.3.1.1 Table-footnote [1]
-   procedure Release_Unit_Packets
+   procedure Release_Unit_Packets (Sets : Natural)
      with Global => (Input  => (EVC_Stored_Information.State,
                                 EVC_Origins.State, EVC_Odometry.State),
                      In_Out => (EVC_Position.State, EVC_Procedures.State)),
@@ -158,7 +160,11 @@ is
    --  location of an announced one, Evaluate_Modes_And_Levels): the
    --  transition buffer released at once, its messages judged in level 2
    --  and taken by the stores before the procedures and the mode machine
-   --  of the cycle (an MA kept for the transition: no trip by [39])
+   --  of the cycle (an MA kept for the transition: no trip by [39]); at
+   --  the transition to level 2 the balise sets of 4.8.3 [2] and the
+   --  radio messages one by one in the sequence received across both,
+   --  each taken before the next (4.8.5.6 a)); at the transition to
+   --  level 1 the balise sets of [1]
    --  @req 4.8.3.1.1 Table-footnote [1], 4.8.5.5, 3.18.4.5.3
    --  @req 4.8.3.1.1 Table-footnote [2]
    procedure Release_Transition_Buffer

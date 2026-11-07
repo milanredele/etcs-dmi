@@ -71,6 +71,14 @@ is
      with Global => (In_Out => State),
           Post => Count = 0;
 
+   --  The oldest set deleted, the others kept in their order: released
+   --  at the transition (4.8.5.5), or replaced by a newer set of the
+   --  radio buffer when the two hold more than three (4.8.5.3)
+   procedure Delete_Oldest
+     with Global => (In_Out => State),
+          Pre  => Count > 0,
+          Post => Count = Count'Old - 1;
+
    --  4.8.5.1, 4.8.5.3: a new, empty set for a group, the oldest set
    --  deleted when three are kept
    --  @req 4.8.5.3

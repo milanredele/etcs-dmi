@@ -129,6 +129,35 @@ is
       end if;
    end Apply_Cut;
 
+   --  4.8.5.1, 4.8.5.3: the balise sets of EVC_Stored_Information and the
+   --  radio sets of EVC_Radio_Authority are one transition buffer of
+   --  three sets. The radio messages read from the port in this cycle
+   --  stamped with its time; while the two hold more than three, the
+   --  oldest of both deleted. Decision: a balise set is received at
+   --  its group's first balise, a radio set in the cycle that read it;
+   --  at the same time the radio set is the older (the port is read
+   --  before the groups are evaluated)
+   --  @req 4.8.5.1, 4.8.5.3
+   procedure Bound_Transition_Buffer is
+   begin
+      EVC_Radio_Authority.Stamp_Buffered (Unsigned_64 (Clock_Ms));
+      for I in 1 .. EVC_Radio_Authority.Buffer_Size loop
+         pragma Loop_Invariant (True);
+         exit when EVC_Radio_Authority.Buffered
+                   <= EVC_Radio_Authority.Buffer_Size
+                        - EVC_Stored_Information.Balise_Buffered;
+         if EVC_Radio_Authority.Buffered = 0
+           or else (EVC_Stored_Information.Balise_Buffered > 0
+                    and then EVC_Stored_Information.Balise_Oldest_Ms
+                               < EVC_Radio_Authority.Oldest_Buffered_Ms)
+         then
+            EVC_Stored_Information.Delete_Oldest_Balise_Set;
+         else
+            EVC_Radio_Authority.Delete_Oldest_Buffered;
+         end if;
+      end loop;
+   end Bound_Transition_Buffer;
+
    procedure Evaluate_Stored_Information is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
@@ -188,6 +217,7 @@ is
       if EVC_Mission.Categories_Changed and then EVC_Odometry.Standstill then
          EVC_Radio_Authority.Delete_Transition_Information;
       end if;
+      Bound_Transition_Buffer;
       for I in 1 .. EVC_Stored_Information.Event_Count loop
          declare
             E : constant EVC_Stored_Information.Event_T :=
@@ -230,7 +260,7 @@ is
                                         Acceptance_Context));
    end Take_Held_Linking;
 
-   procedure Release_Unit_Packets is
+   procedure Release_Unit_Packets (Sets : Natural) is
       pragma Warnings
         (GNATprove, Off, """R"" is set by * but not used after*",
          Reason => "the reader of one packet is not used after it");
@@ -244,7 +274,9 @@ is
       M0 : constant Boolean := EVC_Position.Manoeuvre_Orientation;
       use type ETCS_Catalogue.Packet_Kind_T;
    begin
-      for S in 1 .. EVC_Stored_Information.Balise_Buffered loop
+      for S in 1 .. Natural'Min (Sets,
+                                 EVC_Stored_Information.Balise_Buffered)
+      loop
          pragma Loop_Invariant
            (EVC_Position.Orientation = O0
             and then EVC_Position.Manoeuvre_Orientation = M0
@@ -280,12 +312,18 @@ is
    end Release_Unit_Packets;
 
    procedure Release_Transition_Buffer is
-      First    : constant Positive := EVC_Radio_Info.Count + 1;
+      First     : Positive;
       M_Status  : ETCS_Message.Status_T;
       S         : RTM_Session_T;
       Last      : Natural;
       Accepting : Boolean;
       Part      : Boolean;
+      O0 : constant EVC_Distances.Sense_T := EVC_Position.Orientation;
+      C0 : constant EVC_Position.Cab_T := EVC_Position.Active_Cab;
+      L0 : constant EVC_Location.Anchor_T := EVC_Position.LRBG;
+      DO0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Over;
+      DU0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Under;
+      M0 : constant Boolean := EVC_Position.Manoeuvre_Orientation;
 
       Ctx      : constant EVC_Stored_Information.Mode_Context_T :=
         (Mode        => Current_Mode,
@@ -295,50 +333,73 @@ is
          SR_End      => SR_End);
    begin
       --  4.8.5.5: the sets of balise groups kept for
-      --  the transition to level 1 (4.8.3 [1]) or level 2 ([2], before
-      --  the radio messages kept for it), released and taken in the
-      --  cycle of the transition as the radio ones in level 2
-      if (EVC_Levels.Switched_To (L1) or else EVC_Levels.Switched_To (L2))
+      --  the transition to level 1 (4.8.3 [1]), released and taken in
+      --  the cycle of the transition
+      if EVC_Levels.Switched_To (L1)
         and then EVC_Stored_Information.Balise_Buffered > 0
       then
-         Release_Unit_Packets;
+         Release_Unit_Packets (EVC_Stored_Information.Balise_Buffered);
          EVC_Stored_Information.Release_Balise_Buffer
            (Unsigned_64 (Clock_Ms), Ctx);
          Apply_Cut;
       end if;
-      if not EVC_Levels.Switched_To (L2)
-        or else EVC_Radio_Authority.Buffered = 0
-      then
+      if not EVC_Levels.Switched_To (L2) then
          return;
       end if;
-      EVC_Radio_Authority.Release_At_Transition;
-      for I in 1 .. EVC_Radio_Authority.Buffer_Size loop
-         pragma Loop_Invariant (True);
-         exit when not EVC_Radio_Authority.Has_Released;
-         Accepting := EVC_Radio_Authority.Released_Accepting;
-         Part := EVC_Radio_Authority.Released_Part;
-         EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
-         EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
-                                       M_Status);
-         if M_Status = ETCS_Message.Accepted then
-            --  4.8.2.1 c) exception 2: the Accepting RBC's; 4.8.5.2.1 the
-            --  set of a general message
-            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
-                                              Accepting, Part);
+      --  4.8.5.5 at the transition to level 2: the balise sets ([2]) and
+      --  the radio messages kept for it released one by one in the
+      --  sequence they have been received (Bound_Transition_Buffer), each
+      --  judged in level 2 and taken before the next (4.8.5.6 a), b))
+      if EVC_Radio_Authority.Buffered > 0 then
+         EVC_Radio_Authority.Release_At_Transition;
+      end if;
+      for I in 1 .. 2 * EVC_Radio_Authority.Buffer_Size loop
+         pragma Loop_Invariant
+           (EVC_Position.Orientation = O0
+            and then EVC_Position.Manoeuvre_Orientation = M0
+            and then EVC_Position.Active_Cab = C0
+            and then EVC_Position.LRBG = L0
+            and then EVC_Position.Doubt_Over = DO0
+            and then EVC_Position.Doubt_Under = DU0);
+         exit when EVC_Stored_Information.Balise_Buffered = 0
+           and then not EVC_Radio_Authority.Has_Released;
+         if EVC_Stored_Information.Balise_Buffered > 0
+           and then (not EVC_Radio_Authority.Has_Released
+                     or else EVC_Radio_Authority.Buffered = 0
+                     or else EVC_Stored_Information.Balise_Oldest_Ms
+                               < EVC_Radio_Authority.Oldest_Buffered_Ms)
+         then
+            Release_Unit_Packets (1);
+            EVC_Stored_Information.Release_Balise_Set
+              (Unsigned_64 (Clock_Ms), Ctx);
+         else
+            First := EVC_Radio_Info.Count + 1;
+            Accepting := EVC_Radio_Authority.Released_Accepting;
+            Part := EVC_Radio_Authority.Released_Part;
+            EVC_Radio_Authority.Take_Released
+              (S, Latched_RTM (1).Data, Last);
+            EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
+                                          M_Status);
+            if M_Status = ETCS_Message.Accepted then
+               --  4.8.2.1 c) exception 2: the Accepting RBC's; 4.8.5.2.1
+               --  the set of a general message
+               EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
+                                                 Accepting, Part);
 
-            --  3.18.4.5.3: packet 140
-            EVC_Mission.Take_RBC_TRN (Current_Mode);
+               --  3.18.4.5.3: packet 140
+               EVC_Mission.Take_RBC_TRN (Current_Mode);
+            end if;
+            --  the linking and the texts of the released set, taken in
+            --  level 2
+            EVC_Position.Take_Radio_Linking
+              (EVC_Acceptance.Third_Filter (EVC_Acceptance.Linking,
+                                            Acceptance_Context), First);
+            EVC_Text_Messages.Take_Radio (First);
+            EVC_Stored_Information.Evaluate_Released
+              (First, Unsigned_64 (Clock_Ms), Ctx);
          end if;
+         Apply_Cut;
       end loop;
-      --  4.8.5.5: the linking and the texts of the released sets, taken
-      --  in level 2
-      EVC_Position.Take_Radio_Linking
-        (EVC_Acceptance.Third_Filter (EVC_Acceptance.Linking,
-                                      Acceptance_Context), First);
-      EVC_Text_Messages.Take_Radio (First);
-      EVC_Stored_Information.Evaluate_Released
-        (First, Unsigned_64 (Clock_Ms), Ctx);
-      Apply_Cut;
    end Release_Transition_Buffer;
 
    procedure Take_Radio_Linking is

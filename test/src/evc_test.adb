@@ -413,6 +413,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Exception_2;
    EVC_Test_Handover.Scenario_Handover_Contact;
    EVC_Test_Handover.Scenario_Handover_Rear_Border;
+   EVC_Test_Handover.Scenario_Handover_Unanswered_Rear;
    EVC_Test_Handover.Scenario_Handover_Rear_Report;
    EVC_Test_Handover.Scenario_Handover_Roll_Back;
    EVC_Test_Handover.Scenario_Handover_Train_Data_Once;
@@ -460,6 +461,7 @@ begin
    Scenario_Radio_Acceptance;
    Scenario_Transition_Buffer;
    Scenario_L2_Balise_Buffer_LX;
+   Scenario_Transition_Buffer_Order;
    Scenario_PBD_By_Radio_Buffered;
    Scenario_Buffer_Three_Sets;
    Scenario_Own_Units_Stored;
