@@ -133,7 +133,12 @@ is
    end Delete;
 
    --  The session S, other than the supervising one, set up with the
-   --  Accepting RBC becomes the Accepting one (3.15.1.1.6)
+   --  Accepting RBC becomes the Accepting one (3.15.1.1.6: the order
+   --  defines the Accepting RBC; decision: also while no session
+   --  supervises yet, the set-up with the RBC of the contact unanswered,
+   --  so that the border keeps it, 3.5.3.8 f), and makes it the
+   --  supervising one, 3.15.1.3.7)
+   --  @req 3.15.1.3.1 a)
    procedure Find_Accepting
      with Global => (In_Out => R.State, Input => Order),
           Post => R.Sessions = R.Sessions'Old
@@ -141,7 +146,7 @@ is
       Sv : constant R.Session_Ref_T := R.Supervising;
       N  : constant R.Session_Count_T := R.Sessions;
    begin
-      if not Order.Present or else Sv = R.No_Session
+      if not Order.Present
         or else R.Accepting /= R.No_Session
         or else not R.Roles_Consistent
       then

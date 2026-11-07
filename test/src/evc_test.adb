@@ -411,6 +411,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Exception_2;
    EVC_Test_Handover.Scenario_Handover_Contact;
    EVC_Test_Handover.Scenario_Handover_Rear_Border;
+   EVC_Test_Handover.Scenario_Handover_Unanswered_Rear;
    EVC_Test_Handover.Scenario_Handover_Rear_Report;
    EVC_Test_Handover.Scenario_Handover_Roll_Back;
    EVC_Test_Handover.Scenario_Handover_Train_Data_Once;

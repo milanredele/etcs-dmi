@@ -21572,3 +21572,37 @@ bound), passes. Runner: no sequence moved (0 regressions, 0
 improvements). Rows 4.8.5.1, 4.8.5.3, 4.8.5.5 noted with `@req`; proofs
 of `evc_stored_information-balise_buffer`, `evc_stored_information`,
 `evc_radio_authority-buffer`, `evc_radio_authority`, `evc_core-stored`.
+
+**B3720, the Accepting RBC without a supervising session.** The trace
+of 3050300_05 SV30 held the line: BG2d at 200 m (packet 42, RBC 1515)
+opens session 1, never answered; BG3d at 300 m (packet 131, RBC 1616)
+opens session 2 at once (3.15.1.3.1 a)), without the Accepting role
+because `EVC_Sessions.Handover.Find_Accepting` gave it only while a
+session supervises; at the front border `Handover.Switch` set the
+contact to 1616 and cleared the roles, so at the min safe rear end
+over the border (1000 m, 404.4 s) `Abort_Being_Established (Keep_Roles
+=> True)` released both sessions. The clauses: 3.15.1.1.6 "the
+Accepting RBC is defined by the RBC transition order, while the
+Handing Over RBC is the RBC which the on-board considers as the
+supervising RBC when receiving" the order (here 1515, the contact);
+3.5.3.8 f) aborts a set-up when the min safe rear end passes the
+RBC/RBC border, which, read with 3.15.1.3.1 a) and 3.15.1.3.7, is the
+set-up with the RBC whose area is left. Decision: the role from the
+order alone (`Find_Accepting` without the supervising condition); the
+switch makes the Accepting session the supervising one, the rear border
+keeps it and releases the other. With it, a session established while
+only an Accepting one exists (the Handing Over RBC's, answered late)
+takes the supervising role at its system version (`EVC_Sessions`,
+3.15.1.1.6). Scenario `EVC_Test_Handover.Scenario_Handover_Unanswered_Rear`
+(in the handover package, where the two-RBC helpers are, not in
+`EVC_Test_Sessions`): failed on master in both checks, passes. Runner:
+3050300_05 passes step 56 in three versions; SV30 now fails at step 63
+(S832505af, onboard, B3780: the DMI shows Trackside not compatible
+after the message 32 with M_VERSION 3.0 and 154, 156 are sent, but no
+record 23 is written in the window), SV21 and SV22 at step 62
+(Sad696360, E7: the message 32 carries 3.0 while the sequence's
+telegrams carry 2.2 and its on-board supports 2.x only; ours supports
+3.0, so it is compatible). Rows 3.5.3.8 f), 3.15.1.3.1 a) noted; proofs
+of `evc_sessions-handover`, `evc_sessions`.
+
+**B530 left** (the bound reached with the second item): not traced.

@@ -765,6 +765,42 @@ package body EVC_Test_Handover is
              & "the supervising or accepting role)");
    end Scenario_Handover_Rear_Border;
 
+   --  SUBSET-076 3050300_05: the group 10 at 100 m orders a session with
+   --  RBC 300 (packet 42), which never answers; the group 20 at 200 m
+   --  orders the transition to RBC 400 at 500 m (packet 131). 3.15.1.1.6:
+   --  the order defines the Accepting RBC, a supervising session or not;
+   --  3.15.1.3.1 a) the session with 400 set up at once; at the border
+   --  the contact is 400's (3.15.1.3.7); 3.5.3.8 f) at the min safe rear
+   --  end past the border aborts the set-up with 300, whose area is
+   --  left, and keeps the one with 400
+   procedure Scenario_Handover_Unanswered_Rear is
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 200));
+      ETCS_Track_Packets.P131.Encode (P131 (300, 400), W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (25_000);
+      Stand;
+      Check (R.Info (1).RBC.NID_RBC = 300 and then R.Being_Established (1)
+             and then R.Info (2).RBC.NID_RBC = 400
+             and then R.Being_Established (2) and then R.Accepting = 2,
+             "handover unanswered: the set-up with 300 unanswered, the "
+             & "session with 400 set up at once and Accepting (3.15.1.1.6, "
+             & "3.15.1.3.1 a))");
+      Run_X (90_000);
+      Stand;
+      Check (R.Contact.RBC.NID_RBC = 400 and then R.Info (1).State = R.Idle
+             and then R.Being_Established (2) and then R.Supervising = 2,
+             "handover unanswered: the min safe rear end past the border, "
+             & "the set-up with 300 aborted, the one with 400 kept "
+             & "(3.5.3.8 f), 3.15.1.3.7)");
+   end Scenario_Handover_Unanswered_Rear;
+
    --  The min safe rear end of the reported position, cm from the LRBG:
    --  packet 0's D_LRBG less L_DOUBTOVER, less the train length
    function Reported_Rear return Integer_64 is
