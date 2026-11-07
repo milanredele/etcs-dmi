@@ -458,6 +458,7 @@ begin
    Scenario_Radio_Acceptance;
    Scenario_Transition_Buffer;
    Scenario_L2_Balise_Buffer_LX;
+   Scenario_Transition_Buffer_Order;
    Scenario_PBD_By_Radio_Buffered;
    Scenario_Buffer_Three_Sets;
    Scenario_Own_Units_Stored;

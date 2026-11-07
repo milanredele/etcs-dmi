@@ -3495,6 +3495,48 @@ is
       Balise_Buffer.Open (S, P, R);
    end Open_Balise_Packet;
 
+   function Balise_Oldest_Ms return Unsigned_64 is
+     (Balise_Buffer.Info (1).Start_Ms)
+     with Refined_Global => Balise_Buffer.State;
+
+   procedure Delete_Oldest_Balise_Set
+     with Refined_Global => (In_Out => Balise_Buffer.State)
+   is
+   begin
+      Balise_Buffer.Delete_Oldest;
+   end Delete_Oldest_Balise_Set;
+
+   --  4.8.5.5, 4.8.5.6
+   procedure Release_Balise_Set (Now_Ms  : Unsigned_64;
+                                 Context : Mode_Context_T)
+     with Refined_Global =>
+            (In_Out => (EVC_Track_Description.State,
+                        EVC_Movement_Authority.State,
+                        EVC_Track_Conditions.State,
+                        EVC_Text_Messages.State,
+                        EVC_National_Values.State,
+                        EVC_Levels.State, EVC_Sessions.State,
+                        EVC_LS_Display.State,
+                        Events, Event_N, Cut, Msg_Count,
+                        Balise_Buffer.State,
+                        TAF_L2_New, TAF_L2_Loc),
+             Output => (MA_Board, Profile_Overlap, Covered_Flag,
+                        Slippery_Flag),
+             Input  => (EVC_Origins.State, EVC_Position.State,
+                        EVC_Odometry.State, EVC_Train_Data.State,
+                        Group_Country))
+   is
+      T     : constant Origin_Table_T := Origin_Table;
+      Train : constant Train_Frame_T := Train_Frame;
+   begin
+      Take_Balise_Set (1, T, Train, Context, Now_Ms);
+      Balise_Buffer.Delete_Oldest;
+      Build_Mode_Conditions
+        (T, Train,
+         (if EVC_Movement_Authority.MA_Present
+          then EVC_Movement_Authority.MA_Sense else Train.Sense));
+   end Release_Balise_Set;
+
    --  4.8.5.5, 4.8.5.6
    procedure Release_Balise_Buffer (Now_Ms  : Unsigned_64;
                                     Context : Mode_Context_T)

@@ -23,6 +23,9 @@ is
       --  description (the SSP and the gradient, packets 27 and 21)
       MA        : Boolean := False;
       Track     : Boolean := False;
+      --  4.8.5.5: received at Received_Ms, once Stamp_Received stamped it
+      Stamped     : Boolean := False;
+      Received_Ms : Interfaces.Unsigned_64 := 0;
    end record;
 
    --  the oldest first
@@ -125,6 +128,34 @@ is
 
    function Oldest_Part return Boolean is (Slots (1).Part);
 
+   procedure Stamp_Received (Now_Ms : Interfaces.Unsigned_64)
+     with Refined_Global => (In_Out => Slots, Proof_In => (Count, Releasing))
+   is
+   begin
+      for I in 1 .. Buffer_Size loop
+         pragma Loop_Invariant (True);
+         if not Slots (I).Stamped then
+            Slots (I).Stamped := True;
+            Slots (I).Received_Ms := Now_Ms;
+         end if;
+      end loop;
+   end Stamp_Received;
+
+   function Oldest_Ms return Interfaces.Unsigned_64 is
+     (Slots (1).Received_Ms);
+
+   procedure Delete_Oldest
+     with Refined_Global => (In_Out => (Slots, Count))
+   is
+   begin
+      for I in 1 .. Buffer_Size - 1 loop
+         pragma Loop_Invariant (True);
+         Slots (I) := Slots (I + 1);
+      end loop;
+      Slots (Buffer_Size) := (others => <>);
+      Count := Count - 1;
+   end Delete_Oldest;
+
    procedure Store (S         : EVC_Radio.Session_T;
                     Data      : EVC_Bytes.Byte_Array;
                     Accepting : Boolean := False;
@@ -145,7 +176,8 @@ is
       Count := Count + 1;
       Slots (Count) := (Session => S, Length => Data'Length, Data => <>,
                         Accepting => Accepting, Part => Part,
-                        MA => MA, Track => Track);
+                        MA => MA, Track => Track,
+                        Stamped => False, Received_Ms => 0);
 
       Slots (Count).Data (1 .. Data'Length) := Data;
    end Store;

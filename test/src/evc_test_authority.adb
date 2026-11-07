@@ -2223,6 +2223,78 @@ package body EVC_Test_Authority is
              & "released and taken with the RBC's MA (4.8.5.5)");
    end Scenario_L2_Balise_Buffer_LX;
 
+   --  Level 0 UN, the group 10 at 100 m announces level 2 at 400 m. The
+   --  RBC sends a level crossing NID_LX 7 (V_LX 20 km/h, LX_Message) and
+   --  an MA, then the group 11 at 250 m gives the same NID_LX 7 with
+   --  V_LX 40 km/h (4.8.3 [2]): three sets, radio, radio, balise.
+   --  4.8.5.5: released in the sequence received, so the group's level
+   --  crossing, the later, is the one stored in level 2 (released balise
+   --  first, the RBC's would win). With a fourth set (a second MA after
+   --  the group), 4.8.5.3: the oldest of the three, the RBC's level
+   --  crossing, replaced, three sets in all
+   procedure Scenario_Transition_Buffer_Order is
+      M  : constant T12.Packet_T := MA_Of ((300, 400), 600);
+      LX : T88.Packet_T;
+
+      --  the level crossing 7 stored with the group's V_LX 40 km/h
+      function Group_LX_Stored return Boolean is
+        (for some I in 1 .. EVC_Track_Description.Max_LX =>
+           EVC_Track_Description.LX_Item (I).Used
+           and then Natural (EVC_Track_Description.LX_Item (I).Id) = 7
+           and then EVC_Track_Description.LX_Item (I).Speed > 1000);
+
+      procedure Run_Case (Fourth : Boolean) is
+      begin
+         Start_X;
+         EVC_Core.Set_Mode_For_Test (M_UN, L0);
+         Add_Group (Group (10, 100));
+         Carry (Track_N, 0, Order_L2 (300));
+         Add_Group (Group (11, 250));
+         Carry (Track_N, 0, LX);
+         Establish;
+         Run_X (15_000);
+         Give_Radio_Message (1, LX_Message (10, 500));
+         Stand_X (200);
+         Give_Radio_Message (1, MA_Message (10, M, Stamp));
+         Stand_X (200);
+         Run_X (30_000);
+         if Fourth then
+            Give_Radio_Message (1, MA_Message (11, M, Stamp));
+            Stand_X (200);
+            Check (EVC_Levels.Level = L0 and then SI.Balise_Buffered = 1
+                   and then RA.Buffered = 2,
+                   "buffer order: a fourth set replaces the oldest of the "
+                   & "three, the RBC's level crossing (4.8.5.1, 4.8.5.3)");
+         else
+            Check (EVC_Levels.Level = L0 and then SI.Balise_Buffered = 1
+                   and then RA.Buffered = 2,
+                   "buffer order: two radio sets and a balise set kept "
+                   & "for the transition (4.8.5.1)");
+         end if;
+         Run_X (45_000);
+         Check (EVC_Levels.Level = L2 and then SI.Balise_Buffered = 0
+                and then RA.Buffered = 0 and then Group_LX_Stored,
+                "buffer order: at the transition the sets released in the "
+                & "order received, the group's level crossing, the later, "
+                & "stored (4.8.5.5)"
+                & (if Fourth then ", the fourth set given" else ""));
+      end Run_Case;
+   begin
+      LX.Q_DIR := 1;
+      LX.Q_SCALE := 1;
+      LX.NID_LX := 7;
+      LX.D_LX := 400;
+      LX.L_LX := 20;
+      LX.Q_LXSTATUS := 1;
+      LX.Has_V_LX := True;
+      LX.V_LX := 8;
+      LX.Q_STOPLX := 1;
+      LX.Has_L_STOPLX := True;
+      LX.L_STOPLX := 30;
+      Run_Case (Fourth => False);
+      Run_Case (Fourth => True);
+   end Scenario_Transition_Buffer_Order;
+
    --  4.8.3, the rows of the axle load speed profile and the permitted
    --  braking distance from the RBC: R [2] in level 1, the message 24
    --  kept in the transition buffer when level 2 is announced and taken

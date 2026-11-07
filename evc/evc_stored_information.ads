@@ -484,7 +484,8 @@ is
    --  level 0 with level 2 announced), deleted by Evaluate when the level
    --  they are kept for is no longer announced (4.8.5.4 a)
    function Balise_Buffered return Natural
-     with Global => State;
+     with Global => State,
+          Post => Balise_Buffered'Result <= 3;
 
    --  the sets read by EVC_Core at the transition
    --  to level 1, before Release_Balise_Buffer, for the packets the units
@@ -513,6 +514,37 @@ is
                                  R    : in out ETCS_Bits.Reader)
      with Global => State,
           Pre => S <= Balise_Buffered and then P <= Balise_Set_Packets (S);
+
+   --  4.8.5.1, 4.8.5.3, 4.8.5.5: the time the oldest set's group was read
+   --  (its first balise), the reception the radio sets of
+   --  EVC_Radio_Authority are ordered against in the one transition
+   --  buffer of both
+   function Balise_Oldest_Ms return Unsigned_64
+     with Global => State,
+          Pre => Balise_Buffered > 0;
+
+   --  4.8.5.3: the oldest set deleted, replaced by a newer radio set
+   procedure Delete_Oldest_Balise_Set
+     with Global => (In_Out => State),
+          Pre  => Balise_Buffered > 0,
+          Post => Balise_Buffered = Balise_Buffered'Old - 1;
+
+   --  4.8.5.5, 4.8.5.6 at the transition to level 2: the oldest set
+   --  released and judged as Release_Balise_Buffer judges each, when it
+   --  comes before the oldest radio set; the others kept
+   procedure Release_Balise_Set (Now_Ms  : Unsigned_64;
+                                 Context : Mode_Context_T)
+     with Global => (In_Out => (State, EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_Text_Messages.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State),
+                     Input  => (EVC_Origins.State, EVC_Position.State,
+                                EVC_Odometry.State, EVC_Train_Data.State)),
+          Pre  => Balise_Buffered > 0,
+          Post => Balise_Buffered = Balise_Buffered'Old - 1;
 
    --  4.8.5.5, 4.8.5.6 at the transition to the level the sets are kept
    --  for (level 1, or level 2 for the rows of 4.8.3 [2]): the sets released

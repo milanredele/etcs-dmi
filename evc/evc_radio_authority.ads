@@ -29,6 +29,7 @@ with EVC_Radio;
 with EVC_Radio_Info;
 with EVC_Received;
 with EVC_Stored_Information;
+with Interfaces;
 
 --  @req 3.6.7.1 g), 3.10.2.4, 3.13.11.8, 4.4.11.1.3, 4.4.11.1.6.4
 --  @req 4.4.19.1.4.2 a), 4.6.3 Table, 4.8.3.1.1 Table-footnote [5]
@@ -162,6 +163,24 @@ is
      with Global => (In_Out => State),
           Post => Buffered = Buffered'Old
                   and then Has_Released = (Buffered > 0);
+
+   --  4.8.5.1, 4.8.5.3, 4.8.5.5: one transition buffer, the radio sets
+   --  here and the balise sets of EVC_Stored_Information, ordered by
+   --  their reception: the messages stored in this cycle stamped with
+   --  its time (EVC_Core, after the stored information); the reception
+   --  of the oldest; the oldest deleted when a newer balise set makes
+   --  four in all
+   --  @req 4.8.5.3
+   procedure Stamp_Buffered (Now_Ms : Interfaces.Unsigned_64)
+     with Global => (In_Out => State),
+          Post => Buffered = Buffered'Old;
+   function Oldest_Buffered_Ms return Interfaces.Unsigned_64
+     with Global => State,
+          Pre => Buffered > 0;
+   procedure Delete_Oldest_Buffered
+     with Global => (In_Out => State),
+          Pre  => Buffered > 0,
+          Post => Buffered = Buffered'Old - 1;
 
    --  3.18.3.7 b): the train category, axle load category, loading gauge
    --  or traction system changed at standstill: the MA, linking and track

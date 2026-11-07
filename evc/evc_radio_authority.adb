@@ -471,6 +471,18 @@ is
       Buffer.Release_At_Transition;
    end Release_At_Transition;
 
+   procedure Stamp_Buffered (Now_Ms : Unsigned_64) is
+   begin
+      Buffer.Stamp_Received (Now_Ms);
+   end Stamp_Buffered;
+
+   function Oldest_Buffered_Ms return Unsigned_64 is (Buffer.Oldest_Ms);
+
+   procedure Delete_Oldest_Buffered is
+   begin
+      Buffer.Delete_Oldest;
+   end Delete_Oldest_Buffered;
+
    procedure Delete_Transition_Information is
    begin
       Buffer.Delete_Held;

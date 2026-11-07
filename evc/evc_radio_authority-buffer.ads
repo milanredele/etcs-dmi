@@ -10,6 +10,7 @@ with EVC_Bytes;
 with EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Acceptance; use EVC_Radio_Acceptance;
+with Interfaces;
 
 --  @req 4.8.3.1.1 Table-footnote [1], 4.8.3.1.1 Table-footnote [2], 4.8.5.1
 --  @req 5.10.1.7
@@ -102,6 +103,25 @@ is
    --  R [2] are the set (the others were taken at the reception)
    function Oldest_Part return Boolean
      with Global => State;
+
+   --  4.8.5.1, 4.8.5.3, 4.8.5.5: the messages stored since the last call
+   --  stamped received at Now_Ms (the cycle that read them from the
+   --  port), the reception the balise sets are ordered against
+   procedure Stamp_Received (Now_Ms : Interfaces.Unsigned_64)
+     with Global => (In_Out => State),
+          Post => Buffered = Buffered'Old
+                  and then Has_Released = Has_Released'Old;
+
+   --  the reception of the oldest message
+   function Oldest_Ms return Interfaces.Unsigned_64
+     with Global => State,
+          Pre => Buffered > 0;
+
+   --  4.8.5.3: the oldest message deleted, replaced by a newer balise set
+   procedure Delete_Oldest
+     with Global => (In_Out => State),
+          Pre  => Buffered > 0,
+          Post => Buffered = Buffered'Old - 1;
 
    --  1d. The oldest message released, into Data (Data'First .. Last),
    --  with its session; out of the buffer

@@ -59,6 +59,10 @@ package EVC_Test_Authority is
    --  4.8.3 [2], 4.8.5.5: a balise level crossing kept in level 0 for
    --  the transition to level 2
    procedure Scenario_L2_Balise_Buffer_LX;
+
+   --  4.8.5.1, 4.8.5.3, 4.8.5.5: radio and balise sets in one transition
+   --  buffer of three, released in the order received
+   procedure Scenario_Transition_Buffer_Order;
    procedure Scenario_PBD_By_Radio_Buffered;
    procedure Scenario_Buffer_Three_Sets;
    procedure Scenario_Own_Units_Stored;

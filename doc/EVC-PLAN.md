@@ -21530,3 +21530,45 @@ recomputed), B3721 (the runner judging "not displayed" by the DMI's
 state), B781's LS profile over a relocation, B1840 (a fault the host
 reports), B1360's records left; the review again (eight items, readings
 first, no backlog read).
+
+### The transition buffer's one order and the Accepting RBC: the balise and radio sets released as received, the Accepting role without a supervising session, the operated version in the header (e6/sessions-accepting) (2026-11-07)
+
+**B3740, the release order of the transition buffer (decided by the user
+on 2026-11-07: the reviewer's reading).** The clauses at the source:
+4.8.5.1 "three sets of information obtained from three filtered
+messages" in one transition buffer when an order to switch to level NTC,
+1 or 2 is stored; 4.8.5.2.1 a set is the part of a message stored by
+4.8.3 [1] and [2] (a balise group's or a radio message's alike); 4.8.5.3
+"any new set to be stored shall replace the oldest one currently
+stored"; 4.8.5.5 "released and re-evaluated in the sequence they have
+been received"; 4.8.5.6 a) sequential updates, each set taken before the
+next. Before: two buffers of three each, the balise sets released first.
+Built with the two storages kept: a balise set is received at its
+group's first balise (`Set_Info_T.Start_Ms`, read by
+`EVC_Stored_Information.Balise_Oldest_Ms`), a radio message in the cycle
+that read it from the port (`EVC_Radio_Authority.Stamp_Buffered`, the
+slot's `Received_Ms`); `EVC_Core.Stored.Bound_Transition_Buffer`, called
+in `Evaluate_Stored_Information` after the stores, stamps the cycle's
+radio messages and deletes the oldest of both kinds while they hold
+more than three (`Delete_Oldest_Balise_Set`, `Delete_Oldest_Buffered`).
+Decision: at the same time the radio set is the older (the port is read
+before the groups are evaluated in the cycle). At the transition to
+level 2 `EVC_Core.Stored.Release_Transition_Buffer` releases one set at
+a time, the balise set when strictly older than the oldest radio
+message (`EVC_Stored_Information.Release_Balise_Set`: its unit packets,
+`Take_Balise_Set`, the mode conditions), else the radio message
+(`Take_Released`, `Take_Message`, its linking and texts,
+`Evaluate_Released` from its first record); at the transition to level 1
+the balise sets alone, as before. Scenario
+`EVC_Test_Authority.Scenario_Transition_Buffer_Order` (in the authority
+package, where `Order_L2`, `LX_Message` and `Establish` are, not in
+`EVC_Test_Levels`): level 0 UN, level 2 announced at 400 m; the RBC's
+level crossing NID_LX 7 (V_LX 20 km/h), an MA, then the group 11 at
+250 m with NID_LX 7 at V_LX 40 km/h; at the transition the group's
+crossing, the later, is stored; with a fourth set (an MA after the
+group) the RBC's crossing, the oldest, is deleted, one balise and two
+radio sets kept. Failed on master in three checks (the order and the
+bound), passes. Runner: no sequence moved (0 regressions, 0
+improvements). Rows 4.8.5.1, 4.8.5.3, 4.8.5.5 noted with `@req`; proofs
+of `evc_stored_information-balise_buffer`, `evc_stored_information`,
+`evc_radio_authority-buffer`, `evc_radio_authority`, `evc_core-stored`.
