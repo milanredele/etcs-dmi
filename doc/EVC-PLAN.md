@@ -21530,3 +21530,50 @@ recomputed), B3721 (the runner judging "not displayed" by the DMI's
 state), B781's LS profile over a relocation, B1840 (a fault the host
 reports), B1360's records left; the review again (eight items, readings
 first, no backlog read).
+
+### The matrix's partial rows whose blockers closed: the linking kept in rear, the brake handling at mode entry, the override's end conditions, the Supervised Manoeuvre rows, the driver ID's characters (e6/partials-left) (2026-11-07)
+
+Seventeen partial rows re-read at the source, one more row (5.11.2.2
+S140 c), deferred with "Supervised Manoeuvre is not built") with them:
+twelve set done, six left partial, each citing an open line. Two
+scenarios show what was built and never shown (the SM request from S10
+and from PT); one build, the driver ID's characters.
+
+| Row | The note claimed missing | The source showed | Outcome |
+|---|---|---|---|
+| 3.7.3.1 m) | the part in rear of the new reference group not kept (B033) | `EVC_Linking.Replace` keeps the chain up to the new reference group (`Scenario_Linking_Replacement`, called) | done |
+| 3.14.1.11 | the brake handling at mode entry reason by reason (B014) | the 4.12.1.2 Table row done cell by cell; B470 built the three reasons it lacked (`EVC_Core.Modes.Revoke_Brake_Reasons`, `EVC_Procedures.Mode_Changed`, `EVC_Brake_Commands.Step`) | done |
+| 5.8.4.1 | f) and the SR list of g) do not end the override (B845) | `Override_Step` ends 6 and 7 on `Radio_MA_L2`, `SR_Unlisted`; every sub-row done, `Scenario_Override_Ends_By_Radio` called | done |
+| 4.4.21.1.7 | the front end with the consist in front of the engine (B950) | `Shift_For_Manoeuvre` (a) to c) and the same direction), `Consist_Report` for the request; `Scenario_SM_Authorisation` checks the front 50 m ahead | done |
+| A.3.5.1 7th bullet | the roll back "a defect, B2341, not called yet" | `EVC_Track_Conditions.Phases`, `Scenario_Track_Condition_Roll_Back` called; the relocation is not shown | left (B781) |
+| 4.7.2.1.1, .2, .4 Table | the LSSMA display (B013) | `EVC_LS_Display.LSSMA_Kmh` sent by `EVC_Core.Outputs.Send_Mode_Level`, `Scenario_LS_Display`; B090, B091 done | done (3 rows) |
+| 3.18.3.2 c) 1st bullet | the traction model not configurable (B100, closed) | the traction model of 3.13.2.2.2.1 is the cut-off time; `T_Traction_Cut_Off` of `EVC_Config.Fixed_Train_T` is a default of 1 s that no format version of the image carries | left (B3760) |
+| 5.4.3.2 S10 | SM | `EVC_Sessions.Manoeuvre` `Possible` holds in SB; no scenario: `Scenario_SM_Start_Of_Mission` (SB in level 2, E34 the request, E35 refused back in SB, then authorised: the mission in SM) passes on master's code | done |
+| 5.11.2.2 S140, S140 c) | c) the SM procedure from PT | `Possible` holds in PT; `Scenario_SM_Post_Trip` showed the refusal only; extended: refused back in PT (E200), then SM entered | done (2 rows) |
+| 3.6.5.2.5, Table 2a, Table 2b | [10] and the SM acknowledgement of [2], [3] | `EVC_Sessions.Integrity` decision 2 still holds them false (written before SM); [10] (an SM authorisation changing the orientation), [3]'s fifth term and the acknowledgement (message 133 by message 7) are buildable from `EVC_Radio_Authority.SM_Opposite` and `EVC_Sessions.SM_Consist_Awaited`, no input missing | left (B3761) |
+| 4.6.3 Table | [81] and [83] | [81] built (`EVC_Radio_Authority.SM_Authorised`); [83] (valid Train Data and the consist in front of the engine becoming non-zero: to SB from FS, AD, LS, SR, OS, UN, PT, SN) is in `Not_Evaluated_T` | left (B3762) |
+| A.3.11 Table | the driver ID's characters (0 to 9, a to z) | `Valid_Driver_ID` took 1 to 16 printable characters: capitals, spaces and signs taken; built, `Scenario_Driver_ID_Characters` failed on those three before the fix | done |
+| 3.18.4.5.1 | other external sources (a TIU input) | SUBSET-034 2.7.1's train running number input is an optional application (SUBSET-034 3.1.1.4) | done (decision) |
+
+Decisions. The driver ID: A.3.11 allows "1 to 16 alphanumeric
+characters (selected from 0 to 9 and a to z)"; the capital letters are
+refused, the DMI's alphanumeric keyboard offering none (DMI 10.3.5.17:
+'1', '2 abc' to '9 wxyz', '0'); a refused entry keeps the stored ID and
+gives the event Refused, as a refused train running number does. The
+Train Data ranges of A.3.11: the on-board checks the ranges
+(`EVC_Mission.Train_Data_Of`: length 1 to 4095 m, brake percentage 10
+to 250, maximum speed 5 to 600 km/h, the lists; the SR speed 5 to 600),
+the DMI the resolutions (10.3.4.3: 1 m, 5 km/h); a length or a speed of
+0, inside A.3.11's ranges, is refused by the on-board (no train runs
+with them), the DMI having asked the driver first by its operational
+range check (10.3.4.5, `Not_Zero`). The train running number's sources
+(3.18.4.5.1 "from driver input, from the RBC or from other ERTMS/ETCS
+external sources"): the driver and packet 140; the train interface's
+input of SUBSET-034 2.7.1 is optional and not offered.
+
+Edits outside the rows: `EVC_Test_Manoeuvre` (the S10 scenario and the
+extension of `Scenario_SM_Post_Trip`, where the SM helpers are),
+`EVC_Test_Train_Data` (the driver ID scenario, where `Text_Entry` is;
+`EVC_Test_Mission` has no SoM helper), row 5.11.2.2 S140 c) (deferred
+with a note made stale by the SM packages). The runner: 1232 / 1026 /
+932, no movement.

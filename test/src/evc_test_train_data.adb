@@ -477,4 +477,36 @@ package body EVC_Test_Train_Data is
              & Img (EVC_Train_Data.Type_In_Force));
    end Scenario_Train_Type;
 
+   procedure Scenario_Driver_ID_Characters is
+      use type EVC_Mission.Data_Status_T;
+      --  the stored driver ID is Text
+      function Stored (Text : String) return Boolean is
+        (EVC_Mission.Driver_ID_Status = EVC_Mission.Valid
+         and then EVC_Mission.Driver_ID.Length = Text'Length
+         and then (for all I in Text'Range =>
+                     EVC_Mission.Driver_ID.Chars (I - Text'First + 1)
+                     = Character'Pos (Text (I))));
+   begin
+      EVC_Test_Modes.Start_E4;
+      Stand_X (200);
+      Send (Text_Entry (0, "0123456789abcdef"));
+      Check (Stored ("0123456789abcdef"),
+             "driver ID: 16 characters from 0 to 9 and a to z taken "
+             & "(A.3.11)");
+      Send (Text_Entry (0, "xyz9"));
+      Check (Stored ("xyz9"), "driver ID: changed at standstill");
+      Send (Text_Entry (0, "0123456789abcdefg"));
+      Check (Stored ("xyz9"),
+             "driver ID: 17 characters refused, the stored one kept "
+             & "(A.3.11)");
+      Send (Text_Entry (0, "ABC1"));
+      Check (Stored ("xyz9"),
+             "driver ID: capital letters refused (A.3.11: a to z)");
+      Send (Text_Entry (0, "ab 12"));
+      Check (Stored ("xyz9"), "driver ID: a space refused (A.3.11)");
+      Send (Text_Entry (0, "ab-12"));
+      Check (Stored ("xyz9"),
+             "driver ID: a sign refused (A.3.11: 0 to 9 and a to z)");
+   end Scenario_Driver_ID_Characters;
+
 end EVC_Test_Train_Data;

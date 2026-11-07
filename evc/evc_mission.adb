@@ -192,10 +192,16 @@ is
 
    --  The entries
 
-   --  DMI 11.3.3: a driver ID of 1 to 16 printable characters
+   --  A.3.11: a driver ID of 1 to 16 alphanumeric characters selected
+   --  from 0 to 9 and a to z. Decision: the capital letters are not
+   --  among them, as the DMI's alphanumeric keyboard offers none (DMI
+   --  10.3.5.17)
+   --  @req A.3.11 Table
    function Valid_Driver_ID (T : Text_T) return Boolean is
      (T.Length >= 1
-      and then (for all I in 1 .. T.Length => T.Chars (I) in 32 .. 126));
+      and then (for all I in 1 .. T.Length =>
+                  T.Chars (I) in Character'Pos ('0') .. Character'Pos ('9')
+                               | Character'Pos ('a') .. Character'Pos ('z')));
 
    --  A.3.11, NID_OPERATIONAL (7.5.1.98): 1 to 8 digits
    function Valid_TRN (T : Text_T) return Boolean is
