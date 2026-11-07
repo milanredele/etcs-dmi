@@ -21583,3 +21583,26 @@ first's acknowledgement (65.3 s); ours records it when it sends the text
 (61.9 s, the window of step 68): the on-board's, triage Sea60e1d6
 onboard, backlog B3820 (hold a second text to be acknowledged until the
 first is, by the driver's seat rule). Triage Se341da87 model rewritten.
+
+B3660, the stop in rear of a non-protected level crossing held across a
+case line. The premise held at the trace: 4080300_02 SV30 step 246 at
+3080 m asks the stop ("Then, the train shall stop in rear of the
+non-protected LX") as the last step of its case; step 247 (3700 m) opens
+the next case, the runner ended the stop there and drove the train at
+19 km/h past BG16d's LX start (3200 m, stopping area from 3100 m): TR at
+the temporary EOA. 5.16.2.1: once the train has stopped with its
+estimated front end in the stopping area, the on-board no longer
+supervises the LX start as temporary EOA and SvL and includes the LX
+speed in the MRSP. Built in `S076_Run`: `LX_Stop_Before (To_Cm)`, the
+on-board's LX with Q_STOPLX 1 and its temporary EOA still ahead of the
+estimated front end and short of the step's location; at a step of
+another case the stop holds while it is true (a step whose comment says
+the train overpasses still ends it, 4060300_09 step 100). Corpus sv30:
+9 steps of 5 sequences ask the stop, 7 of them before a case line
+(4060300_09 99, 4080300_02 77, 246, 251, 4080300_07 125, 187, 4080300_16
+173). Scoped on 4080300_02 SV30 first: the train stops in rear after
+step 246 (516.2 s), the on-board substitutes the LX speed at the
+standstill and the train reaches 3700 m in FS at 623.8 s; steps 247 to
+253 pass. Full run: 4080300_02 SV21, SV22, SV30 failed at 247 -> passed,
+no other sequence moved; triage Sbfa49d0b model rewritten (its s076
+line is another package's family and unchanged).
