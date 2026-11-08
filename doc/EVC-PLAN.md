@@ -22034,3 +22034,12 @@ condition [83]), B3760 (the traction cut-off time in the image), B3700
 Euroradio check: the port's input), B781's relocation, B1840 (a fault
 the host reports), B1360's records left; the review again (eight items,
 readings first, no backlog read).
+
+Decision B3840 (2026-11-08, the user): a Train Data length of 0 or a
+maximum speed of 0 stays refused by the on-board (`EVC_Mission.
+Train_Data_Of`, 1 .. 4095 m and 5 .. 600 km/h), which tells the DMI by
+the Refused event: a train with either value cannot be supervised, and
+the refusal is the on-board telling the DMI, the standing rule of the
+rounds; the DMI's operational range check (ERA_ERTMS_015560 10.3.4.5),
+which the driver may overrule, stays as its specification has it. No
+code change; the review's line B3840 closed.
