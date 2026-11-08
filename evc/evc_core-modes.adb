@@ -490,6 +490,7 @@ is
             --  transition order (3.6.1.1 a), the table of 3.6.4.2.4)
             EVC_Levels.Delete_Orders;
             EVC_Sessions.Delete_RBC_Order;
+            EVC_Sessions.Manoeuvre_Turned;
          end if;
          EVC_Sessions.Request_Position_Report;
          EVC_Position.Shift_For_Manoeuvre

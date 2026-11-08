@@ -36,6 +36,13 @@ package EVC_Test_Manoeuvre is
    --  3.18.3.10: the safe consist length information for SM
    procedure Scenario_SM_Consist_Info;
 
+   --  3.6.5.2.5 Table 2c with Supervised Manoeuvre: [10] an SM
+   --  authorisation changing the train orientation, from "confirmed by
+   --  external source" to "no information"; [3] not after it until the
+   --  driver confirms; [3] with the safe consist length only once its
+   --  information for SM (133) is acknowledged (3.18.3.10.1)
+   procedure Scenario_SM_Integrity;
+
    --  3.15.1.3.3: message 133 to the Accepting RBC in SM
    procedure Scenario_SM_Handover;
 

@@ -7,7 +7,8 @@ package body EVC_Sessions.Integrity
   with SPARK_Mode => On,
        Refined_State => (State => (Current, Input, Was_Up, Sent,
                                    T0_Pos, T0_Under, T0_Length,
-                                   T0_Valid, T0_Consist, Was_Valid))
+                                   T0_Valid, T0_Consist, Was_Valid,
+                                   SM_Turn, SM_Turned))
 is
    use type EVC_Ports.Movement_T;
    use type EVC_Train_Data.Consist_T;
@@ -35,6 +36,11 @@ is
    T0_Consist : EVC_Train_Data.Consist_T := (others => 0);
    --  the Train Data were valid at the last evaluation (Table 2c [1])
    Was_Valid  : Boolean := False;
+   --  an SM authorisation changing the train orientation taken, not yet
+   --  evaluated (Table 2c [10]); one taken since the time the train was
+   --  last known to be integer (the last term of [3])
+   SM_Turn    : Boolean := False;
+   SM_Turned  : Boolean := False;
 
    procedure Clear is
    begin
@@ -48,6 +54,8 @@ is
       T0_Valid := False;
       T0_Consist := (others => 0);
       Was_Valid := False;
+      SM_Turn := False;
+      SM_Turned := False;
    end Clear;
 
    procedure Take_Input (Value : Natural) is
@@ -58,6 +66,12 @@ is
                    when Input_Lost      => Lost,
                    when others          => None);
    end Take_Input;
+
+   procedure Take_SM_Turn is
+   begin
+      SM_Turn := True;
+      SM_Turned := True;
+   end Take_SM_Turn;
 
    function Status return Status_T is (Current);
 
@@ -128,7 +142,7 @@ is
    --  The time the train was last known to be integer is now
    procedure Set_T0
      with Global => (Output => (T0_Pos, T0_Under, T0_Length, T0_Valid,
-                                T0_Consist),
+                                T0_Consist, SM_Turned),
                      Input  => (EVC_Odometry.State, EVC_Position.State,
                                 EVC_Train_Data.State))
    is
@@ -138,10 +152,14 @@ is
       T0_Length := Train_Length;
       T0_Valid := EVC_Train_Data.Valid;
       T0_Consist := EVC_Train_Data.Consist;
+      SM_Turned := False;
    end Set_T0;
 
    --  Table 2b with the conditions of Table 2c, by priority (p1 first)
-   procedure Evaluate (Mode : EVC_Modes.Mode_T; Report : out Boolean) is
+   procedure Evaluate (Mode              : EVC_Modes.Mode_T;
+                       SM_Unacknowledged : Boolean;
+                       Report            : out Boolean)
+   is
       Up       : constant Boolean := EVC_Radio.In_Communication;
       Valid_TD : constant Boolean := EVC_Train_Data.Valid;
       Pos_OK   : constant Boolean :=
@@ -152,11 +170,11 @@ is
         not Valid_TD and then EVC_Train_Data.Consist_Available;
       Length   : constant Length_T := Train_Length;
       --  [2], [3]: valid Train Data acknowledged, or the safe consist
-      --  length (decision 2: the acknowledgement of Supervised
-      --  Manoeuvre's safe consist length information not asked)
+      --  length with its information for Supervised Manoeuvre, if any
+      --  was sent, acknowledged (decision 2)
       Acked    : constant Boolean :=
         (Valid_TD and then EVC_Radio.Train_Data_Acknowledged)
-        or else Consist;
+        or else (Consist and then not SM_Unacknowledged);
       Cab      : constant EVC_Position.Cab_T := EVC_Position.Active_Cab;
       Move     : constant EVC_Ports.Movement_T := EVC_Odometry.Movement;
       C1 : constant Boolean :=
@@ -167,6 +185,7 @@ is
                    (EVC_Driver_Requests.Train_Integrity);
       C3 : constant Boolean :=
         Input = Confirmed and then Acked and then Pos_OK
+        and then not SM_Turned
         and then Length <= Max_Length
         and then EVC_Position.Doubt_Under <= Max_Length - Length;
       --  decision 6: configured to capture the safe consist length
@@ -211,7 +230,7 @@ is
                Current := Lost;
             elsif C2 then
                Current := By_Driver;
-            elsif Sent or else C789 then
+            elsif Sent or else C789 or else SM_Turn then
                Current := No_Information;
             elsif C3 then
                --  a new confirmation: the train known integer again
@@ -235,6 +254,7 @@ is
       end if;
       Sent := False;
       Input := None;
+      SM_Turn := False;
       Was_Valid := Valid_TD;
       --  3.6.5.1.4 c), d)
       Report := Current /= Before and then Current in By_Driver | Lost;

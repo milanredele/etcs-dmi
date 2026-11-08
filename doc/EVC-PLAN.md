@@ -22081,3 +22081,34 @@ consist length with 0 m in front of the engine where 3170200_10 and
 line; S980d96c9 rewritten to it. Row 4.6.3 Table set done ([81] and [83]
 built, the out of scope conditions listed in its note). Proofs:
 `evc_train_data`, `evc_transition_conditions`, `evc_core-inputs`.
+
+**The integrity table's Supervised Manoeuvre terms (B3761).** Table 2b
+(4.0.0, page 64) gives "Integrity confirmed by external source" to "No
+integrity information" by [5], [7], [8], [9], [10] (p3); [10] reads "A
+Supervised Manoeuvre authorisation changing the train orientation is
+received", [2] and [3] take, without valid Train Data, the safe consist
+length "AND (if any, safe consist length information for Supervised
+Manoeuvre sent to the RBC has been acknowledged by this latter)", and [3]
+asks also "no SM authorisation changing the train orientation has been
+received since the time the train was last known to be integer". Built
+in `EVC_Sessions.Integrity` (its decision 2 rewritten): `Evaluate` takes
+`SM_Unacknowledged` (the parent's `SM_Consist_Awaited`: a message 133
+awaiting its message 7, 3.18.3.10.1) into the first alternative of [2]
+and [3]; `EVC_Sessions.Manoeuvre_Turned` (a procedure of the parent that
+forwards to `Integrity.Take_SM_Turn`), called by
+`EVC_Core.Modes.Adjust_For_Manoeuvre` beside `Delete_RBC_Order` when the
+authorisation taken is opposite to the train orientation
+(`EVC_Radio_Authority.SM_Opposite`), gives [10] in the next evaluation
+and blocks [3] until `Set_T0` (the train known to be integer again, by
+[2]). In practice [10] coincides with [5]: the authorisation sends a
+position report (5.21.2.2 A095) that carries the confirmation. Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Integrity` (in the manoeuvre package
+where the SM helpers are, not `EVC_Test_Sessions`): in SM with a consist
+of the same length in both orientations confirmed by the TIU; an
+opposite authorisation in SM gives no information; the TIU's next
+confirmation is not taken (failed before the fix) until the driver
+confirms; in SB without valid Train Data a changed consist sent by 133
+holds the TIU's confirmation (failed before the fix) until message 7.
+Runner: 0 regressions, 0 improvements, nothing moved. Proofs:
+`evc_sessions-integrity`, `evc_sessions`, `evc_core-modes` (no Global
+widened: `Adjust_For_Manoeuvre` wrote `EVC_Sessions.State` already).

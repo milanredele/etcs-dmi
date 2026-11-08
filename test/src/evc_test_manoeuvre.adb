@@ -719,6 +719,79 @@ package body EVC_Test_Manoeuvre is
    --  with a session and after a request for SM, acknowledged by message
    --  7, sent again after the connection lost and re-established before
    --  the acknowledgement; not sent outside those periods
+   procedure Scenario_SM_Integrity is
+      T : Unsigned_64;
+      function Status return String is
+        (" status" & Natural'Image (EVC_Sessions.Integrity_Status)
+         & " mode " & Mode_T'Image (EVC_Core.Mode));
+   begin
+      --  a consist of the same length in both orientations (3.6.1.7: the
+      --  min in front and the max in rear, or the reverse), so that the
+      --  turn does not change the confirmed length ([7])
+      Start_L2_SM;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 400, 400, 400));
+      Stand_X (300);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 1));
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM and then EVC_Sessions.Integrity_Status = 1,
+             "SM integrity: in SM with the safe consist length, confirmed by "
+             & "the TIU (Table 2c [3]):" & Status);
+      --  'Continue in SM' (MSG_DRIVER_ACTION 17, argument 1), an
+      --  authorisation opposite to the train orientation
+      Input (DMI, (16#40#, 3, 0, 0, 0, 17, 1, 0));
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM and then EVC_Sessions.Integrity_Status = 0,
+             "SM integrity: an SM authorisation changing the train "
+             & "orientation, no information (Table 2c [10]; the position "
+             & "report of 5.21.2.2 A095 is [5] as well):" & Status);
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Stand_X (300);
+      Check (EVC_Sessions.Integrity_Status = 0,
+             "SM integrity: confirmed by the TIU after that authorisation, "
+             & "no information kept (Table 2c [3], its last term):"
+             & Status);
+      --  the driver confirms (MSG_DRIVER_ACTION 10): the train known to be
+      --  integer again, the report sent ([2], [5]); the TIU's next
+      --  confirmation counts
+      Input (DMI, (16#40#, 3, 0, 0, 0, 10, 0, 0));
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Stand_X (300);
+      Check (EVC_Sessions.Integrity_Status = 1,
+             "SM integrity: after the driver's confirmation the TIU's "
+             & "counts again (Table 2c [2], [3]):" & Status);
+
+      --  in SB without valid Train Data, a changed safe consist length
+      --  sent by message 133 and not yet acknowledged
+      Start_L2_SM;
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Stand_X (300);
+      EVC_Train_Data.Invalidate;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 300, 298, 302));
+      T := Wait_For (MCat.Train_M133, 1_000);
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Stand_X (300);
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Awaited
+             and then EVC_Sessions.Integrity_Status = 0,
+             "SM integrity: the safe consist length information for SM not "
+             & "yet acknowledged, the TIU's confirmation not taken (Table "
+             & "2c [3], 3.18.3.10.1):" & Status);
+      Give_Radio_Message (1, Consist_Ack (T));
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Stand_X (300);
+      Check (not EVC_Sessions.SM_Consist_Awaited
+             and then EVC_Sessions.Integrity_Status = 1,
+             "SM integrity: acknowledged by message 7, confirmed by the TIU "
+             & "(Table 2c [3]):" & Status);
+   end Scenario_SM_Integrity;
+
    procedure Scenario_SM_Consist_Info is
       T  : Unsigned_64;
       N0 : Natural;
