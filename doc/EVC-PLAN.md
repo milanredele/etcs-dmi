@@ -22043,3 +22043,41 @@ the refusal is the on-board telling the DMI, the standing rule of the
 rounds; the DMI's operational range check (ERA_ERTMS_015560 10.3.4.5),
 which the driver may overrule, stays as its specification has it. No
 code change; the review's line B3840 closed.
+
+### The train integrity's Supervised Manoeuvre terms and the condition of the consist length: [83] to Stand-By, the integrity table's terms from the manoeuvre, the rows of 3.6.5.2.5 and 4.6.3 (e6/integrity-sm) (2026-11-08)
+
+**[83] to Stand-By (B3762).** 4.6.3 [83] reads "(valid Train Data is
+stored on-board) AND (The safe consist length in front the engine
+becomes different from zero)"; 4.6.2 gives it to SB from FS, AD, LS,
+SR, OS (p5), UN, SN (p6) and PT (p4), the rows of `EVC_Modes` had it
+already. The same input makes the Train Data invalid (3.18.3.5 a)), so
+the condition cannot read the validity after the input. Decision: the
+validity is the one before the input, and "becomes different from zero"
+is the change of the length in force (`Consist_In_Front`: available,
+max length in front above 0) from false to true, an edge of one cycle.
+`EVC_Train_Data.Take_Consist` sets `Front_Consist_Rose` (its contract
+cases state it from the validity and the length in force on entry),
+`EVC_Core.Inputs` clears it by `No_Consist_Input` in every cycle without
+that input, and `EVC_Transition_Conditions.Mission_Holds` reads it for
+[83], which leaves `Not_Evaluated_T`. Scenario
+`EVC_Test_Manoeuvre.Scenario_Consist_To_Stand_By` (failed before the
+fix in its two transition checks): SR with valid Train Data, a rear
+length only keeps SR; 20 m in front (19 .. 21) gives SB with the Train
+Data invalid; without valid Train Data before the input SR is kept;
+from UN in level 0 the same to SB. Three scenarios that gave a length in
+front of the engine in FS with valid Train Data now see SB: the two of
+Supervised Manoeuvre (`Scenario_SM_Authorisation`'s same direction, the
+131 report of `Scenario_SM_Request`) set the mode back with
+`Set_Mode_For_Test` as `Scenario_SM_Gamma` does, and
+`EVC_Test_Train_Data`'s 3.18.3.8 case (`Longer_Consist`) invalidates the
+Train Data before the input, as its subject is the train without valid
+Train Data (entering SB would delete the gradients it counts). The
+runner: 0 regressions, 0 improvements, nothing moved: the three SV30
+sequences of S980d96c9 (3070300_11 step 41, 3170200_10 and 4120100_14
+step 64) stay at the SB step, because `S076_Run` gives every safe
+consist length with 0 m in front of the engine where 3170200_10 and
+4120100_14 step 62 give 50 / 40 / 70 m on the side of cab A (traced on
+3070300_11: step 39 passes the input, step 41 finds SR): B3902, a runner
+line; S980d96c9 rewritten to it. Row 4.6.3 Table set done ([81] and [83]
+built, the out of scope conditions listed in its note). Proofs:
+`evc_train_data`, `evc_transition_conditions`, `evc_core-inputs`.

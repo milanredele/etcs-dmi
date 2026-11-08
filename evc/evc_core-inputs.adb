@@ -400,6 +400,8 @@ is
          EVC_Train_Data.Take_Consist
            (Latched_TIU (Safe_Consist_Length), Latched_SCL);
          Put_Consist (Latched_TIU (Safe_Consist_Length), Latched_SCL);
+      else
+         EVC_Train_Data.No_Consist_Input;
       end if;
       Latched_SCL_Fresh := False;
       --  the driver's requests and the inputs of the train interface of

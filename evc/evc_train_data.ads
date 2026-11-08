@@ -152,7 +152,26 @@ is
      with Global => (In_Out => State),
           Post => Manoeuvre_Set = Manoeuvre_Set'Old
                   and then Consist_Available = Available
-                  and then (if Consist_In_Front then not Valid);
+                  and then (if Consist_In_Front then not Valid),
+          Contract_Cases =>
+            (Valid and then not Consist_In_Front and then Available
+               and then C.Front_Max > 0 => Front_Consist_Rose,
+             others                     => not Front_Consist_Rose);
+
+   --  4.6.3 [83]: the last safe consist length input, of this cycle,
+   --  brought a length in front of the engine where there was none, with
+   --  valid Train Data stored on-board. Decision: the validity is the one
+   --  before that input, which makes the Train Data invalid itself
+   --  (3.18.3.5 a)); "becomes different from zero" is the change of the
+   --  length in force (Consist_In_Front), not its value
+   --  @req 4.6.3 Table
+   function Front_Consist_Rose return Boolean
+     with Global => State;
+
+   --  A cycle without a safe consist length input: [83] does not hold
+   procedure No_Consist_Input
+     with Global => (In_Out => State),
+          Post => not Front_Consist_Rose;
 
    --  Power-up: no valid Train Data (4.10: deleted in No Power; the
    --  driver enters them in the start of mission, EVC_Mission). Data

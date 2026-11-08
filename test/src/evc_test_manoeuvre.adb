@@ -129,6 +129,50 @@ package body EVC_Test_Manoeuvre is
       Consist_Lost_In_SM;
    end Scenario_Safe_Consist;
 
+   procedure Scenario_Consist_To_Stand_By is
+      function State return String is
+        (" mode " & Mode_T'Image (EVC_Core.Mode) & " valid "
+         & Boolean'Image (EVC_Train_Data.Valid));
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (300);
+      --  a length in rear of the engine only: no transition
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 0, 0, 0, 400, 398, 402));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SR and then EVC_Train_Data.Valid,
+             "SCL to SB: a length in rear of the engine only, SR kept with "
+             & "valid Train Data (4.6.3 [83]):" & State);
+      --  20 m in front of the engine (19 .. 21)
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 20, 19, 21, 400, 398, 402));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SB and then not EVC_Train_Data.Valid
+             and then EVC_Train_Data.Consist_In_Front,
+             "SCL to SB: the length in front of the engine becomes different "
+             & "from zero with valid Train Data, SR to SB, the Train Data "
+             & "invalid (4.6.3 [83], 4.6.2, 3.18.3.5 a)):" & State);
+      --  without valid Train Data before the input: no transition
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (300);
+      EVC_Train_Data.Invalidate;
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 20, 19, 21, 400, 398, 402));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SR,
+             "SCL to SB: without valid Train Data the length in front of the "
+             & "engine brings no transition (4.6.3 [83]):" & State);
+      --  from Unfitted, level 0 (4.6.2: UN to SB, priority 6)
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 5, 4, 6, 400, 398, 402));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SB and then not EVC_Train_Data.Valid,
+             "SCL to SB: from Unfitted the same (4.6.2 UN to SB, [83]):"
+             & State);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+   end Scenario_Consist_To_Stand_By;
+
    --  The on-board's T_TRAIN now
    function Now_Stamp return Unsigned_64 is
      (Unsigned_64 (EVC_Radio.T_Train_At (Unsigned_64 (EVC_Core.Time_Ms))));
@@ -454,6 +498,10 @@ package body EVC_Test_Manoeuvre is
       --  train orientation: the front end at the far end of that consist
       Start_L2_SM;
       EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      Stand_X (300);
+      --  4.6.3 [83] took the train to Stand-By: the mode and the valid
+      --  Train Data set back, the subject is the front end in SM
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
       Stand_X (300);
       Select_SM;
       T := Wait_For (MCat.Train_M131, 1_000);
@@ -971,6 +1019,10 @@ package body EVC_Test_Manoeuvre is
              "SM request: nothing in front of the engine, the report of 131 "
              & "is the position report (5.21.2.2 A045)");
       EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      Stand_X (300);
+      --  4.6.3 [83] took the train to Stand-By: the mode and the valid
+      --  Train Data set back, the subject is the report of 131
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
       Stand_X (300);
       Check (Front_Moved (5_000, 100, 200),
              "SM request: 50 m in front of the engine (49 .. 52), the report "
