@@ -408,8 +408,8 @@ is
 
    --  The byte image
 
-   --  the highest format version accepted (1, 2 and 3 are)
-   Format_Version : constant := 3;
+   --  the highest format version accepted (1, 2, 3 and 4 are)
+   Format_Version : constant := 4;
    --  version 1: its length and the bytes its CRC covers
    Image_Length   : constant := 36;
    CRC_Offset     : constant := 32;
@@ -423,7 +423,18 @@ is
    --  Zone_Max entries of 7 bytes)
    Zone_Image_Length   : constant := 1 + 7 * Zone_Max;
    Min_Image_V3_Length : constant := Min_Image_V2_Length + Zone_Image_Length;
-   Max_Image_Length    : constant := Max_Image_V2_Length + Zone_Image_Length;
+   Max_Image_V3_Length : constant := Max_Image_V2_Length + Zone_Image_Length;
+   --  version 4: the image of version 3, then the nominal traction
+   --  cut-off time T_traction_cut_off (3.13.2.2.2.1, 3.18.3.2 c), a
+   --  u16 in ms up to Max_Traction_Cut_Off_Ms; versions 1 to 3 leave the
+   --  default of Fixed_Train_T. Decision: 3.13.2.2.2.1 gives no range,
+   --  10 s bounds what a traction system takes to cut off
+   Traction_Image_Length   : constant := 2;
+   Max_Traction_Cut_Off_Ms : constant := 10_000;
+   Min_Image_V4_Length : constant :=
+     Min_Image_V3_Length + Traction_Image_Length;
+   Max_Image_Length    : constant :=
+     Max_Image_V3_Length + Traction_Image_Length;
    subtype Max_Image_T is Byte_Array (1 .. Max_Image_Length);
 
    --  the braking models of a gamma train (3.13.2.2.3, 3.13.2.2.9,
@@ -502,7 +513,18 @@ is
                         G      : Gamma_T;
                         Image  : out Max_Image_T;
                         Length : out Natural)
-     with Post => Length in Min_Image_V3_Length .. Max_Image_Length;
+     with Post => Length in Min_Image_V3_Length .. Max_Image_V3_Length;
+
+   --  The image of format version 4 of C, G as Encode_V3, and the
+   --  traction cut-off time of C.Train (Decoded gives C back, and a load
+   --  G, when C is valid, G within the ranges of the layout above and
+   --  the time at most Max_Traction_Cut_Off_Ms)
+   --  @req 3.18.3.2 c) 1st bullet
+   procedure Encode_V4 (C      : Config_T;
+                        G      : Gamma_T;
+                        Image  : out Max_Image_T;
+                        Length : out Natural)
+     with Post => Length in Min_Image_V4_Length .. Max_Image_Length;
 
    --  The calendar of the zones
 

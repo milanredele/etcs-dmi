@@ -22110,3 +22110,22 @@ transition and no acknowledgement again forward) passed at once. Rows
 A.3.5.1 3rd, 4th, 6th, 7th and 11th bullets set done with their
 scenarios; `@req` tags on `EVC_Text_Messages.End_Condition` (3rd) and
 `EVC_Track_Description.Release_LX` (11th). B781 closed.
+
+**B3760, the traction cut-off time in the image.** The premise held:
+`EVC_Config.Fixed_Train_T.T_Traction_Cut_Off` (1 s) is used by
+`EVC_Mission.Train_Data_Of` and `EVC_Limits.T_Traction`, and no format
+of the image carried it. 3.13.2.2.2.1 defines T_traction_cut_off without
+a range or a resolution, 3.18.3.2.1 lets a train datum be pre-configured.
+Built: format version 4, the image of version 3 then the time as a u16
+in ms before the CRC, refused above `Max_Traction_Cut_Off_Ms` 10 000
+(decision: 10 s bounds what a traction system takes to cut off);
+`Length_OK`, `Get_Tail` and `Load_Gamma` take version 4, versions 1 to
+3 are still accepted with the default; `EVC_Config.Encode_V4`;
+`EVC_Test_Config.Scenario_Config_Traction` (a version 4 image given
+back, 10 001 ms refused, loaded; a version 3 image the default), the v2
+case's unknown version now 5. The images of the repository stay at their
+versions (version 1 for the hosted port and the bench, version 3 for the
+zones sample); the configuration tool `test/tools/evc_config.py` writes
+versions 1 to 3 only, left at the bound (B3884). Row 3.18.3.2 c) 1st
+bullet set done with `@req` on `Get_Tail` and `Encode_V4`; `evc_config`
+proved.

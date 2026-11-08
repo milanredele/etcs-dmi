@@ -298,7 +298,8 @@ is
    function Length_OK (Version, L : Natural) return Boolean is
      (if Version = 1 then L = Image_Length
       elsif Version = 2 then L in Min_Image_V2_Length .. Max_Image_V2_Length
-      else L in Min_Image_V3_Length .. Max_Image_Length);
+      elsif Version = 3 then L in Min_Image_V3_Length .. Max_Image_V3_Length
+      else L in Min_Image_V4_Length .. Max_Image_Length);
 
    --  The zones of an image of format version 3 at Offset: the count,
    --  then Zone_Max entries of a u16 first NID_C, a u16 last NID_C, a
@@ -378,8 +379,10 @@ is
             else Accepted);
    end Get_Train;
 
-   --  The train of an image of format version 2 or 3 of length L, and
-   --  the zones of version 3 between the train and the CRC
+   --  The train of an image of format version 2, 3 or 4 of length L,
+   --  the zones of versions 3 and 4 after the train, and the traction
+   --  cut-off time of version 4 between the zones and the CRC
+   --  @req 3.18.3.2 c) 1st bullet
    procedure Get_Tail (Bytes   : Byte_Array;
                        Version : Natural;
                        L       : Natural;
@@ -387,20 +390,32 @@ is
                        Z       : out Zone_Table_T;
                        S       : out Field_Status_T)
      with Global => null,
-          Pre  => Version in 2 .. 3 and then L <= Bytes'Length
+          Pre  => Version in 2 .. 4 and then L <= Bytes'Length
                   and then Length_OK (Version, L),
           Post => (if S = Accepted
                    then (for all I in 1 .. Z.Count =>
                            Z.Zones (I).First <= Z.Zones (I).Last))
    is
+      Extra : constant Natural :=
+        (if Version = 4 then Traction_Image_Length else 0);
+      V     : Unsigned_16;
    begin
       Z := No_Zones;
       if Version = 2 then
          Get_Train (Bytes, L, T, S);
-      else
-         Get_Train (Bytes, L - Zone_Image_Length, T, S);
-         if S = Accepted then
-            Get_Zones (Bytes, L - 4 - Zone_Image_Length, Z, S);
+         return;
+      end if;
+      Get_Train (Bytes, L - Zone_Image_Length - Extra, T, S);
+      if S = Accepted then
+         Get_Zones (Bytes, L - 4 - Zone_Image_Length - Extra, Z, S);
+      end if;
+      if S = Accepted and then Version = 4 then
+         V := Get_U16 (Bytes, Bytes'First + (L - 6));
+         if V > Max_Traction_Cut_Off_Ms then
+            Z := No_Zones;
+            S := Bad_Field;
+         else
+            T.T_Traction_Cut_Off := Time_Ms_T (V);
          end if;
       end if;
    end Get_Tail;
@@ -785,6 +800,34 @@ is
       end loop;
    end Encode_V3;
 
+   procedure Encode_V4 (C      : Config_T;
+                        G      : Gamma_T;
+                        Image  : out Max_Image_T;
+                        Length : out Natural)
+   is
+      Pos : Natural;
+      CRC : Unsigned_32;
+      V   : constant Unsigned_64 :=
+        Unsigned_64 (Natural'Min (Natural (C.Train.T_Traction_Cut_Off),
+                                  Max_Traction_Cut_Off_Ms));
+   begin
+      Encode_V3 (C, G, Image, Length);
+      --  the traction cut-off time in place of the CRC of version 3
+      Pos := Length - 4;
+      Image (5) := 4;
+      Image (Pos + 1) := Byte_Of (V, 0);
+      Image (Pos + 2) := Byte_Of (V, 1);
+      Pos := Pos + Traction_Image_Length;
+      Length := Pos + 4;
+      Image (7) := Byte_Of (Unsigned_64 (Length), 0);
+      Image (8) := Byte_Of (Unsigned_64 (Length), 1);
+      CRC := CRC_32 (Image (1 .. Pos));
+      for N in 0 .. 3 loop
+         pragma Loop_Invariant (True);
+         Image (Pos + 1 + N) := Byte_Of (Unsigned_64 (CRC), N);
+      end loop;
+   end Encode_V4;
+
    --  The years of the clock: the seconds since 2000 of an Unsigned_32
    --  end in 2136
    subtype Year_T is Natural range 2000 .. 2137;
@@ -878,11 +921,16 @@ is
          return;
       end if;
       L := Natural (Get_U16 (Bytes, Bytes'First + 6));
-      --  the zones of version 3 between the train and the CRC
+      --  the zones of version 3 between the train and the CRC, and the
+      --  traction cut-off time of version 4 after them
       if Get_U16 (Bytes, Bytes'First + 4) = 3
         and then L >= Min_Image_V3_Length
       then
          L := L - Zone_Image_Length;
+      elsif Get_U16 (Bytes, Bytes'First + 4) = 4
+        and then L >= Min_Image_V4_Length
+      then
+         L := L - Zone_Image_Length - Traction_Image_Length;
       end if;
       if L in Min_Image_V2_Length .. Bytes'Length then
          Get_Gamma (Bytes, L - 4, Gam, S);

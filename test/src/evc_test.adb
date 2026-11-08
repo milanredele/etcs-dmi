@@ -248,6 +248,7 @@ begin
    Scenario_Config_Core;
    Scenario_Config_Behaviour;
    Scenario_Config_Zones;
+   Scenario_Config_Traction;
    EVC_Test_Core.Scenario_Local_Time;
    Scenario_JRU_Format;
    Scenario_JRU_On_Board;
