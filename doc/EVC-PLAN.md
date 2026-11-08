@@ -22459,3 +22459,153 @@ extra); disagreed: two (item 3 (c), [10] against [5] at the A095
 report; item 8, ours right and the bench's cold movement detection the
 cause); undecided: none. Backlog lines: B3942, B3943. Calls: 96 of 130
 at this point.
+
+### E5 integration after the sixty-ninth round, the thirty-seventh of E6 (2026-11-08)
+
+Merged: e6/version-records (B530 closed after three rounds at the bound,
+not ours: in 6060302_04 and _06 SV30 every telegram carries M_VERSION
+3.0, so 3.17.2.3 makes 3.0 the operated version and the steps' 2.2 are
+values carried over from the SV22 form (s076, ERA's PDF the same); in
+SV21 and SV22 the groups carry 2.2 or 2.1 with no country mismatch
+(3.17.2.6) and ours rightly stays at 3.0 (an on-board retaining X 2
+would write 2.3 by 3.17.2.1.1), the expected 2.2 being what an on-board
+of a reduced envelope operates (6.4.2.1, 6.4.2.2): E7, Sfbc6ab9e and
+S79568c18 rewritten; B3780 not ours: the record 23 with Bit09 is written
+in the cycle of the entry (the trace prints a record 23 as event 123,
+which the line had read as another record; the brief's "M_VERSION 3.0"
+was 4.0), the runner's `S076_Tables.System_Status_Fact` judges Bit09 by
+the trip reason 9 alone: B3862 runner, S832505af model; a check of the
+record in `Scenario_Session_Establish`; B1840 a decision line B3863:
+`EVC_Core.Report_Fault` now with the hosted port's odometer self-check
+as its first caller, or wait for the TMS570 port's self-tests (E8), the
+agent recommending the wait since a malformed input is validated and
+ignored by the robustness rule), e5/runner-startup (S363c8035, 20
+sequences: the triage's "no cab activation" was partly right: ERA's step
+lists have no cab step (the PDFs of 5040300_08 and _09 read); two
+sequences give no cab input before the first Driver ID window, seven
+open desk A before a power cycle and not again after it: `S076_Run.
+Desk_Open_At_Power_Up` opens the desk opened last when the sequence
+expects the Driver ID window before any cab or power input (5.4.3.2 S0,
+S1), `Open_Window` reaches Settings through the Driver ID window's
+button (DMI 11.3.3.5, 11.7.7.1; 3170200_02 would have moved back from
+56 to 55 without it), a power-off stops the train first (5040300_13's
+step 61 "Train is at standstill" while its chart gives 30 km/h); 20
+sequences moved, 7 pass (3180400_05 and 5040300_09 in three versions,
+5040300_08 SV30), the new first failures traced: 3180200_01 step 108 a
+bare "Any message is recorded" in NL (B3923 runner), 5040300_13 step 108
+a record 16 expected for Train Rejected where SUBSET-027 4.2.4.23 has
+bit 11 of record 23 (s076), 5080200_04 step 23 the level symbol judged
+by the step's column right after a selection (B3924 runner), 5220200_06
+step 66 the Level window after a power cycle (B3922 onboard; the review
+disagrees, B3943), 9990200_01 step 38 the roll away's emergency brake
+where the sequence expects the service brake (3.14.1.1 implementation
+choice, s076); B1841 closed, nothing left: 5040300_08 SV30 passes whole,
+5040300_13 passes steps 75 to 79 with the network 654321 and its record
+48; B3700 left at the bound), e6/integrity-sm (B3762: 4.6.3 [83] in
+`EVC_Transition_Conditions.Mission_Holds` from `EVC_Train_Data.
+Front_Consist_Rose` (the front consist length from zero to non-zero,
+true for one cycle, cleared by `No_Consist_Input` every cycle without a
+consist input; decision: the Train Data validity read before the input,
+3.18.3.5 a) invalidating it on the same input), to SB in the eight rows
+of 4.6.2; `Scenario_Consist_To_Stand_By` failing before the fix on both
+transitions, three scenarios that gave a front length in FS adjusted;
+the three S980d96c9 sequences stay: the runner gives 0 m in front of the
+engine where the comments give 50 / 40 / 70 m (B3902 runner); B3761:
+`EVC_Sessions.Integrity.Evaluate` takes `SM_Unacknowledged` (a 133
+awaiting its 7) for the first alternative of [2] and [3], `Take_SM_Turn`
+(from `EVC_Core.Modes.Adjust_For_Manoeuvre` on `SM_Opposite`) for [10]
+and the 5th term of [3] until the train is known integer again
+(decision 2 rewritten; finding: [10] coincides with [5] in practice
+since the A095 report carries the confirmation: the review disagrees,
+B3942); `Scenario_SM_Integrity` failing on two checks before the fix;
+rows 3.6.5.2.5, its Tables 2a and 2b and 4.6.3 Table done), e6/texts-held
+(B3820: `EVC_Text_Messages.Show_Or_Hold` and `Waits` hold a text to be
+acknowledged while another awaits its acknowledgement, during the 1 s
+after one is acknowledged or revoked (DMI 5.4.1.9) and behind one that
+started before it, and hold a text without acknowledgement while a text
+to be acknowledged awaits or is held (5.4.1.10, 8.2.3.4.8 a): the brief's
+"sent as today" was wrong); a held text keeps its end condition and its
+brake (3.12.3.4.7, 3.12.3.4.7.1); a held text without acknowledgement
+whose end comes first is dropped unshown; the records 16 and 18 at the
+sending, which is now when the driver is shown it (decision: the
+on-board tells the DMI); `Scenario_Texts_Held`, 4 checks failing before
+the fix; the DMI goldens unchanged; 3120300_03 passes step 76 and stops
+at 70 (the runner's `Text_On_DMI` names a text by its class, so BG1d's
+text on offer counts for BG3d's: B3882 runner, the one explained
+backward movement); B3883 onboard for the two cases still recorded at
+the sending; B781 closed: the brief's "left" list was wrong, six
+relocation scenarios existed and were called; only the LS profile had
+none, `Scenario_LS_Profile_Relocated` passes at once (`Note_Passed`
+handles a profile whatever its mode); the rows A.3.5.1 3rd, 4th, 6th,
+7th and 11th bullets done; B3760: `EVC_Config.Format_Version` 4 carries
+T_traction_cut_off as a u16 in ms after the version 3 image, refused
+above 10 000 (decision: the clause gives no bound), versions 1 to 3 still
+accepted with the 1 s default, `Encode_V4`, `Scenario_Config_Traction`;
+the configuration tool `evc_config.py` still writes 1 to 3: B3884
+tooling; the row 3.18.3.2 c) 1st bullet done) and the review
+e5/review-69.
+
+Review (the eighteenth): nine verdicts, seven agree (the texts held and
+recorded at the sending, [83], the version in the header per system
+version, the image's field and its bound as a decision, the desk kept
+over a power cycle as the sequences' own assumption, the record 23
+written and the runner's Bit09, the extra 3120300_03 step 70 a runner
+gap), two disagree: B3942 onboard, the reviewer reads [10] as taking the
+status to "no information" in the cycle the SM authorisation changing
+the orientation is received, before the A095 position report, so that
+report carries no confirmation, where the author has [10] coincide with
+[5] with the report carrying it (and remarks that C3 entered from "no
+information" skips the terms of [3] about the time the train was last
+known integer): a trace of the order in `EVC_Core.Modes` settles it;
+B3943 runner, 5220200_06 step 66: by 4.11.1.1 without cold movement
+information the position and the level stay invalid and `Revalidate_
+Kept` follows it, nothing in the bench sets `Cold_Available`, so the
+Level window is right and the bench should report the cold movement
+over a power cycle at standstill (the author's B3922 onboard). Eighteen
+rounds of reviews: 151 items, 130 agreed, 24 disagreed, 8 undecided; 39
+lines, of which 8 became fixes; 120.2 USD.
+
+Verification of the merged tree: an early chain on the runner-startup
+package green (version-records changed no code); the full chain after
+the four merges green at once: `test/check.sh` ok; the full proof 14145
+checks (55 more), none unproved, margin 47726 steps; cross build and
+stack 32768 B budget, margin 6024 B (unchanged); wasm and both smokes 0
+failures; the runner 1242 / 1013 / 935 (from 1235 / 1022 / 933), 0
+regressions against the merged baseline, no signature untriaged. The
+merge: version-records and the review fast-forwarded; runner-startup and
+integrity-sm conflicted on the plan and the backlog, texts-held on the
+plan, the backlog and the triage (the one line Sea60e1d6 both sides
+rewrote: the author's "no sequence left" kept); the three agents in
+`EVC_Core`'s children did not conflict.
+
+Costs (doc/ROUNDS.csv): 43.5 USD with the review (36.6 for the four
+packages, 6.9 the review), 11 of 12 package items done (B3700 left at
+the bound), 4 of 11 brief premises wrong ("M_VERSION 3.0"; "a text
+without acknowledgement sent as today"; B781's "left" list; the triage's
+"cab activation"), one agent over budget: texts-held at 187 calls of 160
+(its own tally said 124: four Edits uncounted after call 31 and the
+drift never corrected), two past the bound with the last item in hand
+(122, 124), two under it (110, 118); the review 102 of 130. Lessons: an
+agent's tally drifts when an Edit goes uncounted, and the measured count
+is the one that counts: a brief may ask for the tally to be re-counted
+from the transcript's tool results at every commit; a "left" list
+written into a brief from a backlog line is a claim like any other (the
+rule held: both agents checked and found the list wrong before building);
+three items open for many rounds closed as "not ours" once traced (B530,
+B3780, B781's relocations): a line left at the bound three times is a
+first item of its own, not a third.
+
+The matrix: clauses left 7 (todo 0, partial 7: 3.20.1.2, 4.11.1.1 and
+4.11.1.3 (EOLM E7, the non-volatile store E8), 5.4.3.3 Table, 5.4.5.3
+and 5.4.5.3 i) (VBC at S10 / S20), 5.17.2.2 A7; done 2133: 10 rows set
+done this round). Open items: doc/BACKLOG.csv (31 open after this round;
+11 added of which 2 by the review, 7 closed). Next: B3863 (the user's
+decision: a fault the host reports now or at E8), B3942 (the [10] trace),
+B3943 with B3922 (the bench's cold movement over a power cycle, or ours),
+B3883 (a text without acknowledgement hidden by a later one, records 17
+and 19), B3862 (Bit09 by the entry), B3882 (a text judged by its id),
+B3902 (the front consist length from the comment), B3923 and B3924 (the
+bare record and the level symbol after a selection), B3700, B3884
+(`evc_config.py` version 4), B3380, B1360's records left, the seven
+partial rows re-read; the review again (eight items, readings first, no
+backlog read).
