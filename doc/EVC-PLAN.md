@@ -22112,3 +22112,13 @@ holds the TIU's confirmation (failed before the fix) until message 7.
 Runner: 0 regressions, 0 improvements, nothing moved. Proofs:
 `evc_sessions-integrity`, `evc_sessions`, `evc_core-modes` (no Global
 widened: `Adjust_For_Manoeuvre` wrote `EVC_Sessions.State` already).
+
+**The rows.** 3.6.5.2.5, 3.6.5.2.5 Table 2a (the row stands for Table
+2c, its note keeps that sentence) and 3.6.5.2.5 Table 2b set done with
+B3761's terms, their notes naming `EVC_Sessions.Manoeuvre_Turned`,
+`EVC_Sessions.SM_Consist_Awaited` and `Scenario_SM_Integrity`; 4.6.3
+Table done with B3762 ([81] and [83] built; AD, the National System and
+the conditions absent from 4.0.0 out of scope as its note lists). Clauses
+left 13 (todo 0, partial 13). Backlog: B3761 and B3762 closed, B3902
+added (runner: the safe consist length in front of the engine the
+sequences' comments give).
