@@ -22598,8 +22598,9 @@ first item of its own, not a third.
 The matrix: clauses left 7 (todo 0, partial 7: 3.20.1.2, 4.11.1.1 and
 4.11.1.3 (EOLM E7, the non-volatile store E8), 5.4.3.3 Table, 5.4.5.3
 and 5.4.5.3 i) (VBC at S10 / S20), 5.17.2.2 A7; done 2133: 10 rows set
-done this round). Open items: doc/BACKLOG.csv (31 open after this round;
-11 added of which 2 by the review, 7 closed). Next: B3863 (the user's
+done this round). Open items: doc/BACKLOG.csv (30 open after this round;
+11 added of which 2 by the review, 8 closed: B3780's state was left open by
+its author with the closing text written, set done at the integration). Next: B3863 (the user's
 decision: a fault the host reports now or at E8), B3942 (the [10] trace),
 B3943 with B3922 (the bench's cold movement over a power cycle, or ours),
 B3883 (a text without acknowledgement hidden by a later one, records 17
