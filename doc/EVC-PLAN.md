@@ -22043,3 +22043,60 @@ the refusal is the on-board telling the DMI, the standing rule of the
 rounds; the DMI's operational range check (ERA_ERTMS_015560 10.3.4.5),
 which the driver may overrule, stays as its specification has it. No
 code change; the review's line B3840 closed.
+
+### The operated version in the JRU header and the record of a system status message: the version of a level 1 trackside, the Trackside not compatible entry recorded, a fault the host reports (e6/version-records) (2026-11-08)
+
+Three items, two traces and a decision line; no change in evc/.
+
+**B530, traced: not ours.** 6060302_04 SV30 step 59 and 6060302_06
+SV30 step 48 (Sfbc6ab9e) expect SYSTEM_VERSION 2.2 (010 0010) in the
+JRU header in level 1 at 100 m; ours writes 3.0 (48). Every telegram of
+the SV30 forms carries M_VERSION 3.0 (011 0000), the groups BG0d at
+50 m and BG1d at 100 m included, and in _06 the system version order of
+packet 2 in BG2d (step 51) is 3.0 where the step's text says 1.0; ERA's
+own PDF of _06 SV30 has the same (the step on its page 10, the telegram
+tables). By 3.17.2.3 a group of X 3 makes 3.0 operated whatever was
+operated before (3 is the highest X of the envelope, 6.4.2.1): the steps
+keep the SV22 form's values (2.2, then 1.1 at steps 52 to 54), triaged
+s076. The SV22 and SV21 forms (and 3170200_01, _02, _05 SV22 and SV21,
+the same signatures) carry groups of 2.2 or 2.1 with NID_C 64 and the
+default national values (no country mismatch, 3.17.2.6 not met): a
+group of X 2 below the operated 3 leaves 3.0 (3.17.2.3), and a 4.0.0
+on-board operating X 2 (a version retained from before the sequence,
+3.17.2.9) would write 2.3 (3.17.2.1.1), not 2.2 or 2.1: those are the
+versions of on-boards of a reduced envelope (6.4.2.1, 6.4.2.2), another
+system version, triaged E7 (Sfbc6ab9e's SV22 family, S79568c18). In
+6060302_06 SV22 the order of BG2d is 2.2 too while steps 52 to 54
+expect 1.1 (ours 2.3 by 3.17.2.5 and 3.17.2.1.1, after the first
+failure). The rows 3.17.2.x stay done, unchanged.
+
+**B3780, traced: not ours.** 3050300_05 SV30 step 63 (S832505af):
+the message 32 of step 60 carries M_VERSION 4.0 (100 0000; the line
+said 3.0), X above the envelope (3.5.3.7 d)); ours shows Trackside not
+compatible (DMI entry 15, no trip), sends 154 and 156, and writes the
+record 23 in the same cycle with SYSTEM_STATUS_MESSAGE 2**8, Bit09
+(SUBSET-027 4.2.4.23): the '123' the line read as another record is
+it, `EVC_JRU_Messages.View` gives the record 23 the event 123 with the
+bits 9 to 16 in its third byte ('jru 123 0 1 0'). The path
+`EVC_Sessions.Show` -> `EVC_Core.Outputs.Send_Procedure_Messages` ->
+`EVC_Outbox.Put` (the status event) -> `EVC_Core.Records.
+Record_System_Status` -> `EVC_JRU_Records.System_Status` (`SS_Bit`
+15 -> 9) holds; evc_test Scenario_Session_Establish now checks the
+record after the 154 of an RBC of 4.0 (it passes on master: no fix).
+The runner judges Bit09 by the trip reason 9 alone
+(`S076_Tables.System_Status_Fact`, `Trips (9)`, the trip [65] of entry
+16), not by the entry 15 shown without a trip: a runner gap, B3862
+(kind runner); S832505af triaged model. The row 3.20.1.2 lists the
+record 23 by its writer, not by entry: unchanged.
+
+**B1840, a decision line for the user (B3863).** No host reports a fault
+the on-board could live with today: the hosted port and the bench call
+`Enter_Failure` from their exception handler, after an operation failed
+(ports/hosted/evc.adb, test/wasm/onboard_wasm.adb), and an input that
+does not match its port's shape is ignored by `EVC_Core.Handle_Input`
+(`Valid_Input`), as the robustness rule asks. Options and the
+recommendation in B3863.
+
+Verification: `test/check.sh` green; no unit of evc/ changed, so no
+unit proof; the runner 1235 / 1022 / 933, 0 regressions, no movement
+(the two items change triage only), no signature untriaged.
