@@ -195,6 +195,7 @@ begin
    Scenario_MA_Timers_Roll_Back;
    Scenario_LX_Roll_Back;
    Scenario_Mode_Profile_Relocated;
+   Scenario_LS_Profile_Relocated;
    Scenario_Track_Condition_Relocated;
    Scenario_LX_Relocated;
    Scenario_Route_Suitability;

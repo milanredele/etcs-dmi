@@ -664,6 +664,7 @@ is
    --  3.12.3.4.3.1.2, 3.12.3.4.3.1.4): the sub-conditions fulfilled so
    --  far and whether one or all of them end the display. Level_Left:
    --  a transition from the level of the last cycle executed
+   --  @req A.3.5.1 3rd bullet
    procedure End_Condition (M          : in out Message_T;
                             Est_Front  : Dist_T;
                             Now_Ms     : Unsigned_64;

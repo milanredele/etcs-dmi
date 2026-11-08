@@ -22090,3 +22090,23 @@ already sent when one to be acknowledged comes (the DMI hides it,
 8.2.3.4.8 a), unrecorded), and a text behind a level or mode
 acknowledgement of the DMI's FIFO (5.4.1.9.1). Rows 3.12.3.4.4 and
 3.12.3.4.7.1 noted with `@req`.
+
+**B781, the A.3.5.1 bullets against the relocation scenarios.** The
+brief's "left" (the 3rd, 4th, 6th, 7th, 9th, 11th and 12th bullets) was
+behind the backlog line, which said only the LS profile of the 4th was
+left, and the line held: every other bullet had a called scenario over a
+reverse movement and over a relocation (`Scenario_Text_Stop_Relocated`,
+`Scenario_Mode_Profile_Relocated`, `Scenario_Handover_Relocated`,
+`Scenario_Track_Condition_Relocated`, `Scenario_LX_Roll_Back` and
+`Scenario_LX_Relocated`; the 9th and 12th rows were done already), five
+rows left partial by stale notes. The 4th bullet's LS profile:
+`EVC_Procedures.Note_Passed` keeps the beginning and the end reached
+for the slot's profile whatever its mode, so nothing to build;
+`EVC_Test_Profiles.Scenario_LS_Profile_Relocated` (next to the OS one,
+on `Lay_Relocating`: an LS profile from 320 m of the group 10, LS entered
+when the max safe front end reaches it before the group 20 is read 6 m
+late, the relocation puts that end in rear of the beginning; LS kept, no
+transition and no acknowledgement again forward) passed at once. Rows
+A.3.5.1 3rd, 4th, 6th, 7th and 11th bullets set done with their
+scenarios; `@req` tags on `EVC_Text_Messages.End_Condition` (3rd) and
+`EVC_Track_Description.Release_LX` (11th). B781 closed.

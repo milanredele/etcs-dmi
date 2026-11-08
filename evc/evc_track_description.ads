@@ -520,7 +520,7 @@ is
    --  and the driver is informed of its status (5.16.1.4 b); Indicate_LX
    --  the driver is informed (5.16.1.4 a). Nothing when I is not a level
    --  crossing not protected.
-   --  @req 5.16.1.2, 5.16.1.3
+   --  @req 5.16.1.2, 5.16.1.3, A.3.5.1 11th bullet
    procedure Release_LX (I : Positive; From : Dist_T)
      with Global => (In_Out => State),
           Pre => I <= Max_LX;
