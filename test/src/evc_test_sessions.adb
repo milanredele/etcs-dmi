@@ -292,6 +292,11 @@ package body EVC_Test_Sessions is
       Check (Status_Shown (EVC_DMI_Port.SS_Trackside_Not_Compatible, 0),
              "session: the driver informed: ""Trackside not compatible"" "
              & "(3.5.3.7 d) second bullet, DMI entry 15)");
+      --  SUBSET-027 4.2.4.23: the message shown is recorded in the same
+      --  cycle, SYSTEM_STATUS_MESSAGE Bit09 (the view's event 123)
+      Check (JRU_Field (123, 0, 31) = 2 ** 8,
+             "session: Trackside not compatible recorded, message 23 "
+             & "SYSTEM_STATUS_MESSAGE Bit09 (SUBSET-027 4.2.4.23)");
       Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
       Stand;
       Check (R.Info (1).State = R.Idle and then Is_Request (1, 2),
