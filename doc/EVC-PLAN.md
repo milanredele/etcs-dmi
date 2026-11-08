@@ -22321,3 +22321,141 @@ zones sample); the configuration tool `test/tools/evc_config.py` writes
 versions 1 to 3 only, left at the bound (B3884). Row 3.18.3.2 c) 1st
 bullet set done with `@req` on `Get_Tail` and `Encode_V4`; `evc_config`
 proved.
+
+### Review of the sixty-ninth round: eight verdicts re-derived blind (e5/review-69) (2026-11-08)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items and the extra one
+were taken. No code, no triage line and no line of the authors was
+changed.
+
+1. A second text while one awaits its acknowledgement. Mine: DMI
+   5.4.1.9 queues the texts to acknowledge, the next shown 1 s after
+   the current one is acknowledged or revoked; 5.4.1.10 and 8.2.3.4.8
+   a) show no text without acknowledgement while one to acknowledge is
+   on offer. By the user's rule the on-board (a) holds the second text
+   to acknowledge and sends it 1 s after the acknowledgement, (b) holds
+   a text without acknowledgement until none awaits one, (c) writes
+   records 16/18 at the sending, which is the display (SUBSET-027
+   4.3.1.1 "when ... shown to the driver"), (d) drops a held text
+   without acknowledgement whose end condition comes first (3.12.3.4.4
+   by analogy: never shown, no record) and keeps a held one to
+   acknowledge, its brake by 3.12.3.4.7, until acknowledged
+   (3.12.3.4.7.1). Author (`EVC_Text_Messages.Waits`, `Show_Or_Hold`,
+   the removal in `Evaluate` when ended, not shown and not held to be
+   acknowledged; `EVC_Test_Authority.Scenario_Texts_Held`): the same.
+   Agree. A text without acknowledgement already shown when one to
+   acknowledge arrives is hidden by the DMI (8.2.3.4.8 a)), with no
+   record 17/19: a DMI rule the clauses give, left as it is.
+
+2. Condition [83]. Mine: the validity is read before the input
+   (3.18.3.5 a) invalidates the Train Data on that same input, else
+   [83] never holds); "becomes different from zero" is an edge, none
+   or zero to a length in front of the engine, one cycle in effect
+   since the Train Data are invalid after it; to SB from FS, AD, LS,
+   SR, OS (p5), UN, SN (p6), PT (p4) (4.6.2, eight cells); a rear
+   length alone does not. Author (`EVC_Train_Data.Front_Consist_Rose`
+   and the Contract_Cases of `Take_Consist`, the eight cells of
+   `EVC_Modes`, `EVC_Test_Manoeuvre.Scenario_Consist_To_Stand_By`):
+   the same. Agree.
+
+3. The integrity table's Supervised Manoeuvre terms. Mine: (a) the
+   first alternative of [2] and [3] holds when no safe consist length
+   for SM sent (message 131's or 133's packet 10) awaits the RBC's
+   acknowledgement (3.18.3.10.1), or none was sent; (b) the last term
+   of [3] is set by an SM authorisation whose MA is opposite to the
+   train orientation (5.21.2.2 A075) and cleared when the train is
+   next known to be integer, by [2] only since [3] is blocked; (c) [10]
+   takes "confirmed by external source" to "no information" at p3 with
+   [5], [7], [8], [9], and it differs from [5] in practice: the
+   authorisation is received before A095's position report, so that
+   report goes with "no information", where [5] alone would let it
+   carry the confirmation and a confirmed length measured from the
+   min safe rear end of the old orientation. Author
+   (`EVC_Sessions.Integrity.Evaluate`, `Take_SM_Turn` "for the next
+   Evaluate", `Set_T0`, decision 2; `EVC_Test_Manoeuvre.
+   Scenario_SM_Integrity`): (a) and (b) the same; (c) "in practice
+   [10] coincides with [5]: the authorisation sends a position report
+   (A095) that carries the confirmation". Disagree on (c) (B3942).
+   Also seen: [3] entered from "no information" (`C3`) does not check
+   its terms of the time the train was last known to be integer (the
+   length unchanged, the position valid then, no reverse movement
+   since); only `C789` in "confirmed by external source" does; with
+   decision 1 (that time the cycle of the reception) they are empty,
+   which the clause does not say (in B3942).
+
+4. The operated version in the JRU header, 6060302_06 step 48. Mine:
+   SV30's telegrams all carry M_VERSION 3.0 (011 0000; the packet 2
+   order 1.0 aside), X 3, the operated 3.0 (3.17.2.3, 3.17.2.1.1);
+   the step's 2.2 and its comments ("X=2", 2.1) are the 2.x form
+   carried over: the sequence's data. SV22's carry 2.2: ours, whose
+   envelope goes to 3.0 and which operates 3 from the power-up, keeps
+   3 (3.17.2.3 takes a group's X only when higher; no order, no
+   country mismatch), header 3.0 (ours 48 in both traces); the step's
+   2.2 is the version of an on-board with a reduced envelope up to 2.2
+   (6.4.2.1, 6.4.2.2): a chapter 6 difference. Author (Sfbc6ab9e s076
+   for SV30, E7 for SV22; `EVC_System_Version.Take_Balise_Group`'s
+   postcondition): the same. Agree.
+
+5. The traction cut-off time in the configuration image. Mine: needed
+   per installation (the traction model is a fixed Train Data item of
+   the engine, 3.18.3.2 c), from pre-configured values, 3.18.3.2.1), a
+   time; no clause bounds it (T_traction_cut_off appears only in
+   3.13.2.2.2.1 and its use in 3.13.9.3.2.3), so the field's bound is
+   a decision to write. Author (`EVC_Config` format version 4,
+   `Max_Traction_Cut_Off_Ms` 10 000 with "Decision: 3.13.2.2.2.1 gives
+   no range", `Get_Tail` refusing above it, `Encode_V4`;
+   `EVC_Test_Config.Scenario_Config_Traction`): the same. Agree.
+
+6. The runner's start of mission after a power cycle. Mine: S0 asks
+   SB with a desk open; 5040300_08 has no cab or desk step between the
+   power-down (43), the power-up (45) and the Driver ID window (47),
+   ERA's PDF a single "Cab active" at step 3; 5040300_09 none before
+   its step 3. The cab's desk is a train input that a power cycle of
+   the on-board does not change: ERA's bench kept it open over the
+   cycle and had one open from the first step. The rule is the
+   sequences' own assumption, not a workaround. 5040300_13 keeps
+   100 m from step 43 to 61 with "Train is at standstill" at 61: the
+   train stands at the power-down, the runner stops it there. Author
+   (`S076_Run.Desk_Open_At_Power_Up`, `Open_Desk`, the desk opened
+   last, A when none; `Apply_Input` stopping the train at a power
+   off): the same. Agree.
+
+7. 3050300_05 SV30 step 63. Mine: the record 23 is written in step
+   60's window ("jru 123 0 1 0": the view's bytes of bits 1 to 8 and 9
+   to 16, Bit09 set), message 154 sent (3.5.3.7 d), no compatible
+   version), the DMI shows Trackside not compatible (step 62 passes);
+   `S076_Tables.System_Status_Fact` judges bit 9 by `Trips (9)`, a trip
+   reason, and 3.5.3.7 d) has no trip. The runner. Author (S832505af
+   model, B3862): the same. Agree.
+
+8. 5220200_06 SV30 step 66. Mine: 4.10 gives the train position and
+   the level "TBR" over NP; 4.11.1.1 (PDF page 89, its arrows): no cold
+   movement takes the EOLM information, the position, the level, the
+   table of supported levels and the RBC contact from invalid to valid;
+   a cold movement or the information not available takes the EOLM
+   information and the table to unknown and leaves the position and the
+   level invalid (4.11.1.3). The sequence's path (D2, D3, S10, Special
+   with no level entry) is that of no cold movement. Ours follows
+   4.11.1.1 (`EVC_Core.Modes.Revalidate_Kept` on `EVC_Odometry.Cold`,
+   read from the odometer sample's `Cold_Available` at the first sample
+   after the power-up); nothing in test/src or sim sets
+   `Cold_Available`, so the bench reports the information not available
+   and both stay invalid: S2, the Level window, right. The runner (the
+   bench's cold movement detection over a power cycle at standstill).
+   Author (S8f936c68 onboard, B3922: "why ours finds one invalid after
+   this power-up is the on-board's"). Disagree (B3943).
+
+Extra, 3120300_03 SV30 step 70. Mine: BG1d's text (Q_TEXTCONFIRM 1)
+shown at step 62, BG3d's held by ours at 500 m (`Waits`); the step is
+judged at 65.9 s (566 m), its window holding the driver's
+acknowledgement (record 11, action 23), and `S076_Bench.Text_On_DMI`
+by the class finds a plain text (BG1d's) on the DMI: "got shown". The
+step names the third text. The runner. Author (S4b4be9f1 runner,
+B3882): the same. Agree.
+
+Counts: 8 items and the extra. Agreed: seven (1, 2, 4 to 7 and the
+extra); disagreed: two (item 3 (c), [10] against [5] at the A095
+report; item 8, ours right and the bench's cold movement detection the
+cause); undecided: none. Backlog lines: B3942, B3943. Calls: 96 of 130
+at this point.
