@@ -22100,3 +22100,61 @@ recommendation in B3863.
 Verification: `test/check.sh` green; no unit of evc/ changed, so no
 unit proof; the runner 1235 / 1022 / 933, 0 regressions, no movement
 (the two items change triage only), no signature untriaged.
+### The runner's start of mission after a power-up and the radio network: the Driver ID window after a power cycle, the network of the selection comment, the speed under the curve (e5/runner-startup) (2026-11-08)
+
+S363c8035, the Driver ID window expected where no desk is open. The
+triage's claim ("the sequence starts without the cab activation") held
+for two sequences only: traced at SV30, the start of mission asks the
+Driver ID in SB with a desk open (5.4.3.2 S0, S1) and our on-board
+opens the window once a desk is open (no case of the on-board). Two
+groups, both ERA's own step lists (the PDFs of 5040300_09 and _08
+checked, no cab step in them): no cab input before the first Driver ID
+window (5040300_09 and 9990200_01, step 3), and desk A opened before a
+power cycle with none after it (3180200_01 step 88, 3180400_05 83,
+5040300_02 48, 5040300_08 and _13 47, 5080200_04 17, 5220200_06 62;
+3050600_01, 3170200_02, 6060302_05 the same after an earlier first
+failure), while 24 other power-ups of the corpus (SV30) give the desk
+again after the power-up. Built in `S076_Run`: `Desk_Open_At_Power_Up`,
+at a power-up the desk opened last (A when none was) is opened when the
+sequence expects the Driver ID window before any cab or power input
+(`Open_Desk`, the cab branch of `TIU_Input` made a procedure); a
+sequence that gives the desk again is left as it is, so its record 38
+stays a change. Two more rules came with the traces of the moves: the
+Settings window from the Driver ID window by its 'settings' button
+(`Open_Window`, ERA_ERTMS_015560 11.3.3.5, 11.3.3.6, 11.7.7.1: the
+first try regressed 3170200_02 from step 56 to 55, its optional System
+version press refused over the Driver ID window; it is back at 56,
+S12fb6c82 dmi), and the train powered down at standstill
+(`Apply_Input`, SIM power off: 5040300_13's chart runs on at 30 km/h at
+the 100 m of its steps 43 to 61, ERA's step 61 there says "Train is at
+standstill"; the power-up in motion gave SB's standstill supervision
+its emergency brake and the level's selection was not recorded at step
+52). Moved, 20 sequences, every new step traced at SV30: passed
+3180400_05 (three versions), 5040300_09 (three), 5040300_08 SV30;
+3180200_01 (three) to step 108, a bare "Any message is recorded" at
+4800 m in NL judged by a record in the window where the step checks
+the DATE and TIME (Sf6040538 model, B3923); 5040300_13 SV30 to step
+108, record 16 expected for the train rejected by message 40, which
+ours shows as the system status message recorded in record 23 bit 11
+(SUBSET-027 4.2.4.23; 16 is a trackside fixed text, 4.2.4.16:
+S5191b158 s076); 5080200_04 (three) to step 23, the runner's generic
+level symbol judged by the step's column L1 right after the driver
+selected L0 (Sfaaa30ed model, B3924); 5220200_06 SV30 to step 66, ours
+asks the level after the power-up where ERA goes on from the Driver ID
+to Special and SHUNTING (5.4.3.2 D2 -> S10, both stored statuses
+valid: S8f936c68 onboard, B3922); 9990200_01 (three) to step 38, the
+roll away protection's emergency brake where the sequence expects the
+service brake, a type 3.14.1.1 leaves to the implementation (Saf042fa6
+s076); 5040300_02 SV22 and SV30 blocked at step 59 (the RBC-ID entry,
+radio of the runner). Between the desk rule alone and the three rules,
+the steps failed after a first failure grew by 148 (9970 to 10118, the
+two later rules in sequences already failed, not traced one by one):
+no sequence stops earlier. Triage S363c8035 rewritten by group, five family lines
+added.
+
+B1841, the network of the selection comment: the premise held (both
+sequences stopped at step 47 by S363c8035). With the desk open,
+5040300_08 SV30 passes whole and 5040300_13 SV30 passes its steps 75 to
+79: the Radio Data window open, 654321 selected from the list the
+on-board offers, the record 48 of step 79 (no value in its line)
+compared with that network. Nothing was left to build; B1841 closed.

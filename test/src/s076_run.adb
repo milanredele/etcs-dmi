@@ -875,11 +875,19 @@ package body S076_Run is
    end Type_Digits;
 
    --  Bring window Wid (a menu window of the default window) to the top:
-   --  close what is open where [Close] allows it, then its F button
+   --  close what is open where [Close] allows it, then its F button; the
+   --  Settings window from the Driver ID window of the step S1 of Start
+   --  Up by its 'settings' button, the last of the window (ERA_ERTMS_015560
+   --  11.3.3.5, 11.3.3.6, 11.7.7.1)
    function Open_Window (Wid : Window_ID_T) return Boolean is
    begin
       if Top_Is (Wid) then
          return True;
+      elsif Wid = W_Settings and then Top_Is (W_Driver_ID)
+        and then DMI_Windows.Button_Count >= 2
+      then
+         Press_Area (DMI_Windows.Button_Area (DMI_Windows.Button_Count));
+         return Top_Is (Wid);
       end if;
       for I in 1 .. 4 loop
          exit when not DMI_Windows.Is_Open or else Top_Is (Wid);
@@ -3022,31 +3030,62 @@ package body S076_Run is
    --  the train configuration the TIU reports (bits 0 to 5 of input 13)
    Train_Configuration : Natural := 1;
 
+   --  The desk of cab Arg opened ("A", "B"), or both closed (any other):
+   --  the driver who opens a desk puts its direction controller forward
+   --  (the sequences set it themselves only to change it) and the train
+   --  configuration of the train interface is known (EVC_Ports TIU input
+   --  13: the first value is not a change)
+   procedure Open_Desk (Arg : String) is
+   begin
+      if Same (Arg, "A") then
+         B.TIU_Input (2, 0);
+         B.TIU_Input (1, 1);
+         B.TIU_Input (6, 1);
+         B.TIU_Input (13, Train_Configuration);
+         Cab_Sign := 1;
+      elsif Same (Arg, "B") then
+         B.TIU_Input (1, 0);
+         B.TIU_Input (2, 1);
+         B.TIU_Input (6, 1);
+         B.TIU_Input (13, Train_Configuration);
+         Cab_Sign := -1;
+      else
+         B.TIU_Input (1, 0);
+         B.TIU_Input (2, 0);
+      end if;
+   end Open_Desk;
+
+   --  Whether the sequence expects the Driver ID window after the
+   --  power-up of step Cur before it gives a cab input or another power
+   --  input: a desk is then open from the power-up, since the Start of
+   --  Mission asks the Driver ID in SB with a desk open (5.4.3.2 S0, S1).
+   --  Decision: ERA's step lists give no cab in 5040300_09 and 9990200_01
+   --  before their first Driver ID window, and none after the power cycle
+   --  of 5040300_08 and nine more that opened desk A before it, where 24
+   --  other power-ups of the corpus give the desk again; the desk is the
+   --  one opened last (A when none was)
+   function Desk_Open_At_Power_Up return Boolean is
+   begin
+      for I in Cur + 1 .. Seq.Step_Count loop
+         declare
+            L : constant String := Image (Seq.Steps (I).Line);
+         begin
+            if Has (L, "TIU cab") or else Has (L, "SIM power") then
+               return False;
+            elsif Has (L, "expect DMI window displayed Driver-ID") then
+               return True;
+            end if;
+         end;
+      end loop;
+      return False;
+   end Desk_Open_At_Power_Up;
+
    function TIU_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
       Arg  : constant String := W (4);
    begin
       if Same (Kind, "cab") then
-         --  the driver who opens a desk puts its direction controller
-         --  forward (the sequences set it themselves only to change it)
-         --  and the train configuration of the train interface is known
-         --  (EVC_Ports TIU input 13: the first value is not a change)
-         if Same (Arg, "A") then
-            B.TIU_Input (2, 0);
-            B.TIU_Input (1, 1);
-            B.TIU_Input (6, 1);
-            B.TIU_Input (13, Train_Configuration);
-            Cab_Sign := 1;
-         elsif Same (Arg, "B") then
-            B.TIU_Input (1, 0);
-            B.TIU_Input (2, 1);
-            B.TIU_Input (6, 1);
-            B.TIU_Input (13, Train_Configuration);
-            Cab_Sign := -1;
-         else
-            B.TIU_Input (1, 0);
-            B.TIU_Input (2, 0);
-         end if;
+         Open_Desk (Arg);
          return Pass ("TIU cab " & Arg);
       elsif Same (Kind, "direction") then
          B.TIU_Input (6, (if Same (Arg, "forward") then 1
@@ -3600,8 +3639,20 @@ package body S076_Run is
                      B.Set_Network_Type (EVC_Config.FRMCS_GSMR);
                   end if;
                   B.Power_On;
+                  if Desk_Open_At_Power_Up then
+                     Open_Desk (if Cab_Sign < 0 then "B" else "A");
+                     return Pass ("SIM power on, desk "
+                                  & (if Cab_Sign < 0 then "B" else "A")
+                                  & " open");
+                  end if;
                end if;
             else
+               --  decision: the train is powered down at standstill at the
+               --  step's location, where the chart may still run on
+               --  (5040300_13: the chart's 30 km/h at the 100 m of the
+               --  steps 43 to 61, ERA's step 61 at 100 m "Train is at
+               --  standstill")
+               B.Set_Speed (0);
                B.Power_Off;
                B.New_Window;
             end if;
