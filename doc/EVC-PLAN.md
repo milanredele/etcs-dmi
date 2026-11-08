@@ -22043,3 +22043,50 @@ the refusal is the on-board telling the DMI, the standing rule of the
 rounds; the DMI's operational range check (ERA_ERTMS_015560 10.3.4.5),
 which the driver may overrule, stays as its specification has it. No
 code change; the review's line B3840 closed.
+
+### The second text to be acknowledged and the bookkeeping over a relocation: the text held until the first is acknowledged, the A.3.5.1 bullets against the relocation scenarios, the traction cut-off time in the image (e6/texts-held) (2026-11-08)
+
+**B3820, the second text to be acknowledged held by the on-board.** The
+premise held at the source: ERA_ERTMS_015560 5.4.1.9 manages the texts
+to be acknowledged as a FIFO, the next shown 1 s after the current one
+is acknowledged or revoked; 5.4.1.10 shows a text without
+acknowledgement only when the FIFO holds no text to be acknowledged;
+8.2.3.4.8 a) presents a text to be acknowledged alone; SUBSET-027 4.3.1.1
+writes records 16 and 18 "when a ... text message is shown to the
+driver". The DMI-EVC protocol carries the driver's acknowledgement back
+(action 2, the text's id), not a report of a text shown. Decision, by
+the driver's seat rule (the on-board tells the DMI): the on-board sends
+a text when the driver is to be shown it and records its display then;
+`EVC_Text_Messages.Show_Or_Hold` holds a started text while `Waits`:
+one to be acknowledged while another awaits its acknowledgement, during
+the 1 s after one was acknowledged (or revoked: `Remove` marks it,
+the next `Evaluate` starts the second), or behind a held one started
+before it (a FIFO by the starts, then the slots); one without
+acknowledgement while a text to be acknowledged awaits it or is held.
+The DMI's gap is satisfied then (its own 1 s runs from the driver's
+press, before the on-board reads it), so the sending, the display and
+the record coincide. A held text to be acknowledged keeps its end
+condition and brake (3.12.3.4.7, 3.12.3.4.7.1, as when the DMI held it)
+and does not give way for a new message (`Oldest`); a held text without
+acknowledgement ended before it is sent is dropped unseen (5.4.1.10:
+the driver would not have seen it). `EVC_Test_Authority.
+Scenario_Texts_Held` (three texts of the RBC from 300, 320 and 340 m,
+two to be acknowledged: A alone, B 1 s after A's acknowledgement, C at
+once after B's), 4 checks failing on master. Three scenarios that showed
+several texts to be acknowledged at once follow the decision
+(`EVC_Test_Procedures.Scenario_Text_Messages`: the plain text sent after
+the fixed text's acknowledgement; `Scenario_Text_Message_Room`: one of
+eight sent; `Scenario_DMI_Restart_Displayed`: the third sent 1 s after
+the second's acknowledgement; `EVC_Test_Sessions.
+Scenario_Text_Ack_Report` waits 1.2 s before each next acknowledgement
+and checks the text is sent). The runner: 3120300_03 SV30 passes step 76
+(record 18 at 67.2 s, the text sent 1 s after the acknowledgement at
+66.4 s) and stops at step 70 in SV22 and SV30 (re-recorded): the third
+text is held, as the step asks, but `S076_Bench.Text_On_DMI` names a
+text by its class, the newest of the class the on-board put, now
+BG1d's, on offer (S4b4be9f1 runner, B3882). Nothing else moved; the
+DMI's goldens unchanged. Left (B3883): a text without acknowledgement
+already sent when one to be acknowledged comes (the DMI hides it,
+8.2.3.4.8 a), unrecorded), and a text behind a level or mode
+acknowledgement of the DMI's FIFO (5.4.1.9.1). Rows 3.12.3.4.4 and
+3.12.3.4.7.1 noted with `@req`.

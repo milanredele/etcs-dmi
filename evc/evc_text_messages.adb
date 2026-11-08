@@ -13,7 +13,7 @@ package body EVC_Text_Messages
        Refined_State => (State => (Messages, Next_Id, Outputs, Output_N,
                                    Events, Event_N, Last_Level_Valid,
                                    Last_Level, Pending, Pending_N,
-                                   Reports, Report_N))
+                                   Reports, Report_N, Gap_Until, Freed))
 is
 
    No_Mode  : constant := 15;   -- M_MODETEXTDISPLAY: no sub-condition
@@ -56,6 +56,9 @@ is
       Started    : Boolean := False;
       Start_Ms   : Unsigned_64 := 0;
       Shown      : Boolean := False;
+      --  started and not ended at once, not sent to the DMI while a text
+      --  awaits the driver's acknowledgement (Show_Or_Hold)
+      Held       : Boolean := False;
       Loc_Done   : Boolean := False;
       Time_Done  : Boolean := False;
       Mode_Done  : Boolean := False;
@@ -90,6 +93,15 @@ is
    Events   : Event_Array;
    Event_N  : Natural range 0 .. Max_Events := 0;
    --  the level of the last cycle (the end sub-condition "level")
+   --  ERA_ERTMS_015560 5.4.1.9: the next text to be acknowledged is shown
+   --  1 s after the current one was acknowledged or revoked; Gap_Until
+   --  the on-board time from which one may be sent again, Freed a text
+   --  awaiting its acknowledgement removed outside Evaluate (the gap
+   --  starts at the next Evaluate)
+   Ack_Gap_Ms : constant := 1000;
+   Gap_Until  : Unsigned_64 := 0;
+   Freed      : Boolean := False;
+
    Last_Level_Valid : Boolean := False;
    Last_Level       : Level_T := L0;
    --  3.12.3: the text messages by radio (packets 73 and 74 of
@@ -228,13 +240,17 @@ is
    --  Remove message I: from the DMI when it was shown
    procedure Remove (I : Positive)
      with Global => (In_Out => (Messages, Outputs, Output_N, Events,
-                                Event_N)),
+                                Event_N, Freed)),
           Pre => I <= Max_Messages
    is
    begin
       if Messages (I).Used and then Messages (I).Shown then
          Put_Output ((Kind => Remove, Id => Messages (I).Id, others => <>));
          Record_Event (Event_Removed, Messages (I));
+         --  revoked while awaiting the acknowledgement (5.4.1.9)
+         if Messages (I).Confirm /= 0 and then not Messages (I).Acked then
+            Freed := True;
+         end if;
       end if;
       Messages (I) := (others => <>);
    end Remove;
@@ -250,8 +266,9 @@ is
      with Global => Next_Id;
 
    --  The oldest message that may give way to a new one when no slot is
-   --  free (Shown False: those not displayed yet; True: those displayed
-   --  and not waiting for the driver's acknowledgement), 0 for none
+   --  free (Shown False: those not displayed yet, but for one held to be
+   --  acknowledged; True: those displayed and not waiting for the
+   --  driver's acknowledgement), 0 for none
    function Oldest (Shown : Boolean) return Natural
      with Global => (Messages, Next_Id),
           Post => Oldest'Result <= Max_Messages
@@ -261,8 +278,9 @@ is
       for I in Messages'Range loop
          pragma Loop_Invariant (Slot < I);
          if Messages (I).Used and then Messages (I).Shown = Shown
-           and then (not Shown or else Messages (I).Confirm = 0
-                     or else Messages (I).Acked)
+           and then (Messages (I).Confirm = 0
+                     or else (if Shown then Messages (I).Acked
+                              else not Messages (I).Held))
            and then (Slot = 0
                      or else Age (Messages (I).Id) > Age (Messages (Slot).Id))
          then
@@ -278,7 +296,7 @@ is
    --  @req 4.8.3.1.1 Table-footnote [12]
    procedure Store (New_M : Message_T)
      with Global => (In_Out => (Messages, Next_Id, Outputs, Output_N,
-                                Events, Event_N))
+                                Events, Event_N, Freed))
    is
       Slot : Natural := 0;
       M    : Message_T := New_M;
@@ -467,7 +485,7 @@ is
    procedure Take_Groups
      with Global => (Input  => EVC_Position.State,
                      In_Out => (Messages, Next_Id, Outputs, Output_N,
-                                Events, Event_N))
+                                Events, Event_N, Freed))
    is
       use type ETCS_Catalogue.Packet_Kind_T;
    begin
@@ -513,7 +531,7 @@ is
    procedure Take_All (Taken : Boolean)
      with Global => (Input  => (EVC_Position.State, Pending),
                      In_Out => (Messages, Next_Id, Outputs, Output_N,
-                                Events, Event_N, Pending_N))
+                                Events, Event_N, Pending_N, Freed))
    is
    begin
       for I in 1 .. Pending_N loop
@@ -603,6 +621,8 @@ is
       Event_N := 0;
       Last_Level_Valid := False;
       Last_Level := L0;
+      Gap_Until := 0;
+      Freed := False;
       Pending := (others => No_Message);
       Pending_N := 0;
       Reports := (others => (others => <>));
@@ -688,6 +708,61 @@ is
       end if;
    end End_Condition;
 
+   --  Whether the started text M of the slot I waits before it is sent:
+   --  one to be acknowledged during the 1 s after a text was acknowledged
+   --  or revoked, while another awaits its acknowledgement or while one
+   --  started before it waits (DMI 5.4.1.9: a FIFO by the starts, then
+   --  the slots); one without acknowledgement while a text to be
+   --  acknowledged awaits it or waits (DMI 5.4.1.10)
+   function Waits (I : Positive; M : Message_T; Now_Ms : Unsigned_64)
+                   return Boolean
+   is
+     ((M.Confirm /= 0 and then Now_Ms < Gap_Until)
+      or else
+        (for some J in Messages'Range =>
+           J /= I and then Messages (J).Used
+           and then Messages (J).Confirm /= 0
+           and then ((Messages (J).Shown and then not Messages (J).Acked)
+                     or else
+                       (Messages (J).Held and then not Messages (J).Shown
+                        and then (M.Confirm = 0
+                                  or else Messages (J).Start_Ms < M.Start_Ms
+                                  or else (Messages (J).Start_Ms = M.Start_Ms
+                                           and then J < I))))))
+     with Global => (Messages, Gap_Until);
+
+   --  Decision: the on-board sends a text to the DMI, and records its
+   --  display (SUBSET-027 4.3.1.1, records 16 and 18), when the driver is
+   --  shown it, so a text that waits (Waits) is held, not sent: the DMI
+   --  has no text to hide behind the one to be acknowledged
+   --  @req 3.12.3.4.4, 3.12.3.4.7.1
+   procedure Show_Or_Hold (I      : Positive;
+                           M      : in out Message_T;
+                           Now_Ms : Unsigned_64)
+     with Global => (Input  => (Messages, Gap_Until),
+                     In_Out => (Outputs, Output_N, Events, Event_N))
+   is
+   begin
+      if Waits (I, M, Now_Ms) then
+         M.Held := True;
+      else
+         M.Held := False;
+         M.Shown := True;
+         declare
+            O : Output_T :=
+              (Kind   => Show,
+               Id     => M.Id,
+               Flags  => Flags_Of (M),
+               Length => M.Length,
+               Text   => M.Text);
+         begin
+            O.Length := M.Length;
+            Put_Output (O);
+         end;
+         Record_Event (Event_Displayed, M);
+      end if;
+   end Show_Or_Hold;
+
    procedure Evaluate (Mode        : Mode_T;
                        Level_Valid : Boolean;
                        Level       : Level_T;
@@ -703,6 +778,10 @@ is
       Event_N := 0;
       Report_N := 0;
       Take_All (Taken);
+      if Freed then
+         Gap_Until := Now_Ms + Ack_Gap_Ms;
+         Freed := False;
+      end if;
 
       for I in Messages'Range loop
          declare
@@ -714,6 +793,7 @@ is
                  and then EVC_Driver_Requests.Text_Acknowledged (M.Id)
                then
                   M.Acked := True;
+                  Gap_Until := Now_Ms + Ack_Gap_Ms;
                   M.Brake_SB := False;
                   M.Brake_EB := False;
                   Record_Event (Event_Acknowledged, M);
@@ -758,23 +838,14 @@ is
                --  evaluated as soon as the start one is fulfilled
                if M.Started and then not M.Ended then
                   End_Condition (M, Est_Front, Now_Ms, Level_Left);
-                  --  3.12.3.4.4: no display when ended at once
-                  if M.Ended and then not M.Shown then
+                  --  3.12.3.4.4: no display when ended at once; a text held
+                  --  without acknowledgement and ended is not shown either
+                  --  (DMI 5.4.1.10); one held to be acknowledged stays
+                  --  until acknowledged (3.12.3.4.7.1)
+                  if M.Ended and then not M.Shown
+                    and then (not M.Held or else M.Confirm = 0)
+                  then
                      M := (others => <>);
-                  elsif not M.Shown then
-                     M.Shown := True;
-                     declare
-                        O : Output_T :=
-                          (Kind   => Show,
-                           Id     => M.Id,
-                           Flags  => Flags_Of (M),
-                           Length => M.Length,
-                           Text   => M.Text);
-                     begin
-                        O.Length := M.Length;
-                        Put_Output (O);
-                     end;
-                     Record_Event (Event_Displayed, M);
                   end if;
                   --  3.12.3.4.7: the brake when the end comes before the
                   --  acknowledgement
@@ -786,6 +857,9 @@ is
                      M.Brake_EB := M.Confirm = 3;
                      Record_Event (Event_Brake, M);
                   end if;
+               end if;
+               if M.Used and then M.Started and then not M.Shown then
+                  Show_Or_Hold (I, M, Now_Ms);
                end if;
                Messages (I) := M;
 

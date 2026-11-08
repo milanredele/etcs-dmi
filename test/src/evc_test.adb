@@ -480,6 +480,7 @@ begin
    Scenario_SR_List_Direction;
    Scenario_Text_Relocated;
    Scenario_Text_Stop_Relocated;
+   Scenario_Texts_Held;
    Scenario_TAF_Relocated_In_Rear;
    Scenario_Train_Data_Per_Packet;
    Scenario_Train_Data_Changed;
