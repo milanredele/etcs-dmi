@@ -231,6 +231,9 @@ package body EVC_Test_Train_Data is
       end loop;
       Speed_Cms := 0;
       Stand_X (2_000);
+      --  no valid Train Data before the input, so that 4.6.3 [83] does
+      --  not take the train to Stand-By, which deletes the gradients
+      EVC_Train_Data.Invalidate;
       EVC_Core.Handle_Input (TIU, Consist_Frame (10, 9, 11, 100, 98, 102));
       Stand_X (300);
       G0 := EVC_Track_Description.Gradients_Count;

@@ -38,11 +38,12 @@ is
                            | C_78 | C_79;
 
    --  the start of mission (EVC_Mission, 5.4.3.2: the modes
-   --  proposed to the driver and acknowledged) and the level 1 MA with
-   --  valid Train Data ([10])
+   --  proposed to the driver and acknowledged), the level 1 MA with
+   --  valid Train Data ([10]) and the safe consist length in front of
+   --  the engine with valid Train Data ([83], EVC_Train_Data)
    subtype Mission_Condition_T is Condition_Id_T
      with Static_Predicate =>
-       Mission_Condition_T in C_8 | C_10 | C_58 | C_60;
+       Mission_Condition_T in C_8 | C_10 | C_58 | C_60 | C_83;
 
    --  EVC_Procedures (chapter 5), computed once per cycle:
    --    [5] shunting selected at standstill in level 0, NTC or 1 (5.6)
@@ -121,14 +122,13 @@ is
 
    --  Never true in this on-board:
    --    not implemented yet: [24], [33], [48], [53], [80] (AD, the
-   --    ERTMS/ATO on-board); [83] (the safe consist length in front of
-   --    the engine: no radio in it, left out of the radio halves); [35],
-   --    [38] (a National System through an STM: NTC is out of scope)
+   --    ERTMS/ATO on-board); [35], [38] (a National System through an
+   --    STM: NTC is out of scope)
    --    absent from 4.0.0: [55], [57], [64]
    subtype Not_Evaluated_T is Condition_Id_T
      with Static_Predicate =>
        Not_Evaluated_T in C_24 | C_33 | C_35 | C_38 | C_48 | C_53 | C_55
-                         | C_57 | C_64 | C_80 | C_83;
+                         | C_57 | C_64 | C_80;
 
    --  The conditions of the modes and levels half
 
@@ -217,7 +217,9 @@ is
                       and then EVC_Levels.Level = NTC
                       and then EVC_Mission.Acknowledged (M_SN),
          --  5.4.3.2 S23
-         when C_60 => EVC_Mission.Acknowledged (M_UN))
+         when C_60 => EVC_Mission.Acknowledged (M_UN),
+         --  3.18.3.5 a): the validity before the input of this cycle
+         when C_83 => EVC_Train_Data.Front_Consist_Rose)
      with Global => (EVC_Mission.State, EVC_Train_Data.State,
                      EVC_Stored_Information.State, EVC_Levels.State,
                      EVC_Radio_Authority.State);

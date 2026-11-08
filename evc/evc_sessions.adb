@@ -1568,7 +1568,7 @@ is
       declare
          Report : Boolean;
       begin
-         Integrity.Evaluate (Ctx.Mode, Report);
+         Integrity.Evaluate (Ctx.Mode, SM_Consist_Awaited, Report);
          if Report then
             Reports.Request;
          end if;
@@ -1894,6 +1894,11 @@ is
    begin
       Reports.Request;
    end Request_Position_Report;
+
+   procedure Manoeuvre_Turned is
+   begin
+      Integrity.Take_SM_Turn;
+   end Manoeuvre_Turned;
 
    procedure Delete_RBC_Order is
    begin

@@ -5,8 +5,8 @@ package body EVC_Train_Data
   with SPARK_Mode => On,
        Refined_State => (State => (Is_Valid, Current, Current_Categories,
                                    SCL_Available, SCL_Known, SCL,
-                                   SM_Set, SM_Data, SM_Categories,
-                                   Type_Index))
+                                   SCL_Front_Rose, SM_Set, SM_Data,
+                                   SM_Categories, Type_Index))
 is
 
    Is_Valid           : Boolean := False;
@@ -15,6 +15,7 @@ is
    SCL_Available      : Boolean := False;
    SCL_Known          : Boolean := False;
    SCL                : Consist_T := (others => 0);
+   SCL_Front_Rose     : Boolean := False;
    --  the default Train Data of Supervised Manoeuvre (3.18.3.9), in
    --  force when SM_Set; SM_Data.Length follows Consist_Length
    SM_Set             : Boolean := False;
@@ -38,8 +39,19 @@ is
      (EVC_Distances.Length_T (100 * (SCL.Front_Max + SCL.Rear_Max)))
      with Refined_Global => SCL;
 
+   function Front_Consist_Rose return Boolean is (SCL_Front_Rose)
+     with Refined_Global => SCL_Front_Rose;
+
+   procedure No_Consist_Input is
+   begin
+      SCL_Front_Rose := False;
+   end No_Consist_Input;
+
    procedure Take_Consist (Available : Boolean; C : Consist_T) is
    begin
+      SCL_Front_Rose :=
+        Is_Valid and then not (SCL_Available and then SCL.Front_Max > 0)
+        and then Available and then C.Front_Max > 0;
       SCL_Available := Available;
       if Available then
          SCL := C;
@@ -73,6 +85,7 @@ is
       SCL_Available := False;
       SCL_Known := False;
       SCL := (others => 0);
+      SCL_Front_Rose := False;
       SM_Set := False;
       SM_Data := Default;
       SM_Categories := Default_Categories;

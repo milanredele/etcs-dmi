@@ -419,6 +419,13 @@ is
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
 
+   --  5.21.2.2 A075: a Supervised Manoeuvre authorisation whose MA is
+   --  opposite to the train orientation was taken, which turns it: the
+   --  train integrity information of 3.6.5.2.5 Table 2c [10] and [3]
+   procedure Manoeuvre_Turned
+     with Global => (In_Out => State),
+          Post => Has_Released = Has_Released'Old;
+
    --  3.7.3.4 b): the RBC transition order, location based information
    --  (the table of 3.6.4.2.4), deleted at a Supervised Manoeuvre
    --  authorisation in the direction opposite to the train orientation

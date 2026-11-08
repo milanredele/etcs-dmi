@@ -15,12 +15,16 @@
 --  (2) The train length is the one of valid Train Data, else the safe
 --      consist length's of the min safe rear end (3.6.1.7, 4.4.7.1.6 b);
 --      [2] and [3] take their first alternative with the safe consist
---      length without its Supervised Manoeuvre part: the acknowledgement
---      of the consist information of a Supervised Manoeuvre request is
---      not asked, and [10] and the "no SM authorisation changing the
---      orientation" of [3] never hold; the "new Train Data pending the
---      driver's validation" is never pending. [7]'s change of the safe
---      consist length is a change of any of its six lengths.
+--      length when the safe consist length information for Supervised
+--      Manoeuvre last sent by message 133 is acknowledged by message 7
+--      (or none was sent); an SM authorisation changing the orientation
+--      is one whose MA is opposite to the train orientation
+--      (EVC_Radio_Authority.SM_Opposite, taken by
+--      EVC_Core.Modes.Adjust_For_Manoeuvre): [10] in its cycle, and [3]
+--      does not hold after it until the train is known to be integer
+--      again (by [2]); the "new Train Data pending the driver's
+--      validation" is never pending. [7]'s change of the safe consist
+--      length is a change of any of its six lengths.
 --  (6) [4]'s on-board "configured to capture the safe consist length
 --      from the Train Interface": no installation datum says it, a train
 --      interface that delivered one in this mission is
@@ -70,14 +74,24 @@ is
    procedure Take_Input (Value : Natural)
      with Global => (In_Out => State);
 
+   --  A Supervised Manoeuvre authorisation changing the train orientation
+   --  was taken (Table 2c [10], the last term of [3]), for the next
+   --  Evaluate
+   procedure Take_SM_Turn
+     with Global => (In_Out => State);
+
    --  The conditions of Table 2c in the cycle, after the session's
    --  establishment (3.6.5.2.6); Report: 3.6.5.1.4 c) or d) happened.
    --  In NL no train integrity information is reported (4.4.15.1.3); in
    --  SB only with valid Train Data (4.4.7.1.6 a) or, without them, with
    --  the safe consist length (4.4.7.1.6 b), which every condition of
-   --  Table 2c that leaves "No information" asks)
+   --  Table 2c that leaves "No information" asks). SM_Unacknowledged:
+   --  the safe consist length information for Supervised Manoeuvre sent
+   --  to the RBC awaits its acknowledgement (message 133, 3.18.3.10.1)
    --  @req 4.4.15.1.3, 4.4.7.1.6 a), 4.4.7.1.6 b)
-   procedure Evaluate (Mode : EVC_Modes.Mode_T; Report : out Boolean)
+   procedure Evaluate (Mode              : EVC_Modes.Mode_T;
+                       SM_Unacknowledged : Boolean;
+                       Report            : out Boolean)
      with Global => (In_Out => State,
                      Input  => (EVC_Radio.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,

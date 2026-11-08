@@ -373,11 +373,13 @@ begin
    Scenario_Train_Integrity;
    --  phase E6: Supervised Manoeuvre, the safe consist length
    EVC_Test_Manoeuvre.Scenario_Safe_Consist;
+   EVC_Test_Manoeuvre.Scenario_Consist_To_Stand_By;
    EVC_Test_Manoeuvre.Scenario_SM_Request;
    EVC_Test_Manoeuvre.Scenario_SM_Authorisation;
    EVC_Test_Manoeuvre.Scenario_SM_Default_Data;
    EVC_Test_Manoeuvre.Scenario_SM_Entering;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Info;
+   EVC_Test_Manoeuvre.Scenario_SM_Integrity;
    EVC_Test_Manoeuvre.Scenario_SM_Handover;
    EVC_Test_Manoeuvre.Scenario_SM_Direction;
    EVC_Test_Manoeuvre.Scenario_SM_Brake_Reasons;
