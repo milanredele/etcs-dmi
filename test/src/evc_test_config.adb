@@ -258,7 +258,7 @@ package body EVC_Test_Config is
              & "the fields refused, bad length");
       Field (6, (37, 0), CFG.Bad_Length, "length 37");
       Field (6, (16#E1#, 16#04#), CFG.Bad_Length, "length 1249");
-      Field (4, (4, 0), CFG.Bad_Version, "format version 4");
+      Field (4, (5, 0), CFG.Bad_Version, "format version 5");
       All_OK := True;
       for K in 0 .. L - 1 loop
          if Status_Of (Img (1 .. K)) /= CFG.Truncated then
@@ -1043,5 +1043,42 @@ package body EVC_Test_Config is
              "config zones: the offset of the zone of a NID_C on 1 July "
              & "2026, the summer time added by the EU rule only");
    end Scenario_Config_Zones;
+
+   procedure Scenario_Config_Traction is
+      C   : CFG.Config_T := CFG.Default;
+      Img : CFG.Max_Image_T;
+      L   : Natural;
+      D   : CFG.Decoded_T;
+   begin
+      C.Train.T_Traction_Cut_Off := 2_500;
+      CFG.Encode_V4 (C, CFG.No_Gamma, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      Check (L = CFG.Min_Image_V4_Length and then Img (5) = 4
+             and then Img (L - 5) = 196 and then Img (L - 4) = 9
+             and then D.Status = CFG.Accepted
+             and then D.Config.Train.T_Traction_Cut_Off = 2_500
+             and then D.Config = C,
+             "config traction: an image of version 4 carries the traction "
+             & "cut-off time, a u16 in ms after the zones (3.13.2.2.2.1, "
+             & "3.18.3.2 c)), and gives the configuration back");
+      declare
+         I : Byte_Array := Img (1 .. L);
+      begin
+         I (L - 5 .. L - 4) := (17, 39);
+         Check (Status_Of (Resealed_V2 (I, L)) = CFG.Bad_Field,
+                "config traction: 10001 ms refused (at most "
+                & "Max_Traction_Cut_Off_Ms)");
+      end;
+      CFG.Load (Img (1 .. L));
+      Check (CFG.Current.Train.T_Traction_Cut_Off = 2_500,
+             "config traction: loaded, the train's traction cut-off time");
+      CFG.Encode_V3 (C, CFG.No_Gamma, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      Check (D.Status = CFG.Accepted
+             and then D.Config.Train.T_Traction_Cut_Off = 1_000,
+             "config traction: an image of version 3 still accepted, the "
+             & "default 1 s");
+      CFG.Load (CFG.Encode (CFG.Default));
+   end Scenario_Config_Traction;
 
 end EVC_Test_Config;

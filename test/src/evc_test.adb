@@ -195,6 +195,7 @@ begin
    Scenario_MA_Timers_Roll_Back;
    Scenario_LX_Roll_Back;
    Scenario_Mode_Profile_Relocated;
+   Scenario_LS_Profile_Relocated;
    Scenario_Track_Condition_Relocated;
    Scenario_LX_Relocated;
    Scenario_Route_Suitability;
@@ -247,6 +248,7 @@ begin
    Scenario_Config_Core;
    Scenario_Config_Behaviour;
    Scenario_Config_Zones;
+   Scenario_Config_Traction;
    EVC_Test_Core.Scenario_Local_Time;
    Scenario_JRU_Format;
    Scenario_JRU_On_Board;
@@ -482,6 +484,7 @@ begin
    Scenario_SR_List_Direction;
    Scenario_Text_Relocated;
    Scenario_Text_Stop_Relocated;
+   Scenario_Texts_Held;
    Scenario_TAF_Relocated_In_Rear;
    Scenario_Train_Data_Per_Packet;
    Scenario_Train_Data_Changed;

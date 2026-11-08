@@ -101,6 +101,10 @@ package EVC_Test_Authority is
    --  relocation on a linked group puts the front end in rear of it
    procedure Scenario_Text_Relocated;
    procedure Scenario_Text_Stop_Relocated;
+   --  3.12.3.4, ERA_ERTMS_015560 5.4.1.9, 5.4.1.10, SUBSET-027 4.3.1.1:
+   --  the texts to be acknowledged sent and recorded one at a time, a text
+   --  without acknowledgement once none awaits it
+   procedure Scenario_Texts_Held;
    --  A.3.5.1 9th bullet over a relocation: the track ahead free request's
    --  beginning passed, the relocation puts the front end in rear of it
    procedure Scenario_TAF_Relocated_In_Rear;

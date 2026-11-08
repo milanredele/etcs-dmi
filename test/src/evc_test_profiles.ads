@@ -29,6 +29,9 @@ package EVC_Test_Profiles is
       procedure Scenario_MA_Timers_Roll_Back;
       procedure Scenario_LX_Roll_Back;
       procedure Scenario_Mode_Profile_Relocated;
+      --  A.3.5.1 4th bullet over a relocation: an LS profile's beginning
+      --  passed, the relocation puts the max safe front end in rear of it
+      procedure Scenario_LS_Profile_Relocated;
       procedure Scenario_Track_Condition_Relocated;
       procedure Scenario_LX_Relocated;
       procedure Scenario_Route_Suitability;

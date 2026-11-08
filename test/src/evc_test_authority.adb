@@ -2455,8 +2455,9 @@ package body EVC_Test_Authority is
 
    --  Message 24 referring to the group NID_BG with a fixed text from
    --  D metres beyond the group on, L metres long (packet 74), its only
-   --  start sub-condition the location
-   function Text_At_Message (NID_BG, D : Natural; L : Natural := 1000)
+   --  start sub-condition the location; Confirm its Q_TEXTCONFIRM
+   function Text_At_Message (NID_BG, D : Natural; L : Natural := 1000;
+                             Confirm : Natural := 0)
                              return Byte_Array is
       W  : Writer_T;
       V  : ETCS_Message.Value_Array := (others => 0);
@@ -2477,7 +2478,8 @@ package body EVC_Test_Authority is
       P.M_LEVELTEXTDISPLAY := 4;
       P.M_MODETEXTDISPLAY_2 := 15;
       P.M_LEVELTEXTDISPLAY_2 := 4;
-      P.Q_TEXTCONFIRM := 0;
+      P.Q_TEXTCONFIRM := ETCS_Variables.Q_TEXTCONFIRM_T (Confirm);
+      P.Has_Q_CONFTEXTDISPLAY := Confirm /= 0;
       ETCS_Track_Packets.P74.Encode (P, W, OK);
       Check (OK, "texts shortened: packet 74 encoded");
       return Message_Bytes (W);
@@ -3289,6 +3291,83 @@ package body EVC_Test_Authority is
              "text stop relocated: forward over the end again, not shown, "
              & "no record of the texts (A.3.5.1 3rd bullet), got" & M'Image);
    end Scenario_Text_Stop_Relocated;
+
+   --  Three texts of the RBC referring to the group 10 at 100 m: A from
+   --  300 m and B from 320 m to be acknowledged (Q_TEXTCONFIRM 1), C from
+   --  340 m without; the estimated front end passes the three starts
+   --  while A awaits its acknowledgement. Shown (sent to the DMI, record
+   --  of the display) one at a time: A alone; A acknowledged, B 1 s
+   --  later; B acknowledged, C at once
+   procedure Scenario_Texts_Held is
+      Shown_N : Natural := 0;
+      --  the on-board identifier of the text sent last
+      Last_Id : Natural := 0;
+      --  the displays recorded in the cycles of Count
+      procedure Count is
+      begin
+         for I in 1 .. EVC_Text_Messages.Event_Count loop
+            if Natural (EVC_Text_Messages.Event (I).Kind)
+              = EVC_Text_Messages.Event_Displayed
+            then
+               Shown_N := Shown_N + 1;
+               Last_Id := Natural (EVC_Text_Messages.Event (I).B3);
+            end if;
+         end loop;
+      end Count;
+      procedure Wait (Ms : Natural) is
+      begin
+         for C in 1 .. Ms / 100 loop
+            Stand_X (100);
+            Count;
+         end loop;
+      end Wait;
+      procedure Ack (Id : Natural) is
+      begin
+         Input (DMI, Frame (16#40#, (2, 2, 0, Byte (Id mod 256), 0)));
+      end Ack;
+      A_Id : Natural;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400)), Stamp));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 200, Confirm => 1));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 220, Confirm => 1));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 240));
+      Stand_X (100);
+      Run_X (29_000);
+      while Train_Cm < 35_000 loop
+         Run_X (Train_Cm + 50, 50);
+         Count;
+      end loop;
+      Wait (500);
+      A_Id := Last_Id;
+      Check (EVC_Text_Messages.Displayed = 1 and then Shown_N = 1,
+             "texts held: three started, A awaiting its acknowledgement "
+             & "alone sent and recorded (ERA_ERTMS_015560 5.4.1.9, "
+             & "5.4.1.10; SUBSET-027 4.3.1.1), got"
+             & EVC_Text_Messages.Displayed'Image & Shown_N'Image);
+      Ack (A_Id);
+      Wait (500);
+      Check (EVC_Text_Messages.Displayed = 0 and then Shown_N = 1,
+             "texts held: A acknowledged and removed, B not sent before "
+             & "1 s (5.4.1.9), got" & EVC_Text_Messages.Displayed'Image
+             & Shown_N'Image);
+      Wait (1000);
+      Check (EVC_Text_Messages.Displayed = 1 and then Shown_N = 2
+             and then Last_Id /= A_Id,
+             "texts held: B sent and recorded 1 s after A's "
+             & "acknowledgement, C still held (5.4.1.9, 5.4.1.10), got"
+             & EVC_Text_Messages.Displayed'Image & Shown_N'Image);
+      Ack (Last_Id);
+      Wait (300);
+      Check (EVC_Text_Messages.Displayed = 1 and then Shown_N = 3,
+             "texts held: B acknowledged, C without acknowledgement sent "
+             & "and recorded at once (5.4.1.10), got"
+             & EVC_Text_Messages.Displayed'Image & Shown_N'Image);
+   end Scenario_Texts_Held;
 
    --  A.3.5.1 9th bullet over a relocation: the track ahead free request
    --  (message 34, its display from 309 m of the group 10 over 100 m,

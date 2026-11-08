@@ -1598,9 +1598,9 @@ package body EVC_Test_Procedures is
          Fixed_Id := Texts (1).Id;
       end if;
       Run_Front (55, 10);
-      Check (Text_N = 2 and then Texts (2).Text (1 .. Texts (2).Len) = "Hello"
-             and then Texts (2).Flags = 4,
-             "3.12.3.4.2: the plain text from its start location");
+      Check (Text_N = 1,
+             "DMI 5.4.1.10: the plain text started at its location held "
+             & "while the fixed text awaits its acknowledgement");
       Check (SB and then Why (EVC_Ports.TIU_Reason_Ack_Missing)
              and then not Removed_Id (Fixed_Id),
              "3.12.3.4.7, 3.12.3.4.7.1: not acknowledged after its 3 s, the "
@@ -1610,6 +1610,11 @@ package body EVC_Test_Procedures is
       Check (not SB and then Removed_Id (Fixed_Id),
              "3.14.1.7.5, 3.12.3.4.3.2 a): the acknowledgement releases the "
              & "brake and ends the display");
+      Cycle;
+      Check (Text_N = 2 and then Texts (2).Text (1 .. Texts (2).Len) = "Hello"
+             and then Texts (2).Flags = 4,
+             "3.12.3.4.2: the plain text from its start location, sent once "
+             & "the fixed text is acknowledged (DMI 5.4.1.10)");
       Run_Front (110, 10);
       Check (Text_N = 2 and then Removed_N = 2,
              "3.12.3.4.3, 3.12.3.4.6: the plain text removed L_TEXTDISPLAY "
@@ -1684,8 +1689,9 @@ package body EVC_Test_Procedures is
       Add (ST.Plain_Text ("Ninth", ST.Text_Conditions_T'(others => <>)));
       Close;
       Run_Front (62, 10);
-      Check (Text_N = 8 and then SB and then Removed_N = 0,
-             "3.12.3.4.7: eight texts not acknowledged, the service brake");
+      Check (Text_N = 1 and then SB and then Removed_N = 0,
+             "3.12.3.4.7: eight texts not acknowledged, the service brake; "
+             & "one sent to the DMI at a time (DMI 5.4.1.9)");
       Run_Front (80, 10);
       Check (Removed_N = 0 and then SB and then not Shown ("Ninth")
              and then J24 (EVC_Text_Messages.Event_Rejected) = 1,
@@ -1778,11 +1784,12 @@ package body EVC_Test_Procedures is
       Close;
       Run_Front (100, 40);
       Acked_Id := Id_Of ("Acked");
-      Await_Id := Id_Of ("Await");
-      Check (Id_Of ("Kept") /= 0 and then Acked_Id /= 0 and then Await_Id /= 0
+      Check (Id_Of ("Kept") /= 0 and then Acked_Id /= 0
+             and then Id_Of ("Await") = 0
              and then SB and then Why (EVC_Ports.TIU_Reason_Ack_Missing),
-             "DMI restart: three texts shown, the third not acknowledged "
-             & "after its 3 s, the service brake (3.12.3.4.7)");
+             "DMI restart: two texts shown, the third held behind the "
+             & "second (DMI 5.4.1.9), not acknowledged after its 3 s, the "
+             & "service brake (3.12.3.4.7)");
       Ack (3, Acked_Id);
       Cycle;
       TIU_In (13, Cat + 3);
@@ -1790,6 +1797,13 @@ package body EVC_Test_Procedures is
       Check (Removed_Id (Acked_Id) and then Seen_SS (18, 0),
              "DMI restart: the acknowledged text removed (3.12.3.4.3.2 a)), "
              & """Train data changed"" with its brake (5.17.2.2 S2)");
+      for C in 1 .. 10 loop
+         Cycle;
+      end loop;
+      Await_Id := Id_Of ("Await");
+      Check (Await_Id /= 0 and then Flags_Of ("Await") = 5,
+             "DMI restart: the third text sent 1 s after the second's "
+             & "acknowledgement (DMI 5.4.1.9)");
 
       Forget;
       Input (DMI, Frame (16#43#, (1 .. 0 => 0)));

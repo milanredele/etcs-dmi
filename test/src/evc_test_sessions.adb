@@ -32,6 +32,7 @@ with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_SDM;
 with EVC_Movement_Authority;
+with EVC_Text_Messages;
 with EVC_Track_Conditions;
 with EVC_Test_Modes;
 with EVC_Test_Authority;
@@ -2163,9 +2164,18 @@ package body EVC_Test_Sessions is
              "text report: the acknowledgement reported to the RBC of the "
              & "request, message 158 with NID_TEXTMESSAGE and packet 0 "
              & "(3.12.3.5.2, 8.6.16)");
+      --  the next text to be acknowledged sent 1 s after (DMI 5.4.1.9)
+      Stand_X (1_200);
+      Check (EVC_Text_Messages.Displayed = 1,
+             "text report: the second text sent once the first is "
+             & "acknowledged");
       Ack_Text (2);
       Check (Output_Of (158) = 0,
              "text report: no report requested, no message 158");
+      Stand_X (1_200);
+      Check (EVC_Text_Messages.Displayed = 1,
+             "text report: the third text sent once the second is "
+             & "acknowledged");
       Ack_Text (3);
       Check (Output_Of (158) = 0,
              "text report: no session with the RBC of the request, no "

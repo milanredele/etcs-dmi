@@ -1819,6 +1819,88 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Mode_Profile_Relocated;
 
+   --  A.3.5.1 4th bullet over a relocation, the beginning of a Limited
+   --  Supervision mode profile: from 320 m of the group 10 (420 m) over
+   --  200 m, acknowledged in its area, LS entered when the max safe front
+   --  end reaches the beginning before the group 20 is read by the
+   --  over-read; the relocation on the group 20 puts the max safe front
+   --  end in rear of the beginning again: LS kept, no transition back to
+   --  FS, none again nor an acknowledgement asked by the forward movement
+   --  over the beginning (Lay_Relocating)
+   procedure Scenario_LS_Profile_Relocated is
+      MP      : T80.Packet_T;
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      Changes : Natural := 0;
+      Asked   : Natural := 0;
+      Last    : Mode_T;
+      X       : Integer_64;
+      Gap     : Integer_64;
+
+      procedure Step_Counted is
+      begin
+         Step_X (50);
+         for I in 1 .. EVC_Procedures.Event_Count loop
+            if EVC_Procedures.Event (I).Kind
+                 = EVC_Procedures.Event_Ack_Request
+            then
+               Asked := Asked + 1;
+            end if;
+         end loop;
+         if EVC_Core.Mode /= Last then
+            Changes := Changes + 1;
+            Last := EVC_Core.Mode;
+         end if;
+      end Step_Counted;
+   begin
+      Lay_Relocating;
+      MP.Q_DIR := 1;
+      MP.Q_SCALE := 1;
+      MP.D_MAMODE := 320;
+      MP.M_MAMODE := 2;
+      MP.V_MAMODE := 127;
+      MP.L_MAMODE := 200;
+      MP.L_ACKMAMODE := 100;
+      MP.Q_MAMODE := 0;
+      Carry (1, 1, MP);
+      Lay_Run;
+      Last := EVC_Core.Mode;
+      while not EVC_Procedures.Ack_Requested and then Train_Cm < 38_000 loop
+         Step_Counted;
+      end loop;
+      Input (DMI, (16#40#, 5, 0, 0, 0, 2, 1, 0, 0, 0));
+      Step_Counted;
+      while EVC_Core.Mode = M_FS and then Train_Cm < 41_000 loop
+         Step_Counted;
+      end loop;
+      X := Train_Cm;
+      Check (EVC_Core.Mode = M_LS and then Natural (Pos.SOLR.Id.NID_BG) = 10
+             and then MAu.Mode_Profiles (1).Used,
+             "LS profile relocated: LS at the beginning reached by the max "
+             & "safe front end before the group 20 (4.6.3 [72], [73]), at"
+             & X'Image & " " & EVC_Core.Mode'Image);
+      Changes := 0;
+      Asked := 0;
+      while Natural (Pos.SOLR.Id.NID_BG) /= 20 and then Train_Cm < 41_000
+      loop
+         Step_Counted;
+      end loop;
+      Gap := Min_X (MAu.Mode_Profiles (1).Start)
+        - Integer_64 (SI.Current.Train.Max_Safe_Front);
+      Check (Natural (Pos.SOLR.Id.NID_BG) = 20 and then Gap > 0,
+             "LS profile relocated: the max safe front end in rear of the "
+             & "beginning after the relocation on the group 20 (3.6.4.2.5 "
+             & "a)), by" & Gap'Image & " cm");
+      while Train_Cm < 43_000 loop
+         Step_Counted;
+      end loop;
+      Check (EVC_Core.Mode = M_LS and then Changes = 0 and then Asked = 0,
+             "LS profile relocated: LS kept in rear of the beginning and "
+             & "forward over it again, no transition back nor a second one, "
+             & "no acknowledgement asked (A.3.5.1 4th bullet), got"
+             & Changes'Image & Asked'Image);
+      Speed_Cms := Saved;
+   end Scenario_LS_Profile_Relocated;
+
    --  A.3.5.1 7th bullet over a relocation: a powerless section with the
    --  pantograph to be lowered from 322.5 to 422.5 m of the group 10
    --  (422.5 to 522.5 m), its start reached by the max safe front end

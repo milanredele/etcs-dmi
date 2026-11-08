@@ -22236,3 +22236,88 @@ the conditions absent from 4.0.0 out of scope as its note lists). Clauses
 left 13 (todo 0, partial 13). Backlog: B3761 and B3762 closed, B3902
 added (runner: the safe consist length in front of the engine the
 sequences' comments give).
+### The second text to be acknowledged and the bookkeeping over a relocation: the text held until the first is acknowledged, the A.3.5.1 bullets against the relocation scenarios, the traction cut-off time in the image (e6/texts-held) (2026-11-08)
+
+**B3820, the second text to be acknowledged held by the on-board.** The
+premise held at the source: ERA_ERTMS_015560 5.4.1.9 manages the texts
+to be acknowledged as a FIFO, the next shown 1 s after the current one
+is acknowledged or revoked; 5.4.1.10 shows a text without
+acknowledgement only when the FIFO holds no text to be acknowledged;
+8.2.3.4.8 a) presents a text to be acknowledged alone; SUBSET-027 4.3.1.1
+writes records 16 and 18 "when a ... text message is shown to the
+driver". The DMI-EVC protocol carries the driver's acknowledgement back
+(action 2, the text's id), not a report of a text shown. Decision, by
+the driver's seat rule (the on-board tells the DMI): the on-board sends
+a text when the driver is to be shown it and records its display then;
+`EVC_Text_Messages.Show_Or_Hold` holds a started text while `Waits`:
+one to be acknowledged while another awaits its acknowledgement, during
+the 1 s after one was acknowledged (or revoked: `Remove` marks it,
+the next `Evaluate` starts the second), or behind a held one started
+before it (a FIFO by the starts, then the slots); one without
+acknowledgement while a text to be acknowledged awaits it or is held.
+The DMI's gap is satisfied then (its own 1 s runs from the driver's
+press, before the on-board reads it), so the sending, the display and
+the record coincide. A held text to be acknowledged keeps its end
+condition and brake (3.12.3.4.7, 3.12.3.4.7.1, as when the DMI held it)
+and does not give way for a new message (`Oldest`); a held text without
+acknowledgement ended before it is sent is dropped unseen (5.4.1.10:
+the driver would not have seen it). `EVC_Test_Authority.
+Scenario_Texts_Held` (three texts of the RBC from 300, 320 and 340 m,
+two to be acknowledged: A alone, B 1 s after A's acknowledgement, C at
+once after B's), 4 checks failing on master. Three scenarios that showed
+several texts to be acknowledged at once follow the decision
+(`EVC_Test_Procedures.Scenario_Text_Messages`: the plain text sent after
+the fixed text's acknowledgement; `Scenario_Text_Message_Room`: one of
+eight sent; `Scenario_DMI_Restart_Displayed`: the third sent 1 s after
+the second's acknowledgement; `EVC_Test_Sessions.
+Scenario_Text_Ack_Report` waits 1.2 s before each next acknowledgement
+and checks the text is sent). The runner: 3120300_03 SV30 passes step 76
+(record 18 at 67.2 s, the text sent 1 s after the acknowledgement at
+66.4 s) and stops at step 70 in SV22 and SV30 (re-recorded): the third
+text is held, as the step asks, but `S076_Bench.Text_On_DMI` names a
+text by its class, the newest of the class the on-board put, now
+BG1d's, on offer (S4b4be9f1 runner, B3882). Nothing else moved; the
+DMI's goldens unchanged. Left (B3883): a text without acknowledgement
+already sent when one to be acknowledged comes (the DMI hides it,
+8.2.3.4.8 a), unrecorded), and a text behind a level or mode
+acknowledgement of the DMI's FIFO (5.4.1.9.1). Rows 3.12.3.4.4 and
+3.12.3.4.7.1 noted with `@req`.
+
+**B781, the A.3.5.1 bullets against the relocation scenarios.** The
+brief's "left" (the 3rd, 4th, 6th, 7th, 9th, 11th and 12th bullets) was
+behind the backlog line, which said only the LS profile of the 4th was
+left, and the line held: every other bullet had a called scenario over a
+reverse movement and over a relocation (`Scenario_Text_Stop_Relocated`,
+`Scenario_Mode_Profile_Relocated`, `Scenario_Handover_Relocated`,
+`Scenario_Track_Condition_Relocated`, `Scenario_LX_Roll_Back` and
+`Scenario_LX_Relocated`; the 9th and 12th rows were done already), five
+rows left partial by stale notes. The 4th bullet's LS profile:
+`EVC_Procedures.Note_Passed` keeps the beginning and the end reached
+for the slot's profile whatever its mode, so nothing to build;
+`EVC_Test_Profiles.Scenario_LS_Profile_Relocated` (next to the OS one,
+on `Lay_Relocating`: an LS profile from 320 m of the group 10, LS entered
+when the max safe front end reaches it before the group 20 is read 6 m
+late, the relocation puts that end in rear of the beginning; LS kept, no
+transition and no acknowledgement again forward) passed at once. Rows
+A.3.5.1 3rd, 4th, 6th, 7th and 11th bullets set done with their
+scenarios; `@req` tags on `EVC_Text_Messages.End_Condition` (3rd) and
+`EVC_Track_Description.Release_LX` (11th). B781 closed.
+
+**B3760, the traction cut-off time in the image.** The premise held:
+`EVC_Config.Fixed_Train_T.T_Traction_Cut_Off` (1 s) is used by
+`EVC_Mission.Train_Data_Of` and `EVC_Limits.T_Traction`, and no format
+of the image carried it. 3.13.2.2.2.1 defines T_traction_cut_off without
+a range or a resolution, 3.18.3.2.1 lets a train datum be pre-configured.
+Built: format version 4, the image of version 3 then the time as a u16
+in ms before the CRC, refused above `Max_Traction_Cut_Off_Ms` 10 000
+(decision: 10 s bounds what a traction system takes to cut off);
+`Length_OK`, `Get_Tail` and `Load_Gamma` take version 4, versions 1 to
+3 are still accepted with the default; `EVC_Config.Encode_V4`;
+`EVC_Test_Config.Scenario_Config_Traction` (a version 4 image given
+back, 10 001 ms refused, loaded; a version 3 image the default), the v2
+case's unknown version now 5. The images of the repository stay at their
+versions (version 1 for the hosted port and the bench, version 3 for the
+zones sample); the configuration tool `test/tools/evc_config.py` writes
+versions 1 to 3 only, left at the bound (B3884). Row 3.18.3.2 c) 1st
+bullet set done with `@req` on `Get_Tail` and `Encode_V4`; `evc_config`
+proved.
