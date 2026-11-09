@@ -22618,3 +22618,41 @@ faults those clauses are about; `EVC_Core.Report_Fault` is built then,
 with its first caller. A malformed port input stays validated and
 ignored (the robustness rule), not a fault. No code change; B3863
 closed, B1840 marked for E8.
+
+### The integrity table's [10] against the manoeuvre's report, the start of mission statuses of the position, the configuration tool's format 4 (e6/integrity-order) (2026-11-09)
+
+**[10] and the position report of A095 (B3942).** Table 2b (4.0.0,
+page 64) takes "Integrity confirmed by external source" to "No
+integrity information" by [5], [7], [8], [9], [10] at p3; [10] reads
+"A Supervised Manoeuvre authorisation changing the train orientation
+is received", [5] "A position report indicating that the train
+integrity is confirmed is sent to the RBC"; 5.21.2.2 A075 adjusts the
+position to the new orientation and goes to A095, "The train position
+shall be reported to the RBC". The reviewer of the sixty-ninth round
+read [10] as taking the status to "no information" before that report;
+the plan said "in practice [10] coincides with [5]", the report
+carrying the confirmation. At the source the code does what the
+reviewer reads: `EVC_Core.Tick` runs `Adjust_For_Manoeuvre`
+(`EVC_Sessions.Manoeuvre_Turned`, `Integrity.Take_SM_Turn`, and
+`Request_Position_Report`), then `Evaluate_Radio` (`EVC_Sessions.
+Evaluate`, `Integrity.Evaluate`: [10], the status 1 to 0), then
+`Produce_Outputs` (the message 136 built with `Integrity.Q_Integrity`),
+so the report after the authorisation carries Q_INTEGRITY 0; the
+plan's sentence was wrong, the code was not. `EVC_Test_Manoeuvre.
+Scenario_SM_Integrity` checks it now (`Report_Integrity`, the
+Q_INTEGRITY of the first message 136 after the authorisation: 0; with
+the [10] term removed from `Evaluate` it was 1, the check failed, then
+restored). The reviewer's second remark, [3] entered from "no
+information" (`C3`) without its terms of the time the train was last
+known to be integer: with decision 1 that time is the cycle of the
+reception, so the lengths unchanged since it and the position valid at
+it are the cycle's, and its SM term is kept from the last time the
+train was known to be integer (decision 2); written so in decision 1.
+One term is not empty: "no reverse movement is currently performed",
+which `C3` did not check: built (`Back`, the movement of the cycle
+towards the cab that is not active, decision 4, shared with [8]); the
+scenario's TIU confirmation in a cycle of reverse movement (towards
+cab B, cab A active) leaves "no information" (failed before: status
+1). Row 3.6.5.2.5 Table 2b's note says both. Runner: 0 regressions, 0
+improvements, nothing moved. Proof: `evc_sessions-integrity`. B3942
+closed.

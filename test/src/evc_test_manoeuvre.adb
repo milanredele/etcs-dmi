@@ -15,6 +15,7 @@ with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P71;
 with ETCS_Track_Packets.P131;
 with ETCS_Train_Packets.P0;
+with ETCS_Train_Packets.P1;
 with ETCS_Train_Packets.P12;
 with ETCS_Variables;
 with EVC_Brake_Commands;
@@ -221,6 +222,40 @@ package body EVC_Test_Manoeuvre is
       end loop;
       return -1;
    end Request_P12_Speed;
+
+   --  Stand until the on-board sends a position report (message 136, at
+   --  most Max_Ms); the Q_INTEGRITY of its packet 0 or 1, -1 when none
+   function Report_Integrity (Max_Ms : Natural) return Integer is
+      M  : ETCS_Message.Message_T;
+      S  : ETCS_Message.Status_T;
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P0 : ETCS_Train_Packets.P0.Packet_T;
+      P1 : ETCS_Train_Packets.P1.Packet_T;
+      OK : Boolean;
+      use type ETCS_Catalogue.Packet_Kind_T;
+   begin
+      for C in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, S);
+            if S = ETCS_Message.Accepted and then M.Kind = MCat.Train_M136
+            then
+               for I in 1 .. M.Count loop
+                  if M.Index (I).Kind = ETCS_Catalogue.Train_P0 then
+                     ETCS_Message.Open_Packet (M, I, R);
+                     ETCS_Train_Packets.P0.Decode (R, P0, OK);
+                     return (if OK then Integer (P0.Q_INTEGRITY) else -1);
+                  elsif M.Index (I).Kind = ETCS_Catalogue.Train_P1 then
+                     ETCS_Message.Open_Packet (M, I, R);
+                     ETCS_Train_Packets.P1.Decode (R, P1, OK);
+                     return (if OK then Integer (P1.Q_INTEGRITY) else -1);
+                  end if;
+               end loop;
+            end if;
+         end loop;
+      end loop;
+      return -1;
+   end Report_Integrity;
 
    --  Wait_For on session S only
    function Wait_On (Kind : MCat.Message_Kind_T; S : Natural; Max_Ms : Natural)
@@ -721,6 +756,7 @@ package body EVC_Test_Manoeuvre is
    --  the acknowledgement; not sent outside those periods
    procedure Scenario_SM_Integrity is
       T : Unsigned_64;
+      Q : Integer;
       function Status return String is
         (" status" & Natural'Image (EVC_Sessions.Integrity_Status)
          & " mode " & Mode_T'Image (EVC_Core.Mode));
@@ -745,11 +781,17 @@ package body EVC_Test_Manoeuvre is
       Input (DMI, (16#40#, 3, 0, 0, 0, 17, 1, 0));
       T := Wait_For (MCat.Train_M131, 1_000);
       Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+      --  the status changes when the authorisation is received, so the
+      --  position report of 5.21.2.2 A095 that follows it carries none
+      Q := Report_Integrity (300);
+      Check (Q = 0,
+             "SM integrity: the position report after an SM authorisation "
+             & "changing the train orientation, no information (Table 2c "
+             & "[10], 5.21.2.2 A095): Q_INTEGRITY" & Integer'Image (Q));
       Stand_X (300);
       Check (EVC_Core.Mode = M_SM and then EVC_Sessions.Integrity_Status = 0,
              "SM integrity: an SM authorisation changing the train "
-             & "orientation, no information (Table 2c [10]; the position "
-             & "report of 5.21.2.2 A095 is [5] as well):" & Status);
+             & "orientation, no information (Table 2c [10]):" & Status);
       EVC_Core.Handle_Input (TIU, (14, 1));
       Stand_X (300);
       Check (EVC_Sessions.Integrity_Status = 0,
@@ -760,6 +802,16 @@ package body EVC_Test_Manoeuvre is
       --  integer again, the report sent ([2], [5]); the TIU's next
       --  confirmation counts
       Input (DMI, (16#40#, 3, 0, 0, 0, 10, 0, 0));
+      Stand_X (300);
+      --  the TIU's confirmation in a cycle of reverse movement (towards
+      --  cab B, cab A active): [3] asks no reverse movement currently
+      --  performed
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Sample (-1);
+      Cycle_X;
+      Check (EVC_Sessions.Integrity_Status = 0,
+             "SM integrity: confirmed by the TIU during a reverse movement, "
+             & "no information kept (Table 2c [3]):" & Status);
       Stand_X (300);
       EVC_Core.Handle_Input (TIU, (14, 1));
       Stand_X (300);

@@ -177,6 +177,11 @@ is
         or else (Consist and then not SM_Unacknowledged);
       Cab      : constant EVC_Position.Cab_T := EVC_Position.Active_Cab;
       Move     : constant EVC_Ports.Movement_T := EVC_Odometry.Movement;
+      --  [3], [8]: a reverse movement performed in the cycle (decision 4)
+      Back     : constant Boolean :=
+        (Cab = EVC_Position.Cab_A and then Move = EVC_Ports.Towards_Cab_B)
+        or else (Cab = EVC_Position.Cab_B
+                 and then Move = EVC_Ports.Towards_Cab_A);
       C1 : constant Boolean :=
         not Valid_TD and then (Was_Valid or else not Consist);
       C2 : constant Boolean :=
@@ -185,7 +190,7 @@ is
                    (EVC_Driver_Requests.Train_Integrity);
       C3 : constant Boolean :=
         Input = Confirmed and then Acked and then Pos_OK
-        and then not SM_Turned
+        and then not Back and then not SM_Turned
         and then Length <= Max_Length
         and then EVC_Position.Doubt_Under <= Max_Length - Length;
       --  decision 6: configured to capture the safe consist length
@@ -198,11 +203,7 @@ is
         or else (not Valid_TD
                  and then (not Consist
                            or else EVC_Train_Data.Consist /= T0_Consist))
-        or else (Cab = EVC_Position.Cab_A
-                 and then Move = EVC_Ports.Towards_Cab_B)
-        or else (Cab = EVC_Position.Cab_B
-                 and then Move = EVC_Ports.Towards_Cab_A)
-        or else Length_Cm > Max_Length;
+        or else Back or else Length_Cm > Max_Length;
       Before : Status_T;
    begin
       --  3.6.5.2.6

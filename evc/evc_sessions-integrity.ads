@@ -11,7 +11,12 @@
 --      signal 14, value 0 unknown, 1 confirmed, 2 lost); each input is
 --      a reception of that information (Table 2c [3], [4], [6]) and the
 --      time the train was last known to be integer is the cycle of the
---      reception (3.6.5.2.4.1 leaves it to the source).
+--      reception (3.6.5.2.4.1 leaves it to the source). From "No
+--      integrity information", [3]'s terms of that time are then those
+--      of the cycle: the lengths unchanged since it and the position
+--      valid at it are the cycle's, no reverse movement since it is none
+--      in the cycle; its SM term is kept from the last time the train
+--      was known to be integer (decision 2).
 --  (2) The train length is the one of valid Train Data, else the safe
 --      consist length's of the min safe rear end (3.6.1.7, 4.4.7.1.6 b);
 --      [2] and [3] take their first alternative with the safe consist
