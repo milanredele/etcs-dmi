@@ -3080,6 +3080,69 @@ package body S076_Run is
       return False;
    end Desk_Open_At_Power_Up;
 
+   --  The nominal, minimum and maximum safe consist length of one side
+   --  of the engine in a step's comment: the sentence after Side
+   --  ("corresponding to cab A", "opposite to cab A") reads "respectively
+   --  equal to 50m, 40m and 70m" or "(are) all equal to 40m"; Found
+   --  false when the comment has no such sentence
+   procedure Side_Lengths (Comment, Side : String;
+                           Nom, Min, Max : out Natural;
+                           Found : out Boolean)
+   is
+      U  : constant String (Comment'Range) := Up (Comment);
+      At_Side : constant Natural :=
+        Ada.Strings.Fixed.Index (U, Up (Side));
+      Stop : Natural;
+   begin
+      Nom := 0;
+      Min := 0;
+      Max := 0;
+      Found := False;
+      if At_Side = 0 then
+         return;
+      end if;
+      Stop := Ada.Strings.Fixed.Index (U (At_Side .. U'Last), ".");
+      if Stop = 0 then
+         Stop := U'Last;
+      end if;
+      declare
+         S : constant String := U (At_Side .. Stop);
+      begin
+         if Has (S, "ALL EQUAL TO ") then
+            Nom := Number_After (S, "ALL EQUAL TO ", 1);
+            Min := Nom;
+            Max := Nom;
+            Found := Has (S, "ALL EQUAL TO 0") or else Nom > 0;
+         elsif Has (S, "RESPECTIVELY EQUAL TO ") then
+            Nom := Number_After (S, "EQUAL TO ", 1);
+            Min := Number_After (S, ", ", 1);
+            Max := Number_After (S, "AND ", 1);
+            Found := Min <= Nom and then Nom <= Max and then Max > 0;
+         end if;
+      end;
+   end Side_Lengths;
+
+   --  4.6.3 [83] is expected after the safe consist length input of the
+   --  step Cur: a later step of the same test case goes to Stand-By and
+   --  a comment of the case says the length in front of the engine
+   --  becomes different from zero
+   function Front_Length_Expected return Boolean is
+      Said, To_SB : Boolean := False;
+   begin
+      for I in Cur .. Seq.Step_Count loop
+         exit when Seq.Steps (I).Case_Feature /= Seq.Steps (Cur).Case_Feature
+           or else Seq.Steps (I).Case_No /= Seq.Steps (Cur).Case_No;
+         Said := Said or else Has (Image (Seq.Steps (I).Comment),
+                                   "in front the engine becomes different");
+         To_SB := To_SB or else (I > Cur
+                                 and then Trim (Seq.Steps (I).Mode_After)
+                                            = "SB"
+                                 and then Trim (Seq.Steps (I).Mode_Before)
+                                            /= "SB");
+      end loop;
+      return Said and then To_SB;
+   end Front_Length_Expected;
+
    function TIU_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
       Arg  : constant String := W (4);
@@ -3128,9 +3191,15 @@ package body S076_Run is
          --  EVC_Ports TIU signal 15. Unavailable when the comment says so
          --  or the next step expects the record 54 with Q_OVCONSISTLENGTH
          --  0 (the sequences' only other sign of it); else available with
-         --  no values in the sequences (decision: nothing in front of the
+         --  the lengths of the comment, the side of cab A in front of the
+         --  engine when desk A is the active one (EVC_Ports: in front is
+         --  the side of the active cab), in rear when desk B is. Without
+         --  lengths in the comment (decision): nothing in front of the
          --  engine, the train length in rear, longer by 10 m at each
-         --  further input, each one "modified", a change)
+         --  further input, each one "modified", a change; but 1 m in
+         --  front (nominal, min and max) when the case expects Stand-By by
+         --  4.6.3 [83], the smallest length that makes the front length
+         --  different from zero
          if Has (Image (St.Comment), "unavailable")
            or else (Cur < Seq.Step_Count
                     and then Has (Image (Seq.Steps (Cur + 1).Line),
@@ -3142,8 +3211,30 @@ package body S076_Run is
          if SCL_Given then
             SCL_Inputs := SCL_Inputs + 1;
          end if;
-         B.TIU_Safe_Consist (True, 0, Train_Length_M + 10 * SCL_Inputs);
          SCL_Given := True;
+         declare
+            C : constant String := Image (St.Comment);
+            A_Nom, A_Min, A_Max, O_Nom, O_Min, O_Max : Natural;
+            A_Found, O_Found : Boolean;
+         begin
+            Side_Lengths (C, "corresponding to cab A",
+                          A_Nom, A_Min, A_Max, A_Found);
+            Side_Lengths (C, "opposite to cab A",
+                          O_Nom, O_Min, O_Max, O_Found);
+            if A_Found and then O_Found then
+               if Cab_Sign > 0 then
+                  B.TIU_Safe_Consist (True, A_Nom, O_Nom,
+                                      A_Min, A_Max, O_Min, O_Max);
+               else
+                  B.TIU_Safe_Consist (True, O_Nom, A_Nom,
+                                      O_Min, O_Max, A_Min, A_Max);
+               end if;
+               return Pass ("TIU safe consist length of the comment");
+            end if;
+         end;
+         B.TIU_Safe_Consist
+           (True, (if Front_Length_Expected then 1 else 0),
+            Train_Length_M + 10 * SCL_Inputs);
          return Pass ("TIU safe consist length");
       end if;
       if Same (Kind, "other-train-data") then

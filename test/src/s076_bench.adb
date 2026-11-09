@@ -1723,19 +1723,25 @@ package body S076_Bench is
    end BTM_Alarm;
 
    procedure TIU_Safe_Consist (Available : Boolean;
-                               Front, Rear : Natural := 0)
+                               Front, Rear : Natural := 0;
+                               Front_Min, Front_Max : Integer := -1;
+                               Rear_Min, Rear_Max   : Integer := -1)
    is
-      F : constant Natural := Natural'Min (Front, 4095);
-      R : constant Natural := Natural'Min (Rear, 4095);
+      function Metres (L, Nominal : Integer) return Natural is
+        (Natural'Min (Natural'Max ((if L < 0 then Nominal else L), 0),
+                      4095));
+      --  the nominal, minimum and maximum lengths of each side
+      L : constant array (0 .. 5) of Natural :=
+        (Metres (Front, 0), Metres (Front_Min, Front),
+         Metres (Front_Max, Front), Metres (Rear, 0),
+         Metres (Rear_Min, Rear), Metres (Rear_Max, Rear));
       Frame : Byte_Array (1 .. EVC_Ports.TIU_SCL_Length) := (others => 0);
    begin
       Frame (1) := 15;
       Frame (2) := (if Available then 1 else 0);
-      for K in 0 .. 2 loop
-         Frame (3 + 2 * K) := EVC_Bytes.Byte (F mod 256);
-         Frame (4 + 2 * K) := EVC_Bytes.Byte (F / 256);
-         Frame (9 + 2 * K) := EVC_Bytes.Byte (R mod 256);
-         Frame (10 + 2 * K) := EVC_Bytes.Byte (R / 256);
+      for K in L'Range loop
+         Frame (3 + 2 * K) := EVC_Bytes.Byte (L (K) mod 256);
+         Frame (4 + 2 * K) := EVC_Bytes.Byte (L (K) / 256);
       end loop;
       if Is_Powered then
          EVC_Core.Handle_Input (TIU, Frame);

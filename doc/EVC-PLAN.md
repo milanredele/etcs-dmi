@@ -22618,3 +22618,43 @@ faults those clauses are about; `EVC_Core.Report_Fault` is built then,
 with its first caller. A malformed port input stays validated and
 ignored (the robustness rule), not a fault. No code change; B3863
 closed, B1840 marked for E8.
+
+### The runner's inputs from the steps' comments: the consist lengths of the safe consist length input, the level selected before the step's column, a bare record expectation (e5/runner-inputs) (2026-11-09)
+
+**The consist lengths of the safe consist length input (B3902).**
+Premise checked at the trace: 3170200_10 SV30 step 62 gave 0 m in
+front of the engine (`S076_Bench.TIU_Safe_Consist (True, 0, ...)`),
+SR kept, step 64 failed on Stand-By. The TIU frame of `EVC_Ports`
+(signal 15) carries the nominal, minimum and maximum length per side,
+"in front of the engine" being the side of the active cab; the bench's
+input gave one value per side, so `S076_Bench.TIU_Safe_Consist` takes
+the minimum and maximum of each side as added parameters (the nominal
+when left out). `S076_Run`'s TIU input reads the comment
+(`Side_Lengths`: "on the side of the engine corresponding to cab A /
+opposite to cab A ... respectively equal to 50m, 40m and 70m" or
+"(are) all equal to 40m"; 6 SV30 sequences, 11 steps) and gives the
+side of cab A in front of the engine with desk A active, in rear with
+desk B. Decision, a comment without lengths: today's values (nothing
+in front, the train length in rear, 10 m longer at each further input)
+unless the test case goes to Stand-By after the input and a comment of
+the case says the length in front of the engine "becomes different
+from zero" (`Front_Length_Expected`): then 1 m in front (nominal,
+minimum, maximum), the smallest length that makes [83]'s condition
+true (3070300_11 step 39, 3150100_10 step 67). Moved, 4 SV30
+sequences, each new step traced: 3070300_11 41 -> 47, SB by [83] in
+L1 with desk A open engages the Start of Mission (5.4.3.2 S0) and
+ours shows the Driver ID window where ERA's step list (PDF: rows 43 to
+46 absent) presses Main (S68e1b06e s076); 3170200_10 64 -> 118, the
+steps after the reach-point of the max safe front end at the RBC/RBC
+border repeat the border's 700 m and the runner moves the antenna from
+630 m to 700 m, so BG3d's packet 2 (M_VERSION 2.0, step 116 at 600 m)
+is read with the engine past the border and no accepting session and
+ours operates 2.3 by 3.17.2.8 e) (S0f954a90 model, B4022, the step
+movement); 4120100_14 64 -> 173, Initiate SM in PT disabled since
+ERA's step list (PDF: rows 152 to 173) gives no message 6 for the PT
+report nor the revocation of the emergency stop of step 130 (5.11.2.2
+S120, D130; Seddd5965 s076); 3150100_10 69 -> 71, the 133 of 3.18.3.10
+expected after SB by [83] in L2, ours sees the change in the FS cycle
+(`EVC_Sessions.Manoeuvre.Evaluate_Consist`) and sends none
+(S143d6aa2 onboard, B4023, a decision for the on-board). S980d96c9
+rewritten (no sequence left); 0 regressions, 4 improvements.
