@@ -24,8 +24,13 @@ section) its models, factors and times; 38 to 1248 bytes. Format
 version 3 (format = 3, a [train] section and 0 to 8 [[zone]] tables):
 the image of version 2 with the zones of 3.18.5.1 (the count and 8
 entries of 7 bytes) between the train and the CRC; 95 to 1305 bytes.
-The version is the one the text form names: zones need format 3, and an
-image of version 1 or 2 has none (UTC is the local time). The tool
+Format version 4 (format = 4, the [train] section with
+traction_cut_off_ms): the image of version 3 with the traction cut-off
+time of 3.13.2.2.2.1 (a u16 in ms, at most 10 000) between the zones and
+the CRC; 97 to 1307 bytes. The version is the one the text form names:
+zones need format 3 or 4, and an image of version 1 or 2 has none (UTC
+is the local time); the traction cut-off time needs format 4 (the
+on-board takes 1 s from an image of an earlier version). The tool
 validates like the on-board does: every field in its range, the curves
 of their counts with the speeds rising, the fields ending at the CRC,
 and Table 3 of SUBSET-026 3.13.2.2.6.1 (magnetic shoe brake: no
@@ -62,6 +67,17 @@ MIN_OFFSET_MIN, MAX_OFFSET_MIN = -720, 840
 # the summer-time rule, in the order of the image codes 0, 1
 SUMMER_RULES = ['none', 'eu']
 ZONE_KEYS = ['first', 'last', 'offset_min', 'summer']
+# format version 4 (EVC_Config.Encode_V4): the image of version 3 with
+# the traction cut-off time of 3.13.2.2.2.1, a u16 in ms (at most
+# EVC_Config.Max_Traction_Cut_Off_Ms), between the zones and the CRC
+VERSION_4 = 4
+TRACTION_IMAGE_LENGTH = 2
+MAX_TRACTION_MS = 10_000
+MIN_LENGTH_4 = MIN_LENGTH_3 + TRACTION_IMAGE_LENGTH
+MAX_LENGTH_4 = MAX_LENGTH_3 + TRACTION_IMAGE_LENGTH   # Max_Image_Length
+# the versions with a [train] section, with zones
+TRAIN_VERSIONS = (VERSION_2, VERSION_3, VERSION_4)
+ZONE_VERSIONS = (VERSION_3, VERSION_4)
 MODELS = ['lambda', 'gamma']        # byte 32 (Fixed_Train_T.Model)
 MAX_STEPS = 8                       # EVC_Supervision_Input.Max_Curve_Steps
 MAX_SPEED_CMS = 30_000              # Speed_Cms_T
@@ -185,7 +201,7 @@ to_cab_b_cm = {to_cab_b_cm}
 
 TRAIN_TEMPLATE = '''
 [train]
-# format 2 and 3. 3.13.2.2.3: the braking model, "lambda" (the conversion
+# format 2, 3 and 4. 3.13.2.2.3: the braking model, "lambda" (the conversion
 # model of the brake percentage the driver enters) or "gamma" (the
 # models of the [gamma] section, installation data, 3.18.3.2 c))
 braking_model = "{braking_model}"
@@ -194,9 +210,14 @@ braking_model = "{braking_model}"
 special_brakes = {special_brakes}
 '''
 
+TRACTION_TEMPLATE = '''# format 4 only, 3.13.2.2.2.1: the traction cut-off time (installation
+# data, 3.18.3.2 c)), ms, 0 .. 10000
+traction_cut_off_ms = {traction_cut_off_ms}
+'''
+
 ZONE_TEMPLATE = '''
 [[zone]]
-# format 3 only, 3.18.5.1: the local time where the NID_C of the LRBG is
+# format 3 and 4, 3.18.5.1: the local time where the NID_C of the LRBG is
 # in first .. last (0 .. 1023; the first zone holding it applies): UTC +
 # offset_min (-720 .. 840), + 60 min in the summer time of the rule
 # "eu" (the last Sunday of March 01:00 UTC to the last Sunday of October
@@ -307,8 +328,12 @@ def check_keys(name, values, keys):
         raise Invalid(f'[{name}]: expected the keys ' + ', '.join(keys))
 
 
-def check_train(t):
-    check_keys('train', t, ['braking_model', 'special_brakes'])
+def check_train(t, fmt):
+    check_keys('train', t, ['braking_model', 'special_brakes'] +
+               (['traction_cut_off_ms'] if fmt == VERSION_4 else []))
+    if fmt == VERSION_4:
+        check_int('train.traction_cut_off_ms', t['traction_cut_off_ms'],
+                  MAX_TRACTION_MS)
     if t['braking_model'] not in MODELS:
         raise Invalid(f'train.braking_model = {t["braking_model"]!r}: one of '
                       + ', '.join(MODELS))
@@ -388,7 +413,7 @@ def check_gamma(g):
 
 
 def gamma_model(config):
-    return (config.get('format') in (VERSION_2, VERSION_3)
+    return (config.get('format') in TRAIN_VERSIONS
             and isinstance(config.get('train'), dict)
             and config['train'].get('braking_model') == 'gamma')
 
@@ -397,13 +422,13 @@ def check(config):
     """Validate a configuration of the text form (a dict as tomllib gives
     it); raise Invalid with the reason."""
     fmt = config.get('format')
-    if fmt not in (VERSION, VERSION_2, VERSION_3):
-        raise Invalid(f'format {fmt!r}: {VERSION}, {VERSION_2} or '
-                      f'{VERSION_3}')
+    if fmt not in (VERSION,) + TRAIN_VERSIONS:
+        raise Invalid(f'format {fmt!r}: {VERSION}, {VERSION_2}, '
+                      f'{VERSION_3} or {VERSION_4}')
     expected = ['format'] + list(SECTIONS)
-    if fmt in (VERSION_2, VERSION_3):
+    if fmt in TRAIN_VERSIONS:
         expected += ['train'] + (['gamma'] if gamma_model(config) else [])
-    if fmt == VERSION_3 and 'zone' in config:
+    if fmt in ZONE_VERSIONS and 'zone' in config:
         expected += ['zone']
     if set(config) != set(expected):
         raise Invalid('sections: expected ' + ', '.join(expected) +
@@ -429,11 +454,11 @@ def check(config):
                                   f'in {low} .. {high}')
             elif type(v) is not bool:
                 raise Invalid(f'{section}.{key} = {v!r}: true or false')
-    if fmt in (VERSION_2, VERSION_3):
-        check_train(config['train'])
+    if fmt in TRAIN_VERSIONS:
+        check_train(config['train'], fmt)
         if gamma_model(config):
             check_gamma(config['gamma'])
-    if fmt == VERSION_3:
+    if fmt in ZONE_VERSIONS:
         check_zones(config.get('zone', []))
 
 
@@ -479,6 +504,16 @@ def zone_bytes(zones):
     return out + bytes(ZONE_IMAGE_LENGTH - len(out))
 
 
+def length_ok(version, length):
+    """EVC_Config.Length_OK: the length of an image of that version"""
+    return (length == LENGTH if version == VERSION
+            else MIN_LENGTH_2 <= length <= MAX_LENGTH_2
+            if version == VERSION_2
+            else MIN_LENGTH_3 <= length <= MAX_LENGTH_3
+            if version == VERSION_3
+            else MIN_LENGTH_4 <= length <= MAX_LENGTH_4)
+
+
 def encode(config):
     check(config)
     fmt = config['format']
@@ -492,17 +527,18 @@ def encode(config):
         b['additional_brake_allowed'], b['regenerative_needs_catenary'],
         a['to_cab_a_cm'], a['to_cab_b_cm'], f['time_ms'], f['decel_mms2'])
     assert len(body) == CRC_OFFSET
-    if fmt in (VERSION_2, VERSION_3):
+    if fmt in TRAIN_VERSIONS:
         t = config['train']
         body += bytes([MODELS.index(t['braking_model']),
                        sum(1 << BRAKES.index(x) for x in t['special_brakes'])])
         if gamma_model(config):
             body += gamma_bytes(config['gamma'])
-        if fmt == VERSION_3:
+        if fmt in ZONE_VERSIONS:
             body += zone_bytes(config.get('zone', []))
+        if fmt == VERSION_4:
+            body += struct.pack('<H', t['traction_cut_off_ms'])
         length = len(body) + 4
-        assert ((MIN_LENGTH_2 <= length <= MAX_LENGTH_2) if fmt == VERSION_2
-                else (MIN_LENGTH_3 <= length <= MAX_LENGTH_3))
+        assert length_ok(fmt, length)
         body = body[:6] + struct.pack('<H', length) + body[8:]
     return body + struct.pack('<I', zlib.crc32(body))
 
@@ -602,12 +638,9 @@ def decode(image):
     if image[0:4] != MAGIC:
         raise Invalid('bad magic')
     version, length = struct.unpack_from('<HH', image, 4)
-    if version not in (VERSION, VERSION_2, VERSION_3):
+    if version not in (VERSION,) + TRAIN_VERSIONS:
         raise Invalid(f'bad version {version}')
-    if (length != LENGTH if version == VERSION
-            else not MIN_LENGTH_2 <= length <= MAX_LENGTH_2
-            if version == VERSION_2
-            else not MIN_LENGTH_3 <= length <= MAX_LENGTH_3):
+    if not length_ok(version, length):
         raise Invalid(f'bad length {length}')
     if len(image) < length:
         raise Invalid(f'truncated: {len(image)} bytes of {length}')
@@ -636,10 +669,14 @@ def decode(image):
         'service_brake_failure': {'time_ms': t_ms, 'decel_mms2': decel},
         'antenna': {'to_cab_a_cm': ant_a, 'to_cab_b_cm': ant_b},
     }
-    if version in (VERSION_2, VERSION_3):
+    # the zones end where the CRC is (version 3) or the traction cut-off
+    # time is (version 4)
+    zones_end = length - 4 - (TRACTION_IMAGE_LENGTH
+                              if version == VERSION_4 else 0)
+    if version in TRAIN_VERSIONS:
         # the train ends where the CRC is (version 2) or the zones are
-        last = length - 4 - (ZONE_IMAGE_LENGTH if version == VERSION_3
-                             else 0)
+        last = zones_end - (ZONE_IMAGE_LENGTH if version in ZONE_VERSIONS
+                            else 0)
         model, has = image[32], image[33]
         if model > 1 or has > 15:
             raise Invalid('a field out of its range: the braking model or '
@@ -651,8 +688,14 @@ def decode(image):
             config['gamma'] = decode_gamma(image, last)
         elif last != MIN_LENGTH_2 - 4:
             raise Invalid(f'bad length {length} for a lambda train')
-    if version == VERSION_3:
-        zones = decode_zones(image, length - 4 - ZONE_IMAGE_LENGTH)
+    if version == VERSION_4:
+        t_ms, = struct.unpack_from('<H', image, zones_end)
+        if t_ms > MAX_TRACTION_MS:
+            raise Invalid('a field out of its range: the traction cut-off '
+                          'time')
+        config['train']['traction_cut_off_ms'] = t_ms
+    if version in ZONE_VERSIONS:
+        zones = decode_zones(image, zones_end - ZONE_IMAGE_LENGTH)
         if zones:
             config['zone'] = zones
     try:
@@ -678,12 +721,15 @@ def text(config):
         for key, v in config[section].items():
             values[key] = ('true' if v else 'false') if type(v) is bool else v
     out = TEMPLATE.format(**values)
-    if config['format'] in (VERSION_2, VERSION_3):
+    if config['format'] in TRAIN_VERSIONS:
         t = config['train']
         out += TRAIN_TEMPLATE.format(
             braking_model=t['braking_model'],
             special_brakes='[' + ', '.join(f'"{x}"' for x in
                                            t['special_brakes']) + ']')
+        if config['format'] == VERSION_4:
+            out += TRACTION_TEMPLATE.format(
+                traction_cut_off_ms=t['traction_cut_off_ms'])
         if gamma_model(config):
             g = config['gamma']
             out += GAMMA_TEMPLATE.format(

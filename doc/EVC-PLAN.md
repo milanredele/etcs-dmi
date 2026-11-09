@@ -22691,3 +22691,21 @@ takes the RBC contact valid -> invalid, ours keeps it valid
 not this package's unit); the level's own valid -> invalid -> valid
 nets to valid at the S2 entry, the Level window being the DMI's. The
 row stays partial with that named.
+
+**The configuration tool's format 4 (B3884).** `test/tools/evc_config.py`
+writes, reads and checks the images of version 4 of `EVC_Config`
+(`Encode_V4`, `Get_Tail`): `format = 4` with the `[train]` key
+`traction_cut_off_ms` (3.13.2.2.2.1, 0 .. 10000 ms), a u16 between the
+zones and the CRC, 97 to 1307 bytes; a value above 10000 is refused, the
+key in an earlier format too. The sample `test/config/traction_v4.toml`
+(the default installation, no zones, 2500 ms; its text the tool's own
+`--decode`) and `traction_v4.img` (97 bytes) are compared by
+`test/check.sh` (`--compare`, as `zones_v3`) and by
+`EVC_Test_Config.Scenario_Config_Traction` (the image is `Encode_V4`'s
+byte for byte). B3884 closed.
+
+Backlog: B3942 and B3884 closed; B3962 (5.17.2.2 A7 after A1) and B3963
+(the RBC contact at a level re-entered at S10 or S20) added. Rows:
+3.6.5.2.5 Table 2b noted, 5.17.2.2 A7 and 5.4.3.3 Table narrowed
+(partial, with the lines). Runner: 0 regressions, 0 improvements,
+nothing moved.

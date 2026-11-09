@@ -1061,6 +1061,11 @@ package body EVC_Test_Config is
              "config traction: an image of version 4 carries the traction "
              & "cut-off time, a u16 in ms after the zones (3.13.2.2.2.1, "
              & "3.18.3.2 c)), and gives the configuration back");
+      Check (File_Bytes ("test/config/traction_v4.img")
+               = Byte_Array (Img (1 .. L)),
+             "config traction: test/config/traction_v4.img (test/tools/"
+             & "evc_config.py of test/config/traction_v4.toml) is the "
+             & "kernel's image of version 4 of this time");
       declare
          I : Byte_Array := Img (1 .. L);
       begin
