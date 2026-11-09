@@ -22925,3 +22925,150 @@ list (PDF checked) names BG2d's text a fixed one (packet 74/76,
 records 16, 17), the sequence's telegram of BG2d carries packet 73, a
 plain text "Second text" (only BG0d carries packet 74), which ours
 shows then (S30d22b77, a family line s076). B3882 closed.
+
+### Review of the seventieth round: eight verdicts re-derived blind (e5/review-70) (2026-11-09)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items and the extra one
+were taken. No code, no triage line and no line of the authors was
+changed.
+
+1. The texts the DMI would hide. Mine: DMI 8.2.3.4.8 a) shows a text to
+   be acknowledged alone, the others "temporarily not shown"; SUBSET-027
+   4.3.1.1 writes 17 / 19 "when ... not shown any more" and 16 / 18 "when
+   ... shown"; 3.12.3.4.3 ends a text by its end condition (or the
+   acknowledgement, 3.12.3.4.3.2), so taking it off the DMI is not its
+   end. By the user's rule (a) the on-board revokes the shown texts
+   without acknowledgement when it sends one to be acknowledged (17 /
+   19) and sends them again once none is on offer (16 / 18), unless the
+   end condition came meanwhile; (b) a text to be acknowledged is held
+   while the acknowledgement of a mode or a level transition is asked
+   and sent 1 s after it is given or revoked (5.4.1.9); (c) in the FIFO
+   every request asked before the text comes first, the status messages
+   and the brake release included; on a tie (5.4.1.9.1) only 1) and 2)
+   come before 3) and 4). Author (`EVC_Text_Messages.Show_Or_Hold`
+   revoking with `Hidden`, sending again with `Again` and the first
+   hour; `Waits` with `Asked` from `EVC_Core.Modes.Run_Procedures`:
+   `EVC_Mission.Proposed`, `EVC_Procedures.Ack_Requested`,
+   `EVC_Levels.Ack_Asked`; `EVC_Test_Authority.Scenario_Texts_Hidden`,
+   `EVC_Test_Profiles.Scenario_Text_Behind_Mode_Ack`): the same, and (c)
+   left as B3983 (the brake release request of `EVC_Core.Outputs.
+   Send_Status`, `Brake_Output.Ack_Required`, is not in `Asked`). Agree.
+
+2. The integrity table's [10] and the manoeuvre's report. Mine: (a) [10]
+   moves at the reception of the authorisation; 5.21.2.2 A075 adjusts
+   the orientation, then A095 reports: the report carries Q_INTEGRITY 0,
+   and [3] cannot hold at once (its last term). (b) At a TIU
+   confirmation the on-board checks the length available (Train Data
+   valid and acknowledged, or the safe consist length with the SM one
+   acknowledged), the position valid and referred to an LRBG, no
+   reverse movement currently performed, the range of L_TRAININT;
+   with the time the train was last known to be integer taken as the
+   cycle of the reception (3.6.5.2.4.1 leaves it to the source, the TIU
+   input carries no time) "unchanged since", "performed since" and "no
+   SM authorisation since" are empty; "currently performed" never is.
+   Author (`EVC_Core.Tick`: `Adjust_For_Manoeuvre`, `Evaluate_Radio`,
+   `Produce_Outputs`; `EVC_Sessions.Integrity.Evaluate`'s `C3` with
+   `Back`; decisions 1 and 2, the SM term kept from the last time the
+   train was known integer; `EVC_Test_Manoeuvre.Scenario_SM_Integrity`,
+   `Report_Integrity` 0): the same. Agree.
+
+3. The cold movement over a power cycle. Mine, blind: 4.11.1.1 (PDF page
+   89, its arrows) takes the EOLM information, the position, the level,
+   the table of supported levels and the RBC contact to valid on no cold
+   movement, and leaves them invalid otherwise (4.11.1.3); a bench
+   reports the CMD step's information where the sequence has one (10
+   sv30 sequences, after the power-up), and I wrote that without one it
+   should report no cold movement at standstill (3.15.8.1.1), which
+   makes 5220200_06 (power-down at 200 m, up at 56, no CMD step, Driver
+   ID then Special at 66) the runner's. Author (`S076_Bench.
+   Set_Cold_Movement`, `S076_Run.Set_Cold_At_Power_Up`: the CMD step
+   before the next power input, else the information not available,
+   3.15.8.3 a), by the corpus; 5220200_06 S8f936c68 s076): the corpus
+   decides against my default. A count of my own over the sv30 power-ups
+   without a CMD step: 24 followed by the Level window, an unknown LRBG
+   or a level N/A, 5 by Special, Main or an enabled button, of which
+   3180400_05 and 5040300_07 pass whole with the default and 5040300_02
+   blocks on radio; only 5220200_06 fails on it. ERA's PDF of 5220200_06
+   joins 5040300 test case 7 rows 1 to 4 (steps 62 to 65) to 5220200
+   test case 7 from row 8 (step 66): a composition that skips the
+   level. Agree.
+
+4. The consist lengths and the 133 after Stand-By. Mine: (a) 3.6.1.7
+   takes the length in front of the engine on the side of the train
+   orientation, the active cab's: with desk A the side of cab A (step
+   63's comment, L_CONSISTFRONTCABA* > 0 with cab A); (b) a step without
+   lengths that expects SB by [83] may be given any length in front
+   above zero, the minimum, nominal and maximum in order; (c) 3.18.3.10
+   asks SB, level 2, a session and the information becoming available
+   or modified, not the Train Data's validity: at the end of the cycle
+   of 3150100_10 step 71's input the train is in SB in L2 with its
+   session and the information has just become available, so the 133
+   with packet 10 is due. Author (`S076_Run.Side_Lengths`,
+   `Front_Length_Expected` with 1 m; `EVC_Sessions.Manoeuvre.
+   Evaluate_Consist` sending none, S143d6aa2 onboard, B4023 a decision):
+   (a) and (b) the same; (c) triaged ours and left to decide. Agree; my
+   reading answers B4023 for the sending.
+
+5. The DMI's own behaviour. Mine: (a) record 22 is written "when the
+   playing of any audible information ... is started"; S1 (14.3.2), S2
+   (14.3.3) and Sinfo (8.2.3.4.7 h) and its other triggers) are started
+   by the DMI by its rules, so the on-board cannot write the record
+   faithfully without a report of the sounds started from the DMI, or,
+   by the user's rule, without commanding the sounds itself; no sv30
+   step expects it (the 28 matches are ATO's Q_WARNINGSOUND). (b)
+   5.4.5.3 i) "only at S10 and S20" is the on-board's; the DMI enables
+   Set VBC at standstill in SB (11.2.4.5.1), every step of the start of
+   mission: the on-board must refuse outside S10 / S20, with the step
+   of the start of mission as state. Author (row 3.20.1.2 on B3984;
+   rows 5.4.5.3, 5.4.5.3 i) partial on B3985, `EVC_Core.Inputs.
+   Take_VBC_Requests` taking both in SB, `EVC_Mission` keeping no S10
+   / S20 state): the same. Agree.
+
+6. Two start of mission rows. Mine: (a) after A1 as after S6, A7
+   applies 3.18.3.4 (the set to the RBC), 3.18.3.7 (category, axle load,
+   gauge, traction at standstill) and 3.18.3.8 (a longer train); the TIU
+   input 13 carries a configuration number and two bits, no values: the
+   set and the length comparison need a table from configuration to
+   Train Data, while 3.18.3.7 needs only the category bit and the
+   standstill. (b) Page 24's arrows: re-entering the level after S10 or
+   S20 takes the level and the RBC contact information valid to
+   invalid; nothing else. Author (rows 5.17.2.2 A7 on B3962, 5.4.3.3
+   Table on B3963, `EVC_Sessions.Mission.Evaluate_SoM`): the same, the
+   level netting to valid once re-entered at S2. Agree; the category
+   bit would let 3.18.3.7 apply after A1 before any table.
+
+7. 3170200_10 SV30 step 118. Trace: step 113's reach-point of the max
+   safe front end at the border (700 m) stops the antenna at 630 m;
+   steps 114 and 115 keep 700 in their column and the train goes to
+   700 m; BG3d (step 116, column 600) is read at 704 m, ours then
+   operates 2.3 (M_VERSION 35). The comments place the reading after
+   the train's max safe front end passed the border and before the
+   engine's (50 / 40 / 70 m in front, est. front plus L_trainunder plus
+   the doubt). 3.17.2.8: the handing-over RBC's session governs; c)
+   needs an established accepting session (session 2 only requested at
+   82.9 s), e) the engine's max safe front end past the border with no
+   accepting session: at 600 m neither, 3.0 kept as the step expects;
+   at 704 m e). The runner. Author (S0f954a90 model, B4022): the same.
+   Agree.
+
+8. 3070300_11 SV30 step 47. Trace: step 39's input in L1 SR (not FS),
+   SB by [83] at 41, ours shows the Driver ID window, step 47's Main
+   cannot be opened over it. 5.4.3.2 S0 engages the start of mission in
+   SB with a desk open and no session; S1 asks the driver ID entered or
+   revalidated (4.0.0 has no D1 before it); 4.10.1.3 marks the driver ID
+   "TBR" at SB's entry: the window is right. ERA's PDF: steps 39 to 42
+   are 3070300 test case 27, 47 to 49 3180300 test case 6 rows 1 to 3,
+   rows 43 to 46 absent. The sequence's data. Author (S68e1b06e s076):
+   the same. Agree.
+
+Extra, 3120300_03 SV30 step 81. "The fixed text message is displayed",
+"the second message appears": BG2d's text; the sequence's telegram and
+ERA's PDF (step 64, BG 2 d 1/2) both carry packet 73, a plain text
+"Second text" (Q_TEXTCONFIRM 0), where the step texts say packet 74/76.
+The sequence's data. Author (S30d22b77 s076): the same. Agree.
+
+Counts: 8 items and the extra. Agreed: nine (item 3 after the corpus
+count: my blind default, no cold movement without a CMD step, did not
+hold against it); disagreed: none; undecided: none. No backlog line.
+Calls: 93 of 130 at this point.
