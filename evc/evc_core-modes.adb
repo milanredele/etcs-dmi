@@ -232,7 +232,9 @@ is
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
          S.Train.Est_Front, Unsigned_64 (Clock_Ms),
          Taken  => EVC_Acceptance.Accepted (EVC_Acceptance.Text_Message,
-                                            Acceptance_Context));
+                                            Acceptance_Context),
+         Asked  => EVC_Mission.Proposed or else EVC_Procedures.Ack_Requested
+                   or else EVC_Levels.Ack_Asked);
    end Run_Procedures;
 
    function Any_Holds (L : Condition_List_T) return Boolean is

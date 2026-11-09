@@ -191,6 +191,7 @@ begin
    Scenario_Track_Conditions;
    Scenario_Other_Profiles;
    Scenario_Mode_Profile_Roll_Back;
+   Scenario_Text_Behind_Mode_Ack;
    Scenario_Track_Condition_Roll_Back;
    Scenario_MA_Timers_Roll_Back;
    Scenario_LX_Roll_Back;
@@ -485,6 +486,7 @@ begin
    Scenario_Text_Relocated;
    Scenario_Text_Stop_Relocated;
    Scenario_Texts_Held;
+   Scenario_Texts_Hidden;
    Scenario_TAF_Relocated_In_Rear;
    Scenario_Train_Data_Per_Packet;
    Scenario_Train_Data_Changed;

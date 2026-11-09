@@ -70,7 +70,9 @@ is
    subtype Text_T is Byte_Array (1 .. Max_Text);
 
    --  What the DMI is to be told in the cycle: a message to show (its
-   --  id, flags of MSG_TEXT, its text), or the id of one to remove
+   --  id, flags of MSG_TEXT, its text), or the id of one to remove; a
+   --  text shown again after a text to be acknowledged (Again) keeps the
+   --  on-board time of its first sending (At_Ms) for its hour and minute
    type Output_Kind_T is (Show, Remove);
    type Output_T is record
       Kind   : Output_Kind_T := Show;
@@ -78,6 +80,8 @@ is
       Flags  : Byte := 0;
       Length : Natural range 0 .. Max_Text := 0;
       Text   : Text_T := (others => 0);
+      Again  : Boolean := False;
+      At_Ms  : Unsigned_64 := 0;
    end record;
 
    Max_Outputs : constant := 2 * Max_Messages;
@@ -189,13 +193,16 @@ is
    --  One cycle: the messages of the balise groups taken into account
    --  (when Taken: 4.8), the driver's acknowledgements, the start and
    --  end conditions in the mode and level of the cycle with the
-   --  estimated front end (a frame position) and the on-board time
+   --  estimated front end (a frame position) and the on-board time; Asked:
+   --  the acknowledgement of a mode or a level transition is asked of
+   --  the driver in the cycle, which holds the texts to be acknowledged
    procedure Evaluate (Mode        : Mode_T;
                        Level_Valid : Boolean;
                        Level       : Level_T;
                        Est_Front   : Dist_T;
                        Now_Ms      : Unsigned_64;
-                       Taken       : Boolean := True)
+                       Taken       : Boolean := True;
+                       Asked       : Boolean := False)
      with Global => (In_Out => State,
                      Input  => (EVC_Position.State,
                                 EVC_Driver_Requests.State));

@@ -3369,6 +3369,87 @@ package body EVC_Test_Authority is
              & EVC_Text_Messages.Displayed'Image & Shown_N'Image);
    end Scenario_Texts_Held;
 
+   --  Two texts of the RBC referring to the group 10 at 100 m: C from
+   --  300 m without acknowledgement, A from 320 m to be acknowledged. C is
+   --  sent and recorded; A sent, C revoked with the record of its end of
+   --  display (the DMI shows A alone); A acknowledged, C sent and
+   --  recorded again
+   procedure Scenario_Texts_Hidden is
+      Shown_N   : Natural := 0;
+      Removed_N : Natural := 0;
+      --  the on-board identifiers of the texts sent and revoked last
+      Last_Id    : Natural := 0;
+      Removed_Id : Natural := 0;
+      procedure Count is
+      begin
+         for I in 1 .. EVC_Text_Messages.Event_Count loop
+            if Natural (EVC_Text_Messages.Event (I).Kind)
+              = EVC_Text_Messages.Event_Displayed
+            then
+               Shown_N := Shown_N + 1;
+               Last_Id := Natural (EVC_Text_Messages.Event (I).B3);
+            elsif Natural (EVC_Text_Messages.Event (I).Kind)
+              = EVC_Text_Messages.Event_Removed
+            then
+               Removed_N := Removed_N + 1;
+               Removed_Id := Natural (EVC_Text_Messages.Event (I).B3);
+            end if;
+         end loop;
+      end Count;
+      procedure Wait (Ms : Natural) is
+      begin
+         for C in 1 .. Ms / 100 loop
+            Stand_X (100);
+            Count;
+         end loop;
+      end Wait;
+      C_Id, A_Id : Natural;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400)), Stamp));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 200));
+      Stand_X (100);
+      Give_Radio_Message (1, Text_At_Message (10, 220, Confirm => 1));
+      Stand_X (100);
+      Run_X (29_000);
+      while Train_Cm < 31_000 loop
+         Run_X (Train_Cm + 50, 50);
+         Count;
+      end loop;
+      C_Id := Last_Id;
+      Check (EVC_Text_Messages.Displayed = 1 and then Shown_N = 1
+               and then Removed_N = 0,
+             "texts hidden: C without acknowledgement sent and recorded, "
+             & "got" & EVC_Text_Messages.Displayed'Image & Shown_N'Image
+             & Removed_N'Image);
+      while Train_Cm < 35_000 loop
+         Run_X (Train_Cm + 50, 50);
+         Count;
+      end loop;
+      Wait (300);
+      A_Id := Last_Id;
+      Check (EVC_Text_Messages.Displayed = 1 and then Shown_N = 2
+               and then A_Id /= C_Id and then Removed_N = 1
+               and then Removed_Id = C_Id,
+             "texts hidden: A to be acknowledged sent, C revoked and its "
+             & "end of display recorded (ERA_ERTMS_015560 8.2.3.4.8 a); "
+             & "SUBSET-027 4.3.1.1 record 17), got"
+             & EVC_Text_Messages.Displayed'Image & Shown_N'Image
+             & Removed_N'Image);
+      Input (DMI, Frame (16#40#, (2, 2, 0, Byte (A_Id mod 256), 0)));
+      Wait (300);
+      Check (EVC_Text_Messages.Displayed = 1 and then Shown_N = 3
+               and then Last_Id = C_Id and then Removed_N = 2
+               and then Removed_Id = A_Id,
+             "texts hidden: A acknowledged and removed, C sent and its "
+             & "display recorded again (8.2.3.4.8 a), 5.4.1.10; record "
+             & "16), got" & EVC_Text_Messages.Displayed'Image
+             & Shown_N'Image & Removed_N'Image & Last_Id'Image
+             & C_Id'Image);
+   end Scenario_Texts_Hidden;
+
    --  A.3.5.1 9th bullet over a relocation: the track ahead free request
    --  (message 34, its display from 309 m of the group 10 over 100 m,
    --  3.15.5.2) in SR, shown when the estimated front end reaches its

@@ -105,6 +105,11 @@ package EVC_Test_Authority is
    --  the texts to be acknowledged sent and recorded one at a time, a text
    --  without acknowledgement once none awaits it
    procedure Scenario_Texts_Held;
+   --  ERA_ERTMS_015560 8.2.3.4.8 a), 5.4.1.10, SUBSET-027 4.3.1.1: a text
+   --  without acknowledgement already shown revoked, and its end of
+   --  display recorded, when a text to be acknowledged is sent; sent and
+   --  recorded again once that one is acknowledged
+   procedure Scenario_Texts_Hidden;
    --  A.3.5.1 9th bullet over a relocation: the track ahead free request's
    --  beginning passed, the relocation puts the front end in rear of it
    procedure Scenario_TAF_Relocated_In_Rear;
