@@ -87,6 +87,14 @@ package S076_Bench is
    function Gamma_Gap return String;
    --  Powered down: no cycle of the on-board until Power_On
    procedure Power_Off;
+   --  What the odometer's cold movement detection reports in the first
+   --  sample after the next power-up of an on-board powered before
+   --  (3.15.8.2): the information not available (3.15.8.3, the default,
+   --  set again by Reset and Power_Off), no cold movement, or a cold
+   --  movement (the distance moved while powered down, 5 m at least)
+   type Cold_Info_T is (Cold_Not_Available, Cold_Not_Detected,
+                        Cold_Detected);
+   procedure Set_Cold_Movement (Info : Cold_Info_T);
    function Powered return Boolean;
    --  A safety critical fault of the on-board (EVC_Core.Enter_Failure)
    procedure Fault;
@@ -443,9 +451,8 @@ package S076_Bench is
    --  acknowledgement, the one DMI_Ack offers (ERA_ERTMS_015560
    --  5.4.1.9, 5.4.1.10: one at a time, the others not shown, the next
    --  1 s after the current one is acknowledged). The newest of the
-   --  class, as the steps name no text: 3120300_03 step 70 expects the
-   --  third text not displayed while the first, of the same class, is
-   --  on offer
+   --  class; a step after a balise group carrying a text means that
+   --  group's text, which S076_Run.Text_Message judges first
    function Text_On_DMI (Class : Natural) return Boolean;
 
    type SS_Event_T is record

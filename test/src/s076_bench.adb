@@ -36,6 +36,13 @@ package body S076_Bench is
    --  the data of 4.10 column NP (EVC_Core.Power_Up), the first one is
    --  that of a new on-board (EVC_Core.Initialise)
    Was_Powered : Boolean := False;
+   --  The cold movement detection of the odometer (3.15.8): what it
+   --  reports (Set_Cold_Movement), the train's position at the
+   --  power-down, and the first sample after a power-up of a powered
+   --  on-board still to report it (3.15.8.2)
+   Cold_Info : Cold_Info_T := Cold_Not_Available;
+   Off_X_Cm  : Integer_64 := 0;
+   Cold_Due  : Boolean := False;
    --  the traction status last told to the train interface (Cycle)
    Traction_Told : Boolean := False;
    Traction_On   : Boolean := False;
@@ -734,6 +741,9 @@ package body S076_Bench is
    begin
       Is_Powered := False;
       Was_Powered := False;
+      Cold_Due := False;
+      Cold_Info := Cold_Not_Available;
+      Off_X_Cm := 0;
       Clock := 0;
       Cancel_RTM_Hold;
       Hold_Given := False;
@@ -1080,6 +1090,7 @@ package body S076_Bench is
       end Set_Test_Data;
    begin
       Set_Test_Data;
+      Cold_Due := Was_Powered;
       if Was_Powered then
          EVC_Core.Power_Up;
       else
@@ -1132,7 +1143,14 @@ package body S076_Bench is
    begin
       Is_Powered := False;
       Pending_Count := 0;
+      Off_X_Cm := X_Cm;
+      Cold_Info := Cold_Not_Available;
    end Power_Off;
+
+   procedure Set_Cold_Movement (Info : Cold_Info_T) is
+   begin
+      Cold_Info := Info;
+   end Set_Cold_Movement;
 
    function Powered return Boolean is (Is_Powered);
 
@@ -1156,7 +1174,12 @@ package body S076_Bench is
 
    --  The odometer frame of EVC_Ports: d_est, over, under, then v_est,
    --  v_min, v_max (B191: the interval of F41 while Speed_Acc, the
-   --  exact speed otherwise; the three speeds 0 at standstill)
+   --  exact speed otherwise; the three speeds 0 at standstill), the
+   --  movement, and the cold movement detection in the first sample
+   --  after a power-up of an on-board powered before (Cold_Info; not
+   --  available otherwise). Decision: the sequences give the detector's
+   --  verdict, not a distance: no cold movement is 0, a cold movement
+   --  the distance moved since the power-down, 5 m at least
    procedure Sample is
       Movement : constant EVC_Bytes.Byte :=
         (if V_Cms = 0 then 0 elsif Dir > 0 then 1 else 2);
@@ -1164,12 +1187,21 @@ package body S076_Bench is
       D : constant Natural := (if Speed_Acc and V > 0 then F41 (V) else 0);
       V_Min : constant Natural := (if V > D then V - D else 0);
       V_Max : constant Natural := Natural'Min (V + D, 65_535);
+      Available : constant Boolean :=
+        Cold_Due and then Cold_Info /= Cold_Not_Available;
+      Cold : constant Natural :=
+        (if Available and then Cold_Info = Cold_Detected
+         then Natural (Integer_64'Max
+                         (500,
+                          Integer_64'Min (abs (X_Cm - Off_X_Cm), 65_535)))
+         else 0);
    begin
       EVC_Core.Handle_Input
         (Odometer,
          U32 (X_Cm) & U32 (Odo_Over) & U32 (Odo_Under)
          & U16 (V) & U16 (V_Min) & U16 (V_Max)
-         & Byte_Array'(Movement, 0) & U16 (0));
+         & Byte_Array'(Movement, (if Available then 1 else 0)) & U16 (Cold));
+      Cold_Due := False;
    end Sample;
 
    procedure Deliver (I : Positive) is

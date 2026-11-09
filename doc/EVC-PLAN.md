@@ -22853,3 +22853,75 @@ start): SUBSET-027 4.2.3.3 and 4.2.3.4, the date of the bench's UTC
 shorter than a day) and valid hour, minutes and seconds. Moved:
 3180200_01 SV21, SV22, SV30 108 -> passed (the steps after 108 pass
 too), nothing else. Sf6040538's line rewritten.
+### The bench's cold movement over a power cycle, the Trackside not compatible bit, a text judged by its own identity (e5/runner-judgements) (2026-11-09)
+
+B3943 with B3922, 5220200_06 SV30 step 66 (S8f936c68). The reviewer's
+reading held at the trace: the bench's odometer sent the cold movement
+information as not available in every sample (`S076_Bench.Sample`), so
+after the power cycle at 200 m the stored position and level stay
+invalid (4.11.1.1, PDF page 89; 3.15.8.3 a)) and ours asks the level
+(5.4.3.2 S2), where ERA's step list goes on to Special. The brief's
+build, the bench reporting no cold movement at every power-up, was
+scoped on the corpus first: 5220200_06 passed whole, but 50 sequences
+stopped earlier, every one expecting the position or the level invalid
+after its power cycle (the Level window, level N/A, an unknown LRBG in
+the JRU header and in the 157). The corpus has its own input for it:
+15 steps "I CMD" in 8 sequences at SV30 (3150800_01 to _05,
+4100103_10, 5040300_10, _23, 6060303_02: "Cold movement not detected
+is received", "detected", "detector information not available"), right
+after the power-up (once during the power-down, 4100103_10 step 48),
+with no input line in the sibling: they blocked as unclassified. Built:
+`S076_Bench.Set_Cold_Movement` (not available, not detected, detected;
+not available at Reset and at every power-down) and the cold movement
+detection in the first sample after a power-up of an on-board powered
+before (available with 0, or the distance moved since the power-down
+and 5 m at least for a cold movement: decision, the sequences give the
+detector's verdict, not a distance); `S076_Run.Set_Cold_At_Power_Up`
+takes the sequence's CMD step before its next power input, and the
+step itself passes as the input given. Without one the information is
+not available, the corpus' default. Moved 25: 4100103_10 (three
+versions) from step 48 to the Euroloop block at 93 (its steps after
+the power-up pass with the information not available); 24 to the
+step after their CMD step, the JRU record 15 judged as the view's
+event 9, which ours puts for a cold movement detected only, where the
+record of M_COLD_MVT 0 or 2 is the JRU message ours writes at the
+start-up (`EVC_Core.Records.Record_General`) and the bench keeps the
+messages by NID and header only (Sf16484c8 runner, B4002). 5220200_06
+stays at step 66: no cold movement step and no level entry in ERA's
+step list (S8f936c68 s076). B3943 and B3922 closed (not ours, the
+bench's cold movement).
+
+B3862, 3050300_05 SV30 step 63 (S832505af). The premise held: ours
+writes the record 23 with Bit09 (SUBSET-027 4.2.4.23, Trackside not
+compatible) in the cycle it shows the DMI entry 15 with no trip
+(3.5.3.7 d), the RBC's M_VERSION 4.0), and `S076_Tables.
+System_Status_Fact` judged Bit09 by the trip reason 9 only. Built:
+Bit09 is the entries 15 or 16 shown (16 is the entry of the trip
+[65]), like the bits of the entries above it. 3050300_05 SV30 passes
+whole; no other sequence moved, the failed steps after a first failure
+the same: of the 21 sequences expecting Bit09 set, 3050300_05 SV21 and
+SV22 fail step 62 first (Sad696360 E7, ours supports 3.0 so the
+version is compatible) and their step 63 keeps the signature, now
+triaged E7 by that cause; 3050300_11 and 3090300_02 fail at their
+Bit09 step with another signature after an earlier first failure.
+B3862 closed.
+
+B3882, 3120300_03 (SV22, SV30) step 70 (S4b4be9f1 runner). The premise
+held: the on-board holds BG3d's text (B3820) while BG1d's awaits its
+acknowledgement, and `S076_Bench.Text_On_DMI` judged by the newest
+text of the class the on-board put, BG1d's, on offer. Built in
+`S076_Run.Text_Message`: after a balise group whose step names a text
+packet ("72/73", "74/76"), "not displayed" means that group's text, so
+no text of the class put by the on-board in the window is the text
+held, not displayed, whatever older text the DMI presents; otherwise
+the newest of the class as before ("displayed" unchanged: 3120300_03
+step 62's text was read in an earlier window). Scoped on the corpus:
+of the 78 failed sequences with a "not displayed" text step, run with
+and without the rule, only 3120300_03 changed, steps 70 and 92 in both
+versions (92: BG5d's text of class 1 with no acknowledgement held
+behind BG4d's, 5.4.1.10). The sequence stops at step 81, "the fixed
+text message is displayed" after the third is acknowledged: ERA's step
+list (PDF checked) names BG2d's text a fixed one (packet 74/76,
+records 16, 17), the sequence's telegram of BG2d carries packet 73, a
+plain text "Second text" (only BG0d carries packet 74), which ours
+shows then (S30d22b77, a family line s076). B3882 closed.
