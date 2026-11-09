@@ -3080,6 +3080,69 @@ package body S076_Run is
       return False;
    end Desk_Open_At_Power_Up;
 
+   --  The nominal, minimum and maximum safe consist length of one side
+   --  of the engine in a step's comment: the sentence after Side
+   --  ("corresponding to cab A", "opposite to cab A") reads "respectively
+   --  equal to 50m, 40m and 70m" or "(are) all equal to 40m"; Found
+   --  false when the comment has no such sentence
+   procedure Side_Lengths (Comment, Side : String;
+                           Nom, Min, Max : out Natural;
+                           Found : out Boolean)
+   is
+      U  : constant String (Comment'Range) := Up (Comment);
+      At_Side : constant Natural :=
+        Ada.Strings.Fixed.Index (U, Up (Side));
+      Stop : Natural;
+   begin
+      Nom := 0;
+      Min := 0;
+      Max := 0;
+      Found := False;
+      if At_Side = 0 then
+         return;
+      end if;
+      Stop := Ada.Strings.Fixed.Index (U (At_Side .. U'Last), ".");
+      if Stop = 0 then
+         Stop := U'Last;
+      end if;
+      declare
+         S : constant String := U (At_Side .. Stop);
+      begin
+         if Has (S, "ALL EQUAL TO ") then
+            Nom := Number_After (S, "ALL EQUAL TO ", 1);
+            Min := Nom;
+            Max := Nom;
+            Found := Has (S, "ALL EQUAL TO 0") or else Nom > 0;
+         elsif Has (S, "RESPECTIVELY EQUAL TO ") then
+            Nom := Number_After (S, "EQUAL TO ", 1);
+            Min := Number_After (S, ", ", 1);
+            Max := Number_After (S, "AND ", 1);
+            Found := Min <= Nom and then Nom <= Max and then Max > 0;
+         end if;
+      end;
+   end Side_Lengths;
+
+   --  4.6.3 [83] is expected after the safe consist length input of the
+   --  step Cur: a later step of the same test case goes to Stand-By and
+   --  a comment of the case says the length in front of the engine
+   --  becomes different from zero
+   function Front_Length_Expected return Boolean is
+      Said, To_SB : Boolean := False;
+   begin
+      for I in Cur .. Seq.Step_Count loop
+         exit when Seq.Steps (I).Case_Feature /= Seq.Steps (Cur).Case_Feature
+           or else Seq.Steps (I).Case_No /= Seq.Steps (Cur).Case_No;
+         Said := Said or else Has (Image (Seq.Steps (I).Comment),
+                                   "in front the engine becomes different");
+         To_SB := To_SB or else (I > Cur
+                                 and then Trim (Seq.Steps (I).Mode_After)
+                                            = "SB"
+                                 and then Trim (Seq.Steps (I).Mode_Before)
+                                            /= "SB");
+      end loop;
+      return Said and then To_SB;
+   end Front_Length_Expected;
+
    function TIU_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
       Arg  : constant String := W (4);
@@ -3128,9 +3191,15 @@ package body S076_Run is
          --  EVC_Ports TIU signal 15. Unavailable when the comment says so
          --  or the next step expects the record 54 with Q_OVCONSISTLENGTH
          --  0 (the sequences' only other sign of it); else available with
-         --  no values in the sequences (decision: nothing in front of the
+         --  the lengths of the comment, the side of cab A in front of the
+         --  engine when desk A is the active one (EVC_Ports: in front is
+         --  the side of the active cab), in rear when desk B is. Without
+         --  lengths in the comment (decision): nothing in front of the
          --  engine, the train length in rear, longer by 10 m at each
-         --  further input, each one "modified", a change)
+         --  further input, each one "modified", a change; but 1 m in
+         --  front (nominal, min and max) when the case expects Stand-By by
+         --  4.6.3 [83], the smallest length that makes the front length
+         --  different from zero
          if Has (Image (St.Comment), "unavailable")
            or else (Cur < Seq.Step_Count
                     and then Has (Image (Seq.Steps (Cur + 1).Line),
@@ -3142,8 +3211,30 @@ package body S076_Run is
          if SCL_Given then
             SCL_Inputs := SCL_Inputs + 1;
          end if;
-         B.TIU_Safe_Consist (True, 0, Train_Length_M + 10 * SCL_Inputs);
          SCL_Given := True;
+         declare
+            C : constant String := Image (St.Comment);
+            A_Nom, A_Min, A_Max, O_Nom, O_Min, O_Max : Natural;
+            A_Found, O_Found : Boolean;
+         begin
+            Side_Lengths (C, "corresponding to cab A",
+                          A_Nom, A_Min, A_Max, A_Found);
+            Side_Lengths (C, "opposite to cab A",
+                          O_Nom, O_Min, O_Max, O_Found);
+            if A_Found and then O_Found then
+               if Cab_Sign > 0 then
+                  B.TIU_Safe_Consist (True, A_Nom, O_Nom,
+                                      A_Min, A_Max, O_Min, O_Max);
+               else
+                  B.TIU_Safe_Consist (True, O_Nom, A_Nom,
+                                      O_Min, O_Max, A_Min, A_Max);
+               end if;
+               return Pass ("TIU safe consist length of the comment");
+            end if;
+         end;
+         B.TIU_Safe_Consist
+           (True, (if Front_Length_Expected then 1 else 0),
+            Train_Length_M + 10 * SCL_Inputs);
          return Pass ("TIU safe consist length");
       end if;
       if Same (Kind, "other-train-data") then
@@ -3797,6 +3888,45 @@ package body S076_Run is
       end;
    end Mode_Symbol;
 
+   --  The level the driver selected in the last level selection of the
+   --  test case of step Cur before it, as the selection's comment names
+   --  it ("Select L0", "Select Level 0"), while no step from the
+   --  selection to Cur has that level in its column; K_None otherwise
+   --  (5080200_04 step 23: L0 selected at step 22, the column L1 until
+   --  step 24)
+   function Level_Selected_Before return Level_Kind_T is
+   begin
+      for I in reverse 1 .. Cur - 1 loop
+         exit when Seq.Steps (I).Case_Feature /= Seq.Steps (Cur).Case_Feature
+           or else Seq.Steps (I).Case_No /= Seq.Steps (Cur).Case_No;
+         if Starts (Image (Seq.Steps (I).Line), "input DMI select Level")
+         then
+            declare
+               U : constant String := Up (Image (Seq.Steps (I).Comment));
+               P : constant Natural := Ada.Strings.Fixed.Index (U, "SELECT L");
+               K : Level_Kind_T := K_None;
+            begin
+               if P = 0 then
+                  return K_None;
+               elsif P + 8 <= U'Last and then U (P + 8) in '0' .. '2' then
+                  K := Level_Of ("L" & U (P + 8));
+               elsif P + 13 <= U'Last and then U (P + 8 .. P + 12) = "EVEL "
+                 and then U (P + 13) in '0' .. '2'
+               then
+                  K := Level_Of ("L" & U (P + 13));
+               end if;
+               for J in I .. Cur loop
+                  if Level_Of (Trim (Seq.Steps (J).Lvl_After)) = K then
+                     return K_None;
+                  end if;
+               end loop;
+               return K;
+            end;
+         end if;
+      end loop;
+      return K_None;
+   end Level_Selected_Before;
+
    function Level_Symbol (St : Step_T; St_W : State_Word_T; Name : String)
      return Judgement_T
    is
@@ -3858,6 +3988,11 @@ package body S076_Run is
          --  the step's start column, its state column the level after it
          --  (4080425_04 step 65: L1 until the transition location)
          K := Level_Of (Trim (St.Lvl_Before));
+      elsif K = K_None and then Level_Selected_Before /= K_None then
+         --  "Level-0/1/2/NTC" after the driver selected another level
+         --  than the step's column in the same test case: the level
+         --  selected, until the column follows
+         K := Level_Selected_Before;
       elsif K = K_None then
          --  "Level-0/1/2/NTC": the variant of the step's column
          K := Level_Of (Trim (St.Lvl_After));
@@ -5410,6 +5545,35 @@ package body S076_Run is
                       else ""));
    end JRU_20_Fields;
 
+   --  The header of the last JRU message of the windows judged so far in
+   --  the sequence (a JRU step's window with messages), for a bare "ALL"
+   --  about the records' header
+   Last_Header       : EVC_JRU_Messages.Header_T;
+   Last_Header_Known : Boolean := False;
+
+   --  A bare "expect JRU record ALL" whose comment is about the DATE and
+   --  TIME of the records (SUBSET-027 4.2.3.3, 4.2.3.4: "Current DATE
+   --  and TIME JRU variables are recorded in UTC format", 3180200_01 step
+   --  108 in NL where nothing is recorded): judged by the header of the
+   --  last message written in or before the window, its DATE and TIME
+   --  those of the bench's UTC clock (S076_Bench: 2026-01-01 00:00:00 at
+   --  the power-up, a sequence shorter than a day), not by a new record
+   function Header_Date_Time return Judgement_T is
+      H : EVC_JRU_Messages.Header_T renames Last_Header;
+   begin
+      if not Last_Header_Known then
+         return NJ (R_JRU_Not_Modelled, "JRU DATE and TIME: no message yet");
+      end if;
+      return Check (H.Year = 26 and then H.Month = 1 and then H.Day = 1
+                    and then H.Hour < 24 and then H.Minutes < 60
+                    and then H.Seconds < 60,
+                    "JRU DATE and TIME of the last message in UTC",
+                    "date" & Img (Integer (H.Year)) & Img (Integer (H.Month))
+                    & Img (Integer (H.Day)) & " time"
+                    & Img (Integer (H.Hour)) & Img (Integer (H.Minutes))
+                    & Img (Integer (H.Seconds)));
+   end Header_Date_Time;
+
    function JRU_Window_Expect (St : Step_T) return Judgement_T is
       Positive : constant Boolean := Same (W (3), "record");
       Id_S     : constant String := W (4);
@@ -5417,8 +5581,17 @@ package body S076_Run is
       Result   : Judgement_T := Pass ("JRU");
       Any_Field : Boolean := False;
    begin
+      if B.Message_Count > 0 then
+         Last_Header := B.Message_Header (B.Message_Count);
+         Last_Header_Known := True;
+      end if;
       if Same (Id_S, "ALL") then
-         if Line.Count = 4 then
+         if Line.Count = 4 and then Positive
+           and then Has (Image (St.Comment), "DATE")
+           and then Has (Image (St.Comment), "TIME")
+         then
+            return Header_Date_Time;
+         elsif Line.Count = 4 then
             return Check ((B.JRU_Count > 0) = Positive,
                           "JRU any record" & (if Positive then "" else " not"),
                           Img (B.JRU_Count) & " records");
@@ -7703,6 +7876,7 @@ package body S076_Run is
       Train_Configuration := 1;
       SCL_Given := False;
       SCL_Inputs := 0;
+      Last_Header_Known := False;
       Cab_Sign := 1;
       Controller_Given := False;
       Controller_Due := False;
