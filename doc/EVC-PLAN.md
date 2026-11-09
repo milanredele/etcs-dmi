@@ -23072,3 +23072,164 @@ Counts: 8 items and the extra. Agreed: nine (item 3 after the corpus
 count: my blind default, no cold movement without a CMD step, did not
 hold against it); disagreed: none; undecided: none. No backlog line.
 Calls: 93 of 130 at this point.
+
+### E5 integration after the seventieth round, the thirty-eighth of E6 (2026-11-09)
+
+Merged: e6/integrity-order (B3942: the code already had the reviewer's
+order, `EVC_Core.Tick` running `Adjust_For_Manoeuvre` (the turn taken,
+`Take_SM_Turn`) before `Evaluate_Radio` ([10] applied) before
+`Produce_Outputs` (the 136 built), so the A095 report carries
+Q_INTEGRITY 0: the plan's "[10] coincides with [5]" was the wrong
+sentence, not the code; `Report_Integrity` checks it in `Scenario_SM_
+Integrity` (failing when the turn's term is removed); of C3's terms one
+was a real gap, "no reverse movement currently performed", built as
+`Back` in `EVC_Sessions.Integrity.Evaluate` (a TIU confirmation during
+a reverse movement leaves "no information"), the "since" terms written
+into decision 1 as the cycle's own conditions; the rows: 5.17.2.2 A7
+stays partial, narrowed: after A1 (the train interface's configuration
+change, no driver validation) none of 3.18.3.4, .7, .8 is applied and
+the TIU input 13 carries only the configuration number (B3962);
+5.4.3.3 Table: every position row is built (`Revalidate`, `Delete_
+Position`, `EVC_Core.Modes.Delete_Invalid_Position`, the last path now
+shown by `Scenario_SoM_Deletes_Invalid`), the DMI's D2 driven by the
+validity bits of MSG_ONBOARD, left the row "re-enter the level" where
+the RBC contact should go invalid and ours keeps it (B3963); B3884:
+`evc_config.py` writes, reads and emits format 4 (`traction_cut_off_ms`,
+0 to 10000), the sample `test/config/traction_v4` compared by
+`check.sh` and `Scenario_Config_Traction`), e6/texts-hidden (B3883:
+`EVC_Text_Messages.Show_Or_Hold` revokes the texts shown without
+acknowledgement when it sends a text to be acknowledged (DMI 8.2.3.4.8
+a), c)), each revocation a record 17 or 19 and the text marked `Hidden`,
+sent again with a record 16 or 18 once no text awaits the driver
+(5.4.1.10), keeping the hour and minute of the first sending
+(`Output_T.Again`, `At_Ms`), a text ending while hidden dropped; a text
+to be acknowledged waits while the acknowledgement of a mode or a level
+transition is asked and 1 s after (5.4.1.9.1 1), 2): the `Asked`
+parameter of `Evaluate`, the three states `Send_Mode_Level` puts in the
+frame, passed from `EVC_Core.Modes.Run_Procedures` since reading them
+from the texts' unit would be circular through `EVC_Sessions`);
+`Scenario_Texts_Hidden`, `Scenario_Text_Behind_Mode_Ack` (4 checks
+failing before), `Scenario_DMI_Restart_Displayed` follows the decision;
+the DMI goldens unchanged; B3982 protocol (a re-sent first-group text
+makes the DMI play Sinfo again: a "shown before" bit of MSG_TEXT), B3983
+onboard (a text not held behind a status message's or brake release's
+acknowledgement, 5.4.1.9.1 5), 6)); the row 3.20.1.2: records 16 to 19
+noted as written, record 22 (DMI_SOUND_STATUS) expected by no step of
+the corpus and not writable without a report of the DMI, which starts
+the sounds by its own rules (14.3.2, 14.3.3, seven Sinfo triggers):
+B3984 protocol, B1360 closed into it, the row partial on it alone; the
+rows 5.4.5.3 and 5.4.5.3 i) left at the bound: the clause does restrict
+the on-board to S10 and S20, the on-board sends no enabling of the two
+buttons (the DMI's Table 36 enables them in SB at standstill), and the
+brief's "`EVC_Mission` has the S10/S20 state" was wrong, the state is to
+be built first: B3985), e5/runner-inputs (B3902: `S076_Run.Side_Lengths`
+reads the comment's nominal, min and max per side of cab A (6 SV30
+sequences, 11 steps), the side of cab A in front of the engine with desk
+A active (`EVC_Ports`: in front is the side of the active cab), the
+bench's `TIU_Safe_Consist` taking min and max per side; a comment
+without lengths expecting SB by [83] gives 1 m in front
+(`Front_Length_Expected`, decision: the smallest length that makes [83]
+true); the four sequences traced to their new steps: 3070300_11 step
+47 (SB by [83] in L1 with the desk open starts the start of mission,
+5.4.3.2 S0, ours shows the Driver ID window; ERA's PDF has no rows 43 to
+46: s076), 3170200_10 step 118 (after a reach-point at the RBC/RBC
+border the runner moves the train from 630 m to the steps' column 700
+m, so BG3d of version 2.0 is read past the border without an accepting
+session and ours operates 2.3 by 3.17.2.8 e): B4022 runner), 4120100_14
+step 173 (no message 6 for the Post Trip report in ERA's PDF either,
+Initiate SM stays disabled by 5.11.2.2 S120 / D130: s076), 3150100_10
+step 71 (the message 133 expected after SB by [83] in L2:
+`Evaluate_Consist` sees the change in the FS cycle and never sends it:
+B4023 onboard, the review answers in favour of sending); B3924:
+`Level_Selected_Before`, the level of the last selection's comment in
+the same case until a column has it; 5080200_04 moved from 23 to 58 in
+three versions (Override EoA pressed at 36 km/h with V_NVALLOWOVTRP 0,
+5.8.2.1 a): B4024 runner, the bench driver to stop first); B3923:
+`Header_Date_Time`, a bare "ALL" about DATE and TIME judged by the
+header of the last JRU message (the bench's UTC date, valid time
+fields; 2 of the 8 bare ALL steps of SV30); 3180200_01 passes in three
+versions) and e5/runner-judgements (B3943 with B3922: the reviewer's
+reading held, `S076_Bench.Sample` always gave the cold movement
+information as not available; the brief's build, "no cold movement at
+every power-up", was wrong for the corpus: 50 sequences expect the
+position or the level invalid after their power cycle; the corpus has
+its own input, 15 "I CMD" steps in 8 SV30 sequences (not detected,
+detected, information not available), blocked as unclassified until
+now: `Set_Cold_Movement` / `Set_Cold_At_Power_Up` give the detector's
+report in the first sample after a power-up (decision: 5 m for a
+detected movement, the sequences giving the verdict not the distance),
+the default without a CMD step "not available" (3.15.8.3 a)); 25
+sequences moved: 4100103_10 to its Euroloop block (E7) in three
+versions, 24 to the step after their CMD step, where the record 15 with
+M_COLD_MVT 0 or 2 is judged as the view's event 9, which ours puts for
+a detected movement only (Sf16484c8, B4002 runner); 5220200_06 stays at
+66: ERA's PDF has no CMD step and no level entry, two cases joined so
+that the level step is skipped: s076; B3922 closed, not ours; B3862:
+`System_Status_Fact` judges Bit09 by the entries 15 or 16 shown,
+3050300_05 SV30 passes whole (SV21, SV22 stop at 62: E7); B3882:
+`Text_Message` judges "not displayed" after a group whose step names a
+text packet by that group's text (78 failed sequences with such a step
+run with and without the rule: only 3120300_03 changed); 3120300_03
+moved from 70 to 81 (BG2d's packet 73 is a plain text "Second text"
+where the step and ERA's PDF call it a fixed text: s076)) and the
+review e5/review-70.
+
+Review (the nineteenth): nine verdicts, all agree, no line (the second
+review without a disagreement): the texts revoked and sent again with
+their records; the Tick order giving the A095 report Q_INTEGRITY 0; the
+cold movement default "not available" (the reviewer's blind default was
+"no cold movement" and turned on the corpus count: of the SV30
+power-ups without a CMD step 24 lead to the invalid path, 5220200_06
+alone fails on the default); the consist side and the 1 m; record 22
+needing the DMI's report and the VBC entries needing the S10/S20 state;
+the two start of mission rows (3.18.3.7 may apply after A1 by the
+category bit of the TIU input 13); the three traces the runner's or the
+sequences' data; B4023 answered: 3.18.3.10 makes the 133 due in SB with
+a session when the information becomes available, no condition on the
+Train Data's validity. Nineteen rounds of reviews: 160 items, 139
+agreed, 24 disagreed, 8 undecided; 39 lines, of which 8 became fixes;
+127.0 USD.
+
+Verification of the merged tree: an early chain on the integrity-order
+package green; the full chain after the four merges green at once:
+`test/check.sh` ok; the full proof 14150 checks (5 more), none
+unproved, margin 47726 steps; cross build and stack 32768 B budget,
+margin 6024 B (unchanged); wasm and both smokes 0 failures; the runner
+1246 / 1031 / 913 (from 1242 / 1013 / 935: 22 sequences unblocked by
+the CMD steps now inputs, of which 24 steps stop one later on the record
+15's judgement), 0 regressions against the merged baseline, no
+signature untriaged. The merge: integrity-order and the review
+fast-forwarded; the other three conflicted on the plan and the backlog,
+runner-judgements on the triage too (one line both sides rewrote,
+Sfaaa30ed, kept from runner-inputs; the rewritten S8f936c68 and the new
+Sf16484c8 from runner-judgements); the two agents in `EVC_Core`'s
+children and the two in `S076_Run` did not conflict.
+
+Costs (doc/ROUNDS.csv): 40.4 USD with the review (33.6 for the four
+packages, 6.8 the review), 11 of 12 package items done (the VBC rows
+left at the bound, B3985), 4 of 13 brief premises wrong (the plan's
+"[10] coincides with [5]"; A7 "nothing left"; "`EVC_Mission` has the
+S10/S20 state"; the bench's "no cold movement at every power-up"), no
+agent over budget, three past the bound with the last item in hand
+(123, 125, 131), one under it (113); the review 98 of 130. The tally
+re-counted from the transcript at every commit: the five reports were
+within 2 of the measured counts (123/123, 125/126, 113/113, 131/133,
+99/98), against 124/187 last round. Lessons: a bench default is taken
+from the corpus, not from the brief's rule (50 sequences expect the
+invalid path; the author counted before building); a plan sentence
+about the code is a claim like a backlog line ("coincides with [5]" was
+wrong where the code was right); a review without a disagreement after
+a round that built from the previous review's two disagreements.
+
+The matrix: clauses left 7 (todo 0, partial 7, unchanged: 3.20.1.2 on
+B3984, 4.11.1.1 and 4.11.1.3 (E7, E8), 5.4.3.3 Table on B3963, 5.4.5.3
+and 5.4.5.3 i) on B3985, 5.17.2.2 A7 on B3962; done 2133). Open items:
+doc/BACKLOG.csv (28 open after this round; 10 added, none by the
+review, 11 closed). Next: B4023 (the 133 after SB by [83]), B3985 (the
+S10/S20 state and the VBC entries), B3983 (the texts behind the other
+acknowledgements), B3962 and B3963 (the two rows' remainders), B4002
+(the record 15 judged by its field), B4022 (the train kept at the
+reach-point's place), B4024 (the bench driver stopping before an
+override), B3982 and B3984 (two protocol decisions: a "shown before" bit
+of MSG_TEXT, a sound report of the DMI for record 22), B3700, B3380,
+the review again (eight items, readings first, no backlog read).
