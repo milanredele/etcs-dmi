@@ -3064,6 +3064,47 @@ package body S076_Run is
    --  of 5040300_08 and nine more that opened desk A before it, where 24
    --  other power-ups of the corpus give the desk again; the desk is the
    --  one opened last (A when none was)
+   --  A step of the cold movement detector ("I CMD", no input line in
+   --  the sibling): what it says the detector reports after the
+   --  power-up (3.15.8.2, 3.15.8.3), Cold_Not_Available for another step
+   function Cold_Statement (St : Step_T) return B.Cold_Info_T is
+      T : constant String := Image (St.Text);
+   begin
+      if Trim (St.Interface_Name) /= "CMD" or else St.IO /= Input then
+         return B.Cold_Not_Available;
+      elsif Has (T, "not detected") then
+         return B.Cold_Not_Detected;
+      elsif Has (T, "detected") then
+         return B.Cold_Detected;
+      else
+         return B.Cold_Not_Available;
+      end if;
+   end Cold_Statement;
+
+   function Is_Cold_Step (St : Step_T) return Boolean is
+     (Trim (St.Interface_Name) = "CMD" and then St.IO = Input
+      and then Has (Image (St.Text), "old movement"));
+
+   --  The detector's report at the power-up of step Cur: that of the
+   --  sequence's cold movement step before its next power input, which
+   --  follows the power-up in ERA's step lists (3150800_01 to _05,
+   --  5040300_10, _23, 6060303_02); without one the bench keeps what a
+   --  step during the power-down gave (4100103_10 step 48), else the
+   --  information not available (3.15.8.3 a), no detector fitted).
+   --  Decision: the default by the corpus: the power cycles with no
+   --  cold movement step expect the stored position and level invalid
+   --  after them (the Level window, an unknown LRBG in the header)
+   procedure Set_Cold_At_Power_Up is
+   begin
+      for I in Cur + 1 .. Seq.Step_Count loop
+         exit when Has (Image (Seq.Steps (I).Line), "SIM power");
+         if Is_Cold_Step (Seq.Steps (I)) then
+            B.Set_Cold_Movement (Cold_Statement (Seq.Steps (I)));
+            return;
+         end if;
+      end loop;
+   end Set_Cold_At_Power_Up;
+
    function Desk_Open_At_Power_Up return Boolean is
    begin
       for I in Cur + 1 .. Seq.Step_Count loop
@@ -3638,6 +3679,7 @@ package body S076_Run is
                      B.Set_Radio_Systems (EVC_Config.Both_Systems);
                      B.Set_Network_Type (EVC_Config.FRMCS_GSMR);
                   end if;
+                  Set_Cold_At_Power_Up;
                   B.Power_On;
                   if Desk_Open_At_Power_Up then
                      Open_Desk (if Cab_Sign < 0 then "B" else "A");
@@ -7862,6 +7904,16 @@ package body S076_Run is
                Record_Result
                  (I, NJ (R_Optional, "conditional on an invalid position "
                          & "at the start of the test case"));
+            elsif Is_Cold_Step (St) then
+               --  the detector's report is given at the power-up
+               --  (Set_Cold_At_Power_Up); during a power-down it is kept
+               --  for the next one
+               if not B.Powered then
+                  B.Set_Cold_Movement (Cold_Statement (St));
+               end if;
+               Record_Result
+                 (I, Pass ("cold movement detector: "
+                           & B.Cold_Info_T'Image (Cold_Statement (St))));
             elsif St.Line.N = 0 then
                J := NJ (R_Unclassified, "step text");
                Record_Result (I, J);

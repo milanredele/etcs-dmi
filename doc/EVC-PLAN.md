@@ -22618,3 +22618,41 @@ faults those clauses are about; `EVC_Core.Report_Fault` is built then,
 with its first caller. A malformed port input stays validated and
 ignored (the robustness rule), not a fault. No code change; B3863
 closed, B1840 marked for E8.
+
+### The bench's cold movement over a power cycle, the Trackside not compatible bit, a text judged by its own identity (e5/runner-judgements) (2026-11-09)
+
+B3943 with B3922, 5220200_06 SV30 step 66 (S8f936c68). The reviewer's
+reading held at the trace: the bench's odometer sent the cold movement
+information as not available in every sample (`S076_Bench.Sample`), so
+after the power cycle at 200 m the stored position and level stay
+invalid (4.11.1.1, PDF page 89; 3.15.8.3 a)) and ours asks the level
+(5.4.3.2 S2), where ERA's step list goes on to Special. The brief's
+build, the bench reporting no cold movement at every power-up, was
+scoped on the corpus first: 5220200_06 passed whole, but 50 sequences
+stopped earlier, every one expecting the position or the level invalid
+after its power cycle (the Level window, level N/A, an unknown LRBG in
+the JRU header and in the 157). The corpus has its own input for it:
+15 steps "I CMD" in 8 sequences at SV30 (3150800_01 to _05,
+4100103_10, 5040300_10, _23, 6060303_02: "Cold movement not detected
+is received", "detected", "detector information not available"), right
+after the power-up (once during the power-down, 4100103_10 step 48),
+with no input line in the sibling: they blocked as unclassified. Built:
+`S076_Bench.Set_Cold_Movement` (not available, not detected, detected;
+not available at Reset and at every power-down) and the cold movement
+detection in the first sample after a power-up of an on-board powered
+before (available with 0, or the distance moved since the power-down
+and 5 m at least for a cold movement: decision, the sequences give the
+detector's verdict, not a distance); `S076_Run.Set_Cold_At_Power_Up`
+takes the sequence's CMD step before its next power input, and the
+step itself passes as the input given. Without one the information is
+not available, the corpus' default. Moved 25: 4100103_10 (three
+versions) from step 48 to the Euroloop block at 93 (its steps after
+the power-up pass with the information not available); 24 to the
+step after their CMD step, the JRU record 15 judged as the view's
+event 9, which ours puts for a cold movement detected only, where the
+record of M_COLD_MVT 0 or 2 is the JRU message ours writes at the
+start-up (`EVC_Core.Records.Record_General`) and the bench keeps the
+messages by NID and header only (Sf16484c8 runner, B4002). 5220200_06
+stays at step 66: no cold movement step and no level entry in ERA's
+step list (S8f936c68 s076). B3943 and B3922 closed (not ours, the
+bench's cold movement).
