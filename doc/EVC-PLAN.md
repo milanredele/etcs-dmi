@@ -22665,3 +22665,18 @@ restart and is sent after that acknowledgement. No sequence moved
 Sinfo again for an important text sent again (8.2.3.4.7 h), a protocol
 bit, B3982) and the requests of 5.4.1.9.1 5), 6) asked before a text
 (B3983). Rows 3.12.3.4.4 and 3.12.3.4.7.1 noted.
+
+**The row 3.20.1.2, what is left of the records.** The row's note named
+the message 22 as its only on-board gap (B1360, narrowed over six
+rounds), and did not list 16 to 19, written since the texts' display
+was recorded (`EVC_Core.Outputs.Record_Text_Display`): noted now. The
+message 22 (SUBSET-027 4.2.4.22, DMI_SOUND_STATUS, the bits Sinfo, S1,
+S2, written when the playing of any audible information is started) is
+expected by no step of sv21, sv22 or sv30. The sounds are the DMI's:
+S1 once at the Over-speed status (ERA_ERTMS_015560 14.3.2), S2 while
+Warning (14.3.3), Sinfo at seven triggers of its own (5.4.1.5, 7.4.1.1,
+8.2.2.3.6, 8.2.2.5.7, 8.2.3.4.7 h)), and no frame of the DMI-EVC
+protocol reports one. A record built from the on-board's status would
+carry S1 and S2 and miss most of Sinfo: not built. B1360 closed into
+B3984 (protocol: the on-board commanding the sounds, or the DMI
+reporting their starts); the row stays partial on B3984 alone.
