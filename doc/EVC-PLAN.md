@@ -22680,3 +22680,13 @@ protocol reports one. A record built from the on-board's status would
 carry S1 and S2 and miss most of Sinfo: not built. B1360 closed into
 B3984 (protocol: the on-board commanding the sounds, or the DMI
 reporting their starts); the row stays partial on B3984 alone.
+
+**The rows 5.4.5.3 and 5.4.5.3 i), left at the bound.** The clause
+restricts the on-board's start of mission ("i) only at S10 and S20, to
+set/remove a Virtual Balise Cover"), not only the DMI's table. At the
+source: `EVC_Core.Inputs.Take_VBC_Requests` takes both entries in SB at
+any point; the on-board sends no enabling of the two buttons (the DMI
+enables them by its Table 36, in SB at standstill); and `EVC_Mission`
+keeps no S10 / S20 state to restrict on (the brief's premise was
+wrong). The build needs that state first, then the refusal and an
+enabling bit for the DMI (B3985); the rows stay partial.
