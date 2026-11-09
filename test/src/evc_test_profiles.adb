@@ -11,6 +11,7 @@ with ETCS_Track_Packets.P67;
 with ETCS_Track_Packets.P68;
 with ETCS_Track_Packets.P70;
 with ETCS_Track_Packets.P71;
+with ETCS_Track_Packets.P74;
 with ETCS_Track_Packets.P80;
 with ETCS_Track_Packets.P88;
 with ETCS_Variables;
@@ -28,6 +29,7 @@ with EVC_Profiles;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
+with EVC_Text_Messages;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
@@ -1310,6 +1312,94 @@ package body EVC_Test_Profiles is
              & Requests'Image & Changes'Image);
       Speed_Cms := Saved;
    end Scenario_Mode_Profile_Roll_Back;
+
+   --  An On Sight mode profile from 400 m (the group 10 at 100 m, its
+   --  acknowledgement area 100 m) and, in the same group, a fixed text to
+   --  be acknowledged from 320 m; the train stops at 350 m with the mode's
+   --  acknowledgement asked: the text is held (not sent, its display not
+   --  recorded) while the request awaits the driver, and sent 1 s after
+   --  the mode's acknowledgement
+   procedure Scenario_Text_Behind_Mode_Ack is
+      MP      : T80.Packet_T;
+      TP      : ETCS_Track_Packets.P74.Packet_T;
+      W       : Writer_T;
+      OK      : Boolean;
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      Shown_N : Natural := 0;
+      procedure Count is
+      begin
+         for I in 1 .. EVC_Text_Messages.Event_Count loop
+            if Natural (EVC_Text_Messages.Event (I).Kind)
+              = EVC_Text_Messages.Event_Displayed
+            then
+               Shown_N := Shown_N + 1;
+            end if;
+         end loop;
+      end Count;
+      procedure Wait (Ms : Natural) is
+      begin
+         for C in 1 .. Ms / 100 loop
+            Stand_X (100);
+            Count;
+         end loop;
+      end Wait;
+   begin
+      Start_X;
+      Speed_Cms := 500;
+      Add_Group (Group (10, 100));
+      MP.Q_DIR := 1;
+      MP.Q_SCALE := 1;
+      MP.D_MAMODE := 300;
+      MP.M_MAMODE := 0;
+      MP.V_MAMODE := 127;
+      MP.L_MAMODE := 200;
+      MP.L_ACKMAMODE := 100;
+      MP.Q_MAMODE := 1;
+      TP.Q_DIR := 2;
+      TP.Q_SCALE := 1;
+      TP.Q_TEXT := 1;
+      TP.D_TEXTDISPLAY := 220;
+      TP.L_TEXTDISPLAY := 1000;
+      TP.T_TEXTDISPLAY := 1023;
+      TP.M_MODETEXTDISPLAY := 15;
+      TP.M_LEVELTEXTDISPLAY := 4;
+      TP.M_MODETEXTDISPLAY_2 := 15;
+      TP.M_LEVELTEXTDISPLAY_2 := 4;
+      TP.Q_TEXTCONFIRM := 1;
+      TP.Has_Q_CONFTEXTDISPLAY := True;
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      ETCS_Track_Packets.P74.Encode (TP, W, OK);
+      Finish_Carry (1, 0, W, OK);
+      Carry (1, 1, MA_Of ((1 => 3000)));
+      Carry (1, 1, MP);
+      Run_X (20_000);
+      while Train_Cm < 35_000 loop
+         Step_X (50);
+         Count;
+      end loop;
+      Wait (500);
+      Check (EVC_Procedures.Ack_Requested and then Shown_N = 0
+               and then EVC_Text_Messages.Displayed = 0,
+             "text behind a mode acknowledgement: started at 320 m, held "
+             & "while On Sight's acknowledgement is asked (ERA_ERTMS_015560 "
+             & "5.4.1.9, 5.4.1.9.1 2), 3)), got "
+             & EVC_Procedures.Ack_Requested'Image & Shown_N'Image
+             & EVC_Text_Messages.Displayed'Image);
+      Input (DMI, (16#40#, 5, 0, 0, 0, 2, 1, 0, 0, 0));
+      Wait (500);
+      Check (not EVC_Procedures.Ack_Requested and then Shown_N = 0,
+             "text behind a mode acknowledgement: not sent before 1 s "
+             & "after the mode's acknowledgement (5.4.1.9), got"
+             & Shown_N'Image);
+      Wait (1000);
+      Check (Shown_N = 1 and then EVC_Text_Messages.Displayed = 1,
+             "text behind a mode acknowledgement: sent and recorded 1 s "
+             & "after the mode's acknowledgement (5.4.1.9; SUBSET-027 "
+             & "4.3.1.1), got" & Shown_N'Image
+             & EVC_Text_Messages.Displayed'Image);
+      Speed_Cms := Saved;
+   end Scenario_Text_Behind_Mode_Ack;
 
    --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
    --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls

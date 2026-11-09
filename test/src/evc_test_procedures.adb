@@ -1808,10 +1808,12 @@ package body EVC_Test_Procedures is
       Forget;
       Input (DMI, Frame (16#43#, (1 .. 0 => 0)));
       Cycle;
-      Check (Id_Of ("Kept") /= 0 and then Flags_Of ("Kept") = 4
+      --  "Kept", without acknowledgement, revoked while a text to be
+      --  acknowledged is shown (DMI 8.2.3.4.8 a)), is not among them
+      Check (Id_Of ("Kept") = 0
              and then Id_Of ("Await") = Await_Id
              and then Flags_Of ("Await") = 5
-             and then Id_Of ("Acked") = 0 and then Text_N = 2,
+             and then Id_Of ("Acked") = 0 and then Text_N = 1,
              "DMI restart: the texts displayed shown again after "
              & "MSG_DMI_HELLO, the one awaited with the request for "
              & "acknowledgement, not the one acknowledged before");
@@ -1830,6 +1832,10 @@ package body EVC_Test_Procedures is
              and then not Why (EVC_Ports.TIU_Reason_Ack_Missing),
              "DMI restart: the text acknowledged on the restarted DMI, its "
              & "brake released (3.14.1.7.5)");
+      Cycle;
+      Check (Id_Of ("Kept") /= 0 and then Flags_Of ("Kept") = 4,
+             "DMI restart: the text without acknowledgement sent again once "
+             & "none awaits the driver (DMI 5.4.1.10)");
    end Scenario_DMI_Restart_Displayed;
 
    --  5.22 Inhibition of the BTM alarm reaction (SUBSET-076 5220200)

@@ -13,7 +13,8 @@ package body EVC_Text_Messages
        Refined_State => (State => (Messages, Next_Id, Outputs, Output_N,
                                    Events, Event_N, Last_Level_Valid,
                                    Last_Level, Pending, Pending_N,
-                                   Reports, Report_N, Gap_Until, Freed))
+                                   Reports, Report_N, Gap_Until, Freed,
+                                   Asked_Last))
 is
 
    No_Mode  : constant := 15;   -- M_MODETEXTDISPLAY: no sub-condition
@@ -59,6 +60,10 @@ is
       --  started and not ended at once, not sent to the DMI while a text
       --  awaits the driver's acknowledgement (Show_Or_Hold)
       Held       : Boolean := False;
+      --  sent, then revoked while a text to be acknowledged is shown
+      --  (Show_Or_Hold), and the on-board time of its first sending
+      Hidden     : Boolean := False;
+      Sent_Ms    : Unsigned_64 := 0;
       Loc_Done   : Boolean := False;
       Time_Done  : Boolean := False;
       Mode_Done  : Boolean := False;
@@ -101,6 +106,9 @@ is
    Ack_Gap_Ms : constant := 1000;
    Gap_Until  : Unsigned_64 := 0;
    Freed      : Boolean := False;
+   --  a mode or a level transition awaited the driver's acknowledgement
+   --  in the last cycle (5.4.1.9: its end starts the gap too)
+   Asked_Last : Boolean := False;
 
    Last_Level_Valid : Boolean := False;
    Last_Level       : Level_T := L0;
@@ -623,6 +631,7 @@ is
       Last_Level := L0;
       Gap_Until := 0;
       Freed := False;
+      Asked_Last := False;
       Pending := (others => No_Message);
       Pending_N := 0;
       Reports := (others => (others => <>));
@@ -646,7 +655,7 @@ is
 
    function Flags_Of (M : Message_T) return Byte is
 
-     ((if M.Confirm /= 0 then 1 else 0)
+     ((if M.Confirm /= 0 and then not M.Acked then 1 else 0)
       or (if M.Important then 2 else 0)
       or (if M.Plain then 4 else 0));
 
@@ -657,7 +666,9 @@ is
                   then Flags_Of (Messages (Slot)) and not 1
                   else Flags_Of (Messages (Slot))),
        Length => Messages (Slot).Length,
-       Text   => Messages (Slot).Text))
+       Text   => Messages (Slot).Text,
+       Again  => False,
+       At_Ms  => 0))
      with Refined_Global => Messages;
 
    --  The end condition of a started message in this cycle (3.12.3.4.3,
@@ -709,24 +720,34 @@ is
       end if;
    end End_Condition;
 
+   --  M awaits the driver's acknowledgement, or will once sent; one
+   --  acknowledged is managed as a text without acknowledgement (DMI
+   --  8.2.3.4.8 c)
+   function To_Ack (M : Message_T) return Boolean is
+     (M.Confirm /= 0 and then not M.Acked);
+
    --  Whether the started text M of the slot I waits before it is sent:
-   --  one to be acknowledged during the 1 s after a text was acknowledged
-   --  or revoked, while another awaits its acknowledgement or while one
-   --  started before it waits (DMI 5.4.1.9: a FIFO by the starts, then
-   --  the slots); one without acknowledgement while a text to be
+   --  one to be acknowledged while the acknowledgement of a mode or a
+   --  level transition is asked (Asked) and during the 1 s after it or a
+   --  text was acknowledged or revoked, while another awaits its
+   --  acknowledgement or while one started before it waits (DMI 5.4.1.9:
+   --  a FIFO by the starts, then the slots; 5.4.1.9.1: the mode and the
+   --  level first); one without acknowledgement while a text to be
    --  acknowledged awaits it or waits (DMI 5.4.1.10)
-   function Waits (I : Positive; M : Message_T; Now_Ms : Unsigned_64)
-                   return Boolean
+   function Waits (I      : Positive;
+                   M      : Message_T;
+                   Now_Ms : Unsigned_64;
+                   Asked  : Boolean) return Boolean
    is
-     ((M.Confirm /= 0 and then Now_Ms < Gap_Until)
+     ((To_Ack (M) and then (Asked or else Now_Ms < Gap_Until))
       or else
         (for some J in Messages'Range =>
            J /= I and then Messages (J).Used
-           and then Messages (J).Confirm /= 0
-           and then ((Messages (J).Shown and then not Messages (J).Acked)
+           and then To_Ack (Messages (J))
+           and then (Messages (J).Shown
                      or else
-                       (Messages (J).Held and then not Messages (J).Shown
-                        and then (M.Confirm = 0
+                       (Messages (J).Held
+                        and then (not To_Ack (M)
                                   or else Messages (J).Start_Ms < M.Start_Ms
                                   or else (Messages (J).Start_Ms = M.Start_Ms
                                            and then J < I))))))
@@ -735,18 +756,42 @@ is
    --  Decision: the on-board sends a text to the DMI, and records its
    --  display (SUBSET-027 4.3.1.1, records 16 and 18), when the driver is
    --  shown it, so a text that waits (Waits) is held, not sent: the DMI
-   --  has no text to hide behind the one to be acknowledged
+   --  has no text to hide behind the one to be acknowledged. Decision: a
+   --  text to be acknowledged is shown alone (DMI 8.2.3.4.8 a), so the
+   --  on-board revokes the texts shown without acknowledgement when it
+   --  sends one (records 17 and 19) and sends them again, with the hour
+   --  of their first sending, once none awaits the driver (5.4.1.10,
+   --  records 16 and 18): the DMI never hides a text on its own
    --  @req 3.12.3.4.4, 3.12.3.4.7.1
    procedure Show_Or_Hold (I      : Positive;
                            M      : in out Message_T;
-                           Now_Ms : Unsigned_64)
-     with Global => (Input  => (Messages, Gap_Until),
-                     In_Out => (Outputs, Output_N, Events, Event_N))
+                           Now_Ms : Unsigned_64;
+                           Asked  : Boolean)
+     with Global => (Input  => Gap_Until,
+                     In_Out => (Messages, Outputs, Output_N, Events,
+                                Event_N)),
+          Pre => I <= Max_Messages
    is
    begin
-      if Waits (I, M, Now_Ms) then
+      if Waits (I, M, Now_Ms, Asked) then
          M.Held := True;
       else
+         if To_Ack (M) then
+            for J in Messages'Range loop
+               pragma Loop_Invariant (True);
+               if J /= I and then Messages (J).Used
+                 and then Messages (J).Shown
+                 and then not To_Ack (Messages (J))
+               then
+                  Put_Output ((Kind => Remove, Id => Messages (J).Id,
+                               others => <>));
+                  Record_Event (Event_Removed, Messages (J));
+                  Messages (J).Shown := False;
+                  Messages (J).Held := True;
+                  Messages (J).Hidden := True;
+               end if;
+            end loop;
+         end if;
          M.Held := False;
          M.Shown := True;
          declare
@@ -755,11 +800,17 @@ is
                Id     => M.Id,
                Flags  => Flags_Of (M),
                Length => M.Length,
-               Text   => M.Text);
+               Text   => M.Text,
+               Again  => M.Hidden,
+               At_Ms  => (if M.Hidden then M.Sent_Ms else Now_Ms));
          begin
             O.Length := M.Length;
             Put_Output (O);
          end;
+         if not M.Hidden then
+            M.Sent_Ms := Now_Ms;
+         end if;
+         M.Hidden := False;
          Record_Event (Event_Displayed, M);
       end if;
    end Show_Or_Hold;
@@ -769,7 +820,8 @@ is
                        Level       : Level_T;
                        Est_Front   : Dist_T;
                        Now_Ms      : Unsigned_64;
-                       Taken       : Boolean := True)
+                       Taken       : Boolean := True;
+                       Asked       : Boolean := False)
    is
       Level_Left : constant Boolean :=
         Last_Level_Valid
@@ -779,10 +831,11 @@ is
       Event_N := 0;
       Report_N := 0;
       Take_All (Taken);
-      if Freed then
+      if Freed or else (Asked_Last and then not Asked) then
          Gap_Until := Now_Ms + Ack_Gap_Ms;
          Freed := False;
       end if;
+      Asked_Last := Asked;
 
       for I in Messages'Range loop
          declare
@@ -844,7 +897,7 @@ is
                   --  (DMI 5.4.1.10); one held to be acknowledged stays
                   --  until acknowledged (3.12.3.4.7.1)
                   if M.Ended and then not M.Shown
-                    and then (not M.Held or else M.Confirm = 0)
+                    and then (not M.Held or else not To_Ack (M))
                   then
                      M := (others => <>);
                   end if;
@@ -860,7 +913,7 @@ is
                   end if;
                end if;
                if M.Used and then M.Started and then not M.Shown then
-                  Show_Or_Hold (I, M, Now_Ms);
+                  Show_Or_Hold (I, M, Now_Ms, Asked);
                end if;
                Messages (I) := M;
 

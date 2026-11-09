@@ -25,6 +25,9 @@ package EVC_Test_Profiles is
       procedure Scenario_Track_Conditions;
       procedure Scenario_Other_Profiles;
       procedure Scenario_Mode_Profile_Roll_Back;
+      --  ERA_ERTMS_015560 5.4.1.9, 5.4.1.9.1: a text to be acknowledged
+      --  held behind the acknowledgement of a mode asked
+      procedure Scenario_Text_Behind_Mode_Ack;
       procedure Scenario_Track_Condition_Roll_Back;
       procedure Scenario_MA_Timers_Roll_Back;
       procedure Scenario_LX_Roll_Back;

@@ -294,10 +294,17 @@ is
                --  shown by Resend_Texts, or removed again in this cycle
                null;
             elsif EVC_Text_Messages."=" (O.Kind, EVC_Text_Messages.Show) then
-               Text_Frame (O.Id, O.Flags,
-                           EVC_Bytes.Byte (Seconds / 3600 mod 24),
-                           EVC_Bytes.Byte (Seconds / 60 mod 60),
-                           O.Text (1 .. O.Length), F, L);
+               declare
+                  --  a text shown again keeps the hour of its first
+                  --  sending (DMI 8.2.3.4.7 d: the order by the time)
+                  S : constant Unsigned_64 :=
+                    (if O.Again then Local_Seconds (O.At_Ms) else Seconds);
+               begin
+                  Text_Frame (O.Id, O.Flags,
+                              EVC_Bytes.Byte (S / 3600 mod 24),
+                              EVC_Bytes.Byte (S / 60 mod 60),
+                              O.Text (1 .. O.Length), F, L);
+               end;
                EVC_Outbox.Put (DMI, F (1 .. L));
             else
                EVC_Outbox.Put (DMI, Text_Remove_Frame (O.Id));

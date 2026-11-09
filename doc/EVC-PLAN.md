@@ -22709,3 +22709,74 @@ Backlog: B3942 and B3884 closed; B3962 (5.17.2.2 A7 after A1) and B3963
 3.6.5.2.5 Table 2b noted, 5.17.2.2 A7 and 5.4.3.3 Table narrowed
 (partial, with the lines). Runner: 0 regressions, 0 improvements,
 nothing moved.
+### The texts the DMI hides and the records that follow the display, the JRU row's remainder, the VBC entries at the start of mission (e6/texts-hidden) (2026-11-09)
+
+**B3883, the texts the DMI would hide.** Both premises held at the
+source. ERA_ERTMS_015560 8.2.3.4.8 a) presents a text to be acknowledged
+alone, "the other messages that do not have to be acknowledged are
+temporarily not shown", and 8.2.3.4.8 c) manages an acknowledged text
+that stays as one without acknowledgement; 5.4.1.9 queues every object
+and text to be acknowledged in a FIFO, the next 1 s after the current
+one is acknowledged or revoked, and 5.4.1.9.1 orders simultaneous
+requests with the level transition 1) and the mode change 2) before the
+fixed 3) and plain 4) texts; SUBSET-027 4.3.1.1 writes 16 / 18 "when ...
+shown to the driver" and 17 / 19 "when ... not shown any more". 3.12.3.4
+names the start and end conditions of the indication, not the DMI's
+presentation, so nothing forbids the on-board to revoke a text from the
+DMI and send it again. Decision, by the driver's seat rule (the on-board
+tells the DMI, one reading of 8.2.3.4.8 a)): `EVC_Text_Messages.
+Show_Or_Hold`, when it sends a text to be acknowledged, revokes the
+texts shown without acknowledgement (and those acknowledged and kept),
+with the records 17 / 19, and keeps them held (`Hidden`); `Waits`
+releases them once no text awaits the driver (5.4.1.10) and they are
+sent again with the hour and minute of their first sending (`Output_T.
+Again`, `At_Ms`; `EVC_Core.Outputs.Send_Procedure_Messages`, 8.2.3.4.7
+d) orders by the time) and the records 16 / 18; one ended meanwhile is
+dropped (its stop recorded at the revocation). A text to be
+acknowledged also waits while the acknowledgement of a mode or a level
+transition is asked (`Evaluate`'s new `Asked`: `EVC_Mission.Proposed`,
+`EVC_Procedures.Ack_Requested`, `EVC_Levels.Ack_Asked`, the three the
+mode and level frame of `Send_Mode_Level` carries) and 1 s after it
+ends. The flag is passed by `EVC_Core.Modes.Run_Procedures` (one actual
+parameter, outside this package's units: reading those states from
+`EVC_Text_Messages` makes a circular unit dependency through
+`EVC_Sessions`). Scenarios, both failing on master (4 checks):
+`EVC_Test_Authority.Scenario_Texts_Hidden` (C without acknowledgement
+from 300 m, A to be acknowledged from 320 m: C sent, then revoked when
+A is sent, sent again after A's acknowledgement) and
+`EVC_Test_Profiles.Scenario_Text_Behind_Mode_Ack` (in the profiles
+package, where the On Sight mode profile layout is: the text from 320 m
+held while On Sight's acknowledgement is asked from 300 m, sent 1 s
+after it). `EVC_Test_Procedures.Scenario_DMI_Restart_Displayed`
+follows the decision: the text without acknowledgement, revoked while
+the third awaits its acknowledgement, is not shown again at the DMI's
+restart and is sent after that acknowledgement. No sequence moved
+(1242 / 1013 / 935); the DMI's goldens unchanged. Left: the DMI plays
+Sinfo again for an important text sent again (8.2.3.4.7 h), a protocol
+bit, B3982) and the requests of 5.4.1.9.1 5), 6) asked before a text
+(B3983). Rows 3.12.3.4.4 and 3.12.3.4.7.1 noted.
+
+**The row 3.20.1.2, what is left of the records.** The row's note named
+the message 22 as its only on-board gap (B1360, narrowed over six
+rounds), and did not list 16 to 19, written since the texts' display
+was recorded (`EVC_Core.Outputs.Record_Text_Display`): noted now. The
+message 22 (SUBSET-027 4.2.4.22, DMI_SOUND_STATUS, the bits Sinfo, S1,
+S2, written when the playing of any audible information is started) is
+expected by no step of sv21, sv22 or sv30. The sounds are the DMI's:
+S1 once at the Over-speed status (ERA_ERTMS_015560 14.3.2), S2 while
+Warning (14.3.3), Sinfo at seven triggers of its own (5.4.1.5, 7.4.1.1,
+8.2.2.3.6, 8.2.2.5.7, 8.2.3.4.7 h)), and no frame of the DMI-EVC
+protocol reports one. A record built from the on-board's status would
+carry S1 and S2 and miss most of Sinfo: not built. B1360 closed into
+B3984 (protocol: the on-board commanding the sounds, or the DMI
+reporting their starts); the row stays partial on B3984 alone.
+
+**The rows 5.4.5.3 and 5.4.5.3 i), left at the bound.** The clause
+restricts the on-board's start of mission ("i) only at S10 and S20, to
+set/remove a Virtual Balise Cover"), not only the DMI's table. At the
+source: `EVC_Core.Inputs.Take_VBC_Requests` takes both entries in SB at
+any point; the on-board sends no enabling of the two buttons (the DMI
+enables them by its Table 36, in SB at standstill); and `EVC_Mission`
+keeps no S10 / S20 state to restrict on (the brief's premise was
+wrong). The build needs that state first, then the refusal and an
+enabling bit for the DMI (B3985); the rows stay partial.
