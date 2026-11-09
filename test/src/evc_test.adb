@@ -165,6 +165,7 @@ begin
    Scenario_Unauthorised_Direction_Groups;
    Scenario_SOLR_Unlinked;
    Scenario_SL_Deletes_Invalid;
+   Scenario_SoM_Deletes_Invalid;
    Scenario_Crossing_Direction;
    Scenario_LRBG_Unknown_Accepted;
    Scenario_Stored_Cells;

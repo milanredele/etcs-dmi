@@ -1368,6 +1368,38 @@ package body EVC_Test_Position is
              "SUBSET-027 4.2.3.5: the SOLR unknown in the JRU header");
    end Scenario_SL_Deletes_Invalid;
 
+   --  5.4.3.3, the row "Following E10, E12, E30, E31, E32, On-board
+   --  deletes stored position data", 5.4.5.3 f): the start of mission
+   --  left to Non Leading with the position kept over No Power still
+   --  invalid deletes it (invalid -> unknown)
+   procedure Scenario_SoM_Deletes_Invalid is
+      function Sig (S : TIU_Signal_T; On : Boolean) return Byte_Array is
+        ((Byte (TIU_Signal_T'Pos (S) + 1), (if On then 1 else 0)));
+   begin
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Run_To (20_000);
+      Stand;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L1);
+      Input (TIU, Sig (Cab_A_Active, False));
+      Cycle;
+      EVC_Core.Power_Up;
+      Input (TIU, Sig (Non_Leading_Permitted, True));
+      Input (TIU, Sig (Cab_A_Active, True));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_SB
+             and then Pos.Status = Pos.Invalid and then Pos.LRBG.Valid,
+             "SoM: the position kept, invalid after the power-up, SB");
+      --  'Non Leading' (MSG_DRIVER_ACTION 12)
+      Input (DMI, (16#40#, 3, 0, 0, 0, 12, 0, 0));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_NL
+             and then Pos.Status = Pos.Unknown and then not Pos.LRBG.Valid,
+             "5.4.3.3 E10, 5.4.5.3 f): Non Leading selected, the invalid "
+             & "position deleted (" & EVC_Modes.Mode_T'Image (EVC_Core.Mode)
+             & " " & Pos.Status_T'Image (Pos.Status) & ")");
+   end Scenario_SoM_Deletes_Invalid;
+
 
    --  3.6.3.1.3.1: a group read in SH with the train moving against its
    --  orientation (cab A, the train backing over the group 10 at 100 m)

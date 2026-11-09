@@ -22656,3 +22656,38 @@ cab B, cab A active) leaves "no information" (failed before: status
 1). Row 3.6.5.2.5 Table 2b's note says both. Runner: 0 regressions, 0
 improvements, nothing moved. Proof: `evc_sessions-integrity`. B3942
 closed.
+
+**The rows 5.17.2.2 A7 and 5.4.3.3 Table.** 5.17.2.2 A7 (page 108 of
+chapter 5): "consider the Train Data as being changed and ... apply,
+when relevant, the requirements regarding change of Train Data (refer
+to clauses 3.18.3.4, 3.18.3.7 and 3.18.3.8)". The units its note names
+exist (`EVC_Sessions.Mission.Send_Train_Data`,
+`EVC_Stored_Information.Train_Data_Shortening`, `Delete_Behind_Former`,
+rows 3.18.3.4, .7, .8 done) and apply when A7 follows S6, the Train
+Data re-validated or re-entered by the driver. After A1 (D1, D3, D5,
+D7) none applies: `EVC_Procedures.Train_Data_Step` records and informs,
+the TIU input 13 carries the configuration's number and its bits, not
+the values, and `EVC_Mission.Categories_Changed` is set by the driver's
+entry only, so 3.18.3.7 a), b) at standstill with the category bit is
+not applied either (B3962, `EVC_Procedures` and `EVC_Core.Stored`, not
+this package's). The row stays partial with that named. 5.4.3.3 (page
+23, read on the PDF: the arrows of the table): the position rows are
+built, A35 invalid -> valid (`EVC_Position.Revalidate`), A24 and A39
+invalid -> unknown (`Delete_Position`), E10, E12, E30, E31, E32 and
+5.4.5.3 a), f), g) invalid -> unknown (`EVC_Core.Modes.
+Delete_Invalid_Position`), which had no scenario on the start of
+mission: `EVC_Test_Position.Scenario_SoM_Deletes_Invalid` (in the
+position package where the kept position's helpers are, next to
+`Scenario_SL_Deletes_Invalid`, not `EVC_Test_Mission`): the position
+kept over No Power invalid in SB, 'Non Leading' selected, NL and the
+position unknown (passed at once: coverage, no code changed). "The
+DMI's own D2 on the level alone": the DMI follows the on-board, which
+sends the level, position and RBC contact validity in MSG_ONBOARD
+(`Data_Level_Valid`, `Data_Position_Valid`, `Data_RBC_Valid`) with the
+step of the start of mission and makes the level invalid at D2. Left:
+the row "Following S10 or S20: Driver chooses to re-enter the level"
+takes the RBC contact valid -> invalid, ours keeps it valid
+(`EVC_Sessions.Mission.Evaluate_SoM` invalidates it at D2 only; B3963,
+not this package's unit); the level's own valid -> invalid -> valid
+nets to valid at the S2 entry, the Level window being the DMI's. The
+row stays partial with that named.
