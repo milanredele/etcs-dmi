@@ -22610,3 +22610,11 @@ bare record and the level symbol after a selection), B3700, B3884
 (`evc_config.py` version 4), B3380, B1360's records left, the seven
 partial rows re-read; the review again (eight items, readings first, no
 backlog read).
+
+Decision B3863 (2026-11-09, the user): a fault the host reports, which
+the on-board can live with in SL, NL and PS (4.4.6.1.6, 4.4.15.1.5,
+4.4.20.1.10), waits for the TMS570 port (E8), whose self-tests are the
+faults those clauses are about; `EVC_Core.Report_Fault` is built then,
+with its first caller. A malformed port input stays validated and
+ignored (the robustness rule), not a fault. No code change; B3863
+closed, B1840 marked for E8.
