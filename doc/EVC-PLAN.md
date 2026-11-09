@@ -22656,3 +22656,18 @@ messages by NID and header only (Sf16484c8 runner, B4002). 5220200_06
 stays at step 66: no cold movement step and no level entry in ERA's
 step list (S8f936c68 s076). B3943 and B3922 closed (not ours, the
 bench's cold movement).
+
+B3862, 3050300_05 SV30 step 63 (S832505af). The premise held: ours
+writes the record 23 with Bit09 (SUBSET-027 4.2.4.23, Trackside not
+compatible) in the cycle it shows the DMI entry 15 with no trip
+(3.5.3.7 d), the RBC's M_VERSION 4.0), and `S076_Tables.
+System_Status_Fact` judged Bit09 by the trip reason 9 only. Built:
+Bit09 is the entries 15 or 16 shown (16 is the entry of the trip
+[65]), like the bits of the entries above it. 3050300_05 SV30 passes
+whole; no other sequence moved, the failed steps after a first failure
+the same: of the 21 sequences expecting Bit09 set, 3050300_05 SV21 and
+SV22 fail step 62 first (Sad696360 E7, ours supports 3.0 so the
+version is compatible) and their step 63 keeps the signature, now
+triaged E7 by that cause; 3050300_11 and 3090300_02 fail at their
+Bit09 step with another signature after an earlier first failure.
+B3862 closed.

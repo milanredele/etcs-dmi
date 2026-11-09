@@ -427,6 +427,10 @@ package body S076_Tables is
          when 6  => return Shown (N1 (9));       -- Runaway movement
          when 7  => return Shown (N2 (12, 13));  -- SH refused
          when 8  => return Shown (N1 (14));      -- SH request failed
+         --  Trackside not compatible: shown without a trip when no
+         --  version is compatible (3.5.3.7 d), entry 15) or with the
+         --  trip [65] (entry 16)
+         when 9  => return Shown (N2 (15, 16));
          when 11 => return Shown (N1 (20));      -- Train is rejected
          when 17 => return Shown (N1 (26));      -- Emergency stop
          when 20 => return Shown (N1 (32));      -- Route unsuitable: axle
@@ -445,7 +449,6 @@ package body S076_Tables is
       end if;
       --  the trip reasons (EVC_Procedures.Trip_Reason_T'Pos)
       case Bit is
-         when 9  => return Trips (9);           -- Trackside not compatible
          when 10 => return Event (23, 11);      -- Train data changed
          when 12 => return Trips (1, 2, 3);     -- Unauthorized passing
          when 13 => return Trips (12);          -- No MA at level transition
