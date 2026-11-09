@@ -5545,6 +5545,35 @@ package body S076_Run is
                       else ""));
    end JRU_20_Fields;
 
+   --  The header of the last JRU message of the windows judged so far in
+   --  the sequence (a JRU step's window with messages), for a bare "ALL"
+   --  about the records' header
+   Last_Header       : EVC_JRU_Messages.Header_T;
+   Last_Header_Known : Boolean := False;
+
+   --  A bare "expect JRU record ALL" whose comment is about the DATE and
+   --  TIME of the records (SUBSET-027 4.2.3.3, 4.2.3.4: "Current DATE
+   --  and TIME JRU variables are recorded in UTC format", 3180200_01 step
+   --  108 in NL where nothing is recorded): judged by the header of the
+   --  last message written in or before the window, its DATE and TIME
+   --  those of the bench's UTC clock (S076_Bench: 2026-01-01 00:00:00 at
+   --  the power-up, a sequence shorter than a day), not by a new record
+   function Header_Date_Time return Judgement_T is
+      H : EVC_JRU_Messages.Header_T renames Last_Header;
+   begin
+      if not Last_Header_Known then
+         return NJ (R_JRU_Not_Modelled, "JRU DATE and TIME: no message yet");
+      end if;
+      return Check (H.Year = 26 and then H.Month = 1 and then H.Day = 1
+                    and then H.Hour < 24 and then H.Minutes < 60
+                    and then H.Seconds < 60,
+                    "JRU DATE and TIME of the last message in UTC",
+                    "date" & Img (Integer (H.Year)) & Img (Integer (H.Month))
+                    & Img (Integer (H.Day)) & " time"
+                    & Img (Integer (H.Hour)) & Img (Integer (H.Minutes))
+                    & Img (Integer (H.Seconds)));
+   end Header_Date_Time;
+
    function JRU_Window_Expect (St : Step_T) return Judgement_T is
       Positive : constant Boolean := Same (W (3), "record");
       Id_S     : constant String := W (4);
@@ -5552,8 +5581,17 @@ package body S076_Run is
       Result   : Judgement_T := Pass ("JRU");
       Any_Field : Boolean := False;
    begin
+      if B.Message_Count > 0 then
+         Last_Header := B.Message_Header (B.Message_Count);
+         Last_Header_Known := True;
+      end if;
       if Same (Id_S, "ALL") then
-         if Line.Count = 4 then
+         if Line.Count = 4 and then Positive
+           and then Has (Image (St.Comment), "DATE")
+           and then Has (Image (St.Comment), "TIME")
+         then
+            return Header_Date_Time;
+         elsif Line.Count = 4 then
             return Check ((B.JRU_Count > 0) = Positive,
                           "JRU any record" & (if Positive then "" else " not"),
                           Img (B.JRU_Count) & " records");
@@ -7838,6 +7876,7 @@ package body S076_Run is
       Train_Configuration := 1;
       SCL_Given := False;
       SCL_Inputs := 0;
+      Last_Header_Known := False;
       Cab_Sign := 1;
       Controller_Given := False;
       Controller_Due := False;

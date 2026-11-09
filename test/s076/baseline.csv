@@ -1473,9 +1473,9 @@ Subset-076-6-3_3170300_06_v400_SV30,blocked,44,E7-version
 Subset-076-6-3_3170300_07_v400_SV21,blocked,17,E5-radio
 Subset-076-6-3_3170300_07_v400_SV22,blocked,17,E5-radio
 Subset-076-6-3_3170300_07_v400_SV30,blocked,17,E5-radio
-Subset-076-6-3_3180200_01_v400_SV21,failed,108,Sf6040538
-Subset-076-6-3_3180200_01_v400_SV22,failed,108,Sf6040538
-Subset-076-6-3_3180200_01_v400_SV30,failed,108,Sf6040538
+Subset-076-6-3_3180200_01_v400_SV21,passed,0,-
+Subset-076-6-3_3180200_01_v400_SV22,passed,0,-
+Subset-076-6-3_3180200_01_v400_SV30,passed,0,-
 Subset-076-6-3_3180300_01_v400_SV21,blocked,75,runner
 Subset-076-6-3_3180300_01_v400_SV22,blocked,75,runner
 Subset-076-6-3_3180300_01_v400_SV30,blocked,75,runner

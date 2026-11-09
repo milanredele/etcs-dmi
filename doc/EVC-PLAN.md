@@ -22675,3 +22675,20 @@ V_NVALLOWOVTRP 0 km/h (BG5d's packet 3, the default of A.3.2), refused
 by 5.8.2.1 a); the step list names no stop (S560e94da model, B4024:
 the bench's driver stops before an Override above that speed).
 Sfaaa30ed's line rewritten.
+
+**A bare record expectation about the header (B3923).** Premise
+checked: 3180200_01 SV30 step 108 "Any message (NID_MESSAGE_JRU=ALL)
+is recorded", comment "Current DATE and TIME JRU variables are
+recorded in UTC format", at 4800 m in L1 NL: no message in the step's
+window (4800 m to 4843 m), the bare ALL judged by a new record. Of the
+8 bare ALL steps of SV30 (6 sequences), only the two of 3180200_01
+name the DATE and TIME; the others (the TRAIN_POSITION, NID_C + NID_BG
+and Driver ID of the header) are judged as before. Decision: such a
+step is judged by the header of the last message of the windows judged
+so far in the sequence (`S076_Run.Header_Date_Time`, kept by
+`JRU_Window_Expect` at every JRU step, cleared at the sequence's
+start): SUBSET-027 4.2.3.3 and 4.2.3.4, the date of the bench's UTC
+(2026-01-01, `S076_Bench` sets it at the power-up; a sequence is
+shorter than a day) and valid hour, minutes and seconds. Moved:
+3180200_01 SV21, SV22, SV30 108 -> passed (the steps after 108 pass
+too), nothing else. Sf6040538's line rewritten.
