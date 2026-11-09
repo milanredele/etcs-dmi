@@ -22658,3 +22658,20 @@ expected after SB by [83] in L2, ours sees the change in the FS cycle
 (`EVC_Sessions.Manoeuvre.Evaluate_Consist`) and sends none
 (S143d6aa2 onboard, B4023, a decision for the on-board). S980d96c9
 rewritten (no sequence left); 0 regressions, 4 improvements.
+
+**The level selected before the step's column (B3924).** Premise
+checked: 5080200_04 SV30 step 22 selects L0 ("Select L0"), ours shows
+L0, step 23's generic "Level 0/1/2/NTC" was judged by the column L1
+(ERA's PDF has L1 there itself, step 24 L0). `S076_Run.Level_Symbol`
+now takes, for the generic symbol, the level of the last level
+selection of the same test case whose comment names it ("Select L0",
+"Select Level 0"; 314 selection steps carry such a comment), as long
+as no step from the selection to the step has that level in its
+column (`Level_Selected_Before`); else the column as before. Moved:
+5080200_04 SV21, SV22, SV30 23 -> 58, nothing else (the corpus bound:
+13 generic level steps within two lines of a "Select L" comment).
+Step 58 traced at SV30: Override EoA pressed in L0 UN at 36 km/h with
+V_NVALLOWOVTRP 0 km/h (BG5d's packet 3, the default of A.3.2), refused
+by 5.8.2.1 a); the step list names no stop (S560e94da model, B4024:
+the bench's driver stops before an Override above that speed).
+Sfaaa30ed's line rewritten.
