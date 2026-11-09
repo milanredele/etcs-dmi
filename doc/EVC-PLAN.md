@@ -22671,3 +22671,23 @@ version is compatible) and their step 63 keeps the signature, now
 triaged E7 by that cause; 3050300_11 and 3090300_02 fail at their
 Bit09 step with another signature after an earlier first failure.
 B3862 closed.
+
+B3882, 3120300_03 (SV22, SV30) step 70 (S4b4be9f1 runner). The premise
+held: the on-board holds BG3d's text (B3820) while BG1d's awaits its
+acknowledgement, and `S076_Bench.Text_On_DMI` judged by the newest
+text of the class the on-board put, BG1d's, on offer. Built in
+`S076_Run.Text_Message`: after a balise group whose step names a text
+packet ("72/73", "74/76"), "not displayed" means that group's text, so
+no text of the class put by the on-board in the window is the text
+held, not displayed, whatever older text the DMI presents; otherwise
+the newest of the class as before ("displayed" unchanged: 3120300_03
+step 62's text was read in an earlier window). Scoped on the corpus:
+of the 78 failed sequences with a "not displayed" text step, run with
+and without the rule, only 3120300_03 changed, steps 70 and 92 in both
+versions (92: BG5d's text of class 1 with no acknowledgement held
+behind BG4d's, 5.4.1.10). The sequence stops at step 81, "the fixed
+text message is displayed" after the third is acknowledged: ERA's step
+list (PDF checked) names BG2d's text a fixed one (packet 74/76,
+records 16, 17), the sequence's telegram of BG2d carries packet 73, a
+plain text "Second text" (only BG0d carries packet 74), which ours
+shows then (S30d22b77, a family line s076). B3882 closed.

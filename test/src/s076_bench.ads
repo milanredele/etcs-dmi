@@ -448,9 +448,8 @@ package S076_Bench is
    --  acknowledgement, the one DMI_Ack offers (ERA_ERTMS_015560
    --  5.4.1.9, 5.4.1.10: one at a time, the others not shown, the next
    --  1 s after the current one is acknowledged). The newest of the
-   --  class, as the steps name no text: 3120300_03 step 70 expects the
-   --  third text not displayed while the first, of the same class, is
-   --  on offer
+   --  class; a step after a balise group carrying a text means that
+   --  group's text, which S076_Run.Text_Message judges first
    function Text_On_DMI (Class : Natural) return Boolean;
 
    type SS_Event_T is record

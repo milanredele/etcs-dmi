@@ -3942,6 +3942,24 @@ package body S076_Run is
    function Text_Message (St_W : State_Word_T; Class : Natural;
                           What : String) return Judgement_T is
       Put, Removed_W : Boolean := False;
+      --  the step's text is that of the balise group of the window's
+      --  input when the group carries one (packets 72 to 76 named in the
+      --  step, "72/73", "74/76"): a text the
+      --  on-board did not put in the window is not displayed, whatever
+      --  older text of the class the DMI presents (3120300_03 step 70:
+      --  BG3d's text held behind BG1d's, on offer)
+      function Group_Text return Boolean is
+      begin
+         for I in reverse 1 .. Cur - 1 loop
+            if Seq.Steps (I).IO = Input then
+               return Trim (Seq.Steps (I).Interface_Name) = "BTM"
+                 and then (Has (Image (Seq.Steps (I).Text), "packet 72")
+                           or else Has (Image (Seq.Steps (I).Text),
+                                        "packet 74"));
+            end if;
+         end loop;
+         return False;
+      end Group_Text;
    begin
       for I in 1 .. B.Text_Count loop
          if B.Text (I).Remove then
@@ -3962,8 +3980,9 @@ package body S076_Run is
             return Check (B.Text_On_DMI (Class), What & " shown",
                           (if Put then "sent, not shown" else "none"));
          when Not_Displayed =>
-            return Check (not B.Text_On_DMI (Class), What & " not shown",
-                          "shown");
+            return Check ((Group_Text and then not Put)
+                          or else not B.Text_On_DMI (Class),
+                          What & " not shown", "shown");
          when Removed =>
             return Check (Removed_W
                           or else (B.Text_Ever_Shown (Class)
