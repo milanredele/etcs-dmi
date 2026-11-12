@@ -23278,3 +23278,26 @@ level 0 expected after the power-up from the packet 41 stored in SH
 ours does not keep over No Power (row 4.11.1.4 deferred; S665c85c1
 onboard, B4123). Sf16484c8 rewritten (no sequence left); 0
 regressions, 22 improvements. B4002 closed.
+
+**The train after a reach-point (B4022).** Premise checked: 3170200_10
+SV30 step 113 stops the antenna at 630 m on the on-board's stored
+RBC/RBC border (700 m, `S076_Run.Reach_Stored_Location`), steps 114
+and 115 carry 700 m and the runner moved the train there, BG3d (step
+116, 600 m) was read at 704 m. Built: `S076_Run.Reached_Column`, the
+distance column of the last reach-point of a stored location, set in
+`ODO_Input`; a step with that same column does not move the train, a
+step with another column ends the hold (the step movement of the step
+loop). Counted on the scn files first: of the 82 reach-points of a
+stored location at SV30 (by `Stored_Location`'s comment words), 80 are
+followed by steps of the same column, in 38 sequences. Run on the
+corpus: no sequence and no step verdict changed (214711 passed, 11080
+failed before and after). 3170200_10 SV30 reads BG3d at 637 m now and
+still fails step 118, traced: ours drops the supervising RBC when the
+max safe front end of the train passes the border (the border trigger
+of `EVC_Position.Evaluate_Border` from the train's front, 70 m of the
+consist in front of the engine, then `EVC_Sessions.Handover.Switch`
+with no accepting session) and takes BG3d's packet 2 (2.3 operated),
+where 3.17.2.8 e) applies the balise group orders again only when the
+engine passes the border with its max safe front end, which the steps
+116 and 117 place after BG3d (S0f954a90 rewritten onboard, B4124).
+B4022 closed.

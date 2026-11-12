@@ -2675,6 +2675,13 @@ package body S076_Run is
                    < EVC_Distances.Max_Cm;
    end Stored_Location;
 
+   --  The distance column of the last reach-point of a stored location
+   --  (the location's, not the train's: 3170200_10 step 113, the RBC/RBC
+   --  border at 700 m reached with the antenna at 630 m), -1 none: the
+   --  steps that repeat it leave the train where the reach-point stopped
+   --  it, until a step's column differs
+   Reached_Column : Integer_64 := -1;
+
    --  The train runs until the on-board's nearest location of that kind
    --  is passed (EVC_Position.Report_Location_To_Go: none left, or 0);
    --  the doubts grow with the move: a few rounds
@@ -2801,6 +2808,7 @@ package body S076_Run is
                return NJ (R_Runner, "ODO reach-point " & W (4));
             end if;
             if Stored_Location (St) then
+               Reached_Column := St.Dist_Cm;
                return Reach_Stored_Location (Same (W (4),
                                                    "max-safe-front-end"));
             end if;
@@ -7977,6 +7985,7 @@ package body S076_Run is
       SCL_Given := False;
       SCL_Inputs := 0;
       Last_Header_Known := False;
+      Reached_Column := -1;
       Cab_Sign := 1;
       Controller_Given := False;
       Controller_Due := False;
@@ -8223,8 +8232,12 @@ package body S076_Run is
                   Controller_Due := False;
                end if;
                --  move to the step's distance, unless the input moves
-               --  the train itself
-               if not (St.IO = Input
+               --  the train itself or the step repeats the column of the
+               --  stored location a reach-point just reached
+               if St.Dist_Cm /= Reached_Column then
+                  Reached_Column := -1;
+               end if;
+               if Reached_Column < 0 and then not (St.IO = Input
                        and then (W (2) = "BTM"
                                  or else (W (2) = "ODO"
                                           and then (Same (W (3), "reach-point")
