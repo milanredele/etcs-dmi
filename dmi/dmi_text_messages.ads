@@ -42,12 +42,18 @@ package DMI_Text_Messages is
    -- Determines the acknowledgement priority class (5.4.1.9.1)
    type Class_T is (Fixed_Text, Plain_Text, System_Status, NTC_Text);
 
+   -- A text to show, or a new content for the one of this ID; with
+   -- Shown_Before (the on-board sends again a text it took back) it is
+   -- put without Sinfo, as one already displayed (8.2.3.4.7 h), and in
+   -- the place of its Hour and Minute among the texts held (8.2.3.4.7 d),
+   -- not above those that arrived after its first display
    procedure Put (ID           : Natural;
                   First_Group  : Boolean;
                   Ack_Required : Boolean;
                   Class        : Class_T;
                   Hour, Minute : Natural;
-                  Text         : Wide_String);
+                  Text         : Wide_String;
+                  Shown_Before : Boolean := False);
 
    procedure Remove (ID : Natural);
 

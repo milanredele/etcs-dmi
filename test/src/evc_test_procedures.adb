@@ -1833,9 +1833,10 @@ package body EVC_Test_Procedures is
              "DMI restart: the text acknowledged on the restarted DMI, its "
              & "brake released (3.14.1.7.5)");
       Cycle;
-      Check (Id_Of ("Kept") /= 0 and then Flags_Of ("Kept") = 4,
+      Check (Id_Of ("Kept") /= 0 and then Flags_Of ("Kept") = 4 + 16,
              "DMI restart: the text without acknowledgement sent again once "
-             & "none awaits the driver (DMI 5.4.1.10)");
+             & "none awaits the driver (DMI 5.4.1.10), with the flag shown "
+             & "before (bit 4, 8.2.3.4.7 h))");
    end Scenario_DMI_Restart_Displayed;
 
    --  5.22 Inhibition of the BTM alarm reaction (SUBSET-076 5220200)

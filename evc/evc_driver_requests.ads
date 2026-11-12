@@ -264,6 +264,21 @@ is
      with Global => State,
           Pre => I <= Status_End_Count;
 
+   --  The sounds the DMI started in the cycle (MSG_SOUND: 1 Sinfo, 2 S1,
+   --  3 S2 started, 4 S2 stopped), each as DMI_SOUND_STATUS of SUBSET-027
+   --  4.2.4.22 at its start: bit 1 Sinfo, bit 2 S1, bit 4 S2, with S2's
+   --  bit also while S2 plays from its start to its stop. A stop and a
+   --  click (0) start none of the three: no entry; more than Max_Sounds
+   --  in one cycle are dropped
+   Max_Sounds : constant := 16;
+   function Sound_Count return Natural
+     with Global => State,
+          Post => Sound_Count'Result <= Max_Sounds;
+   function Sound_Status (I : Positive) return Byte
+     with Global => State,
+          Pre  => I <= Sound_Count,
+          Post => Sound_Status'Result <= 7;
+
    --  Operations
 
    --  Power-up: nothing latched, nothing taken

@@ -59,8 +59,15 @@ package DMI_Protocol is
 
    MSG_TEXT : constant Msg_Type_T := 16#03#;
    --  id u16, flags u8 (bit0 ack_required, bit1 first_group/bold,
-   --  bits2-3 class: 0 fixed text, 1 plain text, 2 system status, 3 NTC),
-   --  hour u8, minute u8, length u8, text bytes (Latin-1)
+   --  bits2-3 class: 0 fixed text, 1 plain text, 2 system status, 3 NTC,
+   --  bit4 shown before), hour u8, minute u8, length u8, text bytes
+   --  (Latin-1)
+   --  Bit 4: the on-board sends again a text it took back from the DMI
+   --  (while a text to be acknowledged was shown alone), with the hour
+   --  and minute of its first sending; the DMI puts it without Sinfo
+   --  (ERA_ERTMS_015560 8.2.3.4.7 h: "for the first time") and in the
+   --  place of that time among the texts it holds (8.2.3.4.7 d). An
+   --  on-board that never sets it leaves every text a new one.
    --  MSG_TEXT carries the free texts: the fixed and plain text messages
    --  of the trackside. The system status messages of chapter 15 come as
    --  MSG_SYSTEM_STATUS. Class 2 is still accepted, and such a message is
@@ -831,6 +838,11 @@ package DMI_Protocol is
 
    MSG_SOUND : constant Msg_Type_T := 16#61#;
    --  sound u8 (0 click, 1 sinfo, 2 s1, 3 s2 start, 4 s2 stop)
+   --  The DMI starts or stops a sound: one frame, two receivers, the
+   --  UI's loudspeaker and the on-board, which writes the record 22 of
+   --  SUBSET-027 4.2.4.22 (DMI_SOUND_STATUS) at the start of Sinfo, S1
+   --  and S2 (4.3.1.1; the click is none of the three); the on-board
+   --  does not command the sounds.
    Sound_Length : constant := 1;
 
    MSG_SETTINGS : constant Msg_Type_T := 16#62#;

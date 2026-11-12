@@ -108,6 +108,14 @@ is
      with Global => (Input  => (Clock_Ms, EVC_Driver_Requests.State),
                      In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue));
 
+   --  SUBSET-027 4.2.4.22, 4.3.1.1: the message 22 at each start of a
+   --  sound the DMI reported in the cycle (EVC_Driver_Requests.
+   --  Sound_Status); the on-board does not command the sounds
+   --  @req 3.20.1.2
+   procedure Record_Sounds
+     with Global => (Input  => (Clock_Ms, EVC_Driver_Requests.State),
+                     In_Out => EVC_Outbox.Queue);
+
    --  8j. JRU (SUBSET-027 4.2.4.11, 4.2.4.38, 4.2.4.45, EVC_JRU_Records):
    --  the driver's actions of the cycle no other event records, the cab
    --  status received from the train interface when it changed, the

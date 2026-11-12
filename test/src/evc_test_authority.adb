@@ -3380,8 +3380,22 @@ package body EVC_Test_Authority is
       --  the on-board identifiers of the texts sent and revoked last
       Last_Id    : Natural := 0;
       Removed_Id : Natural := 0;
+      --  the MSG_TEXT frames to the DMI by their flag bit 4 (shown before)
+      Firsts, Agains : Natural := 0;
       procedure Count is
       begin
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = DMI
+              and then Rec_Length (I) > 7
+              and then Out_Buf (Recs (I).First) = 16#03#
+            then
+               if (Out_Buf (Recs (I).First + 7) and 16) /= 0 then
+                  Agains := Agains + 1;
+               else
+                  Firsts := Firsts + 1;
+               end if;
+            end if;
+         end loop;
          for I in 1 .. EVC_Text_Messages.Event_Count loop
             if Natural (EVC_Text_Messages.Event (I).Kind)
               = EVC_Text_Messages.Event_Displayed
@@ -3448,6 +3462,11 @@ package body EVC_Test_Authority is
              & "16), got" & EVC_Text_Messages.Displayed'Image
              & Shown_N'Image & Removed_N'Image & Last_Id'Image
              & C_Id'Image);
+      Check (Firsts = 2 and then Agains = 1,
+             "texts hidden: C sent again carries the flag shown before of "
+             & "MSG_TEXT, the first sendings of C and A do not "
+             & "(ERA_ERTMS_015560 8.2.3.4.7 h), d)), got" & Firsts'Image
+             & Agains'Image);
    end Scenario_Texts_Hidden;
 
    --  A.3.5.1 9th bullet over a relocation: the track ahead free request

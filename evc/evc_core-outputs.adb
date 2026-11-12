@@ -299,8 +299,12 @@ is
                   --  sending (DMI 8.2.3.4.7 d: the order by the time)
                   S : constant Unsigned_64 :=
                     (if O.Again then Local_Seconds (O.At_Ms) else Seconds);
+                  --  bit 4 of the flags, shown before: the DMI puts it
+                  --  without Sinfo (8.2.3.4.7 h) in the place of its time
+                  Flags : constant EVC_Bytes.Byte :=
+                    (if O.Again then O.Flags or 16#10# else O.Flags);
                begin
-                  Text_Frame (O.Id, O.Flags,
+                  Text_Frame (O.Id, Flags,
                               EVC_Bytes.Byte (S / 3600 mod 24),
                               EVC_Bytes.Byte (S / 60 mod 60),
                               O.Text (1 .. O.Length), F, L);

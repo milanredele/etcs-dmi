@@ -599,7 +599,8 @@ package body Test_Support is
                         First_Group  : Boolean := False;
                         Ack_Required : Boolean := False;
                         Class        : Natural := 1;
-                        HH, MM       : Natural := 0)
+                        HH, MM       : Natural := 0;
+                        Shown_Before : Boolean := False)
    is
       Payload : Stream_Element_Array
         (1 .. Text_Header_Length + Text'Length);
@@ -608,6 +609,9 @@ package body Test_Support is
    begin
       if Ack_Required then
          Flags := Flags or 1;
+      end if;
+      if Shown_Before then
+         Flags := Flags or 16;
       end if;
       if First_Group then
          Flags := Flags or 2;
