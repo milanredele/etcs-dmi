@@ -294,12 +294,15 @@ is
               then Bad_Field else S);
    end Gamma_Status;
 
-   --  The length L is that of an image of the format Version
+   --  The length L is that of an image of the format Version; every
+   --  format's image holds the version 1 fields (the postcondition, on
+   --  which the reads of Decoded rest without unfolding the formats)
    function Length_OK (Version, L : Natural) return Boolean is
      (if Version = 1 then L = Image_Length
       elsif Version = 2 then L in Min_Image_V2_Length .. Max_Image_V2_Length
       elsif Version = 3 then L in Min_Image_V3_Length .. Max_Image_V3_Length
-      else L in Min_Image_V4_Length .. Max_Image_Length);
+      else L in Min_Image_V4_Length .. Max_Image_Length)
+     with Post => (if Length_OK'Result then L >= Image_Length);
 
    --  The zones of an image of format version 3 at Offset: the count,
    --  then Zone_Max entries of a u16 first NID_C, a u16 last NID_C, a
@@ -478,14 +481,9 @@ is
          R.Status := Bad_Length;
          return R;
       end if;
-      --  every format's image holds the version 1 fields: stated once, the
-      --  checksum's range and the precondition of each field's read below
-      --  rest on it
-      pragma Assert (L >= Image_Length);
       if Bytes'Length < L then
          return R;
       end if;
-      pragma Assert (Bytes'Length >= Image_Length);
       if CRC_32 (Bytes (Bytes'First .. Bytes'First + (L - 5)))
            /= Get_U32 (Bytes, Bytes'First + (L - 4))
       then
