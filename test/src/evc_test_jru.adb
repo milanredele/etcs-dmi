@@ -814,6 +814,63 @@ package body EVC_Test_JRU is
       EVC_Core.Initialise;
    end Scenario_JRU_Symbols;
 
+   --  SUBSET-027 4.2.4.22, 4.3.1.1: DMI_SOUND_STATUS written when the DMI
+   --  reports the start of a sound (MSG_SOUND): Sinfo bit 1, S1 bit 2, S2
+   --  bit 3 from its start to its stop; no message at the S2 stop, for a
+   --  click, or for a malformed frame
+   procedure Scenario_JRU_Sound_Status is
+      Count : Natural;
+      Last  : Positive := 1;
+      procedure Sound (Payload : Byte_Array) is
+      begin
+         Input (DMI, Frame (16#61#, Payload));
+         Reset_Capture;
+         EVC_Core.Tick (100);
+         Take;
+         Count := 0;
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = JRU and then JRU_NID (I) = 22 then
+               Count := Count + 1;
+               Last := I;
+            end if;
+         end loop;
+      end Sound;
+      function Bits return Natural is
+        (Natural (Get_Bits (Payload (Last), Body_Bit (Payload (Last)), 3)));
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Set_UTC (Reference);
+      Sound ((1 => 1));
+      Check (Count = 1 and then Bits = 1
+               and then View (Payload (Last)).Event = 122,
+             "4.2.4.22: Sinfo started, message 22 with bit 01, got"
+             & Count'Image);
+      Sound ((1 => 2));
+      Check (Count = 1 and then Bits = 2,
+             "4.2.4.22: S1 started, message 22 with bit 02, got"
+             & Count'Image);
+      Sound ((1 => 3));
+      Check (Count = 1 and then Bits = 4,
+             "4.2.4.22: S2 started, message 22 with bit 03, got"
+             & Count'Image);
+      Sound ((1 => 1));
+      Check (Count = 1 and then Bits = 5,
+             "4.2.4.22: Sinfo started while S2 plays, bits 01 and 03, got"
+             & Count'Image);
+      Sound ((1 => 4));
+      Check (Count = 0, "4.3.1.1: no message 22 at the S2 stop");
+      Sound ((1 => 1));
+      Check (Count = 1 and then Bits = 1,
+             "4.2.4.22: Sinfo after the S2 stop, bit 01 alone");
+      Sound ((1 => 0));
+      Check (Count = 0, "4.2.4.22: a click is none of the three sounds");
+      Sound ((1 => 9));
+      Sound ((1, 1));
+      Check (Count = 0, "a malformed sound report is ignored");
+      Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
+      EVC_Core.Initialise;
+   end Scenario_JRU_Sound_Status;
+
    --  SUBSET-027 4.2.4.40: the traction status (SUBSET-034 2.5.4.1, a
    --  two state input of the train interface, TIU signal 17) recorded as
    --  the message 40 (viewed as the event 140, 40 being the levels') at

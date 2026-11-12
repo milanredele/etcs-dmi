@@ -225,6 +225,18 @@ is
       end if;
    end Record_System_Status;
 
+   procedure Record_Sounds is
+      F : EVC_JRU_Messages.Fields_T := EVC_JRU_Messages.No_Fields;
+   begin
+      for I in 1 .. EVC_Driver_Requests.Sound_Count loop
+         pragma Loop_Invariant (True);
+         F (1) := (Value => Unsigned_64 (EVC_Driver_Requests.Sound_Status (I)),
+                   Bits  => 3);
+         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_DMI_Sound_Status,
+                             Unsigned_64 (Clock_Ms), F, No_Data);
+      end loop;
+   end Record_Sounds;
+
    procedure Record_Actions_Cabs_Conditions is
       use EVC_Driver_Requests;
       use EVC_JRU_Records;
@@ -261,6 +273,7 @@ is
          end if;
       end loop;
       Record_System_Status;
+      Record_Sounds;
       Cab_Status (TIU_Now (Cab_A_Active), TIU_Now (Cab_B_Active),
                   TIU_Known_Now (Cab_A_Active)
                   or else TIU_Known_Now (Cab_B_Active),

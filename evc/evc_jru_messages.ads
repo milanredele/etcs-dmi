@@ -111,6 +111,7 @@ is
    NID_LSSMA          : constant := 44;
    NID_Fault          : constant := 27;
    NID_DMI_Symbols         : constant := 21;
+   NID_DMI_Sound_Status    : constant := 22;
    NID_Regenerative_Brake  : constant := 33;
    NID_Magnetic_Shoe_Brake : constant := 34;
    NID_Eddy_Current_Brake  : constant := 35;

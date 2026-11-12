@@ -1525,7 +1525,9 @@
         function routeFromDmi() {
           for (const f of splitFrames(transmit(dmi, 'dmi'))) {
             const type = f[0];
-            if (type === MSG_SOUND) playSound(f[HEADER_LENGTH]);
+            // a sound is played here and reported to the on-board, which
+            // records it (SUBSET-027 4.2.4.22)
+            if (type === MSG_SOUND) { playSound(f[HEADER_LENGTH]); toEvc.send(f, now); }
             else if (type === MSG_SETTINGS) applySettings(f.subarray(HEADER_LENGTH));
             // a system status message the DMI ended by itself: the
             // on-board's juridical view of the messages displayed follows

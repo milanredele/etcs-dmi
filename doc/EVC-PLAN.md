@@ -23292,3 +23292,41 @@ D", "10:05 Text C", "10:02 Text B", "10:00 Text A", grey scroll arrows,
 the rest of the default window; verdict as intended); no existing
 golden changed. Runner unchanged (1246 / 1031 / 913), `dmi_fuzz` raised
 0.
+
+**B3984, the DMI's sound report and the record 22.** At the source:
+SUBSET-027 4.2.4.22 gives DMI_SOUND_STATUS three bits, 01 Sinfo
+(least significant), 02 S1, 03 S2, "a bit set to '1' means that the
+corresponding sound is generated", and 4.3.1.1 writes the message 22
+"when the playing of any audible information to the driver is
+started"; ERA_ERTMS_015560 14.3 plays Sinfo and S1 once and S2 as long
+as the Warning status is active. MSG_SOUND (16#61#, sound u8: 0 click,
+1 Sinfo, 2 S1, 3 S2 start, 4 S2 stop) was the DMI's frame for the UI
+alone: `DMI_Core.Take_Outbox` puts it in its one outbox, the hub
+(`test/tools/server.js`) kept it from the on-board, the bench page
+played it, `Evc_Test_Touch` took the outbox without the sounds,
+`S076_Bench` passed only 16#40# and 16#41#, and
+`EVC_DMI_Port.Valid_Input_Frame` refused the type. Decision on the
+frame: the report is MSG_SOUND itself, one frame and two receivers (the
+DMI's start of a sound is the same fact for the loudspeaker and for the
+record); no host routes it ambiguously once the hub and the page give
+it to the on-board as well. Decision on the bits: the click is none of
+the three sounds of 4.2.4.22 and is not recorded; S2 is a state, its
+bit set from the start report to the stop report, so a Sinfo or S1
+started while S2 plays is recorded with S2's bit too; the stop writes
+no record (4.3.1.1 names the start only). Built:
+`EVC_DMI_Port.Valid_Input_Frame` accepts MSG_SOUND of one byte 0 to 4,
+`EVC_Driver_Requests` latches each start as its DMI_SOUND_STATUS
+(`Take_Sound`, `Sound_Count`, `Sound_Status`, S2's state in the package
+state, cleared at power-up), `EVC_Core.Records.Record_Sounds` (called
+after `Record_System_Status`) writes one message 22 per start,
+`EVC_JRU_Messages` views it as the event 122 (22 is the overrun's); the
+hub, the bench page, `Evc_Test_Touch` (`With_Sounds => True`) and
+`S076_Bench` deliver it; the runner's `S076_Tables.Message_Event` judges
+22 by the event 122. Scenario, failing before the fix (5 checks):
+`EVC_Test_JRU.Scenario_JRU_Sound_Status` (Sinfo 1, S1 2, S2 start 4,
+Sinfo while S2 5, nothing at the S2 stop, Sinfo 1 after it, nothing for
+a click or a malformed report). Row 3.20.1.2 done. No step of sv21,
+sv22 or sv30 expects the message 22 (0 sequences); the runner unchanged
+(1246 / 1031 / 913, 0 regressions). With B3982 a text sent again plays
+no Sinfo, so no record 22 follows it; no end-to-end check of the two
+together was written (the DMI scenario shows the sound side).

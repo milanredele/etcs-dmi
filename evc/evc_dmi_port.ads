@@ -51,6 +51,10 @@ is
    Status_Ended_Length  : constant := 1;
    --  The DMI (re)started (common/dmi_protocol.ads): no payload
    MSG_DMI_HELLO        : constant Byte := 16#43#;
+   --  The DMI started or stopped a sound (common/dmi_protocol.ads): sound
+   --  u8, 0 .. 4; the record 22 of SUBSET-027 is written from it
+   MSG_SOUND            : constant Byte := 16#61#;
+   Sound_Length         : constant := 1;
 
    --  Driver actions (MSG_DRIVER_ACTION) the on-board uses
    Action_Ack     : constant Byte := 2;
@@ -75,6 +79,9 @@ is
                Frame'Length = Header_Length + Status_Ended_Length,
             when MSG_DMI_HELLO =>
                Frame'Length = Header_Length,
+            when MSG_SOUND =>
+               Frame'Length = Header_Length + Sound_Length
+               and then Frame (Frame'First + Header_Length) <= 4,
             when others => False));
 
    function Is_DMI_Hello (Frame : Byte_Array) return Boolean is

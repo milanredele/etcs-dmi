@@ -3,12 +3,13 @@
 
 package body EVC_Driver_Requests
   with SPARK_Mode => On,
-       Refined_State => (State => (Latched, Now, Ignored_N))
+       Refined_State => (State => (Latched, Now, Ignored_N, S2_Playing))
 is
 
    MSG_DRIVER_ACTION : constant Byte := 16#40#;
    MSG_DRIVER_DATA   : constant Byte := 16#41#;
    MSG_STATUS_ENDED  : constant Byte := 16#42#;
+   MSG_SOUND         : constant Byte := 16#61#;
    Header_Length     : constant := 5;
    --  The largest frame the DMI port accepts (EVC_DMI_Port)
    Max_Frame         : constant := 512;
@@ -22,6 +23,7 @@ is
    type Code_Array is array (Data_Kind_T) of Unsigned_32;
    type Text_Ack_Array is array (1 .. Max_Text_Acks) of Unsigned_16;
    type Status_End_Array is array (1 .. Max_Status_Ends) of Byte;
+   type Sound_Array is array (1 .. Max_Sounds) of Byte range 0 .. 7;
 
    type Requests_T is record
       Selected : Selected_Array := (others => False);
@@ -41,7 +43,13 @@ is
       Texts    : Text_Ack_Array := (others => 0);
       End_N    : Natural range 0 .. Max_Status_Ends := 0;
       Ends     : Status_End_Array := (others => 0);
+      Sound_N  : Natural range 0 .. Max_Sounds := 0;
+      Sounds   : Sound_Array := (others => 0);
    end record;
+
+   --  S2 started and not stopped by the DMI (14.3.3.2: S2 plays as long
+   --  as the Warning status is active)
+   S2_Playing : Boolean := False;
 
    None : constant Requests_T := (others => <>);
 
@@ -83,6 +91,12 @@ is
 
    function Status_End (I : Positive) return Byte is (Now.Ends (I));
 
+   function Sound_Count return Natural is (Now.Sound_N)
+     with Refined_Global => Now;
+
+   function Sound_Status (I : Positive) return Byte is (Now.Sounds (I))
+     with Refined_Global => Now;
+
    function Text_Ack (I : Positive) return Unsigned_16 is (Now.Texts (I))
      with Refined_Global => Now;
 
@@ -110,6 +124,7 @@ is
       Latched := None;
       Now := None;
       Ignored_N := 0;
+      S2_Playing := False;
    end Clear;
 
    procedure Take is
@@ -295,6 +310,33 @@ is
       end;
    end Take_Data;
 
+   --  A sound the DMI reports (MSG_SOUND 1 to 4): S2's state followed, a
+   --  start latched with DMI_SOUND_STATUS. decision: the click (0) is
+   --  not recorded, the record's three bits (SUBSET-027 4.2.4.22) are
+   --  the sounds of ERA_ERTMS_015560 14.3; the S2 stop writes no record,
+   --  4.3.1.1 writes 22 when the playing of a sound is started
+   procedure Take_Sound (Sound : Byte)
+     with Global => (In_Out => (Latched, S2_Playing)),
+          Pre  => Sound in 1 .. 4,
+          Post => Latched.Selected = Latched.Selected'Old
+   is
+      Status : Byte range 0 .. 7;
+   begin
+      if Sound = 4 then
+         S2_Playing := False;
+         return;
+      end if;
+      if Sound = 3 then
+         S2_Playing := True;
+      end if;
+      Status := (if S2_Playing then 4 else 0)
+                or (case Sound is when 1 => 1, when 2 => 2, when others => 0);
+      if Latched.Sound_N < Max_Sounds then
+         Latched.Sound_N := Latched.Sound_N + 1;
+         Latched.Sounds (Latched.Sound_N) := Status;
+      end if;
+   end Take_Sound;
+
    procedure Receive (Frame : Byte_Array) is
    begin
       if Frame'Length < Header_Length + 1
@@ -317,6 +359,10 @@ is
          then
             Latched.End_N := Latched.End_N + 1;
             Latched.Ends (Latched.End_N) := Frame (P);
+         elsif Frame (Frame'First) = MSG_SOUND and then N = 1
+           and then Frame (P) in 1 .. 4
+         then
+            Take_Sound (Frame (P));
          end if;
       end;
    end Receive;

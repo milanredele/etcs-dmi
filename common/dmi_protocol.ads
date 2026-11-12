@@ -838,6 +838,11 @@ package DMI_Protocol is
 
    MSG_SOUND : constant Msg_Type_T := 16#61#;
    --  sound u8 (0 click, 1 sinfo, 2 s1, 3 s2 start, 4 s2 stop)
+   --  The DMI starts or stops a sound: one frame, two receivers, the
+   --  UI's loudspeaker and the on-board, which writes the record 22 of
+   --  SUBSET-027 4.2.4.22 (DMI_SOUND_STATUS) at the start of Sinfo, S1
+   --  and S2 (4.3.1.1; the click is none of the three); the on-board
+   --  does not command the sounds.
    Sound_Length : constant := 1;
 
    MSG_SETTINGS : constant Msg_Type_T := 16#62#;

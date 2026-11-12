@@ -346,6 +346,9 @@ is
             return (127, 0, 0, 0);
          when NID_DMI_Symbols =>
             return Symbol_View (P, B);
+         when NID_DMI_Sound_Status =>
+            --  event 122 (22 is the overrun's): DMI_SOUND_STATUS
+            return (122, F (0, 3), 0, 0);
          when NID_Regenerative_Brake .. NID_Additional_Brake =>
             --  events 133 to 137 (33 is the configuration's): the status
             return (P (P'First) + 100, F (0, 1), 0, 0);

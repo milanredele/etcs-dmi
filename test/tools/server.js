@@ -47,7 +47,9 @@ function forward(from, frame) {
 	const uiOnly = type === MSG_FRAME || type === MSG_SOUND || type === MSG_SETTINGS;
 	if (from === 'dmi' && type === MSG_SETTINGS) lastSettings = Buffer.from(frame);
 	if (from !== 'dmi' && !uiOnly && dmiSocket) dmiSocket.write(frame);
-	if (from !== 'evc' && !uiOnly && evcSocket) evcSocket.write(frame);
+	// a sound the DMI starts is also the on-board's report for its
+	// juridical record (SUBSET-027 4.2.4.22)
+	if (from !== 'evc' && (!uiOnly || type === MSG_SOUND) && evcSocket) evcSocket.write(frame);
 	if (from !== 'web' && webSocket && webSocket.readyState === WebSocket.OPEN) {
 		webSocket.send(frame);
 	}

@@ -21,6 +21,7 @@ package EVC_Test_JRU is
    procedure Scenario_JRU_Failure;
    procedure Scenario_JRU_Brake_Status;
    procedure Scenario_JRU_Symbols;
+   procedure Scenario_JRU_Sound_Status;
    procedure Scenario_JRU_Traction_Status;
 
 end EVC_Test_JRU;

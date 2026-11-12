@@ -51,8 +51,9 @@ package body Evc_Test_Touch is
    --  The wire, both directions, as the bench page connects them
    --  (test/wasm/index.html): the on-board's DMI frames (whole, from
    --  Sim_Onboard_Env.Take_DMI) split and fed to DMI_Core, the DMI's
-   --  driver actions and data (Take_Outbox, With_Sounds => False: the
-   --  caller only wants the driver's actions) fed to the on-board
+   --  driver actions and data and the sounds it starts (Take_Outbox,
+   --  With_Sounds => True: the page reports the sounds to the on-board)
+   --  fed to the on-board
    ------------------------------------------------------------------
    procedure To_DMI (The_Type : Msg_Type_T; Payload : Stream_Element_Array) is
    begin
@@ -64,7 +65,7 @@ package body Evc_Test_Touch is
       Buf  : Stream_Element_Array (1 .. 1024);
       Last : Stream_Element_Offset;
    begin
-      DMI_Core.Take_Outbox (Buf, Last, With_Sounds => False);
+      DMI_Core.Take_Outbox (Buf, Last, With_Sounds => True);
       if Last >= Buf'First then
          Env.Receive (Buf (Buf'First .. Last));
       end if;

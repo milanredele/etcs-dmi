@@ -621,7 +621,9 @@ package body S076_Bench is
             L   : constant Stream_Element_Offset := Pos + 5 + Len;
          begin
             exit when L > Last;
-            if (T = 16#40# or else T = 16#41#)
+            --  the driver's actions and data, the sounds started
+            --  (MSG_SOUND, the record 22)
+            if (T = 16#40# or else T = 16#41# or else T = 16#61#)
               and then Pending_Count < Max_Pending
               and then Natural (L - Pos) <= Pending (1).Data'Length
             then
