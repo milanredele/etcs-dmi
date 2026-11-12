@@ -15,7 +15,8 @@ package body EVC_Mission
                                    SR_V, SR_D,
                                    SR_Origin, SR_Driver, SR_Nat_D,
                                    Continue_On, NL_Lost, NL_Input,
-                                   TD_Now, TD_Entry, SR_Entry, RBC_Wait,
+                                   TD_Now, TD_Entry, SoM_TD_Entry,
+                                   SR_Entry, RBC_Wait,
                                    RBC_Wait_Count,
                                    SR_After_Wait, SR_After_Wait_MAs,
                                    TRN_N, TRN_RBC, Cat_N, Events,
@@ -65,6 +66,9 @@ is
    RBC_Wait_Count  : Natural := 0;
    --  3.18.3.3.1: the driver is modifying or revalidating the Train Data
    TD_Entry        : Boolean := False;
+   --  5.4.3.2 S12: the driver is entering the Train Data during the
+   --  start of mission
+   SoM_TD_Entry    : Boolean := False;
    --  4.4.11.1.5.1: the driver is entering the SR speed / distance limits
    SR_Entry        : Boolean := False;
    --  5.4.3.2 E26 / E27: SR proposed by Take_RBC_Answer in the last
@@ -120,6 +124,19 @@ is
      with Refined_Global => TD_Entry;
    function Entering_SR_Data return Boolean is (SR_Entry)
      with Refined_Global => SR_Entry;
+   function VBC_Step (Level_Valid, Radio_Step : Boolean) return Boolean is
+     (Engaged
+      and then not Proposal
+      and then not RBC_Wait
+      and then not SoM_TD_Entry
+      and then (Driver_S /= Valid
+                or else (Level_Valid
+                         and then not Radio_Step
+                         and then (Train_Data_Status /= Valid
+                                   or else TRN_S = Valid))))
+     with Refined_Global => (Engaged, Proposal, RBC_Wait, SoM_TD_Entry,
+                             Driver_S, TRN_S, Train_Known,
+                             EVC_Train_Data.State);
    function Desk_Closed_In_SoM return Boolean is (Desk_Closed_Now)
      with Refined_Global => Desk_Closed_Now;
 
@@ -181,6 +198,7 @@ is
       NL_Input := False;
       TD_Now := False;
       TD_Entry := False;
+      SoM_TD_Entry := False;
       SR_Entry := False;
       RBC_Wait := False;
       RBC_Wait_Count := 0;
@@ -750,13 +768,23 @@ is
    --  watched whatever the speed (the DMI offers the window only at
    --  standstill, DMI Table 34 #2)
    procedure Take_Data_Entry (M : Mode_T)
-     with Global => (In_Out => (TD_Entry, SR_Entry),
-                     Input  => (Mission_On, EVC_Driver_Requests.State))
+     with Global => (In_Out => (TD_Entry, SoM_TD_Entry, SR_Entry),
+                     Input  => (Mission_On, Engaged,
+                                EVC_Driver_Requests.State))
    is
       Entry_Mode : constant Boolean :=
         Mission_On
         and then M in M_FS | M_AD | M_LS | M_SR | M_OS | M_UN | M_SN;
    begin
+      if not Engaged
+        or else Entered (EVC_Driver_Requests.Train_Data)
+        or else Selected (EVC_Driver_Requests.Main_Window_Button)
+        or else Selected (EVC_Driver_Requests.Train_Data_Left)
+      then
+         SoM_TD_Entry := False;
+      elsif Selected (EVC_Driver_Requests.Train_Data_Entry) then
+         SoM_TD_Entry := True;
+      end if;
       if not Entry_Mode
         or else Entered (EVC_Driver_Requests.Train_Data)
         or else Selected (EVC_Driver_Requests.Main_Window_Button)

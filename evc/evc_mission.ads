@@ -223,6 +223,21 @@ is
    function Entering_SR_Data return Boolean
      with Global => State;
 
+   --  5.4.3.2 S1, S10, S20, 5.4.5.3 i): the steps of the start of mission
+   --  at which the driver may set or remove a Virtual Balise Cover.
+   --  Decision: the step is read from the statuses the on-board holds,
+   --  not kept as a state of its own: S1 the driver ID not valid; S10 and
+   --  S20 the driver ID and the level (Level_Valid, EVC_Levels') valid
+   --  (D2 and S2 passed), not during the Train Data entry (S12: from the
+   --  driver's 'Train data', DMI action 21, until the data are entered
+   --  or the window is left), not with the Train Data valid and the train
+   --  running number not (S13, D12), not after 'Start' (S21 to S24);
+   --  Radio_Step, the caller's, the level 2 steps between S2 and S10 or
+   --  S20 (the session being opened, the registration, S11)
+   --  @req 5.4.5.3 i)
+   function VBC_Step (Level_Valid, Radio_Step : Boolean) return Boolean
+     with Global => (State, EVC_Train_Data.State);
+
    --  Juridical recording (EVC_Ports, event 41: the mission): kind
    --  (byte 2), two bytes
 

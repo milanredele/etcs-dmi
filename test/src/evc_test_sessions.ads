@@ -142,4 +142,13 @@ package EVC_Test_Sessions is
    --  RBC whose session is terminating
    procedure Scenario_Session_Entry_Terminating;
 
+   --  5.4.5.3 i), 5.4.3.2 S1: a Set / Remove VBC taken at S1, S10 and
+   --  S20 only, refused at S2, during the Train Data entry (S12) and at
+   --  S13
+   procedure Scenario_SoM_VBC_Steps;
+
+   --  5.4.3.3 Table, 5.4.5.3 e): the level re-entered at S20 takes the
+   --  RBC contact information valid to invalid
+   procedure Scenario_SoM_Level_Reentered;
+
 end EVC_Test_Sessions;

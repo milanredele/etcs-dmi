@@ -335,6 +335,14 @@ is
       Code : Unsigned_32;
       NID_C : Unsigned_64;
       Marker : Unsigned_64;
+      Taken : constant Boolean :=
+        Current_Mode = M_SB
+        and then EVC_Mission.VBC_Step
+                   (Level_Valid => EVC_Levels.Valid,
+                    Radio_Step  => EVC_Sessions.SoM_Opening
+                                   or else
+                                     EVC_Sessions.SoM_Awaiting_Registration
+                                   or else EVC_Sessions.Train_Data_Awaited);
    begin
       EVC_VBC.Expire
         (Now_Ms    => Unsigned_64 (Clock_Ms),
@@ -354,7 +362,7 @@ is
                         Bits  => 8),
              others => (Value => 0, Bits => 0)),
             No_Data);
-         if Current_Mode = M_SB then
+         if Taken then
             EVC_VBC.Set
               (NID_C  => NID_C_T (NID_C),
                Marker => NID_VBCMK_T (Marker),
@@ -371,7 +379,7 @@ is
              2      => (Value => Marker, Bits => 6),
              others => (Value => 0, Bits => 0)),
             No_Data);
-         if Current_Mode = M_SB then
+         if Taken then
             EVC_VBC.Remove
               (NID_C  => NID_C_T (NID_C),
                Marker => NID_VBCMK_T (Marker));

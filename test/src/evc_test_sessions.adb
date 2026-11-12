@@ -34,6 +34,7 @@ with EVC_SDM;
 with EVC_Movement_Authority;
 with EVC_Text_Messages;
 with EVC_Track_Conditions;
+with EVC_VBC;
 with EVC_Test_Modes;
 with EVC_Test_Authority;
 with EVC_Test_Support;    use EVC_Test_Support;
@@ -3709,5 +3710,61 @@ package body EVC_Test_Sessions is
              "entry terminating: the new session established, nothing "
              & "awaited, got waiting" & Natural'Image (Onboard_Byte (12)));
    end Scenario_Session_Entry_Terminating;
+
+   procedure Scenario_SoM_VBC_Steps is
+      --  MSG_DRIVER_DATA kind 8 (Set VBC) or 9 (Remove VBC) with Code
+      function VBC_Entry (Kind : Byte; Code : Unsigned_32) return Byte_Array
+      is (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                 (Kind, Byte (Code and 255),
+                  Byte (Shift_Right (Code, 8) and 255),
+                  Byte (Shift_Right (Code, 16) and 255),
+                  Byte (Shift_Right (Code, 24)))));
+      --  NID_VBCMK 5, NID_C 123, T_VBC 3 (DMI 11.3.12.5, 11.3.13.5)
+      Set_Code    : constant Unsigned_32 := 5 + 123 * 64 + 3 * 65_536;
+      Remove_Code : constant Unsigned_32 := 123 + 5 * 1024;
+   begin
+      EVC_VBC.Clear;
+      EVC_Test_Modes.Start_E4;
+      Send (Text_Entry (0, "1234"));
+      Send (VBC_Entry (8, Set_Code));
+      Check (EVC_VBC.Count = 0,
+             "som vbc: a Set VBC at S2 (the level not valid) refused "
+             & "(5.4.5.3 i)");
+      Send (Action (11, 4));
+      Send (VBC_Entry (8, Set_Code));
+      Check (EVC_VBC.Covers (123, 5),
+             "som vbc: a Set VBC at S10 taken (5.4.5.3 i)");
+      Send (Action (21));
+      Send (VBC_Entry (9, Remove_Code));
+      Check (EVC_VBC.Covers (123, 5),
+             "som vbc: a Remove VBC during the Train Data entry (S12) "
+             & "refused (5.4.5.3 i)");
+      Send (Train_Entry);
+      Send (VBC_Entry (9, Remove_Code));
+      Check (EVC_VBC.Covers (123, 5),
+             "som vbc: a Remove VBC at S13 (the train running number not "
+             & "valid after the Train Data) refused (5.4.3.2 D12)");
+      Send (Text_Entry (1, "5678"));
+      Send (VBC_Entry (9, Remove_Code));
+      Check (EVC_VBC.Count = 0,
+             "som vbc: a Remove VBC at S20 taken (5.4.5.3 i)");
+      EVC_VBC.Clear;
+   end Scenario_SoM_VBC_Steps;
+
+   procedure Scenario_SoM_Level_Reentered is
+   begin
+      SoM_L2_At_S20;
+      Check (R.Contact.Known and then R.Contact.Valid
+             and then Onboard_Byte (6) / 16 mod 2 = 1,
+             "level re-entered: at S20 the RBC contact valid, MSG_ONBOARD "
+             & "data bit4");
+      Send (Action (11, 5));
+      Check (R.Contact.Known and then not R.Contact.Valid
+             and then Onboard_Byte (6) / 16 mod 2 = 0,
+             "level re-entered: the driver re-enters the level at S20 "
+             & "(5.4.5.3 e): the RBC contact valid -> invalid (5.4.3.3 "
+             & "Table), MSG_ONBOARD data bit4 cleared, got"
+             & Onboard_Byte (6)'Image);
+   end Scenario_SoM_Level_Reentered;
 
 end EVC_Test_Sessions;
