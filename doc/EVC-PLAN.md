@@ -23233,3 +23233,10 @@ reach-point's place), B4024 (the bench driver stopping before an
 override), B3982 and B3984 (two protocol decisions: a "shown before" bit
 of MSG_TEXT, a sound report of the DMI for record 22), B3700, B3380,
 the review again (eight items, readings first, no backlog read).
+
+Decision B3984 (2026-11-12, the user): the DMI reports to the on-board
+when it starts a sound (Sinfo, S1, S2), and the on-board writes the
+record 22 of SUBSET-027 4.2.4.22 from that report; the on-board does
+not command the sounds. A build item of the protocol, the DMI and
+`EVC_Core.Records`; the line stays open until built. B3982 (the sound of
+a text sent again) is still to decide and goes with it.
