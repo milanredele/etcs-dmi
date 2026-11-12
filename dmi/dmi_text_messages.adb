@@ -361,15 +361,63 @@ package body DMI_Text_Messages is
       M.Lines := Count_Lines (M);
    end Store_Text;
 
+   -- The minute of the day of Hour and Minute as carried by MSG_TEXT
+   function Minute_Of_Day (Hour, Minute : Natural) return Natural is
+     ((Hour mod 24) * 60 + Minute mod 60);
+
+   -- M's hour and minute after the given ones, read on a 24 h dial: up
+   -- to 12 h ahead is later, so 00:01 is later than 23:58
+   function Later (M : Message_T; Hour, Minute : Natural) return Boolean is
+     ((Minute_Of_Day (M.Hour, M.Minute) + 1440
+       - Minute_Of_Day (Hour, Minute)) mod 1440 in 1 .. 719);
+
+   -- decision: a text the on-board sends again (Shown_Before) is placed
+   -- by its hour and minute, the only trace of its first display the DMI
+   -- has (it no longer holds the text; 8.2.3.4.7 d orders by the time).
+   -- It takes the arrival place of the earliest arrived text held whose
+   -- hour and minute are later than its own, and that text and every one
+   -- arrived after it move up by one; with none later it is the newest.
+   -- A text of the same minute is not later: the arrival breaks the tie
+   -- and the text sent again goes above it. Returns the place, 0 for the
+   -- newest; Slot, about to be overwritten, does not count.
+   function Place_By_Time (Slot : Natural; Hour, Minute : Natural)
+     return Natural
+   is
+      Place : Natural := 0;
+   begin
+      for I in Messages'Range loop
+         if I /= Slot
+           and then Messages (I).Used
+           and then Later (Messages (I), Hour, Minute)
+           and then (Place = 0 or else Messages (I).Sequence < Place)
+         then
+            Place := Messages (I).Sequence;
+         end if;
+      end loop;
+      if Place /= 0 then
+         for I in Messages'Range loop
+            if I /= Slot
+              and then Messages (I).Used
+              and then Messages (I).Sequence >= Place
+            then
+               Messages (I).Sequence := Messages (I).Sequence + 1;
+            end if;
+         end loop;
+      end if;
+      return Place;
+   end Place_By_Time;
+
    procedure Put (ID           : Natural;
                   First_Group  : Boolean;
                   Ack_Required : Boolean;
                   Class        : Class_T;
                   Hour, Minute : Natural;
-                  Text         : Wide_String)
+                  Text         : Wide_String;
+                  Shown_Before : Boolean := False)
    is
-      Slot : Natural := Find (ID);
-      Len  : constant Natural := Natural'Min (Text'Length, Max_Text);
+      Slot  : Natural := Find (ID);
+      Len   : constant Natural := Natural'Min (Text'Length, Max_Text);
+      Place : Natural := 0;
    begin
       if Slot = 0 then
          for I in Messages'Range loop
@@ -395,7 +443,11 @@ package body DMI_Text_Messages is
          DMI_Ack.Cancel_Text (ID);
       end if;
 
+      -- the counter first: a text moved up by Place_By_Time stays within it
       Sequence := Sequence + 1;
+      if Shown_Before then
+         Place := Place_By_Time (Slot, Hour, Minute);
+      end if;
       Messages (Slot) :=
         (Used         => True,
          ID           => ID,
@@ -407,7 +459,7 @@ package body DMI_Text_Messages is
          Length       => Len,
          Text         => (others => ' '),
          Lines        => 1,
-         Sequence     => Sequence,
+         Sequence     => (if Place = 0 then Sequence else Place),
          Ack_Waiting  => False);
       Store_Text (Messages (Slot), Text);
       Clamp_Scroll;
@@ -415,7 +467,7 @@ package body DMI_Text_Messages is
       if Ack_Required then
          -- 8.2.3.4.8 / 5.4: offered through the acknowledgement service
          Request_Ack (Slot);
-      elsif First_Group then
+      elsif First_Group and then not Shown_Before then
          -- 8.2.3.4.7 h: Sinfo for a new first group message
          DMI_Sounds.Play (DMI_Sounds.Sinfo);
       end if;

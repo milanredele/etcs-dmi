@@ -46,6 +46,7 @@ begin
    DMI_Test_Messages.Scenario_Text_Unknown_Glyphs;
    DMI_Test_Supervision.Scenario_SM_Direction;
    DMI_Test_Messages.Scenario_Text_Messages;
+   DMI_Test_Messages.Scenario_Text_Shown_Before;
    DMI_Test_Messages.Scenario_Ack_Same_Class;
    DMI_Test_Messages.Scenario_Ack_Arrival_Order;
    DMI_Test_Messages.Scenario_Ack_Revoked;

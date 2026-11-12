@@ -23247,3 +23247,48 @@ without the sound Sinfo (ERA_ERTMS_015560 8.2.3.4.7 h): "for the first
 time") and orders it by its original time, not above a text that came
 later (8.2.3.4.7 d)). A build item of the protocol, the DMI and
 `EVC_Core.Outputs`, built with B3984.
+
+### Two protocol decisions of the texts and the sounds: the flag of a text sent again with its place in the list, the DMI's sound report and the record 22 (e6/protocol-sounds) (2026-11-12)
+
+**B3982, the flag of a text sent again and its place.** The premises
+held at the source: MSG_TEXT carried bits 0 to 3 of its flags,
+`DMI_Text_Messages.Put` stored every text with the next arrival number
+(`Sequence`, the order of `Display_Order`, newest on top) and played
+Sinfo for a first group text without acknowledgement, and
+`EVC_Core.Outputs.Send_Procedure_Messages` already sent a text again
+(`Output_T.Again`) with the hour and minute of its first sending
+(`At_Ms`). Built: bit 4 of the flags, "shown before", set by
+`Send_Procedure_Messages` from `Again` (a first sending, and the texts
+sent again to a restarted DMI by `Resend_Texts`, keep it cleared: that
+DMI holds nothing and shows them for the first time); `DMI_Core.
+Apply_Text` passes it to `Put`, which stores the text without Sinfo
+(ERA_ERTMS_015560 8.2.3.4.7 h): "displayed for the first time") and in
+the place of its time (8.2.3.4.7 d)). Decision on the mechanism, in
+`DMI_Text_Messages.Place_By_Time`: the DMI orders by the frame's hour
+and minute, not by the on-board's order of sending, since the DMI no
+longer holds the text taken back and keeps texts the on-board did not
+take back (the system status messages); the text takes the arrival
+place of the earliest arrived text held whose minute of the day is
+later than its own, read on a 12 h half of the dial (00:01 is later
+than 23:58), and those after it move up by one; a text of the same
+minute is not later (the arrival breaks the tie, the text sent again
+goes above it); with none later it is the newest. The other mechanism
+(the on-board sending them oldest last and the DMI putting a flagged
+text at the bottom of its group) puts a text sent again below a system
+status message older than it. The brief's case, A 10:00 and B 10:02
+shown, C to be acknowledged at 10:05 kept after its acknowledgement, B
+and A sent again, D at 10:06 after them, reads D, C, B, A with either
+order of B and A. An older on-board never sets the bit and the DMI
+behaves as before. Scenarios, both failing before the fix:
+`DMI_Test_Messages.Scenario_Text_Shown_Before` (no sound for B and A,
+Sinfo for D, the four lines in order: 3 failures with the new golden)
+and the new check of `EVC_Test_Authority.Scenario_Texts_Hidden` (the
+two first sendings without the bit, C sent again with it: got 3 / 0).
+`EVC_Test_Procedures.Scenario_DMI_Restart_Displayed` expects the flags
+4 + 16 of the text sent again after the acknowledgement. One new
+golden, `text_shown_before`, reviewed (`golden_review.py --intent`,
+the picture described from BLIND.md: four bold lines in E, "10:06 Text
+D", "10:05 Text C", "10:02 Text B", "10:00 Text A", grey scroll arrows,
+the rest of the default window; verdict as intended); no existing
+golden changed. Runner unchanged (1246 / 1031 / 913), `dmi_fuzz` raised
+0.

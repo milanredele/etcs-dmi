@@ -154,7 +154,9 @@ package Test_Support is
                         First_Group  : Boolean := False;
                         Ack_Required : Boolean := False;
                         Class        : Natural := 1; -- 0 fixed/1 plain/2 sys/3 NTC
-                        HH, MM       : Natural := 0);
+                        HH, MM       : Natural := 0;
+                        -- flags bit 4: the on-board sends the text again
+                        Shown_Before : Boolean := False);
 
    procedure Send_Text_Remove (ID : Natural);
 

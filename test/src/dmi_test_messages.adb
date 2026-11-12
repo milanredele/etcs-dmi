@@ -104,6 +104,59 @@ package body DMI_Test_Messages is
       Check_Frame ("messages_removed");
    end Scenario_Text_Messages;
 
+   --  A (10:00) and B (10:02) shown, revoked by the on-board when C to be
+   --  acknowledged comes (10:05), C acknowledged and kept, B and A sent
+   --  again with their first hour and the flag, D (10:06) sent after:
+   --  the flagged ones without Sinfo, the list D, C, B, A from the top
+   procedure Scenario_Text_Shown_Before is
+      function Line_Text (Index : Positive) return Wide_String is
+         Line  : DMI_Text_Messages.Line_T;
+         Valid : Boolean;
+      begin
+         DMI_Text_Messages.Get_Visible_Line (Index, Line, Valid);
+         return (if Valid then Line.Text (1 .. Line.Length) else "<none>");
+      end Line_Text;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 2);
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      Send_Text (1, "Text A", First_Group => True, HH => 10, MM => 0);
+      Send_Text (2, "Text B", First_Group => True, HH => 10, MM => 2);
+      Drain_Sounds;
+      Step;
+      Send_Text_Remove (1);
+      Send_Text_Remove (2);
+      Send_Text (3, "Text C", First_Group => True, Ack_Required => True,
+                 HH => 10, MM => 5);
+      Step;
+      Drain_Sounds;
+      Pointer_Down (150, 400); -- inside E5-E9
+      Pointer_Up (150, 400);
+      Step;
+      Drain_Sounds;
+      Send_Text (2, "Text B", First_Group => True, HH => 10, MM => 2,
+                 Shown_Before => True);
+      Send_Text (1, "Text A", First_Group => True, HH => 10, MM => 0,
+                 Shown_Before => True);
+      Expect_No_Sound
+        ("a text sent again is put without Sinfo (ERA_ERTMS_015560 "
+         & "8.2.3.4.7 h): for the first time)");
+      Send_Text (4, "Text D", First_Group => True, HH => 10, MM => 6);
+      Expect_Sound (DMI_Sounds.Sinfo, "a new text after them plays Sinfo");
+      Check (Line_Text (1) = "Text D" and then Line_Text (2) = "Text C"
+             and then Line_Text (3) = "Text B"
+             and then Line_Text (4) = "Text A",
+             "texts sent again take their place by their first time "
+             & "(8.2.3.4.7 d): D, C, B, A from the top, got "
+             & Line_Text (1)'Length'Image);
+      Step;
+      Check_Frame ("text_shown_before");
+   end Scenario_Text_Shown_Before;
+
    ---------------------------------------------------------------------
    -- Planning area (8.3)
    ---------------------------------------------------------------------

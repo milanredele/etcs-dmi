@@ -1162,7 +1162,8 @@ package body DMI_Core is
          Class        => Class,
          Hour         => Natural (Hour),
          Minute       => Natural (Minute),
-         Text         => Text);
+         Text         => Text,
+         Shown_Before => (Flags and 16) /= 0);
    end Apply_Text;
 
    procedure Apply_Track_Cond (Payload : Stream_Element_Array) is
