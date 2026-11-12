@@ -359,6 +359,8 @@ begin
    Scenario_SoM_L2_Override;
    Scenario_SoM_L2_Override_Before_S10;
    Scenario_SoM_L2_Override_From_S20;
+   Scenario_SoM_VBC_Steps;
+   Scenario_SoM_Level_Reentered;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;
@@ -384,6 +386,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Default_Data;
    EVC_Test_Manoeuvre.Scenario_SM_Entering;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Info;
+   EVC_Test_Manoeuvre.Scenario_Consist_To_Stand_By_L2;
    EVC_Test_Manoeuvre.Scenario_SM_Integrity;
    EVC_Test_Manoeuvre.Scenario_SM_Handover;
    EVC_Test_Manoeuvre.Scenario_SM_Direction;

@@ -118,13 +118,18 @@ is
    --  3.15.9.6), then the driver's Set VBC and Remove VBC (DMI 11.3.12.5,
    --  11.3.13.5: the codes split as MSG_DRIVER_DATA carries them), each
    --  with its juridical record (SUBSET-027 4.2.4.28, 4.2.4.29: the code
-   --  entered, also when the mode does not take it).
-   --  Decision (3.15.9.2): taken in SB only, the mode of the start of
-   --  mission where the DMI offers them (DMI Table 36 #5, #6).
-   --  @req 3.15.9.2, 3.15.9.5 c)
+   --  entered, also when it is not taken: the record "reflects the code
+   --  entered by the driver").
+   --  Taken in SB at the steps S1, S10 and S20 of the start of mission
+   --  only (3.15.9.2, 5.4.3.2 S1, 5.4.5.3 i), EVC_Mission.VBC_Step), the
+   --  level 2 steps of the session and of the Train Data acknowledgement
+   --  being EVC_Sessions'.
+   --  @req 3.15.9.2, 3.15.9.5 c), 5.4.5.3 i)
    procedure Take_VBC_Requests
      with Global => (Input  => (Clock_Ms, UTC_Known, UTC_Seconds,
-                                Current_Mode, EVC_Driver_Requests.State),
+                                Current_Mode, EVC_Driver_Requests.State,
+                                EVC_Mission.State, EVC_Levels.State,
+                                EVC_Sessions.State, EVC_Train_Data.State),
                      In_Out => (EVC_VBC.State, EVC_Outbox.Queue));
 
    --  1. Read the ports: take the inputs latched since the last cycle,

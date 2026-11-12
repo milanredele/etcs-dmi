@@ -17,6 +17,11 @@ package EVC_Test_Manoeuvre is
    --  without valid Train Data, or a length in rear only, no transition
    procedure Scenario_Consist_To_Stand_By;
 
+   --  3.18.3.10: in level 2 with a session, the length in front of the
+   --  engine that brings SB by [83] from FS is sent by message 133 once
+   --  in SB
+   procedure Scenario_Consist_To_Stand_By_L2;
+
    --  5.21.2.2 S0 to S050, E215 / A220, 5.21.4.1: the request for
    --  Supervised Manoeuvre (message 131), the answer matched by its time
    --  stamp (4.8.4 [14]), SM refused, the repetitions without an answer
