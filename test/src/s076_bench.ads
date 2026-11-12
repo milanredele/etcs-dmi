@@ -425,11 +425,15 @@ package S076_Bench is
 
    --  The JRU messages of the window as captured (SUBSET-027 4.2.2, the
    --  general message too, Max_Messages at most): their count, each
-   --  one's NID_MESSAGE and header (EVC_JRU_Messages.Get_Header)
+   --  one's NID_MESSAGE and header (EVC_JRU_Messages.Get_Header), and
+   --  Bits bits of its complementary variables from bit Offset of them
+   --  (EVC_JRU_Messages.Body_Bit; 0 beyond the message)
    Max_Messages : constant := 2048;
    function Message_Count return Natural;
    function Message_NID (I : Positive) return Natural;
    function Message_Header (I : Positive) return EVC_JRU_Messages.Header_T;
+   function Message_Body (I : Positive; Offset : Natural;
+                          Bits : EVC_JRU_Messages.Width_T) return Natural;
 
    --  Text and system status events of the window
    type Text_Event_T is record

@@ -6003,6 +6003,45 @@ package body S076_Run is
                      return Result;
                   end if;
                end;
+            when 15 =>
+               --  the message itself (SUBSET-027 4.2.4.15) and its
+               --  M_COLD_MVT: written at the start-up for no cold movement
+               --  or no information (EVC_Core.Records.Record_General), as
+               --  the position's event 9 for a cold movement detected
+               declare
+                  Val : Integer := -1;
+                  Got : Integer := -1;
+               begin
+                  for K in 5 .. Line.Count loop
+                     declare
+                        Wd : constant String := W (K);
+                        Eq : constant Natural :=
+                          Ada.Strings.Fixed.Index (Wd, "=");
+                     begin
+                        if Eq > Wd'First and then Eq = Wd'Last - 1
+                          and then Same (Wd (Wd'First .. Eq - 1), "M_COLD_MVT")
+                          and then Wd (Wd'Last) in '0' .. '3'
+                        then
+                           Val := Character'Pos (Wd (Wd'Last)) - 48;
+                        end if;
+                     end;
+                  end loop;
+                  for I in 1 .. B.Message_Count loop
+                     if B.Message_NID (I) = 15 then
+                        Got := B.Message_Body (I, 0, 2);
+                        exit when Val < 0 or else Got = Val;
+                     end if;
+                  end loop;
+                  Result := Check
+                    ((Got >= 0 and then (Val < 0 or else Got = Val))
+                     = Positive,
+                     "JRU15" & (if Val < 0 then "" else " M_COLD_MVT" & Img (Val))
+                     & (if Positive then "" else " not"),
+                     (if Got < 0 then "none" else "M_COLD_MVT" & Img (Got)));
+                  if Result.Verdict /= Passed then
+                     return Result;
+                  end if;
+               end;
             when 38 | 45 =>
                Result := Cab_Or_Condition (Id, Positive);
                if Result.Verdict /= Passed then

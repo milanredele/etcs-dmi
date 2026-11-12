@@ -1857,6 +1857,21 @@ package body S076_Bench is
       return H;
    end Message_Header;
 
+   function Message_Body (I : Positive; Offset : Natural;
+                          Bits : EVC_JRU_Messages.Width_T) return Natural
+   is
+   begin
+      if I > Messages_N or else Bits > 30 then
+         return 0;
+      end if;
+      declare
+         P : Byte_Array renames Messages (I).Data (1 .. Messages (I).Length);
+      begin
+         return Natural (EVC_JRU_Messages.Get_Bits
+                           (P, EVC_JRU_Messages.Body_Bit (P) + Offset, Bits));
+      end;
+   end Message_Body;
+
    function Text_Count return Natural is (Texts_N);
    function Text (I : Positive) return Text_Event_T is (Texts (I));
    function Text_Shown (Class : Natural) return Boolean is

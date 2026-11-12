@@ -23247,3 +23247,34 @@ without the sound Sinfo (ERA_ERTMS_015560 8.2.3.4.7 h): "for the first
 time") and orders it by its original time, not above a text that came
 later (8.2.3.4.7 d)). A build item of the protocol, the DMI and
 `EVC_Core.Outputs`, built with B3984.
+
+### The runner's record 15, the train after a reach-point, the driver before an override (e5/runner-records) (2026-11-12)
+
+**The record 15 by its message (B4002).** Premise checked at the
+trace: 3150800_01 SV30 step 99 ("INFORMATION FROM COLD MOVEMENT
+DETECTOR ... M_COLD_MVT=0", SUBSET-027 4.2.4.15) failed "JRU15 as
+event9, got none" after "Cold movement not detected" (step 98); ours
+writes the message 15 with M_COLD_MVT 0 or 2 in the first cycle after
+the power-up (`EVC_Core.Records.Record_General`), with 1 as the
+position's event 9, and the bench keeps every JRU message of the window
+whole (`S076_Bench.Observe_JRU`: the bytes, not only the NID and the
+header). Built: `S076_Bench.Message_Body` (bits of a message's
+complementary variables after its header, `EVC_JRU_Messages.Body_Bit`),
+and `S076_Run.JRU_Window_Expect` judges the record 15 by a message 15
+of the step's window and its M_COLD_MVT, the step's value when it names
+one (the corpus: 19 steps M_COLD_MVT=0, 6 =1, 15 =2, in 8 sequences per
+version). The brief's 24 sequences are 22 in the baseline (3150800_01
+to _05, 5040300_10, 6060303_02 in three versions, 5040300_23 SV30); all
+moved, each new step traced: 3150800_02 (3) and 5040300_23 SV30 pass;
+3150800_03 (3) blocked at step 94 (Euroloop); 5040300_10 (3) at 75 and
+6060303_02 (3) at 76 (RBC data the sequence names no value);
+3150800_01 (3) at 118 and _04 (3) at 168, "SA-CONNECT.Request" after
+the Driver ID where ours requested the set-up one cycle after the
+power-up, in SB before any cab is active, the level 2, the position and
+the RBC contact revalidated by "no cold movement" (5.4.3.2 S1, D7, S4;
+3.5.3.4 a); Sa8a3ba1a onboard, B4122); 3150800_05 at 90 (SV30 92), the
+level 0 expected after the power-up from the packet 41 stored in SH
+(4.4.8.1.5) and evaluated at the power-up by 4.11.1.4 b) and e), which
+ours does not keep over No Power (row 4.11.1.4 deferred; S665c85c1
+onboard, B4123). Sf16484c8 rewritten (no sequence left); 0
+regressions, 22 improvements. B4002 closed.
