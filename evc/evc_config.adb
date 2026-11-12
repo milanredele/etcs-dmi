@@ -478,9 +478,14 @@ is
          R.Status := Bad_Length;
          return R;
       end if;
+      --  every format's image holds the version 1 fields: stated once, the
+      --  checksum's range and the precondition of each field's read below
+      --  rest on it
+      pragma Assert (L >= Image_Length);
       if Bytes'Length < L then
          return R;
       end if;
+      pragma Assert (Bytes'Length >= Image_Length);
       if CRC_32 (Bytes (Bytes'First .. Bytes'First + (L - 5)))
            /= Get_U32 (Bytes, Bytes'First + (L - 4))
       then
