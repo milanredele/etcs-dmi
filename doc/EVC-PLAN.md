@@ -23681,3 +23681,140 @@ Counts: 8 items and the extra. Agreed: seven (1, 2, 4, 6, 7, 8, the
 extra); disagreed: two in part (3 c), the record of a refused VBC
 code, B4142; 5, the tie of the same cycle, B4143); undecided: none.
 Calls: 84 of 130 at this point.
+
+### E5 integration after the seventy-first round, the thirty-ninth of E6 (2026-11-12)
+
+Merged: e5/runner-records (B4002: `S076_Bench.Message_Body` and a branch
+of `JRU_Window_Expect` judge the record 15 by the message 15 of the
+window and its M_COLD_MVT; 22 sequences moved (the brief said 24): 4
+pass (3150800_02 in three versions, 5040300_23 SV30), 9 are blocked
+further (Euroloop, an RBC data the sequence gives no value for), 9 fail
+on two on-board lines: B4122 (3150800_01 step 118, 3150800_04 step 168:
+after an End of Mission in level 2, a power cycle and "no cold
+movement" ours requests the connection set-up one cycle after the
+power-up, in SB without a Driver ID, where 3.5.3.4 a) and 5.4.3.2 S1,
+D7, S4 put it after the Driver ID) and B4123 (3150800_05: an immediate
+level 0 order received in SH is to be evaluated at the power-up,
+4.11.1.4 b), e), the row deferred); B4022: `Reached_Column` leaves the
+train where a reach-point of a stored location stopped it while the
+next steps repeat its column (80 of the 82 such reach-points of SV30,
+38 sequences; no verdict changed); 3170200_10 reads BG3d at 637 m and
+step 118 is now ours: the supervising RBC is dropped when the train's
+max safe front end passes the border, the 70 m of consist in front of
+the engine included, where 3.17.2.8 e) lets the groups' version orders
+count only once the engine's passes: B4124; B4024 dropped: 5080200_04
+presses Override EoA at 100, 350 and 600 m with the train running in
+ERA's PDF, the family S122decbf, s076), e6/protocol-sounds (B3982 as
+decided: bit 4 of MSG_TEXT's flags, "shown before", set from
+`Output_T.Again` and not by `Resend_Texts` to a restarted DMI; `DMI_
+Text_Messages.Put` stores such a text without Sinfo and `Place_By_Time`
+gives it the arrival place of the earliest held text whose minute is
+later than its own, on a 12 h half of the dial (decision: the order
+from the frame's hour and minute; the alternative "the bottom of the
+group" would put it below an older system status message the on-board
+never takes back); `Scenario_Text_Shown_Before` (the sound, the order
+and a new golden, reviewed: D, C, B, A from the top); B3984 as
+decided: the existing MSG_SOUND delivered to the on-board too (the hub,
+the page, `Evc_Test_Touch`, `S076_Bench`, the gate `EVC_DMI_Port.
+Valid_Input_Frame`), `EVC_Driver_Requests.Take_Sound` and `EVC_Core.
+Records.Record_Sounds` write the record 22 at each start (decisions:
+the click is none of 4.2.4.22's three sounds; S2 is a state whose bit
+is set in the record of a Sinfo or S1 starting meanwhile; its stop
+writes no record, 4.3.1.1); `Scenario_JRU_Sound_Status`; the row
+3.20.1.2 done; no existing golden changed, the bench golden included),
+e6/som-state (B3985: `EVC_Mission.VBC_Step` derives the step from
+statuses the on-board holds (S1 too, which 5.4.3.2 offers the entries
+at: the driver ID not valid; S10 / S20: the driver ID and the level
+valid and no Train Data entry begun, no running number missing, no
+'Start' answered, none of the level 2 radio steps), `Take_VBC_Requests`
+refuses outside, the records 28 / 29 written for every code entered
+(the review disagrees: B4142); the enabling of the two buttons by the
+on-board is a protocol bit: B4082 for the user; the rows 5.4.5.3 and
+5.4.5.3 i) partial on it alone; B3963: `Evaluate_SoM` sets the RBC
+contact invalid at a level entry after D2 (at S2 D2 has already done
+it, so a level entry with the contact valid is the re-entry of S10 /
+S20), the row 5.4.3.3 Table done; B4023: `Evaluate_Consist` keeps a
+change seen outside SB for one cycle and sends the 133 if that cycle is
+SB in level 2 with the session; 3150100_10 SV30 moved from 71 to 75
+(the Driver ID window after SB by [83], the s076 family of 3070300_11))
+and e6/acks-data (B3983: `Asked` covers the system status entry 35 "NL
+no longer permitted" and the brake release acknowledgements of the
+protections and of the procedures; the review disagrees on a tie of
+the same cycle: B4143; B3962: `Train_Data_Step` sets `Train_Data_
+Categories_Changed` when A7 follows A1 with the category bit at
+standstill or follows A5 (S2 is reached through D7 only), `EVC_Core.
+Stored` then makes the two calls of 3.18.3.7 a), b); 3.18.3.4 and
+3.18.3.8 need the changed values, which a configuration number does not
+give: B4102; 5170200_01 passed and now fails at step 106 in three
+versions: after A7 at 350 m the stored information is shortened to the
+train's position and the next joined case starts at 550 m in FS with no
+input between (ERA's PDF goes from row 105 to 106): s076, checked at the
+merge and by the review; B3380 left at the bound, not started) and the
+review e5/review-71.
+
+Review (the twentieth): nine verdicts, seven agree (the text sent
+again, the sound report, the two start of mission reactions, the Train
+Data change with 5170200_01 the sequence's data, 3170200_10 and
+3150800_01 ours, the extra 3150800_05 ours with the remark that the
+sub-rows 4.11.1.4 a) to e) are n/a under a deferred parent and should
+be deferred), two disagree in part: B4142, a decision: a VBC code
+entered at a refused step is recorded (the author, 4.2.4.28 "reflects
+the code entered by the driver") or not (the reviewer, 4.3.1.1 "when
+the driver sets / removes"), moot once the DMI has the enabling bit of
+B4082; B4143 onboard: a text to be acknowledged and a brake release
+request of the same cycle: DMI 5.4.1.9.1 puts the text first, ours
+holds it behind the request the monitoring wrote earlier in the cycle.
+Twenty rounds of reviews: 169 items, 146 agreed, 26 disagreed, 8
+undecided; 41 lines, of which 8 became fixes; 132.7 USD.
+
+Verification of the merged tree: an early chain on the runner-records
+package green; the full chain after the four merges green but for the
+proof's margin rule: no check unproved, six checks of `EVC_Config.
+Decoded` at 94840 of 100000 steps where the unit had needed 4463, the
+unit unchanged: bisected to the protocol-sounds merge, whose new case
+of the expression function `EVC_DMI_Port.Valid_Input_Frame` is in the
+context of every unit that sees `EVC_Ports`; fixed at the integration
+by a postcondition of `Length_OK` (every format's image holds the
+version 1 fields), the unit's hardest check then 4309 steps (a first
+fix by two assertions in `Decoded` took that body to 102 code lines of
+the 100 allowed and was replaced). The chain after it green at once:
+`test/check.sh` ok; the full proof 14187 checks (37 more), none
+unproved, margin 47726 steps; cross build and stack 32768 B budget,
+margin 6024 B (unchanged); wasm and both smokes 0 failures; the runner
+1247 / 1021 / 922 (from 1246 / 1031 / 913), 0 regressions against the
+merged baseline, no signature untriaged. The merge: runner-records and
+the review fast-forwarded; protocol-sounds conflicted on the plan,
+som-state and acks-data on the plan, the backlog and the triage (lines
+both sides had rewritten, resolved by id). The first merge line failed
+on a branch name left from an earlier round and went on to remove the
+agent's worktree and branch: the commits were recovered by the head
+hash of the agent's report, nothing lost; the line now creates the
+branch with `-f` and removes only after the merge is verified on
+master.
+
+Costs (doc/ROUNDS.csv): 40.5 USD with the review (34.8 for the four
+packages, 5.7 the review), 9 of 11 package items done, 1 dropped
+(B4024), 1 left at the bound (B3380, the third time as a third item),
+1 of 10 brief premises wrong (24 sequences for 22), no agent over
+budget, four past the bound with the last item in hand (129, 141, 146,
+153); the review 89 of 130. Lessons: a unit's own proof does not show
+what a changed expression function in a widely seen spec costs the
+units that only see it (the full proof did; the fix belongs in a
+contract, where it adds no line to a body at the size limit); a merge
+line creates its branch with `-f` and removes a worktree only once the
+merge is verified; an item left at the bound three times as a third
+item is the next round's first item of a package (B3380).
+
+The matrix: clauses left 5 (todo 0, partial 5: 4.11.1.1 and 4.11.1.3
+(E7, E8), 5.4.5.3 and 5.4.5.3 i) on B4082, 5.17.2.2 A7 on B4102; done
+2135: 2 rows set done this round). Open items: doc/BACKLOG.csv (25
+open after this round; 7 added of which 2 by the review, 9 closed and
+1 dropped). Next: B4082 and B4142 (the user's decisions: the enabling
+bit of the VBC buttons; a refused code recorded or not), B3380 as a
+first item (the port's event of a message failing the Euroradio
+check), B4143 (the tie of a text and a brake release request), B4122
+(the connection set-up before the Driver ID), B4123 with the rows
+4.11.1.4 (the level order of SH at the power-up), B4124 (the border by
+the engine's front in SM), B4102 (the Train Data values of a
+configuration), B3700, the review again (eight items, readings first,
+no backlog read).
