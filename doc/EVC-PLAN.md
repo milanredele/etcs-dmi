@@ -23240,3 +23240,10 @@ record 22 of SUBSET-027 4.2.4.22 from that report; the on-board does
 not command the sounds. A build item of the protocol, the DMI and
 `EVC_Core.Records`; the line stays open until built. B3982 (the sound of
 a text sent again) is still to decide and goes with it.
+
+Decision B3982 (2026-11-12, the user): a text the on-board sends again
+after taking it back (B3883) carries a flag in MSG_TEXT, the DMI puts it
+without the sound Sinfo (ERA_ERTMS_015560 8.2.3.4.7 h): "for the first
+time") and orders it by its original time, not above a text that came
+later (8.2.3.4.7 d)). A build item of the protocol, the DMI and
+`EVC_Core.Outputs`, built with B3984.
