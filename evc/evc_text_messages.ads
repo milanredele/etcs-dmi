@@ -194,8 +194,9 @@ is
    --  (when Taken: 4.8), the driver's acknowledgements, the start and
    --  end conditions in the mode and level of the cycle with the
    --  estimated front end (a frame position) and the on-board time; Asked:
-   --  the acknowledgement of a mode or a level transition is asked of
-   --  the driver in the cycle, which holds the texts to be acknowledged
+   --  an acknowledgement other than of a text is asked of the driver in
+   --  the cycle (a mode, a level transition, a system status message, a
+   --  brake's release), which holds the texts to be acknowledged
    procedure Evaluate (Mode        : Mode_T;
                        Level_Valid : Boolean;
                        Level       : Level_T;

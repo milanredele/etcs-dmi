@@ -23247,3 +23247,78 @@ without the sound Sinfo (ERA_ERTMS_015560 8.2.3.4.7 h): "for the first
 time") and orders it by its original time, not above a text that came
 later (8.2.3.4.7 d)). A build item of the protocol, the DMI and
 `EVC_Core.Outputs`, built with B3984.
+
+### The texts behind the other acknowledgements, the Train Data change from the train interface, a radio message failing the Euroradio check (e6/acks-data) (2026-11-12)
+
+**B3983, the texts behind the other acknowledgements.** ERA_ERTMS_015560
+5.4.1.9 (PDF page 28) puts every object or text to be acknowledged in
+one FIFO, 1 s apart; 5.4.1.9.1 orders the requests of the same moment:
+1) level, 2) mode, 3) fixed text, 4) plain text, 5) system status
+message, 6) brake release, 7) NTC text. The text's hold (B3883) took
+only the mode and the level. The other requests the on-board makes: a
+system status message to be acknowledged (15.1.1.4.1: "[NTC] failed",
+out of scope, and "NL no longer permitted", entry 35, which the
+on-board sends and sees shown in `EVC_JRU_Records.Entry_Shown` until the
+driver's acknowledgement), and a brake's release (3.14.1.9: the
+protections' brake, `EVC_Core.Brake_Output.Ack_Required`; the
+procedures' brakes of PT, RV and the Train Data's S3 / S5,
+`EVC_Procedures.Brake_Demand.Ack_Required`; the trip's acknowledgement
+is a mode's, taken already). Built: `EVC_Core.Modes.Run_Procedures`
+passes all of them in `Asked` of `EVC_Text_Messages.Evaluate`, read
+from the states that know them (no copy); the 1 s after the request
+ends as for the others. Decision for a request of the same cycle as the
+text (5.4.1.9.1): the status entry and the procedures' brake are seen
+from the next cycle (their states are written after the texts), so the
+text goes first as 3) before 5) and 6) wants; the protections' brake is
+computed before the texts, so a text started in that very cycle waits
+behind it (one cycle's coincidence, not modelled further). Scenario
+`EVC_Test_Profiles.Scenario_Text_Behind_Brake_Ack` (failed before the
+fix: the text sent while the release was asked). Proofs:
+`evc_core-modes`, `evc_text_messages`, `evc_core` (the Global of
+`Run_Procedures` widened by `Brake_Output` and `EVC_JRU_Records.State`).
+Runner: nothing moved. B3983 closed.
+
+**B3962, 5.17.2.2 A7 after A1 from the train interface.** A7 (chapter 5,
+5.17.2.2): "apply, when relevant, ... 3.18.3.4, 3.18.3.7 and 3.18.3.8".
+The TIU input 13 gives the configuration's number (bits 0 to 5), the
+validation bit (6, D0) and the category bit (7, D1), not the values.
+3.18.3.7 needs only "the categories changed" and "at standstill":
+built. `EVC_Procedures.Train_Data_Step` sets
+`Train_Data_Categories_Changed` when A7 follows A1 with the category
+bit at standstill (D7; D3 in SB or PT and D5 without the RBC's MA when
+standing) or follows A5 (S2's brake released after S3's acknowledgement
+at standstill: S2 is reached by D7 only, so by the category bit);
+`EVC_Core.Stored.Evaluate_Stored_Information` reads it in the next
+cycle beside `EVC_Mission.Categories_Changed` and makes the same calls
+(`EVC_Stored_Information.Train_Data_Shortening`, A.3.4 situation j;
+`EVC_Radio_Authority.Delete_Transition_Information`, 3.18.3.7 b)).
+Decision: 3.18.3.4 and 3.18.3.8 are not applied after A1. SUBSET-034
+2.6.4.1 allows the values to be derived from "the type of train
+configuration" among pre-configured sets, but 2.6.4.3 makes the source
+of every Train Data a configuration item; `EVC_Config.Default_Train_Types`
+are the driver's keys of the fixed Train Data entry (DMI 11.3.9.6), not
+sets selected by the input's number, and the image has no such item:
+left as B4102 (onboard). Scenario
+`EVC_Test_Train_Data.Scenario_TIU_Categories` (a message of the
+Accepting RBC held, kept by a configuration without the category bit,
+deleted by one with it at standstill in SR; failed before the fix).
+Row 5.17.2.2 A7 stays partial on B4102, row 3.18.3.7 names the second
+source. Proofs: `evc_procedures`, `evc_core-stored`. Runner: 5170200_01
+(SV21, SV22, SV30) passed -> failed at step 106 (S3a9e8361), traced at
+SV30: case 5 stops the train at 350 m by S2's service brake, the
+release acknowledged at step 99 is A5 -> A7, and 3.18.3.7 a) at
+standstill takes the MA from 897 m to 0 (A.3.4 [10], [11]: the EOA at
+the estimated front end); case 4 starts at 550 m in FS with no input
+between steps 105 and 106 (ERA's PDF, page 16), so ours trips on the
+way. Triaged s076: the sequence chains the cases as if A7 shortened
+nothing, where A7 names 3.18.3.7 and 3.18.3.7 has no condition on the
+source of the change. Baseline re-recorded (3 passed fewer). B3962
+closed with B4102 for the values.
+
+**B3380 left at the bound.** The third item (the RTM event of a message
+failing the Euroradio check, M_ERROR 3 of 3.16.3.1.1 a) by
+`EVC_Sessions.Reports`) was not started: the two items and the
+5170200_01 trace took the calls up to the bound (120 of 160). B3380
+stays open as written; nothing of it was read or built.
+Tally at the commit, re-counted from the transcript: 136 calls (Bash
+91, Read 19, Edit 26, Write 0, Monitor 0), of a budget of 160.

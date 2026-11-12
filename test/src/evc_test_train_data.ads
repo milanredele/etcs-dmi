@@ -13,6 +13,11 @@ package EVC_Test_Train_Data is
    --  buffer, deleted when the axle load category changes at standstill
    procedure Scenario_Transition_Deleted;
 
+   --  5.17.2.2 A1, A7, 3.18.3.7 b): the same message deleted when the
+   --  train interface's configuration changes the categories (its bit 7)
+   --  at standstill, no driver validation asked
+   procedure Scenario_TIU_Categories;
+
    --  3.18.3.8: the train length increased: the gradient section that
    --  ends in rear of the former min safe rear end deleted
    procedure Scenario_Longer_Train;

@@ -228,13 +228,27 @@ is
           Radio_MAs => 0,
           ID_Running => True));
       end if;
+      --  ERA_ERTMS_015560 5.4.1.9: the texts to be acknowledged wait
+      --  behind every acknowledgement asked of the driver and not given:
+      --  a mode, a level transition, the system status message to be
+      --  acknowledged (15.1.1.4.1: "NL no longer permitted", the entry
+      --  the on-board saw sent) and a brake's release (3.14.1.9: the
+      --  protections' brake, the procedures' brakes). decision: of a
+      --  request asked in the same cycle as the text (5.4.1.9.1) the
+      --  status entry and the procedures' brake are seen from the next
+      --  cycle, so the text goes first (3) before 5) and 6)); the
+      --  protections' brake is seen in its own cycle, so the text waits
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
          S.Train.Est_Front, Unsigned_64 (Clock_Ms),
          Taken  => EVC_Acceptance.Accepted (EVC_Acceptance.Text_Message,
                                             Acceptance_Context),
-         Asked  => EVC_Mission.Proposed or else EVC_Procedures.Ack_Requested
-                   or else EVC_Levels.Ack_Asked);
+         Asked  =>
+           EVC_Mission.Proposed or else EVC_Procedures.Ack_Requested
+           or else EVC_Levels.Ack_Asked
+           or else EVC_JRU_Records.Entry_Shown (SS_NL_No_Longer_Permitted)
+           or else Brake_Output.Ack_Required
+           or else EVC_Procedures.Brake_Demand.Ack_Required);
    end Run_Procedures;
 
    function Any_Holds (L : Condition_List_T) return Boolean is

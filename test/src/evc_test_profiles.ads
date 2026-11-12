@@ -28,6 +28,9 @@ package EVC_Test_Profiles is
       --  ERA_ERTMS_015560 5.4.1.9, 5.4.1.9.1: a text to be acknowledged
       --  held behind the acknowledgement of a mode asked
       procedure Scenario_Text_Behind_Mode_Ack;
+      --  5.4.1.9.1 6): a text to be acknowledged held behind the
+      --  acknowledgement of a brake's release asked before it
+      procedure Scenario_Text_Behind_Brake_Ack;
       procedure Scenario_Track_Condition_Roll_Back;
       procedure Scenario_MA_Timers_Roll_Back;
       procedure Scenario_LX_Roll_Back;

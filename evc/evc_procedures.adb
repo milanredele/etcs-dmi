@@ -37,7 +37,7 @@ package body EVC_Procedures
                     Consist_Revoked, Demand, Demand_Sent,
                     Status_N, Status_List, Event_N, Events,
                     TD_Step, TD_Then_Revalidate, TD_Revalidate,
-                    TD_Moving_Due, SH_Profile_Seen))
+                    TD_Moving_Due, TD_Categories, SH_Profile_Seen))
 is
 
    --  Constants
@@ -300,6 +300,9 @@ is
    TD_Then_Revalidate : Boolean := False;
    TD_Revalidate      : Boolean := False;
    TD_Moving_Due      : Boolean := False;
+   --  A7 reached in the cycle with the train category, axle load
+   --  category, traction systems or loading gauge changed at standstill
+   TD_Categories      : Boolean := False;
 
    --  The brake demand, and the one recorded last
    Demand      : Brake_Demand_T;
@@ -337,6 +340,8 @@ is
      with Refined_Global => Rev;
    function SH_List_Stored return Boolean is (SH_List_Known)
      with Refined_Global => SH_List_Known;
+   function Train_Data_Categories_Changed return Boolean is (TD_Categories)
+     with Refined_Global => TD_Categories;
    function Train_Data_Revalidation return Boolean is (TD_Revalidate)
      with Refined_Global => TD_Revalidate;
    function BMM_Inhibited return Boolean is (BMM_On)
@@ -481,6 +486,7 @@ is
       TD_Then_Revalidate := False;
       TD_Revalidate := False;
       TD_Moving_Due := False;
+      TD_Categories := False;
    end Clear;
 
    procedure Note_Version_Not_Supported is
@@ -1494,13 +1500,18 @@ is
    procedure Train_Data_Step (C : Context_T; S : Snapshot_T)
      with Global => (In_Out => (TD_Step, TD_Then_Revalidate, TD_Revalidate,
                                 TD_Moving_Due, Status_List, Status_N,
-                                Events, Event_N))
+                                Events, Event_N),
+                     Output => TD_Categories)
    is
       Standstill : constant Boolean := S.Train.Standstill;
 
-      --  A1, then A7
+      --  A1, then A7: 3.18.3.7 when the categories changed (D1's bit) at
+      --  standstill. decision: 3.18.3.4 and 3.18.3.8 need the values,
+      --  which the input does not give (its number selects no Train Data
+      --  set of the configuration, SUBSET-034 2.6.4.3)
       procedure Inform
-        with Global => (Output => TD_Moving_Due,
+        with Global => (Input  => (C, Standstill),
+                        Output => (TD_Moving_Due, TD_Categories),
                         In_Out => (Status_List, Status_N, Events, Event_N))
       is
       begin
@@ -1508,6 +1519,7 @@ is
          Record_Event (Event_Train_Data, 2, 0);
          TD_Moving_Due := True;
          Record_Event (Event_Train_Data, 6, 0);
+         TD_Categories := C.TD_Category and then Standstill;
       end Inform;
 
       --  S2, S4: the service brake and the reason indicated
@@ -1522,6 +1534,7 @@ is
          Record_Event (Event_Train_Data, 3, 0);
       end Brake;
    begin
+      TD_Categories := False;
       --  "Train data changed" is displayed for 30 s from a train
       --  movement (DMI Table 68: event 2)
       if TD_Moving_Due and then not Standstill then
@@ -1545,7 +1558,10 @@ is
          if TD_Then_Revalidate then
             TD_Request_Revalidation;
          else
+            --  A5 -> A7 after S2, which only D7 reaches: the categories
+            --  changed, the train at standstill since S3
             Record_Event (Event_Train_Data, 6, 0);
+            TD_Categories := Standstill;
          end if;
       end if;
       --  S0 -> D0 (5.17.1.3: not in RV)

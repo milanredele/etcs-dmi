@@ -111,6 +111,7 @@ is
                                 Odometer_Now, Brake_Ack_Now,
                                 Ack_For_Protection, Clock_Ms,
                                 SDM_Result, Test_Snapshot_Set,
+                                Brake_Output, EVC_JRU_Records.State,
                                 EVC_Stored_Information.State,
                                 EVC_Position.State,
                                 EVC_Origins.State,
