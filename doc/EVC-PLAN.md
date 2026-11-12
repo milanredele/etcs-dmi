@@ -23301,3 +23301,17 @@ where 3.17.2.8 e) applies the balise group orders again only when the
 engine passes the border with its max safe front end, which the steps
 116 and 117 place after BG3d (S0f954a90 rewritten onboard, B4124).
 B4022 closed.
+
+**The driver before an override (B4024).** Decided from ERA's PDF and
+the family, no build: 5080200_04 SV30 (PDF checked) presses "Override
+EoA" in L0 UN at 100 m (step 58), 350 m (step 93) and 600 m (step 100),
+the train running between the presses, no stop, standstill or speed
+named in those rows, and expects "Override EoA is active" each time;
+V_NVALLOWOVTRP is 0 km/h (A.3.2), so 5.8.2.1 a) refuses the selection
+while the train runs. That is the family of S122decbf (15 sequences,
+triaged s076: override expected while the train runs); a stop of the
+bench's driver before every press would be a movement the step list
+does not give. S560e94da's line of 5080200_04 triaged s076 with it (3
+sequences); B4024 dropped (not a bench rule).
+
+Tally: 126 of 160 tool calls at the last commit (re-counted).
