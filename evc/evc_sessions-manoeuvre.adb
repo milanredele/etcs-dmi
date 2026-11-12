@@ -54,6 +54,8 @@ is
       Due         : Boolean := False;
       Awaited     : Boolean := False;
       Was_Up      : Boolean := False;
+      --  a change seen in the last cycle outside SB and the period
+      Pending     : Boolean := False;
       Session     : R.Session_T := 1;
       Stamp       : T_TRAIN_T := 0;
    end record;
@@ -112,7 +114,11 @@ is
    --  sent again when the connection lost before the acknowledgement is
    --  re-established within the session. Decisions: a change while the
    --  connection is lost is sent once it is re-established; with the
-   --  session ended nothing is awaited any more
+   --  session ended nothing is awaited any more; a change seen outside
+   --  SB that brings SB in its cycle (4.6.3 [83]: the length in front of
+   --  the engine) is one made in SB, sent in the next cycle when SB is
+   --  in level 2 with the session established (the clause asks the
+   --  information in SB, not the Train Data valid)
    --  @req 3.18.3.10, 3.18.3.10.2
    procedure Evaluate_Consist (Ctx : R.Context_T)
      with Global => (In_Out => SCL,
@@ -150,7 +156,12 @@ is
       then
          SCL.Due := True;
          SCL.Session := R.Session_T (Sv);
+      elsif SCL.Pending and then In_SB then
+         SCL.Due := True;
+         SCL.Session := R.Session_T (Sv);
       end if;
+      SCL.Pending := Changed and then Ctx.Mode /= M_SB
+                     and then not SCL.Period;
       if not Is_Up and then not Lost then
          SCL.Due := False;
          SCL.Awaited := False;

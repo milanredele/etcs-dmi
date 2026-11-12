@@ -533,6 +533,10 @@ package body EVC_Test_Manoeuvre is
       --  train orientation: the front end at the far end of that consist
       Start_L2_SM;
       EVC_Core.Handle_Input (TIU, SCL_Frame (1, 50, 49, 52, 400, 398, 402));
+      --  the message 133 of the change that brought SB acknowledged
+      --  (3.18.3.10): 4.8.3 [17] would reject the SM authorisation below
+      T := Wait_For (MCat.Train_M133, 300);
+      Give_Radio_Message (1, Consist_Ack (T));
       Stand_X (300);
       --  4.6.3 [83] took the train to Stand-By: the mode and the valid
       --  Train Data set back, the subject is the front end in SM
@@ -662,6 +666,10 @@ package body EVC_Test_Manoeuvre is
       Start_L2_SM;
       EVC_Core.Handle_Input
         (TIU, SCL_Frame (1, 100, 98, 102, 400, 398, 402));
+      --  the message 133 of the change that brought SB acknowledged
+      --  (3.18.3.10): 4.8.3 [17] would reject the SM authorisation below
+      T := Wait_For (MCat.Train_M133, 300);
+      Give_Radio_Message (1, Consist_Ack (T));
       Stand_X (300);
       Check (not EVC_Train_Data.Valid and then not EVC_Train_Data.Manoeuvre_Set,
              "SM data: a consist in front of the engine, no valid Train "
@@ -911,6 +919,26 @@ package body EVC_Test_Manoeuvre is
              "SM consist: no request for SM (message 131) to an RBC of "
              & "version 1.0 (6.5.1.6.6.2.2)");
    end Scenario_SM_Consist_Info;
+
+   procedure Scenario_Consist_To_Stand_By_L2 is
+      T : Unsigned_64;
+   begin
+      Start_L2_SM;
+      Check (EVC_Core.Mode = M_FS and then EVC_Train_Data.Valid,
+             "SCL to SB in L2: FS with valid Train Data and a session");
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 1, 1, 1, 400, 400, 400));
+      T := Wait_For (MCat.Train_M133, 1_000);
+      Check (EVC_Core.Mode = M_SB and then not EVC_Train_Data.Valid,
+             "SCL to SB in L2: 1 m in front of the engine, FS to SB "
+             & "(4.6.3 [83])");
+      Check (T /= 0 and then EVC_Sessions.SM_Consist_Awaited,
+             "SCL to SB in L2: the safe consist length of the cycle that "
+             & "brought SB sent by message 133 once in SB (3.18.3.10)");
+      Give_Radio_Message (1, Consist_Ack (T));
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (0));
+      Stand_X (300);
+   end Scenario_Consist_To_Stand_By_L2;
 
    --  3.15.1.3.3: in Supervised Manoeuvre the session with the Accepting
    --  RBC, once established, gets the safe consist length information

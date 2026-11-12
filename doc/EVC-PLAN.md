@@ -23247,3 +23247,67 @@ without the sound Sinfo (ERA_ERTMS_015560 8.2.3.4.7 h): "for the first
 time") and orders it by its original time, not above a text that came
 later (8.2.3.4.7 d)). A build item of the protocol, the DMI and
 `EVC_Core.Outputs`, built with B3984.
+
+### The start of mission's state and what hangs on it: the VBC entries at S10 and S20, the RBC contact at a re-entered level, the message 133 after Stand-By (e6/som-state) (2026-11-12)
+
+**B3985, the VBC entries at S10 and S20.** At the source: 5.4.5.3 i)
+gives Set / Remove VBC "only at S10 and S20", and 5.4.3.2 S1 offers them
+too ("shall also offer the driver the possibility to set/remove a
+Virtual Balise Cover"); `EVC_Core.Inputs.Take_VBC_Requests` took both in
+SB at any step; `EVC_Mission` kept no S10 / S20 state (premise held);
+the DMI enables the buttons by 11.2.4.5.1 (SB, standstill, the room).
+Decision: the step is read from the statuses the on-board holds, not
+kept as a state machine (`EVC_Mission.VBC_Step`): SB with the desk open
+(the start of mission engaged); S1 the driver ID not valid; S10 / S20
+the driver ID and the level valid (D2 and S2 passed), no Train Data
+entry begun by the driver's 'Train data' (DMI action 21, a flag ended by
+the data, action 22 or 16: S12), not the Train Data valid with the train
+running number not valid (S13, D12), not after 'Start' (S21 to S24); the
+caller adds the level 2 steps between S2 and S10 / S20 (the session of
+the start of mission being opened, the registration awaited, S11 the
+Train Data acknowledgement awaited: the same terms as the Override's
+S10 / S20 in `EVC_Procedures.Override_Allowed`). The records 28 / 29
+stay for every code entered: SUBSET-027 4.2.4.28 "reflects the code
+entered by the driver". The DMI's dialogue keeps most refused steps out
+of reach (the Settings window is not reached from the Level, Train data,
+TRN or RBC data windows); the residue (a Settings press in SB at
+standstill outside S1 / S10 / S20, e.g. while a mode proposal awaits the
+acknowledgement) needs an enabling bit from the on-board: B4082
+(protocol, to decide). Scenario `EVC_Test_Sessions.Scenario_SoM_VBC_Steps`
+(the start of mission's helpers are there, not in `EVC_Test_VBC`): S2
+refused, S10 taken, S12 and S13 refused, S20 taken; three checks failed
+before the fix. Rows 5.4.5.3 and 5.4.5.3 i) partial on B4082 alone.
+
+**B3963, the RBC contact at a re-entered level.** 5.4.3.3 (page 24, the
+layout read): the row "Following S10 or S20: Driver chooses to re-enter
+the level" marks the level and the RBC contact information valid; with
+5.4.5.3 e) (the process to S2) the contact goes valid -> invalid, so S3
+asks it again in level 2. `EVC_Sessions.Mission.Evaluate_SoM` now sets
+the contact invalid at the driver's level entry (DMI action 11) past D2:
+at S2 D2 has already invalidated it, so a level entry with the contact
+valid is the re-entry at S10 / S20; MSG_ONBOARD data bit4 follows.
+Scenario `EVC_Test_Sessions.Scenario_SoM_Level_Reentered` (level 2 at
+S20, the level re-entered; failed before). Row 5.4.3.3 Table done.
+
+**B4023, the message 133 after Stand-By.** 3.18.3.10: "In Stand-By mode
+(only in level 2 when a communication session is already established)
+... following any modification of the Train Data safe consist length or
+when the safe consist length information ... becomes available"; no
+condition on the Train Data's validity. Decision: a change seen outside
+SB and the request period is kept for one cycle
+(`EVC_Sessions.Manoeuvre.Evaluate_Consist`) and sent in the next cycle
+when that is SB in level 2 with the session established: the change
+that brings SB by 4.6.3 [83] is one made in SB; a change seen in FS
+without SB following is not sent. Scenario
+`EVC_Test_Manoeuvre.Scenario_Consist_To_Stand_By_L2` (FS L2, 1 m in
+front: SB and the 133; failed before). Two SM scenarios that gave a
+length in front in level 2 and then reset the mode now acknowledge that
+133 (4.8.3 [17] would reject their SM authorisation). 3150100_10 SV30
+passes steps 71 to 74 and stops at step 75 (S68e1b06e: the driver
+presses Main in SB where ours shows the Driver ID window of S1, as
+3070300_11 step 47; s076). S143d6aa2 is left on 3110200_03 step 77, a
+different case (L2 SR, no request for SM, 3.18.3.10 asks nothing there).
+
+Backlog: B3985, B3963, B4023 done; B4082 (protocol) added. Runner:
+0 regressions, 1 improvement (3150100_10 SV30 71 -> 75), 1246 / 1031 /
+913.
