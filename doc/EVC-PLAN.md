@@ -23534,3 +23534,150 @@ failing the Euroradio check, M_ERROR 3 of 3.16.3.1.1 a) by
 stays open as written; nothing of it was read or built.
 Tally at the commit, re-counted from the transcript: 136 calls (Bash
 91, Read 19, Edit 26, Write 0, Monitor 0), of a budget of 160.
+
+### Review of the seventy-first round: eight verdicts re-derived blind (e5/review-71) (2026-11-12)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items and the extra one
+(3150800_05) were taken. No code, no triage line and no line of the
+authors was changed.
+
+1. A text sent again. Mine: no Sinfo (DMI 8.2.3.4.7 h) plays it for a
+   new first group text "displayed for the first time"; 8.2.3.4.8 c)
+   the same after an acknowledgement); its place by its own time
+   (8.2.3.4.7 d), chronological), so a text that arrived in between
+   stays above it and a system status message never taken back is
+   placed by its time against it; a tie of the same minute by the
+   arrival (the later on top), the frame carrying nothing finer; (b) a
+   text sent to a restarted DMI is new to it (its list is lost): no
+   flag, Sinfo for the first group, a choice where the text is silent;
+   (c) the rule by hour and minute, newest on top, with the midnight
+   wrap read on the 24 h dial. Author (bit 4 of MSG_TEXT, set from
+   `O.Again` in `EVC_Core.Outputs`, `Resend_Texts` without it;
+   `DMI_Text_Messages.Place_By_Time` and `Later`: up to 12 h ahead is
+   later, a same minute text sent again goes above;
+   `DMI_Test_Messages.Scenario_Text_Shown_Before`): the same; the
+   midnight edge is at 12 h apart (mine: at 24 h against the DMI's
+   clock), both right for texts of less than 12 h. Agree.
+
+2. The DMI's sound report and the record 22. Mine: (a) only Sinfo, S1
+   and S2 (the three bits of SUBSET-027 4.2.4.22; the click of 14.2
+   draws no attention to new information): no record for the click;
+   (b) a record at each start (4.3.1.1 "is started"), none at S2's
+   stop, the S2 bit set in the record of a Sinfo started while S2
+   plays; (c) one frame from the DMI per start or stop, read by the
+   loudspeaker and the on-board, a malformed one ignored. Author
+   (MSG_SOUND 0 to 4, `EVC_Driver_Requests.Take_Sound` following S2's
+   state, `EVC_Core.Records.Record_Sounds`, `EVC_DMI_Port.
+   Valid_Input_Frame` refusing a length other than 1 or a code above
+   4): the same. Agree.
+
+3. The VBC entries in the start of mission. Mine: (a) S1 (5.4.3.2 S1
+   offers set / remove VBC), S10 and S20 (5.4.5.3 i)); (b) from the
+   Driver ID's status (S1), the level valid, no entry the on-board
+   asked under way (S2, S3, S12, S13), no wait (S4 / A31, S11, S21) and
+   no acknowledgement after 'Start' (S22 to S24); (c) a code entered at
+   a refused step is not recorded: SUBSET-027 4.3.1.1 writes 28 / 29
+   "when the driver sets / removes a Virtual Balise Cover", and none is
+   set or removed; (d) a bit is needed: 11.2.4.5.1 enables Set VBC in
+   SB at standstill at every step, and the Settings button reaches it
+   at S11, S21, the session's waits and the acknowledgements of S22 to
+   S24. Author (`EVC_Mission.VBC_Step`, `EVC_Core.Inputs.
+   Take_VBC_Requests`, `EVC_Test_Sessions.Scenario_SoM_VBC_Steps`,
+   rows 5.4.5.3 and 5.4.5.3 i) partial, B4082 to decide): (a), (b) the
+   same; (d) left open as B4082, which my reading answers for the bit;
+   (c) the code recorded also when refused ("reflects the code entered
+   by the driver"). Disagree on (c): B4142.
+
+4. Two start of mission reactions. Mine: (a) 5.4.3.3's last row sets
+   the level and the RBC contact invalid when the driver chooses at
+   S10 / S20 to re-enter the level (5.4.5.3 e)); a first entry at S2
+   follows D2, which has already invalidated the contact (or left it
+   unknown), so a level entered past D2 is a re-entry; (b) [83] brings
+   SB in the cycle of the change, and 3.18.3.10 (SB, level 2, a session,
+   the information modified or becoming available) makes the 133 due
+   for it; a change in FS that brings no SB is outside the clause's
+   window and not kept for later. Author (`EVC_Sessions.Mission.
+   Evaluate_SoM`: the contact invalidated on the level entered past
+   D2; `EVC_Sessions.Manoeuvre.Evaluate_Consist`: `Pending` for one
+   cycle, the 133 in the next cycle when SB holds in level 2 with the
+   session; `Scenario_SoM_Level_Reentered`,
+   `Scenario_Consist_To_Stand_By_L2`): the same; the on-board sees the
+   entry, not the driver's press of Level, which differs only when the
+   driver leaves the Level window without an entry. Agree.
+
+5. A text behind the other acknowledgements. Mine: besides the mode's
+   and the level's, the brake release acknowledgements (3.14.1.3,
+   3.14.1.5, 3.14.1.7.x, 5.17.2.2 S3 / S5, asked at standstill,
+   3.14.1.9) and the system status message to be acknowledged
+   (15.1.1.4.1 "NL no longer permitted"; the NTC one out of scope); a
+   text waits behind any of them on offer (5.4.1.9). Requests of the
+   same cycle go by 5.4.1.9.1: level, mode, fixed text, plain text,
+   status message, brake release, NTC: the text before the status
+   message and the brake release. Author (`Asked` in
+   `EVC_Core.Modes.Run_Procedures`: the proposal, the procedures' and
+   the levels' acknowledgements, `SS_NL_No_Longer_Permitted`,
+   `Brake_Output.Ack_Required`, `EVC_Procedures.Brake_Demand.
+   Ack_Required`; `EVC_Text_Messages.Waits` "5.4.1.9.1: the mode and
+   the level first"; `Scenario_Text_Behind_Brake_Ack`, a brake asked
+   before the text): the set the same. For the same cycle `Asked` holds
+   a text behind a brake release asked by this cycle's monitoring
+   (`Brake_Output` is written by `EVC_Core.Monitoring` before
+   `Run_Procedures`) or by the procedures, where 5.4.1.9.1 puts the
+   text first. Disagree on the tie: B4143.
+
+6. The Train Data changed by the train interface. Mine: (a) after A5
+   the train is at standstill when A7 applies 3.18.3.7, so a) holds:
+   the MA shortened to the current position (A.3.4 situation j), [10]
+   [11]); after A1 at standstill the same; (b) 3.18.3.4 needs the
+   values sent to the RBC and 3.18.3.8 the former and new length, which
+   a configuration number gives only through a stored data set. Trace
+   of 5170200_01: at 350 m after step 105 ours holds the MA ending at
+   the train (target 0, MA 0); case 4 starts at 550 m in FS (step 106)
+   with no input between (ERA's PDF page 16: rows 105 then 106), and
+   ours trips on the way. The sequence's data. Author
+   (`EVC_Procedures.Train_Data_Categories_Changed` read by
+   `EVC_Core.Stored`, `Scenario_TIU_Categories`, row 5.17.2.2 A7
+   partial with 3.18.3.4 and 3.18.3.8 after A1 left; S3a9e8361 s076):
+   the same. Agree.
+
+7. 3170200_10 SV30 step 118. Trace: step 113's reach-point of the
+   train's max safe front end at the border (700 m) leaves the engine's
+   estimated front at 633 m; BG3d (M_VERSION 2.0) is read at 637 m;
+   session 2 (the accepting RBC) only requested at 82.9 s, never
+   established. 3.17.2.8 c) takes the accepting RBC's version at the
+   train's max safe front end with a session established, e) applies
+   the balise group orders again when the engine passes the border
+   with its max safe front end and no accepting session; with 70 m of
+   consist in front (3.6.1.5.1, 4.4.21.1.7) the two fronts differ. Ours
+   switches at the train's front (`EVC_Sessions.Handover.Evaluate`:
+   `Border_Front` then `Switch`, no accepting session, no roles), takes
+   BG3d's order and operates 2.3. Ours, 3.17.2.8 e). Author (S0f954a90
+   onboard, `EVC_Position.Evaluate_Border` from the train's front,
+   `EVC_Sessions.Handover.Switch`): the same. Agree.
+
+8. 3150800_01 SV30 step 118. Trace: power off at 132.5 s, on at
+   132.6 s, the connection request at 132.7 s, 'Cold movement not
+   detected' at 132.9 s, desk A at 133.2 s, the Driver ID at 136.3 s,
+   no request after it. 3.5.3.4 a) opens the session at the start of
+   mission; 5.4.3.2 reaches A31 through S1 (the Driver ID), D2, D3,
+   D7; 4.11.1.1 only revalidates the level and the contact; no other
+   case of 3.5.3.4 holds (f) needs a session lost by the radio, the
+   End of Mission terminated it). Ours (the caller is not
+   `EVC_Sessions.Mission.Evaluate_SoM`, which waits for the Driver ID;
+   not pinned within my calls). Author (Sa8a3ba1a onboard, B4122): the
+   same, the request after `EVC_Core.Modes.Revalidate_Kept`. Agree.
+
+Extra, 3150800_05 SV30 step 92. The packet 41 (level 0 at once) stored
+in L1 SH (steps 80 to 84), a power cycle, no cold movement: 4.11.1.4
+b) evaluates the stored order with the previous level, e) sets the
+result invalid and 4.11.1.1 revalidates it: level 0, as the step's
+header expects; ours keeps L1 (row 4.11.1.4 deferred: no order of SH
+survives No Power). Ours. Author (S665c85c1 onboard, B4123): the same.
+Agree. The rows 4.11.1.4 a) to e) say n/a ("nothing is kept") under a
+deferred parent: they apply, deferred like it.
+
+Counts: 8 items and the extra. Agreed: seven (1, 2, 4, 6, 7, 8, the
+extra); disagreed: two in part (3 c), the record of a refused VBC
+code, B4142; 5, the tie of the same cycle, B4143); undecided: none.
+Calls: 84 of 130 at this point.
