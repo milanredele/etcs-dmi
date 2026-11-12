@@ -381,7 +381,7 @@ is
       end if;
    end Judge_Opening;
 
-   --  @req 3.5.3.4 a), 3.5.3.8 a), 5.4.3.2 D7
+   --  @req 3.5.3.4 a), 3.5.3.8 a), 5.4.3.2 D7, 5.4.3.3 Table
    procedure Evaluate_SoM (Ctx        : R.Context_T;
                            Queued     : Boolean;
                            Queued_RBC : R.RBC_Id_T;
@@ -444,6 +444,16 @@ is
             --  D3 -> D7 -> S4 without a contact to open a session with
             Awaiting_Network := True;
          end if;
+      elsif Step /= Idle
+        and then EVC_Driver_Requests.Level_Selected
+        and then C.Valid
+      then
+         --  5.4.3.3 "Following S10 or S20: driver chooses to re-enter the
+         --  level" (5.4.5.3 e): the contact valid -> invalid. Past D2 a
+         --  level entry is at S2, where D2 has already invalidated it,
+         --  or a re-entry at S10 / S20
+         C.Valid := False;
+         R.Set_Contact (C);
       end if;
       --  S3, and 5.4.5.3 j) at S10 / S20: the driver's RBC contact
       if Step in Decided | Reported
