@@ -1401,6 +1401,104 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Text_Behind_Mode_Ack;
 
+   --  A fixed text to be acknowledged from 320 m (the group 10 at 100 m);
+   --  at 300 m the train rolls 3 m backwards against its MA, the
+   --  protection's emergency brake (3.14.3.4) asks at standstill the
+   --  acknowledgement of its release (3.14.1.9, the DMI's request 6);
+   --  the odometer then counts the train over 320 m at standstill: the
+   --  text started while the brake's request awaits the driver is held
+   --  (ERA_ERTMS_015560 5.4.1.9, the FIFO) and sent 1 s after the
+   --  release is acknowledged
+   procedure Scenario_Text_Behind_Brake_Ack is
+      TP      : ETCS_Track_Packets.P74.Packet_T;
+      W       : Writer_T;
+      OK      : Boolean;
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      Shown_N : Natural := 0;
+      procedure Count is
+      begin
+         for I in 1 .. EVC_Text_Messages.Event_Count loop
+            if Natural (EVC_Text_Messages.Event (I).Kind)
+              = EVC_Text_Messages.Event_Displayed
+            then
+               Shown_N := Shown_N + 1;
+            end if;
+         end loop;
+      end Count;
+      procedure Wait (Ms : Natural) is
+      begin
+         for C in 1 .. Ms / 100 loop
+            Stand_X (100);
+            Count;
+         end loop;
+      end Wait;
+   begin
+      Start_X;
+      Speed_Cms := 500;
+      Add_Group (Group (10, 100));
+      TP.Q_DIR := 2;
+      TP.Q_SCALE := 1;
+      TP.Q_TEXT := 1;
+      TP.D_TEXTDISPLAY := 220;
+      TP.L_TEXTDISPLAY := 1000;
+      TP.T_TEXTDISPLAY := 1023;
+      TP.M_MODETEXTDISPLAY := 15;
+      TP.M_LEVELTEXTDISPLAY := 4;
+      TP.M_MODETEXTDISPLAY_2 := 15;
+      TP.M_LEVELTEXTDISPLAY_2 := 4;
+      TP.Q_TEXTCONFIRM := 1;
+      TP.Has_Q_CONFTEXTDISPLAY := True;
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      ETCS_Track_Packets.P74.Encode (TP, W, OK);
+      Finish_Carry (1, 0, W, OK);
+      Carry (1, 1, MA_Of ((1 => 3000)));
+      Run_X (20_000);
+      while Train_Cm < 30_000 loop
+         Step_X (50);
+         Count;
+      end loop;
+      for I in 1 .. 6 loop
+         Step_X (-50);
+         Count;
+      end loop;
+      Wait (500);
+      Check (EVC_Core.Brake_Commands.EB
+               and then EVC_Core.Brake_Commands.Ack_Required
+               and then Shown_N = 0,
+             "text behind a brake acknowledgement: 3 m backwards, the "
+             & "brake's release to be acknowledged at standstill (3.14.1.9), "
+             & "got " & EVC_Core.Brake_Commands.EB'Image
+             & EVC_Core.Brake_Commands.Ack_Required'Image & Shown_N'Image);
+      while Train_Cm < 33_000 loop
+         Feed_X (100);
+         Sample (0);
+         Cycle_X;
+         Count;
+      end loop;
+      Wait (500);
+      Check (EVC_Core.Brake_Commands.Ack_Required and then Shown_N = 0
+               and then EVC_Text_Messages.Displayed = 0,
+             "text behind a brake acknowledgement: started at 320 m, held "
+             & "while the release's acknowledgement asked before it awaits "
+             & "the driver (ERA_ERTMS_015560 5.4.1.9, 5.4.1.9.1 6)), got "
+             & EVC_Core.Brake_Commands.Ack_Required'Image & Shown_N'Image
+             & EVC_Text_Messages.Displayed'Image);
+      Input (DMI, (16#40#, 5, 0, 0, 0, 2, 5, 0, 0, 0));
+      Wait (500);
+      Check (not EVC_Core.Brake_Commands.Ack_Required and then Shown_N = 0,
+             "text behind a brake acknowledgement: not sent before 1 s "
+             & "after the release's acknowledgement (5.4.1.9), got "
+             & EVC_Core.Brake_Commands.Ack_Required'Image & Shown_N'Image);
+      Wait (1000);
+      Check (Shown_N = 1 and then EVC_Text_Messages.Displayed = 1,
+             "text behind a brake acknowledgement: sent and recorded 1 s "
+             & "after the release's acknowledgement (5.4.1.9; SUBSET-027 "
+             & "4.3.1.1), got" & Shown_N'Image
+             & EVC_Text_Messages.Displayed'Image);
+      Speed_Cms := Saved;
+   end Scenario_Text_Behind_Brake_Ack;
+
    --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
    --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls
    --  back 1.5 m in rear of the location where "Lowered pantograph" is

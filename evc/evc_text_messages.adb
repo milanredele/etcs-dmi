@@ -727,8 +727,9 @@ is
      (M.Confirm /= 0 and then not M.Acked);
 
    --  Whether the started text M of the slot I waits before it is sent:
-   --  one to be acknowledged while the acknowledgement of a mode or a
-   --  level transition is asked (Asked) and during the 1 s after it or a
+   --  one to be acknowledged while another acknowledgement (a mode, a
+   --  level transition, a status message, a brake's release) is asked
+   --  (Asked) and during the 1 s after it or a
    --  text was acknowledged or revoked, while another awaits its
    --  acknowledgement or while one started before it waits (DMI 5.4.1.9:
    --  a FIFO by the starts, then the slots; 5.4.1.9.1: the mode and the

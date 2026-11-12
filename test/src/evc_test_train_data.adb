@@ -189,6 +189,47 @@ package body EVC_Test_Train_Data is
              & "(3.18.3.7 b)");
    end Scenario_Transition_Deleted;
 
+   procedure Scenario_TIU_Categories is
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      Start_X;
+      Add_Group (Group (10, 100));
+      ETCS_Track_Packets.P42.Encode
+        ((NID_PACKET => 42, Q_DIR => 2, L_PACKET => 0, Q_RBC => 1,
+          NID_C => 5, NID_RBC => 300, NID_RADIO => 16#0077#,
+          Q_SLEEPSESSION => 0), W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Input (TIU, (13, 1));
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Send (Train_Entry (200));
+      Give_Radio_Message (2, M24 (10, False, 1, 400));
+      Stand;
+      Check (R.Accepting = 2 and then EVC_Radio_Authority.Buffered = 1,
+             "train data from the train interface: a message of the "
+             & "Accepting RBC held (4.8.2.1 c)");
+      Input (TIU, (13, 2));
+      Stand_X (200);
+      Check (EVC_Radio_Authority.Buffered = 1,
+             "train data from the train interface: another configuration "
+             & "without the categories (5.17.2.2 D1 -> A1): the held "
+             & "message kept");
+      Input (TIU, (13, 128 + 3));
+      Stand_X (200);
+      Check (EVC_Radio_Authority.Buffered = 0,
+             "train data from the train interface: the categories changed "
+             & "at standstill in SR, no MA of the RBC stored (5.17.2.2 D3, "
+             & "D5 -> A1, A7): the information of the RBC transition "
+             & "deleted (3.18.3.7 b)");
+   end Scenario_TIU_Categories;
+
    --  The TIU frame of an available safe consist length (EVC_Ports signal
    --  15): the lengths in front of the engine (nominal, min, max), then
    --  in rear of it, metres

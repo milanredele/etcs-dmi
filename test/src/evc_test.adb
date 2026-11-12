@@ -193,6 +193,7 @@ begin
    Scenario_Other_Profiles;
    Scenario_Mode_Profile_Roll_Back;
    Scenario_Text_Behind_Mode_Ack;
+   Scenario_Text_Behind_Brake_Ack;
    Scenario_Track_Condition_Roll_Back;
    Scenario_MA_Timers_Roll_Back;
    Scenario_LX_Roll_Back;
@@ -289,6 +290,7 @@ begin
    Scenario_Driver_Adhesion;
    Scenario_Train_Data_Categories;
    EVC_Test_Train_Data.Scenario_Transition_Deleted;
+   EVC_Test_Train_Data.Scenario_TIU_Categories;
    EVC_Test_Train_Data.Scenario_Longer_Train;
    EVC_Test_Train_Data.Scenario_RBC_TRN;
    EVC_Test_Train_Data.Scenario_Engine_Length;

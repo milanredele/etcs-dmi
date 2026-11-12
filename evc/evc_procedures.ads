@@ -246,6 +246,14 @@ is
    function Train_Data_Revalidation return Boolean
      with Global => State;
 
+   --  5.17.2.2 A7 after A1 or A5 in the last cycle, the train
+   --  configuration of the train interface having changed the train
+   --  category, axle load category, traction systems or loading gauge
+   --  (its category bit) at standstill: 3.18.3.7 applies (EVC_Core)
+   --  @req 5.17.2.2 A7
+   function Train_Data_Categories_Changed return Boolean
+     with Global => State;
+
    --  3.15.4.7: reversing is permitted (MSG_STATUS reversing)
    function Reversing_Possible return Boolean
      with Global => State;

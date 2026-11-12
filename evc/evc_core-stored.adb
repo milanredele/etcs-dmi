@@ -209,12 +209,17 @@ is
                            and then SR_Distance.Active,
             SR_End      => SR_End),
          Virtual_Last   => SDM_Result.Virtual);
-      --  3.18.3.7 a): after the Train Data entered in the last cycle
+      --  3.18.3.7 a): after the Train Data entered in the last cycle, or
+      --  changed by the train interface (5.17.2.2 A7)
       EVC_Stored_Information.Train_Data_Shortening
-        (EVC_Mission.Categories_Changed);
+        (EVC_Mission.Categories_Changed
+         or else EVC_Procedures.Train_Data_Categories_Changed);
       Apply_Cut;
       --  3.18.3.7 b): the radio information held for a transition
-      if EVC_Mission.Categories_Changed and then EVC_Odometry.Standstill then
+      if (EVC_Mission.Categories_Changed
+          or else EVC_Procedures.Train_Data_Categories_Changed)
+        and then EVC_Odometry.Standstill
+      then
          EVC_Radio_Authority.Delete_Transition_Information;
       end if;
       Bound_Transition_Buffer;
