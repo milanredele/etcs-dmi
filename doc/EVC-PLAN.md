@@ -24778,3 +24778,105 @@ shortened at standstill: hold it until an MA or an override, or follow
 the chart and triage s076); B4242 should be built as e6/border-engine
 found it (the request after the held text), which my reading of item 2
 confirms. Calls: 77 of 130 at this point.
+
+### E5 integration after the seventy-third round, the forty-first of E6 (2026-11-13)
+
+Merged: e5/traces-dmi (the seven signatures on the DMI's lines of the
+triage traced: none is a defect of our DMI, `DMI_Conditions` matches
+the Tables 33 to 35 on their pages; two were the runner's driver, fixed
+in `S076_Run`: a reversal whose comment says the train is at standstill
+turns it without moving (B4323), and the train is stopped before an
+input whose comment says so with the next step at the same place
+(B4325): 4120100_10, 4060300_08 and 4100103_19 pass in three versions,
+4120100_15 moves to step 126 (the bench's train standing where the
+chart has it moving, B4324), 4080421_03 SV30 to step 156 (the 129 at
+the Train Data validation, 3.18.3.4: s076); the sequences' data:
+4080420_01 (the train running number still valid, D12 to D10),
+4100103_45 (Level pressed in SH), 9990400_45 (Q_NVDRIVER_ADHES not
+allowed by default), 9990400_31 (the train restarted by the chart
+after its MA was shortened); 5180500_01 the runner's model (a step
+naming 5 minutes is passed after 85 s, B4326)), e6/border-engine
+(B4124: a third border item of `EVC_Position` for the engine's max
+safe front end, `Engine_Short_Of_Border` true between the two
+passings, during which `EVC_Sessions.Follow_Version` keeps the RBC's
+precedence in level 2 while no supervising session with a known
+version exists; the handover's switch stays at the train's front; the
+row 3.17.2.8 e) noted; 3170200_10 SV30 from step 118 to 122, s076 (BG4d
+is not in the linking the sequence gives); B4242 left after the bound
+with its finding: the DMI queues by arrival, so the on-board must send
+the brake release request after the held text, a change of `EVC_Core.
+Outputs`; S143d6aa2 not taken: its lines already trace it s076, the
+brief's premise wrong), e6/kept-position (B4202: `Kept_Position_T.Ref`
+with `Unlinked`, the SOLR of an unlinked group kept and restored
+invalid, deleted like an LRBG's when it stays invalid; 5040300_16 stays
+at step 89 and is now the sequence's data: it gives no cold movement
+information and its own steps 58 and 61 treat the stored data as
+invalid, so A24 deletes the position: the verdict "ours" of round 72
+held for the keeping, not for the step; B4222: one conversion `EVC_
+Train_Data.Of_Train_Type`; B2081: the driver's train types are the
+image's sets flagged as keys, else the default table, read by
+`Type_Matches` and `Send_Train_Types` through `Driver_Type`),
+e6/proof-width (B4262: `EVC_Config.Decoded` as a sequence of readers
+with their own contracts (`Get_Header`, `Get_Fixed`, `Get_Tail`): the
+unit's margin 3457 -> 1214 steps and unmoved by the throw-away spec
+change that takes master's to 11324; `evc/prove.sh --wide` lists the
+wide checks; the postconditions of `EVC_Odometry.Set_Check` and `EVC_
+Position.Set_Antenna` by ghost frame records: the wide checks 6 -> 4;
+B3860: the runner's summary counts the untriaged signatures and fails
+on one, under `UPDATE=1` too; B3861: `trace_subset026.py --stale`, and
+`--check` fails on a partial or todo row citing a closed backlog item;
+B4283 (two deferred rows citing B008 look done), B4284 (`Load_Gamma`
+and a format 5 image: a scenario first)) and the review e5/review-73.
+
+Review (the twenty-second): eight items, seven agree (the border by
+the engine's front, the train types, 5040300_16 the sequence's data
+with last round's verdict reversed, the three refused presses, 3170200_
+10, the two standstill rules with 4080421_03, 5180500_01 the runner),
+one disagrees in part: B4343: 9990400_31 step 57 is the runner first
+(it drives the train past an end of authority shortened at standstill,
+the pattern the same author triaged as the runner's model in
+4120100_15, B4324), not the sequence's data. On the item without a
+build (B4242) the reviewer's reading is the author's finding: the
+request is sent after the text. The neutral commit subjects named none
+of the items. Twenty-two rounds of reviews: 185 items, 159 agreed, 29
+disagreed, 8 undecided; 44 lines, of which 10 became fixes; 145.5 USD.
+
+Verification of the merged tree: the whole check green after the first
+and after the third merge; the full chain after the four green at
+once: `test/check.sh` ok; the full proof 14514 checks, none unproved,
+margin 47726 steps, the wide checks 4 of 6; cross build and stack
+32768 B budget, margin 6016 B (unchanged); wasm and both smokes 0
+failures; the runner 1262 / 1006 / 922 (from 1253 / 1015 / 922), 0
+regressions against the merged baseline, 0 untriaged. The merge:
+traces-dmi and the review fast-forwarded; border-engine and
+kept-position conflicted on the plan; proof-width on the plan, the
+backlog and one matrix row (4.11.1.1: one side added the unlinked
+case, the other took a closed id out of the note: both applied).
+
+Costs (doc/ROUNDS.csv): 46.7 USD with the review (39.3 for the four
+packages, 7.4 the review), 12 of 14 package items done, 2 left (B4242
+with a finding, S143d6aa2 not needed), 3 of 19 brief premises wrong
+(S143d6aa2 already traced; `Decoded` no longer at 100 lines; the
+build of B4202 does not make 5040300_16 pass), no agent over budget,
+two past the bound (137, 153 of 160). Lessons: a verdict "ours" for a
+missing function is not a verdict for the step that showed it (the
+step is re-traced once the function is built: here it reversed); a
+neutral commit subject keeps the review blind at no cost; the
+fragility of a proof is shown by a throw-away change that used to
+break it, not by a low number; a signature id with several triage
+lines shows the first in the report (Sfbc6ab9e: the border sequence
+of SV30 under the E7 line): the specific line goes first.
+
+The matrix: clauses left 2 (partial: 4.11.1.1 and 4.11.1.3, both on
+E7 and E8; done 2144). Open items: doc/BACKLOG.csv (21 open after
+this round; 7 added of which 1 by the review, 9 closed with the two
+opened and closed in the round, B4243 decided before it). Next: B4242
+(the brake release request sent after a held text, in `EVC_Core.
+Outputs`), B4343 with B4324 (one rule of the runner for a train whose
+MA was shortened at standstill), B4326 (a step naming a time elapsed
+is waited for), B4283 (the two deferred rows), B4284 (a gamma train in
+a format 5 image: a scenario first), the signatures triaged onboard or
+E6 that still stop sequences under notes older than the code
+(S185bee31 nine sequences, S27eb0678 eight, Sdecbd2e2 three), then the
+closure of E6: with the matrix at two rows that wait for E7 and E8,
+what is left of the phase is the runner's triage.
