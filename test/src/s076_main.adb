@@ -296,6 +296,8 @@ package body S076_Main is
    New_N    : Natural := 0;
 
    Regressions, Improvements, New_Seqs : Natural := 0;
+   --  the failure signatures of the report without a triage line
+   Untriaged_Signatures : Natural := 0;
    Regression_List, Improvement_List : Text_T;
 
    ---------------------------------------------------------------------
@@ -809,6 +811,7 @@ package body S076_Main is
                          & ": " & Image (Triage (T).Note));
             elsif Sigs (I).Sequences > 0 then
                Put_Line (F, "        triage: NONE");
+               Untriaged_Signatures := Untriaged_Signatures + 1;
             end if;
             if Sigs (I).Example_N > 0 then
                Put_Line (F, "        e.g. " & Image (Sigs (I).Examples));
@@ -946,9 +949,14 @@ begin
       Put_Line ("evc_s076_run: " & Line_Of (Total)
                 & "; baseline: " & Img (Regressions) & " regressions, "
                 & Img (Improvements) & " improvements"
-                & (if Update then " (recorded)" else ""));
+                & (if Update then " (recorded)" else "")
+                & "; " & Img (Untriaged_Signatures) & " untriaged");
    end if;
-   if Regressions > 0 and then not Update then
+   --  decision: an untriaged signature fails the run under UPDATE=1 too
+   --  (the baseline is still recorded): a re-recording is for a change
+   --  understood, and a signature without its triage line is not
+   if (Regressions > 0 and then not Update) or else Untriaged_Signatures > 0
+   then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;
 end Run;
