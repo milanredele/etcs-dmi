@@ -24395,3 +24395,9 @@ Train data, Level and Adhesion buttons disabled, the train running
 number window: 33 sequences stop on lines triaged dmi, several notes
 older than the code), B3860 and B3861 (the two checks), the review
 again (eight items, readings first, launched from a neutral commit).
+
+Decision B4243 (2026-11-13, the user): the build is kept: a train
+interface input with the category bit set and a configuration number
+for which the image holds no set changes no Train Data value and still
+applies 3.18.3.7 by the bit (5.17.2.2 D1), the more restrictive
+reading.
