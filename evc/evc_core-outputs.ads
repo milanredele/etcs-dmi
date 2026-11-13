@@ -184,7 +184,7 @@ is
    --  data of the start of mission (5.4), the train and national bits;
    --  the fields of the later phases are 0, "nothing known"
    --  @req 5.4.3.2 S21, 5.4.3.2 D2, 5.17.2.2 S6, 5.11.2.2 D130, 5.11.2.2 S130
-   --  @req 5.11.2.2 S140
+   --  @req 5.11.2.2 S140, 5.4.5.3 i)
    procedure Send_Onboard
      with Global => (Input  => (Current_Mode, Standstill, Below_Override,
                                  TIU_Now, TIU_Known_Now, TIU_Value_Now,

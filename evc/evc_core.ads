@@ -806,6 +806,24 @@ private
    function Controller_Now return EVC_Brake_Commands.Controller_T
      with Global => (TIU_Value_Now, TIU_Known_Now);
 
+   --  The on-board takes a Set VBC / Remove VBC entry now: SB at the
+   --  steps S1, S10 and S20 of the start of mission (3.15.9.2, 5.4.3.2
+   --  S1, 5.4.5.3 i), EVC_Mission.VBC_Step), the level 2 steps of the
+   --  session and of the Train Data acknowledgement being EVC_Sessions';
+   --  one reading for the taking (EVC_Core.Inputs.Take_VBC_Requests) and
+   --  the DMI's enabling of the two buttons (MSG_ONBOARD national bit 5,
+   --  DMI Table 36 #5, #6), so that a press is never refused
+   --  @req 5.4.5.3 i)
+   function VBC_Entry_Taken return Boolean is
+     (Current_Mode = M_SB
+      and then EVC_Mission.VBC_Step
+                 (Level_Valid => EVC_Levels.Valid,
+                  Radio_Step  => EVC_Sessions.SoM_Opening
+                                 or else EVC_Sessions.SoM_Awaiting_Registration
+                                 or else EVC_Sessions.Train_Data_Awaited))
+     with Global => (Current_Mode, EVC_Mission.State, EVC_Levels.State,
+                     EVC_Sessions.State, EVC_Train_Data.State);
+
    procedure Count (Counter : in out Natural);
 
 end EVC_Core;

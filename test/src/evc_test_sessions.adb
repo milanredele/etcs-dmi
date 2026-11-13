@@ -3722,32 +3722,61 @@ package body EVC_Test_Sessions is
       --  NID_VBCMK 5, NID_C 123, T_VBC 3 (DMI 11.3.12.5, 11.3.13.5)
       Set_Code    : constant Unsigned_32 := 5 + 123 * 64 + 3 * 65_536;
       Remove_Code : constant Unsigned_32 := 123 + 5 * 1024;
+      --  MSG_ONBOARD national bit 5 of the last cycle is Set (DMI
+      --  Table 36 #5, #6: the VBC entries enabled on it), the frame sent
+      function Entry_Bit (Set : Boolean) return Boolean is
+        (Onboard_Byte (10) /= 16#FF#
+         and then ((Onboard_Byte (10) / 32) mod 2 = 1) = Set);
    begin
       EVC_VBC.Clear;
       EVC_Test_Modes.Start_E4;
+      Check (Entry_Bit (True),
+             "som vbc: S1, the DMI told the VBC entries are taken "
+             & "(MSG_ONBOARD national bit 5, 5.4.3.2 S1)");
       Send (Text_Entry (0, "1234"));
+      Check (Entry_Bit (False),
+             "som vbc: S2, national bit 5 cleared (the level not valid)");
       Send (VBC_Entry (8, Set_Code));
       Check (EVC_VBC.Count = 0,
              "som vbc: a Set VBC at S2 (the level not valid) refused "
              & "(5.4.5.3 i)");
+      Check (JRU_Count (28) = 0,
+             "som vbc: a refused Set VBC not recorded (SUBSET-027 4.3.1.1: "
+             & "no VBC set), got" & JRU_Count (28)'Image);
       Send (Action (11, 4));
+      Check (Entry_Bit (True), "som vbc: S10, national bit 5 set");
       Send (VBC_Entry (8, Set_Code));
       Check (EVC_VBC.Covers (123, 5),
              "som vbc: a Set VBC at S10 taken (5.4.5.3 i)");
+      Check (JRU_Count (28) = 1,
+             "som vbc: the Set VBC taken at S10 recorded (record 28)");
       Send (Action (21));
+      Check (Entry_Bit (False),
+             "som vbc: S12, national bit 5 cleared during the Train Data "
+             & "entry");
       Send (VBC_Entry (9, Remove_Code));
       Check (EVC_VBC.Covers (123, 5),
              "som vbc: a Remove VBC during the Train Data entry (S12) "
              & "refused (5.4.5.3 i)");
+      Check (JRU_Count (29) = 0,
+             "som vbc: a refused Remove VBC not recorded (SUBSET-027 "
+             & "4.3.1.1: no VBC removed), got" & JRU_Count (29)'Image);
       Send (Train_Entry);
+      Check (Entry_Bit (False), "som vbc: S13, national bit 5 cleared");
       Send (VBC_Entry (9, Remove_Code));
       Check (EVC_VBC.Covers (123, 5),
              "som vbc: a Remove VBC at S13 (the train running number not "
              & "valid after the Train Data) refused (5.4.3.2 D12)");
       Send (Text_Entry (1, "5678"));
+      Check (Entry_Bit (True), "som vbc: S20, national bit 5 set");
       Send (VBC_Entry (9, Remove_Code));
       Check (EVC_VBC.Count = 0,
              "som vbc: a Remove VBC at S20 taken (5.4.5.3 i)");
+      Check (JRU_Count (29) = 1,
+             "som vbc: the Remove VBC taken at S20 recorded (record 29)");
+      Send (Action (5));
+      Check (Entry_Bit (False),
+             "som vbc: after 'Start' (S21 to S24) national bit 5 cleared");
       EVC_VBC.Clear;
    end Scenario_SoM_VBC_Steps;
 

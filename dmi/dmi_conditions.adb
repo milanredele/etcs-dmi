@@ -372,13 +372,17 @@ package body DMI_Conditions is
    function Settings_System_Version return Boolean is (Settings_Rows);
    function Settings_ATO return Boolean is (Settings_Rows);
 
-   --  #5 Set VBC
+   --  #5 Set VBC; decision: also on the on-board's word that it takes the
+   --  entry now (MSG_ONBOARD national bit 5: SUBSET-026 5.4.5.3 i) takes
+   --  it at S1, S10 and S20 only), so that a press is never refused
    function Settings_Set_VBC return Boolean is
-     (Standstill and then SDI.Mode = SDI.M_SB and then VBC_Room);
+     (Standstill and then SDI.Mode = SDI.M_SB and then VBC_Room
+      and then VBC_Entry);
 
-   --  #6 Remove VBC
+   --  #6 Remove VBC, the same on-board term as #5
    function Settings_Remove_VBC return Boolean is
-     (Standstill and then SDI.Mode = SDI.M_SB and then VBC_Stored);
+     (Standstill and then SDI.Mode = SDI.M_SB and then VBC_Stored
+      and then VBC_Entry);
 
    ---------------------------------------------------------------------
    -- Hour glass ST05 (11.2.1.6)
@@ -448,6 +452,7 @@ package body DMI_Conditions is
       VBC_Room             := False;
       VBC_Stored           := False;
       Override_Selectable  := False;
+      VBC_Entry            := False;
       Start_Of_Mission     := No_Mission_Start;
       Waiting              := Nothing;
       Start_Pending        := False;

@@ -52,6 +52,13 @@ package body DMI_Test_VBC is
       Check (not Win_Enabled (5),
              "Table 36 #5: no Set VBC when the VBC storage is full");
       Check (not Win_Enabled (6), "Table 36 #6: no Remove VBC with none stored");
+      VBC_Onboard (National  => VBC_Room_Bit or VBC_Stored_Bit,
+                   VBC_Entry => False);
+      Check (Win_Enabled (4) and then not Win_Enabled (5)
+             and then not Win_Enabled (6),
+             "Table 36 #5, #6: no Set / Remove VBC in SB at standstill "
+             & "with room and a VBC stored when the on-board does not "
+             & "take an entry now (MSG_ONBOARD national bit 5 cleared)");
       VBC_Onboard (National => VBC_Room_Bit or VBC_Stored_Bit);
       Check (Win_Enabled (5) and then Win_Enabled (6),
              "Table 36 #5, #6: Set / Remove VBC in SB at standstill");

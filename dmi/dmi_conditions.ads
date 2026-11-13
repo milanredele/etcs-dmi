@@ -80,6 +80,9 @@ package DMI_Conditions is
    --  the on-board allows the driver to select "Override" now
    --  (SUBSET-026 5.8.2.1, 5.4.5.3 a): the speed term included)
    Override_Selectable  : Boolean := False;
+   --  the on-board takes a Set VBC / Remove VBC entry now (SUBSET-026
+   --  5.4.3.2 S1, 5.4.5.3 i): SB at S1, S10 and S20)
+   VBC_Entry            : Boolean := False;
 
    --  Start of mission (SUBSET-026 5.4, DMI Table 49)
    --  Train_Data_Request: no start of mission, the on-board requests the

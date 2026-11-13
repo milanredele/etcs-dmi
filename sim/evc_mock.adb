@@ -370,11 +370,14 @@ package body EVC_Mock is
       Put_U8 (Payload, Offset, RBC);
       Put_U8 (Payload, Offset, Train);
       --  national: adhesion may be modified (NV, bit 1), the VBC store
-      --  has room (bit 2), at least one VBC is stored (bit 3)
+      --  has room (bit 2), at least one VBC is stored (bit 3), the VBC
+      --  entries taken (bit 5) always: the mock has no start of mission
+      --  steps
       Put_U8 (Payload, Offset,
               2 or (if VBC_Count < VBC_Capacity then 4 else 0)
                 or (if VBC_Count > 0 then 8 else 0)
-                or (if Override_OK then 16 else 0));
+                or (if Override_OK then 16 else 0)
+                or 32);
       --  Table 49 S0: the cab is active and the mode is SB, and no
       --  session has to end first, so the conditions to initiate a start
       --  of mission are fulfilled as long as the mode is SB

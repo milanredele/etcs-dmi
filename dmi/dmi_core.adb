@@ -1037,6 +1037,7 @@ package body DMI_Core is
       DMI_Conditions.VBC_Room             := Bit (National, 2);
       DMI_Conditions.VBC_Stored           := Bit (National, 3);
       DMI_Conditions.Override_Selectable  := Bit (National, 4);
+      DMI_Conditions.VBC_Entry            := Bit (National, 5);
 
       DMI_Conditions.Start_Of_Mission :=
         (case SOM is

@@ -117,13 +117,12 @@ is
    --  the periods elapsed (3.15.9.5 b), from the reception or the entry,
    --  3.15.9.6), then the driver's Set VBC and Remove VBC (DMI 11.3.12.5,
    --  11.3.13.5: the codes split as MSG_DRIVER_DATA carries them), each
-   --  with its juridical record (SUBSET-027 4.2.4.28, 4.2.4.29: the code
-   --  entered, also when it is not taken: the record "reflects the code
-   --  entered by the driver").
-   --  Taken in SB at the steps S1, S10 and S20 of the start of mission
-   --  only (3.15.9.2, 5.4.3.2 S1, 5.4.5.3 i), EVC_Mission.VBC_Step), the
-   --  level 2 steps of the session and of the Train Data acknowledgement
-   --  being EVC_Sessions'.
+   --  with its juridical record (SUBSET-027 4.2.4.28, 4.2.4.29).
+   --  Taken when VBC_Entry_Taken (SB at the steps S1, S10 and S20 of the
+   --  start of mission), the reading MSG_ONBOARD national bit 5 gives the
+   --  DMI; decision: a code entered at another step is dropped without a
+   --  record (SUBSET-027 4.3.1.1: the records are written when the driver
+   --  sets or removes a VBC, and none is set or removed).
    --  @req 3.15.9.2, 3.15.9.5 c), 5.4.5.3 i)
    procedure Take_VBC_Requests
      with Global => (Input  => (Clock_Ms, UTC_Known, UTC_Seconds,
