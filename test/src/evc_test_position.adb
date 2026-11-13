@@ -1400,6 +1400,67 @@ package body EVC_Test_Position is
              & " " & Pos.Status_T'Image (Pos.Status) & ")");
    end Scenario_SoM_Deletes_Invalid;
 
+   --  4.10 column NP, 3.6.2.2.2.1, 3.6.4.2.2 b), 3.6.4.2.2.1: a position
+   --  referred only to a group marked as unlinked is kept over No Power,
+   --  its SOLR that group, its LRBG "unknown"; restored invalid at the
+   --  same distance from the SOLR, valid again without a cold movement
+   --  (4.11.1.1), still invalid with one and then deleted when the start
+   --  of mission leaves Stand By (5.4.3.3, E10)
+   procedure Scenario_Kept_Unlinked is
+      function Sig (S : TIU_Signal_T; On : Boolean) return Byte_Array is
+        ((Byte (TIU_Signal_T'Pos (S) + 1), (if On then 1 else 0)));
+      procedure Before_Power_Cut is
+      begin
+         Start_Track;
+         Add_Group (Group (10, 100));
+         Track (1).Linked := False;
+         Run_To (20_000);
+         Stand;
+         EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L1);
+         Input (TIU, Sig (Cab_A_Active, False));
+         Cycle;
+      end Before_Power_Cut;
+      F : EVC_Distances.Dist_T;
+   begin
+      Before_Power_Cut;
+      Check (Pos.Status = Pos.Valid and then not Pos.LRBG.Valid
+             and then Pos.SOLR.Valid and then Pos.SOLR.Id.NID_BG = 10,
+             "kept unlinked: the unlinked group the SOLR, the LRBG unknown");
+      F := Pos.SOLR_Estimated_Front;
+      EVC_Core.Power_Up;
+      Check (Pos.Status = Pos.Invalid and then not Pos.LRBG.Valid
+             and then Pos.SOLR.Valid and then Pos.SOLR.Id.NID_BG = 10
+             and then Pos.SOLR_Estimated_Front = F,
+             "kept unlinked: the SOLR and the distance from it kept, the "
+             & "position invalid after the power-up (4.10 column NP)");
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 100));
+      Cycle;
+      Check (Pos.Status = Pos.Valid and then not Pos.LRBG.Valid
+             and then Pos.SOLR.Id.NID_BG = 10
+             and then Pos.SOLR_Estimated_Front = F,
+             "kept unlinked: no cold movement, the position valid "
+             & "(4.11.1.1), the LRBG still unknown (3.6.2.2.2.1)");
+
+      Before_Power_Cut;
+      EVC_Core.Power_Up;
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 250));
+      Cycle;
+      Check (Pos.Status = Pos.Invalid and then Pos.SOLR.Valid,
+             "kept unlinked: a cold movement, the position stays invalid "
+             & "(4.11.1.3)");
+      Input (TIU, Sig (Non_Leading_Permitted, True));
+      Input (TIU, Sig (Cab_A_Active, True));
+      Cycle;
+      --  'Non Leading' (MSG_DRIVER_ACTION 12)
+      Input (DMI, (16#40#, 3, 0, 0, 0, 12, 0, 0));
+      Cycle;
+      Check (EVC_Core.Mode = EVC_Modes.M_NL
+             and then Pos.Status = Pos.Unknown and then not Pos.SOLR.Valid,
+             "kept unlinked: Non Leading selected, the invalid position "
+             & "deleted (5.4.3.3 E10; " & EVC_Modes.Mode_T'Image
+             (EVC_Core.Mode) & " " & Pos.Status_T'Image (Pos.Status) & ")");
+   end Scenario_Kept_Unlinked;
+
 
    --  3.6.3.1.3.1: a group read in SH with the train moving against its
    --  orientation (cab A, the train backing over the group 10 at 100 m)

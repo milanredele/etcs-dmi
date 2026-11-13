@@ -551,7 +551,6 @@ is
       if ((From = M_SB and then To in M_SN | M_UN | M_SR | M_NL | M_SH)
           or else To = M_SL)
         and then EVC_Position.Status = EVC_Position.Invalid
-        and then EVC_Position.LRBG.Valid
       then
          EVC_Position.Delete_Position;
       end if;
