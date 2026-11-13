@@ -204,6 +204,37 @@ is
           Post => Valid and then Data = D and then Categories = C
                   and then not Manoeuvre_Set and then Type_In_Force = T;
 
+   --  The Train Data D and the categories C of the train type T (the
+   --  items of the driver's entry, DMI Table 40, in its codes) with the
+   --  engine's fixed data F: km/h to cm/s rounded down (the ceiling never
+   --  above), the brake position from the bits of NC_TRAIN (7.5.1.84),
+   --  the braking models of the installation for a gamma train (3.18.3.2
+   --  c), 3.18.3.2.1). The one conversion of a train type, for the
+   --  driver's entry (EVC_Mission) and a set selected by the train
+   --  interface (Take_Configuration_Set)
+   --  @req 3.18.3.2
+   procedure Of_Train_Type (T : EVC_Config.Train_Type_T;
+                            F : EVC_Config.Fixed_Train_T;
+                            D : out Train_Data_T;
+                            C : out Categories_T)
+     with Global => (Input => EVC_Config.State);
+
+   --  The pre-configured train types of the driver's fixed entry
+   --  (3.18.3.2.1, DMI 11.3.9.6 a), the keys of MSG_TRAIN_TYPES: the sets
+   --  of the image flagged as keys, in table order, when it has any, else
+   --  the installation's defaults (EVC_Config.Default_Train_Types).
+   --  Decision: an image of formats 1 to 4, or of format 5 without a key,
+   --  says nothing of the driver's types, and the DMI offers the defaults;
+   --  a key set is offered whether or not it has a configuration number.
+   --  As many keys as MSG_TRAIN_TYPES carries (Train_Types_Max)
+   --  @req 3.18.3.2
+   function Driver_Type_Count return Natural
+     with Global => EVC_Config.State,
+          Post => Driver_Type_Count'Result <= EVC_Config.Train_Types_Max;
+   function Driver_Type (I : Positive) return EVC_Config.Train_Type_T
+     with Global => EVC_Config.State,
+          Pre  => I <= Driver_Type_Count;
+
    --  5.17.2.2 A7 with the set I of the installation (EVC_Config
    --  Train_Set, selected by the train configuration of the train
    --  interface, SUBSET-034 2.6.4.1): its Train Data with the engine's

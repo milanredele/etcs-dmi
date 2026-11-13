@@ -24401,3 +24401,70 @@ interface input with the category bit set and a configuration number
 for which the image holds no set changes no Train Data value and still
 applies 3.18.3.7 by the bit (5.17.2.2 D1), the more restrictive
 reading.
+
+### The position on an unlinked group kept over No Power; the driver's train types from the image's table, one conversion of a train type (e6/kept-position) (2026-11-13)
+
+**The position on an unlinked group (B4202).** Premise checked:
+`EVC_Position.Keep` kept a position only when it referred to an LRBG.
+Built: `Kept_Position_T` holds the reference of the position, `Ref`, the
+LRBG or, when the LRBG is "unknown" (3.6.2.2.2.1: a position valid or
+invalid referred only to a group marked as unlinked), the SOLR, with
+`Unlinked`; `Keep` takes either, `Restore` gives the SOLR back and the
+LRBG only when it was one (the LRBG stays "unknown"), the position
+invalid at the same distance from the reference (4.10 column NP,
+3.6.4.2.2.1). `Revalidate_Kept` is unchanged (valid without a cold
+movement, 4.11.1.1); `EVC_Core.Modes.Delete_Invalid_Position` deletes an
+invalid position whatever its reference (5.4.3.3, 4.10.1.3 [1]); the
+start of mission is unchanged: D34 keeps a valid one, A24 deletes an
+invalid one (`EVC_Sessions.Mission.Judge_Position`). The type does not
+grow: `Unlinked` sits in the padding after `Known` (72 bytes, `-gnatR`).
+Scenario `EVC_Test_Position.Scenario_Kept_Unlinked` (an unlinked group
+alone, No Power: the SOLR and the distance from it kept, valid again
+without a cold movement, the LRBG unknown; with one invalid, deleted
+when the start of mission goes to NL); 3 failures before. The LRBG's
+case is unchanged (`Scenario_Cold_Movement`, `Scenario_SoM_Deletes_Invalid`).
+Trace of 5040300_16 SV30 after the fix: the position on BG2d is kept
+and restored invalid; the sequence gives no cold movement information
+(the runner's "not available", 3.15.8.3), so it stays invalid
+(4.11.1.1), which the sequence's own steps confirm (step 58 the level
+N/A, step 61 the level selected: 5.4.3.2 D2 -> S2 only with a stored
+position or level invalid or unknown); at the 41 (D22, A23) D34 then
+goes to A24 and the position is deleted, so step 89 still finds
+NID_SOLR 16777215. An experiment with "no cold movement" in the runner
+(not kept) stops the sequence at step 58 (the level L1 valid where N/A
+is expected). Se8e0d3d0 rewritten s076, S6a1a136d (no sequence) with
+it; rows 3.6.4.2.2.1 and 4.11.1.1 noted; B4202 closed. Runner: 0 moved.
+
+**One conversion of a train type (B4222), the driver's types from the
+image (B2081).** `EVC_Train_Data.Of_Train_Type` converts the items of a
+train type (`EVC_Config.Train_Type_T`) with the engine's fixed data
+into Train Data and categories (km/h to cm/s rounded down, the brake
+position from NC_TRAIN, the gamma models); `Take_Configuration_Set` and
+`EVC_Mission.Train_Data_Of` (the entry made a train type, an item not
+entered the default category) both call it. `EVC_Train_Data.Driver_Type_Count`
+and `Driver_Type (I)` give the driver's types: the image's sets flagged
+as keys in table order, else `EVC_Config.Default_Train_Types`.
+Decision: an image of formats 1 to 4, or of format 5 without a key,
+says nothing of the driver's types and the DMI offers the two defaults
+("Locomotive", "Passenger"); a key set is offered whether or not it has
+a configuration number; MSG_TRAIN_TYPES carries 8 types, as many as the
+image's sets, so no key is dropped. `EVC_Mission.Type_Matches` and
+`EVC_Core.Outputs.Send_Train_Types` read them (the latter's Global now
+reads `EVC_Config.State`: `evc_core` proved). `EVC_Config` unchanged.
+Scenario `EVC_Test_Train_Data.Scenario_Image_Train_Types` (an image with
+the keys "Freight" and "Shunter" and the set "Long" of configuration 6
+not a key: MSG_TRAIN_TYPES carries the two keys; the entry of "Freight"
+accepted and equal, data and categories, to its set taken by
+`Take_Configuration_Set`; the default "Passenger" and "Long" refused;
+the same sets without keys: the defaults); 6 failures before. Row
+3.18.3.2 noted; B2081 and B4222 closed. Runner: 0 moved (the corpus
+has no image of format 5); the bench's image has no key, its golden
+unchanged.
+
+Proofs (no check unproved; steps of 100000 at most; checks of 16 VCs or
+more): evc_position 1408 (2), evc_retained 1 (0), evc_core-modes 8652
+(0), evc_train_data 2 (0), evc_mission 491 (0), evc_core-outputs 6177
+(0: the name's loop in `Send_Train_Types` given an invariant, else 32
+VCs once its outer bound is no longer static), evc_core 10433 (1).
+Edits outside the units: test/src/evc_test.adb (the two calls). Whole
+check green; runner 1253 / 1015 / 922, 0 moved; fuzz raised 0.

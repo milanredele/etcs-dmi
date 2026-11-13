@@ -46,6 +46,7 @@ package EVC_Test_Train_Data is
    --  type (MSG_DRIVER_DATA kind 2 with the type's index) taken with the
    --  type in force; an unknown index or data not the type's refused
    procedure Scenario_Train_Type;
+   procedure Scenario_Image_Train_Types;
 
    --  3.18.3.2.3, A.3.11: the driver ID entered is 1 to 16 characters
    --  from 0 to 9 and a to z; any other entry refused, the stored one kept

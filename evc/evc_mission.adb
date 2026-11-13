@@ -280,55 +280,26 @@ is
       if not OK then
          return;
       end if;
-      D :=
-        (Length                => Length_T (E.Length_M) * 100,
-         --  km/h to cm/s, rounded down (the ceiling never above)
-         Max_Speed             =>
-           Speed_Cms_T (Natural (E.Max_Speed_Kmh) * 250 / 9),
-         Model                 => F.Model,
-         Brake_Percentage      => Natural (E.Brake_Percentage),
-         --  7.5.1.84: bit 2 passenger train, bit 1 freight train in G,
-         --  bit 0 freight train in P; a passenger train is in P
-         Brake_Position        =>
-           (if (E.Other_Categories and 4) /= 0 then Passenger_P
-            elsif (E.Other_Categories and 2) /= 0 then Freight_G
-            elsif (E.Other_Categories and 1) /= 0 then Freight_P
-            else Passenger_P),
-         A_Brake_Emergency     => (Count => 0, Steps => (others => (0, 0))),
-         A_Brake_Service       => (Count => 0, Steps => (others => (0, 0))),
-         A_Brake_Normal        => (Count => 0, Steps => (others => (0, 0))),
-         T_Brake_Emergency     => 0,
-         T_Brake_Service       => 0,
-         Has_Regenerative      => F.Has_Regenerative,
-         Has_Eddy_Current      => F.Has_Eddy_Current,
-         Has_Magnetic_Shoe     => F.Has_Magnetic_Shoe,
-         Has_Electro_Pneumatic => F.Has_Electro_Pneumatic,
-         T_Traction_Cut_Off    => F.T_Traction_Cut_Off);
-      --  a gamma train: the braking models of the installation (3.18.3.2
-      --  c), 3.18.3.2.1). Decision: the brake percentage the driver
-      --  enters (the DMI's Train Data window has the field whatever the
-      --  model, DMI 11.3.9.9.1) is checked in its range and kept for the
-      --  data view and the juridical records, but no model is derived
-      --  from it: 3.13.2.2.5.1 derives one only with the conversion model,
-      --  which EVC_Braking.Conversion_Applicable takes for Lambda only
-      if F.Model = Gamma then
-         EVC_Config.Gamma_Models (D);
-      end if;
-      Cs :=
-        (Cant_Deficiency =>
-           (if E.Cant_Deficiency = 16#FF# then Def.Cant_Deficiency
-            else NC_CDTRAIN_T (E.Cant_Deficiency)),
-         Other           => NC_TRAIN_T (E.Other_Categories),
-         Axle_Load       =>
-           (if E.Axle_Load = 16#FF# then Def.Axle_Load
-            else M_AXLELOADCAT_T (E.Axle_Load)),
-         Loading_Gauge   =>
-           (if E.Loading_Gauge = 16#FF# then Def.Loading_Gauge
-            else M_LOADINGGAUGE_T (E.Loading_Gauge)),
-         Voltages        => F.Voltages,
-         Airtight        =>
-           (if E.Airtight = 1 then 1 else Def.Airtight),
-         N_Axle          => F.N_Axle);
+      --  the entry as a train type: an item not entered (16#FF#) the
+      --  default category, not airtight unless the entry says so
+      EVC_Train_Data.Of_Train_Type
+        ((Name             => (others => ' '),
+          Name_Length      => 1,
+          Length_M         => Natural (E.Length_M),
+          Brake_Percentage => Natural (E.Brake_Percentage),
+          Max_Speed_Kmh    => Natural (E.Max_Speed_Kmh),
+          Cant_Deficiency  =>
+            (if E.Cant_Deficiency = 16#FF# then Def.Cant_Deficiency
+             else NC_CDTRAIN_T (E.Cant_Deficiency)),
+          Other            => NC_TRAIN_T (E.Other_Categories),
+          Axle_Load        =>
+            (if E.Axle_Load = 16#FF# then Def.Axle_Load
+             else M_AXLELOADCAT_T (E.Axle_Load)),
+          Airtight         => (if E.Airtight = 1 then 1 else Def.Airtight),
+          Loading_Gauge    =>
+            (if E.Loading_Gauge = 16#FF# then Def.Loading_Gauge
+             else M_LOADINGGAUGE_T (E.Loading_Gauge))),
+         F, D, Cs);
    end Train_Data_Of;
 
    --  4.4.15.1.1.3: the non-leading input lost in NL; 4.4.20.1.5:
@@ -544,10 +515,9 @@ is
    --  @req 3.18.3.2
    function Type_Matches (E : Train_Entry_T) return Boolean is
      (E.Type_Index = 0
-      or else (Natural (E.Type_Index) <= EVC_Config.Default_Train_Type_Count
+      or else (Natural (E.Type_Index) <= EVC_Train_Data.Driver_Type_Count
                and then Same_As_Type
-                 (E, EVC_Config.Default_Train_Types
-                       (Natural (E.Type_Index)))));
+                 (E, EVC_Train_Data.Driver_Type (Natural (E.Type_Index)))));
 
    --  4.7.2, DMI Table 33 #3: the Train Data entered at standstill;
    --  4.4.11.1.5: the SR speed limit and distance entered at standstill
