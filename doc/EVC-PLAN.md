@@ -24401,3 +24401,52 @@ interface input with the category bit set and a configuration number
 for which the image holds no set changes no Train Data value and still
 applies 3.18.3.7 by the bit (5.17.2.2 D1), the more restrictive
 reading.
+
+### The sequences on the DMI's lines of the triage: the Train data button, the Override button, the train running number window and the Level button (e5/traces-dmi) (2026-11-13)
+
+Seven signatures traced at SV30, each against its sequence's step list
+(ERA's PDF where the data were blamed), the DMI's table and SUBSET-026;
+none of them is a defect of our DMI: its conditions (DMI_Conditions,
+Tables 33 to 35) are coded as the tables say, and two of the causes
+were the runner's driver.
+
+- S9d052087 (the Train data button, 4120100_10 and _15, 3 SV each):
+  runner. 4120100_10 step 69 'input ODO direction-reversed' with the
+  comment 'Info: The train is at standstill' and every step to 97 at
+  165 m; S076_Run gave every reversal at standstill 5 km/h, so the train
+  ran at 19 km/h in SB at step 77 and Table 33 #3 (standstill) kept the
+  button disabled. A reversal whose comment says 'is at standstill' with
+  the next step at the same place now turns the train without moving it
+  (B4323). 4120100_10 and 4060300_08 pass; 4120100_15 moves to step 126
+  (S29046d63, model, B4324: the bench's train stands at the BG3d error at
+  506 m where the chart has 33.8 km/h, 3.16.2.4.4.2 shortens the MA
+  there at once and the move to 540 m trips).
+- S560e94da (Override EoA, three causes): 4100103_19 runner, the train
+  at 18 km/h in OS where step 68's comment says 'Train is at standstill',
+  V_NVALLOWOVTRP 0 (A.3.2), 5.8.2.1 a); S076_Run.DMI_Input now stops the
+  train before an input whose comment says 'is at standstill' with the
+  next step at the same place (B4325): 4100103_19 passes, 4080421_03 SV30
+  moves from 97 to 156 (S13f5df67, s076: ours sends 129 at the Train
+  Data validation, E16 of 5.4.3.2 D15 and 3.18.3.4, the sequence after
+  the TRN entry). 9990400_31 s076: the MA shortened at the standstill at
+  250 m (3.16.2.4.4.2) and the press at 300 m after the chart restarts
+  the train: TR first. 5080200_04 s076 as decided before (the line moved
+  before the family's).
+- S274cb49d (the TRN window, 4080420_01) s076: the TRN entered at steps
+  6 to 8 stays valid in SB (4.10.1.3), 5.4.3.2 D12 goes to D10; the
+  sequence expects it 'UNKNOWN' at step 29.
+- S4a8f271f (Level, 4100103_45) s076: Level pressed in SH; Table 33 #5
+  and 4.7.2.1.4 exclude SH.
+- S389c6f32 (Adhesion, 9990400_45) s076: Table 35 #1 needs
+  Q_NVDRIVER_ADHES allowed, 'Not allowed' by default (A.3.2), no packet
+  3 in the sequence; the level plays no part.
+- Se82bb986 (155 not sent, 5180500_01) model (B4326): the session is
+  kept because the runner's train leaves the standstill at 900 m 85 s
+  after the loss, where the sequence's step 79 counts 5 minutes
+  (3.5.4.2.1); the note 'EVC_Sessions not written yet' was older than
+  the sessions.
+
+Runner: 1262 passed (from 1253 before this package: 4120100_10,
+4060300_08 and 4100103_19, 3 SV each), 0 regressions. Backlog B4323 and
+B4325 done, B4324 and B4326 open (runner). No golden changed, no edit
+in dmi/ or evc/.
