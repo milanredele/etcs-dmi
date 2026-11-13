@@ -393,6 +393,24 @@ is
                   and then Front_Offset (Minus)
                              = EVC_Config.Default.Antenna_To_Cab_B;
 
+   --  The values of the position Set_Antenna leaves as they are (its
+   --  frame, one comparison of its postcondition in place of nine)
+   type Antenna_Frame_T is record
+      Status            : Status_T;
+      LRBG, SOLR        : Anchor_T;
+      Orientation       : Sense_T;
+      Orientation_Known : Boolean;
+      Pending_Count     : Natural;
+      Passage_Open      : Boolean;
+      Event_Count       : Natural;
+      Geo_Known         : Boolean;
+   end record
+     with Ghost;
+   function Antenna_Frame return Antenna_Frame_T is
+     ((Status, LRBG, SOLR, Orientation, Orientation_Known, Pending_Count,
+       Passage_Open, Event_Count, Geo_Known))
+     with Ghost, Global => State;
+
    --  The installation (EVC_Config: Antenna_To_Cab_A, Antenna_To_Cab_B):
    --  the balise antenna from the cab A end and from the cab B end of
    --  the engine, cm. The positions of the front end against every
@@ -401,17 +419,9 @@ is
      with Global => (In_Out => State),
           Post => Front_Offset (Plus) = To_Cab_A
                   and then Front_Offset (Minus) = To_Cab_B
-                  and then Status = Status'Old
-                  and then LRBG = LRBG'Old
-                  and then SOLR = SOLR'Old
-                  and then Orientation = Orientation'Old
+                  and then Antenna_Frame = Antenna_Frame'Old
                   and then Manoeuvre_Orientation
-                             = Manoeuvre_Orientation'Old
-                  and then Orientation_Known = Orientation_Known'Old
-                  and then Pending_Count = Pending_Count'Old
-                  and then Passage_Open = Passage_Open'Old
-                  and then Event_Count = Event_Count'Old
-                  and then Geo_Known = Geo_Known'Old;
+                             = Manoeuvre_Orientation'Old;
 
    --  An accepted telegram and the stamp of its balise, for the next
    --  Update; dropped when Max_Pending are waiting

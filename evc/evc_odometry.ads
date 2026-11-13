@@ -184,6 +184,31 @@ is
                             else Cold /= Cold_Unknown)
                   and then Movement = Sample.Movement;
 
+   --  The values of the odometry Set_Check leaves as they are (its
+   --  frame, one comparison of its postcondition in place of sixteen)
+   type Check_Frame_T is record
+      Safety_Exceeded : Boolean;
+      Known           : Boolean;
+      Position        : Dist_T;
+      Low, High       : Length_T;
+      Over, Under     : Length_T;
+      Travelled       : Length_T;
+      Speed           : Speed_Cms_T;
+      Speed_Max       : Speed_Cms_T;
+      Movement        : Movement_T;
+      Last_Direction  : Direction_T;
+      Anomalies       : Natural;
+      Window_Over     : Length_T;
+      Window_Under    : Length_T;
+      Cold            : Cold_T;
+   end record
+     with Ghost;
+   function Check_Frame return Check_Frame_T is
+     ((Safety_Exceeded, Known, Position, Low, High, Over, Under, Travelled,
+       Speed, Speed_Max, Movement, Last_Direction, Anomalies, Window_Over,
+       Window_Under, Cold))
+     with Ghost, Global => State;
+
    --  4.5.2 Table: the check of the odometer accuracy thresholds
    --  (3.6.8.5 to 3.6.8.7) is a function of SM, FS, AD, LS, SR and OS
    --  only; Active tells whether the mode of the cycle is one of them.
@@ -198,20 +223,7 @@ is
      with Global => (In_Out => State),
           Post => (if not Active and then not Safety_Exceeded
                    then not Impaired)
-                  and then Safety_Exceeded = Safety_Exceeded'Old
-                  and then Known = Known'Old
-                  and then Position = Position'Old
-                  and then Low = Low'Old and then High = High'Old
-                  and then Over = Over'Old and then Under = Under'Old
-                  and then Travelled = Travelled'Old
-                  and then Speed = Speed'Old
-                  and then Speed_Max = Speed_Max'Old
-                  and then Movement = Movement'Old
-                  and then Last_Direction = Last_Direction'Old
-                  and then Anomalies = Anomalies'Old
-                  and then Window_Over = Window_Over'Old
-                  and then Window_Under = Window_Under'Old
-                  and then Cold = Cold'Old;
+                  and then Check_Frame = Check_Frame'Old;
 
    --  3.6.7: distances not referred to balise groups
 

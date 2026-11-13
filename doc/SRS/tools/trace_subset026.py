@@ -689,6 +689,51 @@ def check(rows, existing):
     return errors
 
 
+BACKLOG = ROOT / "doc" / "BACKLOG.csv"
+BACKLOG_ID = re.compile(r"\bB\d+\b")
+OPEN_STATUSES = ("partial", "todo", "deferred")
+
+
+def read_backlog():
+    """The state of every item of doc/BACKLOG.csv by its id ({} when
+    the file is absent)."""
+    if not BACKLOG.exists():
+        return {}
+    with open(BACKLOG, newline="", encoding="utf-8") as f:
+        lines = [line for line in f if not line.startswith("#")]
+    return {row[0]: row[2] for row in csv.reader(lines) if len(row) >= 3}
+
+
+def stale_rows(existing, states):
+    """The rows of status partial, todo or deferred whose note names a
+    backlog id that is done or dropped: done work hidden behind a stale
+    note, to be re-read. (line, clause, status, [(id, state)]) each."""
+    out = []
+    for n, r in enumerate(existing, 2):
+        if r.get("status") not in OPEN_STATUSES:
+            continue
+        ids = OrderedDict.fromkeys(BACKLOG_ID.findall(r.get("note") or ""))
+        closed = [(i, states[i]) for i in ids
+                  if states.get(i) in ("done", "dropped")]
+        if closed:
+            out.append((n, r["clause"], r["status"], closed))
+    return out
+
+
+def check_stale(existing):
+    """--check: an error per partial or todo row citing a closed backlog
+    item; the deferred ones are counted, not failed (a deferred row may
+    cite the item that deferred it)."""
+    stale = stale_rows(existing, read_backlog())
+    deferred = [s for s in stale if s[2] == "deferred"]
+    print(f"{len(deferred)} deferred rows cite a closed backlog item "
+          f"(--stale lists them)")
+    return [f"line {n}: {c}: status {st} but its note cites "
+            + ", ".join(f"{i} ({s})" for i, s in ids)
+            + ": re-read the row"
+            for n, c, st, ids in stale if st != "deferred"]
+
+
 def compare(md_table, pdf_table):
     diffs = []
     for clause in sorted(set(md_table) | set(pdf_table), key=sort_key):
@@ -714,6 +759,9 @@ def main():
     g.add_argument("--check", action="store_true",
                    help="verify the CSV, exit 1 on error")
     g.add_argument("--summary", action="store_true", help="counts only")
+    g.add_argument("--stale", action="store_true",
+                   help="list the partial, todo and deferred rows whose "
+                        "note cites a backlog item done or dropped")
     g.add_argument("--compare", action="store_true",
                    help="compare the markdown and the PDF (needs pymupdf)")
     ap.add_argument("--pdf", action="store_true",
@@ -728,6 +776,17 @@ def main():
         if existing is None:
             raise SystemExit(f"{args.csv} does not exist")
         summary(existing)
+        return 0
+
+    if args.stale:
+        existing = read_csv(args.csv)
+        if existing is None:
+            raise SystemExit(f"{args.csv} does not exist")
+        stale = stale_rows(existing, read_backlog())
+        for n, c, st, ids in stale:
+            print(f"line {n}: {c}: {st}: "
+                  + ", ".join(f"{i} {s}" for i, s in ids))
+        print(f"{len(stale)} rows cite a closed backlog item")
         return 0
 
     if args.compare:
@@ -760,6 +819,7 @@ def main():
             errors += check_notes(existing, units, tests, strings)
             tags = read_req_tags()
             errors += check_req_tags(existing, tags)
+            errors += check_stale(existing)
             print(f"{sum(len(t[3]) for t in tags)} @req clauses on "
                   f"{len(tags)} lines of {len({t[0] for t in tags})} files")
         summary(existing or [])
