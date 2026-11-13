@@ -42,7 +42,8 @@
 # The run prints the number of checks of 16 VCs or more and the largest,
 # and fails when there are more than ETCS_PROOF_MAX_WIDE (default 6) of
 # them: today 4, postconditions over many paths (EVC-PLAN §2); a new one
-# is most likely a loop that needs an invariant. --info lists the loops
+# is most likely a loop that needs an invariant; evc/prove.sh --wide
+# lists them from the last run's log. --info lists the loops
 # gnatprove unrolls ("unrolling loop"); the run counts them when given.
 #
 # No warnings: the on-board proves without a warning of gnatprove or of
@@ -55,6 +56,31 @@ set -eu
 
 here=$(cd "$(dirname "$0")/.." && pwd)
 cd "$here"
+
+# --wide: the checks of 16 VCs or more of the last run's log (the whole
+# on-board after a full run, the unit after -u), the largest first, with
+# their VCs over the provers, places and kinds; nothing is proved.
+if [ "${1:-}" = "--wide" ]; then
+   if [ ! -f obj/evc/prove.log ]; then
+      echo "prove.sh: no obj/evc/prove.log: run the proof first" >&2
+      exit 2
+   fi
+   awk '/ info: .* proved \(/ {
+      v = 0
+      line = $0
+      while (match(line, /[0-9]+ VC/)) {
+         v += substr(line, RSTART, RLENGTH - 3)
+         line = substr(line, RSTART + RLENGTH)
+      }
+      if (v >= 16) {
+         what = $0
+         sub(/ \(.*/, "", what)
+         sub(/^[^ ]* info: /, "", what)
+         printf "%3d VCs  %s  %s\n", v, $1, what
+      }
+   }' obj/evc/prove.log | sort -rn
+   exit 0
+fi
 
 cache=${ETCS_PROOF_CACHE:-$HOME/.local/share/etcs-dmi/proof-cache}
 mkdir -p "$cache"
