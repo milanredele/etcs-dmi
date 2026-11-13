@@ -241,11 +241,12 @@ is
                                 EVC_Outbox.Queue));
 
    --  MSG_TRAIN_TYPES: the pre-configured train types of the fixed Train
-   --  Data entry (DMI 11.3.9.6 a, Table 39), EVC_Config's, once after
-   --  the start
+   --  Data entry (DMI 11.3.9.6 a, Table 39), EVC_Train_Data.Driver_Type
+   --  (the image's keys, else the defaults), once after the start
    --  @req 3.18.3.2
    procedure Send_Train_Types
-     with Global => (In_Out => (Types_Sent, EVC_Outbox.Queue));
+     with Global => (In_Out => (Types_Sent, EVC_Outbox.Queue),
+                     Input  => EVC_Config.State);
 
    --  MSG_SYSTEM_VERSION: the operated system version X.Y (3.17.2.1.1)
    --  for the DMI's System version window (DMI 11.5.2), sent at the

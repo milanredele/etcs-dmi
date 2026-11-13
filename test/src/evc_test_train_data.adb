@@ -25,6 +25,7 @@ with EVC_Test_Authority;
 with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with EVC_Track_Description;
+with EVC_Supervision_Input;
 with EVC_Train_Data;
 with Interfaces;          use Interfaces;
 
@@ -668,6 +669,119 @@ package body EVC_Test_Train_Data is
              & Img (Length) & " type"
              & Img (EVC_Train_Data.Type_In_Force));
    end Scenario_Train_Type;
+
+   --  3.18.3.2.1, DMI 11.3.9.6 a): the train types of the driver's fixed
+   --  entry are the image's sets flagged as keys, in table order (here
+   --  "Freight" and "Shunter", the set "Long" of the configuration 6 not
+   --  a key), else the installation's defaults; a type's Train Data are
+   --  the same whether the driver enters it or the train interface
+   --  selects its set (SUBSET-034 2.6.4.1)
+   procedure Scenario_Image_Train_Types is
+      function Length return Natural is
+        (Natural (EVC_Train_Data.Data.Length));
+      procedure Load_Keys (Keys : Boolean) is
+         T   : EVC_Config.Train_Set_Table_T := EVC_Config.No_Train_Sets;
+         Img : EVC_Config.Max_Image_T;
+         L   : Natural;
+      begin
+         T.Count := 3;
+         T.Sets (1) :=
+           (Configuration => 5,
+            Driver_Key    => Keys,
+            Data          =>
+              (Name => "Freight         ", Name_Length => 7,
+               Length_M => 600, Brake_Percentage => 80,
+               Max_Speed_Kmh => 100, Cant_Deficiency => 0, Other => 2,
+               Axle_Load => 0, Airtight => 0, Loading_Gauge => 1));
+         T.Sets (2) :=
+           (Configuration => 6,
+            Driver_Key    => False,
+            Data          =>
+              (Name => "Long            ", Name_Length => 4,
+               Length_M => 400, Brake_Percentage => 135,
+               Max_Speed_Kmh => 120, Cant_Deficiency => 2, Other => 4,
+               Axle_Load => 0, Airtight => 0, Loading_Gauge => 1));
+         T.Sets (3) :=
+           (Configuration => EVC_Config.No_Configuration,
+            Driver_Key    => Keys,
+            Data          =>
+              (Name => "Shunter         ", Name_Length => 7,
+               Length_M => 40, Brake_Percentage => 100,
+               Max_Speed_Kmh => 40, Cant_Deficiency => 0, Other => 0,
+               Axle_Load => 0, Airtight => 0, Loading_Gauge => 1));
+         EVC_Config.Encode_V5 (EVC_Config.Default, EVC_Config.No_Gamma, T,
+                               Img, L);
+         EVC_Config.Load (Img (1 .. L));
+         Check (EVC_Config.Train_Set_Count = 3,
+                "image train types: the sets loaded");
+      end Load_Keys;
+      D1      : EVC_Supervision_Input.Train_Data_T;
+      C1      : EVC_Train_Data.Categories_T;
+      Changed : Boolean;
+   begin
+      Load_Keys (True);
+      EVC_Core.Initialise;
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      Take;
+      Check (DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 6) = 2
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 7) = 7
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 8)
+                      = Character'Pos ('F')
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 15) = 600 mod 256
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 27) = 7
+             and then DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 28)
+                      = Character'Pos ('S'),
+             "image train types: MSG_TRAIN_TYPES carries the two keys of "
+             & "the image, 'Freight' and 'Shunter', got the count"
+             & DMI_Byte (EVC_DMI_Port.MSG_TRAIN_TYPES, 6)'Image);
+      EVC_Test_Modes.Start_E4;
+      Stand_X (200);
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      Input (DMI, Type_Entry (1, 600, 80, 100, 2));
+      Cycle_X;
+      Stand_X (100);
+      Check (EVC_Train_Data.Valid and then Length = 60_000
+             and then EVC_Train_Data.Type_In_Force = 1,
+             "image train types: the key 'Freight' entered, its 600 m in "
+             & "force with its type, length" & Img (Length) & " type"
+             & Img (EVC_Train_Data.Type_In_Force));
+      D1 := EVC_Train_Data.Data;
+      C1 := EVC_Train_Data.Categories;
+      EVC_Train_Data.Take_Configuration_Set (1, Changed);
+      Check (EVC_Supervision_Input."=" (EVC_Train_Data.Data, D1)
+             and then EVC_Train_Data."=" (EVC_Train_Data.Categories, C1)
+             and then not Changed,
+             "image train types: the set taken by the train interface "
+             & "gives the Train Data of the driver's entry of its type");
+      --  the passenger type of the defaults is no longer a key
+      Send (Type_Entry (2, 200, 135, 160, 4));
+      Check (Length = 60_000,
+             "image train types: the default 'Passenger' refused, length"
+             & Img (Length));
+      Send (Type_Entry (2, 40, 100, 40, 0));
+      Check (Length = 4_000 and then EVC_Train_Data.Type_In_Force = 2,
+             "image train types: the second key 'Shunter' in force, length"
+             & Img (Length) & " type" & Img (EVC_Train_Data.Type_In_Force));
+      Send (Type_Entry (3, 400, 135, 120, 4));
+      Check (Length = 4_000,
+             "image train types: the set 'Long', not a key, is no type");
+
+      --  an image whose sets are not keys: the defaults
+      Load_Keys (False);
+      EVC_Test_Modes.Start_E4;
+      Stand_X (200);
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      Input (DMI, Type_Entry (2, 200, 135, 160, 4));
+      Cycle_X;
+      Stand_X (100);
+      Check (Length = 20_000 and then EVC_Train_Data.Type_In_Force = 2,
+             "image train types: without keys the default 'Passenger', "
+             & "length" & Img (Length));
+      EVC_Config.Load (EVC_Config.Encode (EVC_Config.Default));
+   end Scenario_Image_Train_Types;
 
    procedure Scenario_Driver_ID_Characters is
       use type EVC_Mission.Data_Status_T;

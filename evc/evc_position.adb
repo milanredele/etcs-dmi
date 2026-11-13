@@ -2564,27 +2564,35 @@ is
    is
    begin
       K := (others => <>);
-      if LRBG_A.Valid and then Pos_Status /= Unknown then
-         K.Known := True;
-         K.LRBG := LRBG_A;
-         K.LRBG.Locacc := Length_T'Max (Add (Over_From (LRBG_A), Gamma_Over),
-                                        Add (Under_From (LRBG_A),
-                                             Gamma_Under));
-         K.Away := Diff (EVC_Odometry.Position, LRBG_A.X);
-         K.Orient := Orient;
-         K.Orient_Known := Orient_Known;
+      if (LRBG_A.Valid or else SOLR_A.Valid) and then Pos_Status /= Unknown
+      then
+         declare
+            R : constant Anchor_T :=
+              (if LRBG_A.Valid then LRBG_A else SOLR_A);
+         begin
+            K.Known := True;
+            K.Ref := R;
+            K.Unlinked := not LRBG_A.Valid;
+            K.Ref.Locacc := Length_T'Max (Add (Over_From (R), Gamma_Over),
+                                          Add (Under_From (R), Gamma_Under));
+            K.Away := Diff (EVC_Odometry.Position, R.X);
+            K.Orient := Orient;
+            K.Orient_Known := Orient_Known;
+         end;
       end if;
    end Keep;
 
    procedure Restore (K : Kept_Position_T)
    is
-      A : Anchor_T := K.LRBG;
+      A : Anchor_T := K.Ref;
    begin
-      if K.Known and then K.LRBG.Valid then
+      if K.Known and then K.Ref.Valid then
          A.X := Diff (EVC_Odometry.Position, K.Away);
          A.Low := EVC_Odometry.Low;
          A.High := EVC_Odometry.High;
-         LRBG_A := A;
+         if not K.Unlinked then
+            LRBG_A := A;
+         end if;
          SOLR_A := A;
          Orient := K.Orient;
          Orient_Known := K.Orient_Known;

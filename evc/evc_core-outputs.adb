@@ -782,13 +782,15 @@ is
       if Types_Sent then
          return;
       end if;
-      for I in 1 .. EVC_Config.Default_Train_Type_Count loop
+      for I in 1 .. EVC_Train_Data.Driver_Type_Count loop
          declare
-            T : EVC_Config.Train_Type_T renames
-              EVC_Config.Default_Train_Types (I);
+            T : constant EVC_Config.Train_Type_T :=
+              EVC_Train_Data.Driver_Type (I);
          begin
             Types (I).Name_Length := T.Name_Length;
             for C in Type_Name_T'Range loop
+               --  nothing of the name is needed after the loop
+               pragma Loop_Invariant (True);
                Types (I).Name (C) := Character'Pos (T.Name (C));
             end loop;
             Types (I).Train :=
@@ -804,7 +806,7 @@ is
                Type_Index    => 0);
          end;
       end loop;
-      Train_Types_Frame (EVC_Config.Default_Train_Type_Count, Types,
+      Train_Types_Frame (EVC_Train_Data.Driver_Type_Count, Types,
                          Frame, Last);
       EVC_Outbox.Put (DMI, Frame (1 .. Last));
       Types_Sent := True;

@@ -166,6 +166,7 @@ begin
    Scenario_SOLR_Unlinked;
    Scenario_SL_Deletes_Invalid;
    Scenario_SoM_Deletes_Invalid;
+   Scenario_Kept_Unlinked;
    Scenario_Crossing_Direction;
    Scenario_LRBG_Unknown_Accepted;
    Scenario_Stored_Cells;
@@ -299,6 +300,7 @@ begin
    EVC_Test_Train_Data.Scenario_Engine_Length;
    EVC_Test_Train_Data.Scenario_Released_TRN;
    EVC_Test_Train_Data.Scenario_Train_Type;
+   EVC_Test_Train_Data.Scenario_Image_Train_Types;
    EVC_Test_Train_Data.Scenario_Driver_ID_Characters;
    Scenario_Driver_Level_Table;
    Scenario_E4_Level_Transition_0;

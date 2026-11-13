@@ -120,31 +120,30 @@ is
       Type_Index := T;
    end Set;
 
-   procedure Take_Configuration_Set (I                  : Positive;
-                                     Categories_Changed : out Boolean)
+   procedure Of_Train_Type (T : EVC_Config.Train_Type_T;
+                            F : EVC_Config.Fixed_Train_T;
+                            D : out Train_Data_T;
+                            C : out Categories_T)
    is
-      S : constant EVC_Config.Train_Type_T := EVC_Config.Train_Set (I).Data;
-      F : constant EVC_Config.Fixed_Train_T := EVC_Config.Current.Train;
-      C : constant Categories_T :=
-        (Cant_Deficiency => S.Cant_Deficiency,
-         Other           => S.Other,
-         Axle_Load       => S.Axle_Load,
-         Loading_Gauge   => S.Loading_Gauge,
-         Voltages        => F.Voltages,
-         Airtight        => S.Airtight,
-         N_Axle          => F.N_Axle);
-      D : Train_Data_T :=
-        (Length                => EVC_Distances.Length_T (S.Length_M) * 100,
-         --  km/h to cm/s, rounded down, as for an entry
-         Max_Speed             => Speed_Cms_T (S.Max_Speed_Kmh * 250 / 9),
+   begin
+      C := (Cant_Deficiency => T.Cant_Deficiency,
+            Other           => T.Other,
+            Axle_Load       => T.Axle_Load,
+            Loading_Gauge   => T.Loading_Gauge,
+            Voltages        => F.Voltages,
+            Airtight        => T.Airtight,
+            N_Axle          => F.N_Axle);
+      D :=
+        (Length                => EVC_Distances.Length_T (T.Length_M) * 100,
+         Max_Speed             => Speed_Cms_T (T.Max_Speed_Kmh * 250 / 9),
          Model                 => F.Model,
-         Brake_Percentage      => S.Brake_Percentage,
-         --  7.5.1.84 as for an entry: bit 2 passenger train (in P), bit 1
-         --  freight train in G, bit 0 freight train in P
+         Brake_Percentage      => T.Brake_Percentage,
+         --  7.5.1.84: bit 2 passenger train, bit 1 freight train in G,
+         --  bit 0 freight train in P; a passenger train is in P
          Brake_Position        =>
-           (if Natural (S.Other) / 4 mod 2 = 1 then Passenger_P
-            elsif Natural (S.Other) / 2 mod 2 = 1 then Freight_G
-            elsif Natural (S.Other) mod 2 = 1 then Freight_P
+           (if Natural (T.Other) / 4 mod 2 = 1 then Passenger_P
+            elsif Natural (T.Other) / 2 mod 2 = 1 then Freight_G
+            elsif Natural (T.Other) mod 2 = 1 then Freight_P
             else Passenger_P),
          A_Brake_Emergency     => (Count => 0, Steps => (others => (0, 0))),
          A_Brake_Service       => (Count => 0, Steps => (others => (0, 0))),
@@ -156,11 +155,62 @@ is
          Has_Magnetic_Shoe     => F.Has_Magnetic_Shoe,
          Has_Electro_Pneumatic => F.Has_Electro_Pneumatic,
          T_Traction_Cut_Off    => F.T_Traction_Cut_Off);
-   begin
-      --  a gamma train: the braking models of the installation
+      --  decision: the brake percentage of the type is kept for the data
+      --  view and the juridical records, but no model is derived from it
+      --  for a gamma train: 3.13.2.2.5.1 derives one only with the
+      --  conversion model, which EVC_Braking.Conversion_Applicable takes
+      --  for Lambda only
       if F.Model = Gamma then
          EVC_Config.Gamma_Models (D);
       end if;
+   end Of_Train_Type;
+
+   --  The number of the image's sets flagged as keys
+   function Key_Count return Natural
+     with Global => EVC_Config.State,
+          Post => Key_Count'Result <= EVC_Config.Train_Set_Count
+   is
+      N : Natural := 0;
+   begin
+      for J in 1 .. EVC_Config.Train_Set_Count loop
+         pragma Loop_Invariant (N < J);
+         if EVC_Config.Train_Set (J).Driver_Key then
+            N := N + 1;
+         end if;
+      end loop;
+      return N;
+   end Key_Count;
+
+   function Driver_Type_Count return Natural is
+     (if Key_Count > 0 then Key_Count
+      else EVC_Config.Default_Train_Type_Count);
+
+   function Driver_Type (I : Positive) return EVC_Config.Train_Type_T is
+      N : Natural := 0;
+   begin
+      if Key_Count = 0 then
+         return EVC_Config.Default_Train_Types (I);
+      end if;
+      for J in 1 .. EVC_Config.Train_Set_Count loop
+         pragma Loop_Invariant (N < J);
+         if EVC_Config.Train_Set (J).Driver_Key then
+            N := N + 1;
+            if N = I then
+               return EVC_Config.Train_Set (J).Data;
+            end if;
+         end if;
+      end loop;
+      return EVC_Config.Default_Train_Types (1);
+   end Driver_Type;
+
+   procedure Take_Configuration_Set (I                  : Positive;
+                                     Categories_Changed : out Boolean)
+   is
+      D : Train_Data_T;
+      C : Categories_T;
+   begin
+      Of_Train_Type (EVC_Config.Train_Set (I).Data, EVC_Config.Current.Train,
+                     D, C);
       Categories_Changed :=
         C.Cant_Deficiency /= Current_Categories.Cant_Deficiency
         or else C.Other /= Current_Categories.Other

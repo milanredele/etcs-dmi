@@ -370,8 +370,9 @@ is
    --  7c. 5.4.3.2 S22, S23, S24 (after E30, E31, E32), 5.4.5.3 a), f), g)
    --  and the table of 5.4.3.3: the start of mission leaves Stand By to
    --  SN, UN, SR (also by override), NL or SH: a position still invalid
-   --  is deleted (an invalid position is one kept over No Power, always
-   --  referred to an LRBG: EVC_Position.Keep); so is it on entering
+   --  is deleted (an invalid position is one kept over No Power, referred
+   --  to an LRBG or to an unlinked group: EVC_Position.Keep); so is it on
+   --  entering
    --  Sleeping from any mode (4.10.1.3 Table, column SL, note [1])
    --  @req 4.10.1.3 Table-footnote [1]
    procedure Delete_Invalid_Position (From, To : Mode_T)

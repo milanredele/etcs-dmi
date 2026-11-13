@@ -815,17 +815,19 @@ is
                             then EVC_Origins.Get (Origin).Used);
 
    --  The train position kept over No Power (4.10 column NP "to be
-   --  revalidated", 4.11, 3.6.1.3.3; EVC_Retained holds it). Kept when
-   --  it refers to an LRBG: the LRBG, Away the frame distance from its
-   --  location reference to the train (the frame position minus its X),
-   --  its confidence interval folded into its location accuracy (the
-   --  frame of the odometer restarts at the power-up, its deviations
-   --  with it: the interval is kept, it does not shrink), and the train
-   --  orientation. A position referred to unlinked groups only is not
-   --  kept (it is deleted over No Power).
+   --  revalidated", 4.11, 3.6.1.3.3; EVC_Retained holds it), valid or
+   --  invalid: Ref its reference, the LRBG, or the SOLR when the LRBG is
+   --  "unknown" (Unlinked: the position referred only to a group marked
+   --  as unlinked, 3.6.2.2.2.1, 3.6.4.2.2 b)); Away the frame distance
+   --  from the reference's location to the train (the frame position
+   --  minus its X), its confidence interval folded into its location
+   --  accuracy (the frame of the odometer restarts at the power-up, its
+   --  deviations with it: the interval is kept, it does not shrink), and
+   --  the train orientation
    type Kept_Position_T is record
       Known        : Boolean := False;
-      LRBG         : Anchor_T;
+      Unlinked     : Boolean := False;
+      Ref          : Anchor_T;
       Away         : Dist_T := 0;
       Orient       : Sense_T := Plus;
       Orient_Known : Boolean := False;
@@ -834,16 +836,20 @@ is
    --  @req 3.6.4.2.2.1
    procedure Keep (K : out Kept_Position_T)
      with Global => (Input => (State, EVC_Odometry.State)),
-          Post => (if K.Known then K.LRBG.Valid);
+          Post => (if K.Known then K.Ref.Valid);
 
-   --  At the power-up, after Clear: the kept position becomes the LRBG
-   --  and the SOLR (3.6.4.2.2.1), invalid (3.6.1.3.3), the train at the
+   --  At the power-up, after Clear: the kept reference becomes the SOLR
+   --  (3.6.4.2.2.1), and the LRBG unless the LRBG was "unknown"
+   --  (3.6.2.2.2.1), the position invalid (3.6.1.3.3), the train at the
    --  kept distance from it in the new frame
    procedure Restore (K : Kept_Position_T)
      with Global => (In_Out => State, Input => EVC_Odometry.State),
-          Post => (if K.Known and then K.LRBG.Valid
-                   then Status = Invalid and then LRBG.Valid
-                        and then LRBG.Id = K.LRBG.Id
+          Post => (if K.Known and then K.Ref.Valid
+                   then Status = Invalid and then SOLR.Valid
+                        and then SOLR.Id = K.Ref.Id
+                        and then (if K.Unlinked then LRBG = LRBG'Old
+                                  else LRBG.Valid
+                                       and then LRBG.Id = K.Ref.Id)
                    else Status = Status'Old and then LRBG = LRBG'Old);
 
    --  4.11.1.1: no cold movement occurred, the kept position is valid
