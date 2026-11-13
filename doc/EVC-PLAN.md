@@ -24401,3 +24401,56 @@ interface input with the category bit set and a configuration number
 for which the image holds no set changes no Train Data value and still
 applies 3.18.3.7 by the bit (5.17.2.2 D1), the more restrictive
 reading.
+
+### The proof's width: the configuration image read by format, the wide checks eased, the whole check failing on an untriaged signature, the matrix check for stale notes (e6/proof-width) (2026-11-13)
+
+B4262, the decoder: `EVC_Config.Decoded` is a sequence of readers,
+`Get_Header` (magic, version, length, CRC; its postcondition the
+format's length bounds and the bytes' length, all a reader after it
+needs), `Get_Fixed` (the version 1 fields at offsets 8 to 31, its only
+precondition `Bytes'Length >= Image_Length`), `Get_Tail` (formats 2 to
+5, unchanged), then Table 3. No image format, `Config_T` or status
+changed (`EVC_Test_Config` unchanged and green, the config fixtures byte
+for byte). `evc/prove.sh -u evc_config`: master 3457 steps (the
+postcondition of `Decoded`), the split 1214. The fragility test, a
+throw-away case and two constants in `EVC_DMI_Port.Valid_Input_Frame`
+(taken out again): master 3457 -> 11324, the split 1214 -> 1214 (the
+readers' conditions identical, answered by the cache): the port's spec
+no longer reaches the reads. `evc_core-inputs` 3980 steps.
+
+B4262, the wide checks: the full proof had 6 checks of 16 VCs or more
+(`evc/prove.sh --wide`, new, lists them from the last run's log):
+`EVC_Brake_Commands.Step` post 22 (evc_brake_commands.ads:136),
+`EVC_Core.Tick` post 21 (evc_core.ads:332), `EVC_SDM.Evaluate` post 20
+(evc_sdm.adb:384), `EVC_Odometry.Set_Check` post 20, `EVC_Position.Update`
+post 19, `EVC_Position.Set_Antenna` post 16: all postconditions over
+many paths or values, no unrolled loop. `Set_Check` (added after the
+count of 4 was written) and `Set_Antenna` (at 16 since
+`Manoeuvre_Orientation` joined its frame) were frame conditions of 15
+and 9 values: each is now one comparison of a ghost record
+(`EVC_Odometry.Check_Frame`, `EVC_Position.Antenna_Frame`), 3 and 5 VCs;
+their callers prove (`evc_position`, `evc_core`). `Tick`'s post is left
+(a change to it is a package of its own). The full proof: 14453 checks,
+none unproved, margin 47726 steps (etcs_bits.adb:69), wide 4 of 6;
+AGENTS.md says "today 4" again, with `--wide` and the ghost frame.
+
+B3860: the runner counts the signatures its report writes with
+`triage: NONE`; its summary line ends "; N untriaged" and its exit
+status fails when N > 0, under `UPDATE=1` too (decision: the baseline is
+still recorded, but a re-recording is for a change understood, and an
+untriaged signature is not). Shown by the seven lines of Sa03cccdc taken
+out of the triage (check.sh failed: "1 untriaged") and put back (0, the
+file unchanged). The fixture of test/s076-sample/runner writes no
+untriaged signature.
+
+B3861: `trace_subset026.py --stale` lists the partial, todo and deferred
+rows whose note cites a backlog item done or dropped; `--check` fails on
+a partial or todo one and counts the deferred ones. Found: 4.11.1.1 and
+4.11.1.3 (partial, left E7 and E8) cited B272 (done) for their done
+part: the reference taken out of the two notes. Two deferred rows cite
+B008 (done: SM built, `EVC_Sessions.Manoeuvre`): 4.8.4.2 Table-footnote
+[12] ("an exception of Supervised Manoeuvre, not built") and 5.4.5.3 k)
+("the SM authorisation of message 4 ... is not built"): both notes look
+stale, B4283 to re-read them. Found on the way: B4284 (`Load_Gamma` does
+not take the Train Data sets of format 5 off the length; no scenario
+loads a gamma train in format 5).
