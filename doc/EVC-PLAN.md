@@ -24401,3 +24401,47 @@ interface input with the category bit set and a configuration number
 for which the image holds no set changes no Train Data value and still
 applies 3.18.3.7 by the bit (5.17.2.2 D1), the more restrictive
 reading.
+
+### The RBC/RBC border by the engine's front in Supervised Manoeuvre, a held text before a later brake release request, a message 133 not sent (e6/border-engine) (2026-11-13)
+
+**The RBC/RBC border by the engine's front (B4124): built.** The
+premises held at the source: `EVC_Position.Evaluate_Border` measured
+the border's passing from `Front_X`, the far end of the consist in
+front of the engine in SM, `EVC_Sessions.Handover.Switch` then left no
+session supervising, and `EVC_Sessions.Follow_Version` released the
+RBC's precedence (`EVC_System_Version.Follow` without a session), so
+the next balise group's order was taken. 3.17.2.8 c) takes the
+Accepting RBC's version once the *train* has passed the border with its
+max safe front end; e) applies the version control of the non-RBC
+constituents and the balise group orders again only when the *engine*
+has passed it with its max safe front end and no session with the
+Accepting RBC is established. Decision, from the words: the handover's
+switch (3.15.1.3.1 b), 3.15.1.3.5) stays at the train's max safe front
+end; a third border item of `EVC_Position` watches the engine's max
+safe front end, the engine's end along the orientation (the antenna
+offset of that side) with the consist in front of it left out
+(4.4.21.1.7, the same point as the train's front when the front end is
+not shifted), with the same confidence interval as the train's;
+`EVC_Position.Engine_Short_Of_Border` is true between the two passings,
+and `Follow_Version` keeps the precedence of the RBC whose version is
+operated, in level 2 and without an established supervising session
+with a known version, until it is false (level 2 left: d) at once). In
+the orientation opposite to the active cab the engine's end along it is
+its other cab end (the antenna offset of that side), the engine being
+part of the consist in rear (3.18.3.2.4). Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Border_Engine` (the SM helpers are
+there; the brief named `EVC_Test_Version` or `_Handover`): in SM with
+70 m in front, the order at 300 m, no session with RBC 400, a group
+ordering 2.0 read between the two passings leaves 3.0 (failed before the
+fix: 2 operated), one read after the engine's passing makes 2.0
+operated. Row 3.17.2.8 e) noted (`@req` on
+`EVC_Position.Engine_Short_Of_Border` and `Follow_Version`). Proofs:
+`evc_position` (checks of 16 VCs or more: 2, the largest at
+evc_position.ads:485, unchanged by this item: no loop or postcondition
+added) and `evc_sessions` (0). 3170200_10 SV30 moved 118 -> 122
+(Sfbc6ab9e, triaged s076): the engine passes the border at step 119
+(637 m) and the precedence is released, but BG4d (step 120, packet 2
+ordering 2.0, Q_LINK 1) is rejected by 3.4.4.4.2: message 4's linking
+(packet 5, step 102) announces NID_BG 3, 3 and 5, never 4; ERA's PDF of
+the sequence has the same linking, so 3.0 stays where step 122 expects
+2.2.

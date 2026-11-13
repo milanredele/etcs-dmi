@@ -51,6 +51,10 @@ package EVC_Test_Manoeuvre is
    --  3.15.1.3.3: message 133 to the Accepting RBC in SM
    procedure Scenario_SM_Handover;
 
+   --  3.17.2.8 e): the RBC/RBC border in SM with a consist in front of
+   --  the engine, no session with the Accepting RBC
+   procedure Scenario_SM_Border_Engine;
+
    --  4.4.21.1.9: the SM authorised direction to the DMI
    procedure Scenario_SM_Direction;
    procedure Scenario_SM_Brake_Reasons;

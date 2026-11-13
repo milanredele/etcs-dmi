@@ -677,6 +677,13 @@ is
    function Border_Beyond (X : Dist_T) return Boolean
      with Global => State;
 
+   --  3.17.2.8 e): the max safe front end of the train passed the border
+   --  of the RBC transition order (Border_Front), that of the engine not
+   --  yet (the consist in front of it in Supervised Manoeuvre)
+   --  @req 3.17.2.8 e)
+   function Engine_Short_Of_Border return Boolean
+     with Global => State;
+
    --  The border forgotten (the order deleted or executed)
    procedure Delete_Border
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),

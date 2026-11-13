@@ -35,6 +35,8 @@ with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
+with EVC_System_Version;
+with ETCS_Track_Packets.P2;
 with EVC_Train_Data;
 with EVC_Test_Levels;
 with EVC_Test_Support;    use EVC_Test_Support;
@@ -976,6 +978,92 @@ package body EVC_Test_Manoeuvre is
              and then EVC_Sessions.Train_Data_Sent = D0,
              "SM handover: sent once (3.15.1.3.3)");
    end Scenario_SM_Handover;
+
+   --  In SM with 70 m of the consist in front of the engine, the order to
+   --  hand over to RBC 400 at 200 m from the LRBG 10 (the border at
+   --  300 m), no session with RBC 400 established; the groups 30 (at
+   --  265 m) and 40 (at 330 m) order the version 2.0 (packet 2): the
+   --  first is read when the train's max safe front end has passed the
+   --  border and the engine's not, the second after the engine's
+   procedure Scenario_SM_Border_Engine is
+      T : Unsigned_64;
+
+      procedure Order_Version (NID : Natural; At_M : Integer_64) is
+         P  : ETCS_Track_Packets.P2.Packet_T;
+         W  : Writer_T;
+         OK : Boolean;
+      begin
+         Add_Group (Group (NID, At_M));
+         Version (Track_N) := 32;
+         P.Q_DIR := 2;
+         P.L_PACKET := 0;
+         P.M_VERSION := 32;
+         ETCS_Track_Packets.P2.Encode (P, W, OK);
+         Finish_Carry (Track_N, 0, W, OK);
+      end Order_Version;
+
+      function Order return Byte_Array is
+         W  : Writer_T;
+         V  : ETCS_Message.Value_Array := (others => 0);
+         OK : Boolean;
+      begin
+         V (3) := Now_Stamp;
+         V (5) := 123;
+         V (6) := 10;
+         Start_Message (W, MCat.Track_M24, V);
+         ETCS_Track_Packets.P131.Encode
+           ((NID_PACKET     => 131,
+             Q_DIR          => 2,
+             L_PACKET       => 0,
+             Q_SCALE        => 1,
+             D_RBCTR        => 200,
+             NID_C          => 5,
+             NID_RBC        => 400,
+             NID_RADIO      => 16#0077#,
+             Q_SLEEPSESSION => 0), W, OK);
+         Check (OK, "SM border: packet 131 encoded");
+         return Message_Bytes (W);
+      end Order;
+   begin
+      Start_L2_SM;
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Stand_X (300);
+      EVC_Core.Handle_Input (TIU, SCL_Frame (1, 70, 70, 70, 400, 398, 402));
+      T := Wait_For (MCat.Train_M133, 1_000);
+      Give_Radio_Message (1, Consist_Ack (T));
+      Stand_X (300);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Order_Version (30, 265);
+      Order_Version (40, 330);
+      Give_Radio_Message (1, Order);
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM and then EVC_Sessions.RBC_Order_Stored
+             and then EVC_System_Version.Operated = 3,
+             "SM border: in SM, the order stored, the RBC's 3.0 operated: "
+             & Mode_T'Image (EVC_Core.Mode) & " "
+             & Boolean'Image (EVC_Sessions.RBC_Order_Stored) & " "
+             & Boolean'Image (EVC_Sessions.SM_Consist_Awaited)
+             & Natural'Image (EVC_System_Version.Operated));
+      Run_X (27_000, 250);
+      Stand_X (300);
+      Check (EVC_Position.Engine_Short_Of_Border
+             and then EVC_System_Version.Operated = 3,
+             "SM border: the train's max safe front end past the border, "
+             & "the engine's not: the group's order 2.0 not taken, 3.0 "
+             & "kept (3.17.2.8 e); operated"
+             & Natural'Image (EVC_System_Version.Operated) & " short "
+             & Boolean'Image (EVC_Position.Engine_Short_Of_Border));
+      Run_X (33_500, 250);
+      Stand_X (300);
+      Check (not EVC_Position.Engine_Short_Of_Border
+             and then EVC_System_Version.Operated = 2,
+             "SM border: the engine's max safe front end past the border, "
+             & "the group's order 2.0 taken (3.17.2.8 e); operated"
+             & Natural'Image (EVC_System_Version.Operated));
+   end Scenario_SM_Border_Engine;
 
    --  The sm_direction of the last MSG_STATUS sent in Max_Ms, 16#FFFF#
    --  when none was sent
