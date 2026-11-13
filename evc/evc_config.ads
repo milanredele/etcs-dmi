@@ -73,7 +73,7 @@
 --               16#CBF4_3926#)
 --  The bytes after the length are ignored: a block of flash larger than
 --  the image can be handed over whole. A later format gets a new
---  version; versions 1, 2 and 3 are accepted, the version decides the
+--  version; versions 1 to 5 are accepted, the version decides the
 --  length.
 --
 --  The byte image, format version 2 (Encode_V2): the bytes 0 to 31 of
@@ -140,6 +140,29 @@
 --         + 720                                 .. UTC+14:00)
 --     1   the summer-time rule                0 none, 1 EU
 --  A version 1 or 2 image has no zone (UTC is the local time).
+--
+--  The byte image, format version 4 (Encode_V4): the image of version 3
+--  with the traction cut-off time between the zones and the CRC (see
+--  Traction_Image_Length). Format version 5 (Encode_V5): the image of
+--  version 4 with the Train Data sets (Train_Set_Table_T) between the
+--  traction cut-off time and the CRC, Sets_Image_Length (233) bytes at
+--  L - 237:
+--     1   the count of sets                 0 .. 8
+--   8 x 29 the sets, the first ones counted, the others 0 and not read:
+--     1   the configuration number          0 .. 63, 255 none
+--     1   a key of the driver's entry       0 / 1
+--    16   the name, ASCII                   32 .. 126 each
+--     1   the name's length                 1 .. 16
+--     2   the train length u16, m           1 .. 4_095
+--     1   the brake percentage              10 .. 250
+--     2   the maximum speed u16, km/h       5 .. 600
+--     1   NC_CDTRAIN                        0 .. 10
+--     1   NC_TRAIN                          0 .. 7
+--     1   M_AXLELOADCAT                     0 .. 12
+--     1   M_AIRTIGHT                        0 .. 1
+--     1   M_LOADINGGAUGE                    0 .. 4
+--  (the ranges of the driver's entry, A.3.11); a configuration number
+--  given to two counted sets is Bad_Field.
 --
 --  The state: the configuration in use (Current, the Default until an
 --  image is loaded), whether an image was loaded, the images refused,
@@ -270,6 +293,44 @@ is
                  Other            => 4,
                  others           => <>),
       others => (others => <>));
+
+   --  The Train Data sets of the installation (SUBSET-034 2.6.4.1, the
+   --  second way: the "type of train configuration" of the train
+   --  interface, a number (2.6.4.2), selects one among the pre-configured
+   --  sets; 2.6.4.4: a number without a set changes nothing). A set holds
+   --  the items of a train type (Train_Type_T: the Train Data of 3.18.3.2
+   --  a), b), c) brake percentage, d), e), f), h)); the others are the
+   --  engine's (Fixed_Train_T). Decision: one table for both uses, a set
+   --  selected by its configuration number (0 .. 63, the bits 0 to 5 of
+   --  the TIU input 13, EVC_Ports) or none, and offered or not as a key
+   --  of the driver's fixed entry (DMI 11.3.9.6 a), in the order of the
+   --  table; as many sets as keys (Train_Types_Max)
+   --  @req 3.18.3.2
+   Train_Sets_Max    : constant := Train_Types_Max;
+   Configuration_Max : constant := 63;
+   No_Configuration  : constant := Configuration_Max + 1;
+   subtype Configuration_T is Natural range 0 .. No_Configuration;
+   type Train_Set_T is record
+      Configuration : Configuration_T := No_Configuration;
+      Driver_Key    : Boolean := False;
+      Data          : Train_Type_T := (others => <>);
+   end record;
+   type Train_Set_List_T is array (1 .. Train_Sets_Max) of Train_Set_T;
+   type Train_Set_Table_T is record
+      Count : Natural range 0 .. Train_Sets_Max := 0;
+      Sets  : Train_Set_List_T := (others => (others => <>));
+   end record;
+   No_Train_Sets : constant Train_Set_Table_T := (others => <>);
+
+   --  A table of sets: the configuration numbers of the counted sets are
+   --  distinct (a number selects one set)
+   function Sets_Valid (T : Train_Set_Table_T) return Boolean is
+     (for all I in 1 .. T.Count =>
+        T.Sets (I).Configuration = No_Configuration
+        or else (for all J in 1 .. T.Count =>
+                   I = J
+                   or else T.Sets (I).Configuration
+                           /= T.Sets (J).Configuration));
 
    --  the radio of the vehicle (3.5.2.4: "at least
    --  two" communication sessions through GSM-R; decision 2 of
@@ -408,8 +469,8 @@ is
 
    --  The byte image
 
-   --  the highest format version accepted (1, 2, 3 and 4 are)
-   Format_Version : constant := 4;
+   --  the highest format version accepted (1 to 5 are)
+   Format_Version : constant := 5;
    --  version 1: its length and the bytes its CRC covers
    Image_Length   : constant := 36;
    CRC_Offset     : constant := 32;
@@ -433,8 +494,15 @@ is
    Max_Traction_Cut_Off_Ms : constant := 10_000;
    Min_Image_V4_Length : constant :=
      Min_Image_V3_Length + Traction_Image_Length;
-   Max_Image_Length    : constant :=
+   Max_Image_V4_Length : constant :=
      Max_Image_V3_Length + Traction_Image_Length;
+   --  version 5: the image of version 4, then the Train Data sets
+   --  (Train_Set_Table_T): a count, then Train_Sets_Max entries of
+   --  Set_Image_Length bytes
+   Set_Image_Length    : constant := 29;
+   Sets_Image_Length   : constant := 1 + Set_Image_Length * Train_Sets_Max;
+   Min_Image_V5_Length : constant := Min_Image_V4_Length + Sets_Image_Length;
+   Max_Image_Length    : constant := Max_Image_V4_Length + Sets_Image_Length;
    subtype Max_Image_T is Byte_Array (1 .. Max_Image_Length);
 
    --  the braking models of a gamma train (3.13.2.2.3, 3.13.2.2.9,
@@ -460,7 +528,7 @@ is
      (Accepted,
       Truncated,           -- shorter than its header or its length
       Bad_Magic,
-      Bad_Version,         -- a format version other than 1 to 3
+      Bad_Version,         -- a format version other than 1 to 5
       --  the length field is not that of the version, or the fields of
       --  version 2 or 3 do not end at the CRC
       Bad_Length,
@@ -524,7 +592,19 @@ is
                         G      : Gamma_T;
                         Image  : out Max_Image_T;
                         Length : out Natural)
-     with Post => Length in Min_Image_V4_Length .. Max_Image_Length;
+     with Post => Length in Min_Image_V4_Length .. Max_Image_V4_Length;
+
+   --  The image of format version 5 of C, G as Encode_V4, and the Train
+   --  Data sets T (Decoded accepts it and a load takes T when C and G are
+   --  as for Encode_V4 and every set of T is within the ranges of the
+   --  layout above with Sets_Valid)
+   --  @req 3.18.3.2
+   procedure Encode_V5 (C      : Config_T;
+                        G      : Gamma_T;
+                        T      : Train_Set_Table_T;
+                        Image  : out Max_Image_T;
+                        Length : out Natural)
+     with Post => Length in Min_Image_V5_Length .. Max_Image_Length;
 
    --  The calendar of the zones
 
@@ -594,6 +674,26 @@ is
      with Global => State;
    function Last_Status return Status_T
      with Global => State;
+
+   --  The Train Data sets of the image loaded (none before an image of
+   --  format version 5)
+   function Train_Set_Count return Natural
+     with Global => State,
+          Post => Train_Set_Count'Result <= Train_Sets_Max;
+   function Train_Set (I : Positive) return Train_Set_T
+     with Global => State,
+          Pre  => I <= Train_Sets_Max;
+
+   --  The index of the set of the train configuration N among the sets
+   --  counted, 0 when none has that number (SUBSET-034 2.6.4.4)
+   --  @req 3.18.3.2
+   function Set_Of_Configuration (N : Natural) return Natural
+     with Global => State,
+          Post => Set_Of_Configuration'Result <= Train_Set_Count
+                  and then
+                  (if Set_Of_Configuration'Result > 0
+                   then Train_Set (Set_Of_Configuration'Result)
+                          .Configuration = N);
 
    --  Load the image in Bytes: when it is valid it becomes Current,
    --  otherwise nothing but the count of refusals changes

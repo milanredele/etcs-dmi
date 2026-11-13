@@ -100,11 +100,12 @@ start gen_language 1 python3 evc/language/gen_language.py --check
 start check_catalogue 1 python3 evc/language/check_catalogue.py
 # the configuration tool's images, which evc_test compares with the
 # encoders of EVC_Config (version 1, version 3 with zones, version 4 with
-# the traction cut-off time)
+# the traction cut-off time, version 5 with the Train Data sets)
 start evc_config 2 python3 test/tools/evc_config.py --compare \
    ports/hosted/evc.cfg test/wasm/onboard.cfg \
    test/config/zones_v3.toml test/config/zones_v3.img \
-   test/config/traction_v4.toml test/config/traction_v4.img
+   test/config/traction_v4.toml test/config/traction_v4.img \
+   test/config/sets_v5.toml test/config/sets_v5.img
 start trace 1 python3 doc/SRS/tools/trace_subset026.py --check
 start efs_frames 1 python3 test/tools/efs_frames.py --check
 start golden_review 1 python3 test/tools/golden_review.py --check-tool

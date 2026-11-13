@@ -258,7 +258,7 @@ package body EVC_Test_Config is
              & "the fields refused, bad length");
       Field (6, (37, 0), CFG.Bad_Length, "length 37");
       Field (6, (16#E1#, 16#04#), CFG.Bad_Length, "length 1249");
-      Field (4, (5, 0), CFG.Bad_Version, "format version 5");
+      Field (4, (6, 0), CFG.Bad_Version, "format version 6");
       All_OK := True;
       for K in 0 .. L - 1 loop
          if Status_Of (Img (1 .. K)) /= CFG.Truncated then
@@ -1085,5 +1085,93 @@ package body EVC_Test_Config is
              & "default 1 s");
       CFG.Load (CFG.Encode (CFG.Default));
    end Scenario_Config_Traction;
+
+   --  The sets of test/config/sets_v5.toml
+   function Sample_Sets return CFG.Train_Set_Table_T is
+      T : CFG.Train_Set_Table_T := CFG.No_Train_Sets;
+   begin
+      T.Count := 2;
+      T.Sets (1) :=
+        (Configuration => 5,
+         Driver_Key    => False,
+         Data          =>
+           (Name             => "Freight 600 m   ",
+            Name_Length      => 13,
+            Length_M         => 600,
+            Brake_Percentage => 80,
+            Max_Speed_Kmh    => 100,
+            Cant_Deficiency  => 0,
+            Other            => 2,
+            Axle_Load        => 6,
+            Airtight         => 0,
+            Loading_Gauge    => 2));
+      T.Sets (2) :=
+        (Configuration => CFG.No_Configuration,
+         Driver_Key    => True,
+         Data          => CFG.Default_Train_Types (2));
+      return T;
+   end Sample_Sets;
+
+   procedure Scenario_Config_Sets is
+      C   : CFG.Config_T := CFG.Default;
+      T   : constant CFG.Train_Set_Table_T := Sample_Sets;
+      Img : CFG.Max_Image_T;
+      L   : Natural;
+      D   : CFG.Decoded_T;
+   begin
+      C.Train.T_Traction_Cut_Off := 2_500;
+      CFG.Encode_V5 (C, CFG.No_Gamma, T, Img, L);
+      D := CFG.Decoded (Img (1 .. L));
+      Check (L = CFG.Min_Image_V5_Length and then Img (5) = 5
+             and then Img (L - 236) = 2 and then Img (L - 235) = 5
+             and then Img (L - 206) = 255
+             and then D.Status = CFG.Accepted and then D.Config = C,
+             "config sets: an image of version 5 carries the Train Data "
+             & "sets after the traction cut-off time (SUBSET-034 2.6.4.1) "
+             & "and gives the configuration back");
+      Check (File_Bytes ("test/config/sets_v5.img")
+               = Byte_Array (Img (1 .. L)),
+             "config sets: test/config/sets_v5.img (test/tools/"
+             & "evc_config.py of test/config/sets_v5.toml) is the "
+             & "kernel's image of version 5 of these sets");
+      declare
+         I : Byte_Array := Img (1 .. L);
+      begin
+         --  the second set given the configuration 5 too
+         I (L - 206) := 5;
+         Check (Status_Of (Resealed_V2 (I, L)) = CFG.Bad_Field,
+                "config sets: a configuration number given to two sets "
+                & "refused");
+         I (L - 206) := 255;
+         --  the first set's maximum speed 601 km/h
+         I (L - 213 .. L - 212) := (89, 2);
+         Check (Status_Of (Resealed_V2 (I, L)) = CFG.Bad_Field,
+                "config sets: a set's maximum speed above 600 km/h "
+                & "refused (A.3.11)");
+         I (L - 213 .. L - 212) := (100, 0);
+         I (L - 236) := 9;
+         Check (Status_Of (Resealed_V2 (I, L)) = CFG.Bad_Field,
+                "config sets: more than 8 sets refused");
+         I (L - 236) := 2;
+         I (L - 232) := 0;
+         Check (Status_Of (Resealed_V2 (I, L)) = CFG.Bad_Field,
+                "config sets: a name with a control character refused");
+      end;
+      CFG.Load (Img (1 .. L));
+      Check (CFG.Train_Set_Count = 2
+             and then CFG.Set_Of_Configuration (5) = 1
+             and then CFG.Set_Of_Configuration (4) = 0
+             and then CFG.Set_Of_Configuration (CFG.No_Configuration) = 0
+             and then CFG."=" (CFG.Train_Set (1), T.Sets (1))
+             and then CFG."=" (CFG.Train_Set (2), T.Sets (2))
+             and then CFG.Current.Train.T_Traction_Cut_Off = 2_500,
+             "config sets: loaded, the set of configuration 5 found by "
+             & "its number, none for configuration 4 (SUBSET-034 2.6.4.4)");
+      CFG.Encode_V4 (C, CFG.No_Gamma, Img, L);
+      CFG.Load (Img (1 .. L));
+      Check (CFG.Last_Status = CFG.Accepted and then CFG.Train_Set_Count = 0,
+             "config sets: an image of version 4 still accepted, no set");
+      CFG.Load (CFG.Encode (CFG.Default));
+   end Scenario_Config_Sets;
 
 end EVC_Test_Config;
