@@ -24270,3 +24270,128 @@ configuration without a set, B4243). Undecided: none. My calls: B4242
 should be built: such a text keeps its place before a request
 triggered after it. B4243 is a decision with low stakes (the author's
 reading only restricts more). Calls: 75 of 130 at this point.
+
+### E5 integration after the seventy-second round, the fortieth of E6 (2026-11-13)
+
+Merged: e6/power-up (B4122: the connection set-up one cycle after a
+power-up came from `EVC_Sessions.Mode_Changed`, which took the change
+from No Power to Stand-By as a mode change of 3.5.3.4 c) and ordered
+the session in level 2 with the contact `Revalidate_Kept` had made
+valid; `From /= M_NP` there: the session of a power-up is the start of
+mission's, 3.5.3.4 a), opened at A31 after the Driver ID; 3150800_01
+and 3150800_04 pass in three versions; B4123: 4.11.1.4 built: the
+stored order of SH, PS or SM kept over No Power (`EVC_Levels.
+Keep_Order`, `EVC_Retained.Kept_T.Order`) and evaluated inside
+`EVC_Core.Power_Up` by `EVC_Levels.Restore_Order` before the cold
+movement information revalidates anything (b: the restored level the
+current one; c: no acknowledgement; d: the ordered table; e: the
+result invalid, then 4.11.1.1); the rows 4.11.1.4 and a) to e) done;
+3150800_05 moved to step 135 (SV30 137), S1d478b68 s076 (the step's
+own comment: to be removed when the position is not invalid);
+Se8e0d3d0 traced: a position referred only to an unlinked group is not
+kept by `EVC_Position.Keep`, B4202), e6/train-config (B4102, by the
+decision of its brief, SUBSET-034 2.6.4.1 the second way: the format 5
+of the configuration image holds up to 8 Train Data sets, each with a
+configuration number (or none), a flag "a key of the driver's fixed
+entry", a name and the items of DMI Table 40; an image with a value out
+of range or a number twice is refused; `EVC_Core.Stored.
+Take_Train_Configuration` gives the set of the input's number to
+`EVC_Train_Data.Take_Configuration_Set` in the cycle after A7, through
+the writer of the driver's entry; the 129 goes out by the existing
+path, 3.18.3.7 follows the comparison of the categories (the input's
+bit the fallback without a set), 3.18.3.8 by the existing call; a
+number without a set changes no value; the row 5.17.2.2 A7 done; B2081
+narrowed (one table serves the driver's keys too; `EVC_Mission` and
+`EVC_Core.Outputs` still read the default table), B4222 (the
+conversion of a train type written twice), B4223 (2.6.4.3, a source per
+item); the brief's "or the speed" for 3.18.3.7 was wrong: the clause
+names the categories, the axle load, the loading gauge and the
+traction systems), e6/vbc-enable (B4082 as decided: bit 5 of
+MSG_ONBOARD national from `EVC_Core.VBC_Entry_Taken`, the one
+expression `Take_VBC_Requests` takes an entry by, so the bit and the
+taking cannot differ; `DMI_Conditions.Settings_Set_VBC` and
+`Settings_Remove_VBC` add it to their own terms of Table 36 #5, #6;
+`EVC_Mock` sets it always; 10 on-board goldens re-recorded for the
+national byte 5 -> 37 at S1, S10 and S20, reviewed, no DMI golden
+changed; B4142 as decided: a refused code neither set nor recorded;
+B4143: the protections' brake holds a text only once its request was
+sent in an earlier cycle (`Status_Brake_Sent = Brake_Ack` in `Asked`);
+the rows 5.4.5.3 and 5.4.5.3 i) done), e6/radio-check (B3380, both
+halves: the RTM event 9 carries the message as received (`EVC_Ports.
+Valid_RTM_Failed`), which is recorded (record 9), reported with M_ERROR
+3 through the existing `EVC_Sessions.Take_Inconsistent`, not evaluated
+and counted neither for the time stamp sequence nor for T_NVCONTACT;
+the runner turns a step marked "[faulty]" into the event; 3160300_01
+SV22 and SV30 moved from step 156 to 168, Sa9a23bd2 s076 (the step is
+meant refused by its time stamp against a message the sequence itself
+calls undecodable); S63b7a729 traced s076 (a record 9 expected where
+the only message is one sent, whose record is the 10); B4124 left at
+the bound, its premises confirmed at the source) and the review
+e5/review-72.
+
+Review (the twenty-first): eight verdicts, six agree (the VBC bit and
+the refused code, the session after a power-up, 4.11.1.4 with the
+unlinked group's position ours, the message failing the Euroradio
+check with 3160300_01 the sequence's data, 9990200_13 and 3150800_05
+the sequences' data), two disagree in part: B4242 onboard: a text the
+on-board already holds (the 1 s after an acknowledgement, another
+text) when the protections' brake asks its release later is overtaken
+by that request, where the FIFO of DMI 5.4.1.9 keeps the text first;
+B4243, a decision: a configuration number without a set and the
+category bit set: 3.18.3.7 applied by the bit (the author, as before
+the sets) or not, the Train Data being unchanged (the reviewer). The
+reviewer's launch context showed a commit subject naming two of the
+verdicts (items 6 and 7): the review is launched from a commit whose
+subject names none. Twenty-one rounds of reviews: 177 items, 152
+agreed, 28 disagreed, 8 undecided; 43 lines, of which 10 became fixes
+(B4142 and B4143 this round); 138.1 USD.
+
+Verification of the merged tree: an early chain on the power-up
+package green; the full chain after the four merges green at once:
+`test/check.sh` ok; the full proof 14439 checks (252 more), none
+unproved, margin 47726 steps; the checks of 16 VCs or more are 6 of the
+6 allowed, as after round 71 (AGENTS.md still says 4; one of them is
+`evc_core.ads:332`, 21 VCs): the next one fails the proof, B4262; cross
+build and
+stack 32768 B budget, margin 6016 B (8 less: `Kept_T` with the order);
+wasm and both smokes 0 failures; the runner 1253 / 1015 / 922 (from
+1247 / 1021 / 922), 0 regressions against the merged baseline, no
+signature untriaged. The merge: power-up and the review
+fast-forwarded; train-config and vbc-enable conflicted on the plan and
+the backlog; radio-check on the plan and in `evc_config.adb`, where
+train-config had added `Get_Sets` and radio-check `Fits` at the same
+place (both kept). Three agents met the proof's margin in
+`EVC_Config.Decoded` on their own and each fixed it at the source, by
+the canary of the round brief: vbc-enable by keeping a constant out of
+`EVC_DMI_Port`, radio-check by `Fits` (the bytes' length as a
+postcondition), train-config by `Length_OK` as two tables of bounds;
+the merged unit's hardest check takes 3520 steps.
+
+Costs (doc/ROUNDS.csv): 47.8 USD with the review (42.4 for the four
+packages, 5.4 the review), 11 of 12 package items done, 1 left at the
+bound (B4124), 1 of 13 brief premises wrong, no agent over budget, all
+four past the bound with the last item in hand (133, 146, 146, 159 of
+160; train-config's 31 calls past the bound were its proofs and the
+margin fix); the review 81 of 130. Lessons: the canary proof of a
+widely seen spec pays (three margin breaks caught before the merge,
+none after); a unit that three packages have to ease in one round is
+the thing to fix (`Decoded` at its size limit reads the formats'
+fields behind one length check: a reader per format with its own
+contract would end it); a package whose single item is a new image
+format needs its proofs counted into the budget; the review's worktree
+starts from a commit whose subject names no verdict.
+
+The matrix: clauses left 2 (todo 0, partial 2: 4.11.1.1 and 4.11.1.3,
+both on E7 and E8; done 2144: 9 rows set done this round). Open items:
+doc/BACKLOG.csv (24 open after this round; 6 added of which 2 by the
+review and 1 at the integration, 7 closed). Next: B4124 as a first
+item (the border by the engine's front in SM, left at the bound),
+B4262 (the wide checks at their limit, with `EVC_Config.Decoded` split
+by format), B4242 (a held text and a later brake release request),
+B4243 (the user's decision), B4202 (the position on an unlinked group
+over No Power), B2081 with B4222 (the train types from the image's
+table, one conversion), the DMI families of the runner's triage (the
+Train data, Level and Adhesion buttons disabled, the train running
+number window: 33 sequences stop on lines triaged dmi, several notes
+older than the code), B3860 and B3861 (the two checks), the review
+again (eight items, readings first, launched from a neutral commit).
