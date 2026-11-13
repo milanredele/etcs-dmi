@@ -24640,3 +24640,141 @@ B008 (done: SM built, `EVC_Sessions.Manoeuvre`): 4.8.4.2 Table-footnote
 stale, B4283 to re-read them. Found on the way: B4284 (`Load_Gamma` does
 not take the Train Data sets of format 5 off the length; no scenario
 loads a gamma train in format 5).
+
+### Review of the seventy-third round: eight verdicts re-derived blind (e5/review-73) (2026-11-13)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items were taken. No code,
+no triage line and no line of the authors was changed. One limit of the
+blindness: the subjects of the last commits of e6/proof-width were in
+the context the harness gave me at the start; they name none of these
+items.
+
+1. The RBC/RBC border and the engine's front. Mine: (a) the Handing
+   Over RBC stops supervising when the train's max safe front end, in
+   SM the far end of the 70 m in front of the engine (4.4.21.1.7),
+   passes the border (3.15.1.3.5, Table 2a "max"); the balise group
+   orders count again only when the engine's max safe front end passes
+   it (3.17.2.8 e)). (b) In between the version last operated, the RBC's,
+   stays: no item of 3.17.2.8 changes it before e). (c) Level 2 only; a
+   session with the Accepting RBC established meanwhile makes c) operate
+   its version and e) no longer applies; outside SM the engine's front is
+   the train's and the two passings are one. Author
+   (`EVC_Position.Engine_Short_Of_Border`, `EVC_Sessions.Follow_Version`
+   keeping the precedence in level 2 without an established supervising
+   session with a known version, `EVC_Test_Manoeuvre.Scenario_SM_Border_Engine`,
+   row 3.17.2.8 e) done): the same. Agree.
+
+2. A text already held and a later brake release request (no build).
+   Mine: the text first: it was triggered first and 5.4.1.9 is a FIFO
+   (5.4.1.9.1 puts 3) and 4) before 6) even when simultaneous). The DMI
+   queues by arrival (`dmi/dmi_ack.adb`), so "send both and let the DMI
+   order them" works only if the on-board does not hold the text; holding
+   the text, it must hold the request until the text is sent (same frame
+   after the text, or later). That is "the request is sent after the
+   text", which is also the change e6/border-engine found for B4242
+   (`Brake_Ack_Pending` while a text to be acknowledged is held). No line.
+
+3. The driver's train types from the image. Mine: (a) the sets flagged
+   as keys, in table order, with or without a configuration number;
+   (b) the installation's defaults; (c) refused (an index past the keys,
+   or data other than the key's); (d) the same Train Data, by one
+   conversion of a set for both paths with the engine's fixed data
+   (3.18.3.2.2's items from one source). Author
+   (`EVC_Train_Data.Driver_Type_Count` / `Driver_Type`,
+   `EVC_Mission.Type_Matches`, `EVC_Train_Data.Of_Train_Type` "the one
+   conversion", `Scenario_Image_Train_Types`: "Passenger" and "Long"
+   refused): the same. Agree.
+
+4. A position on an unlinked group over No Power, 5040300_16 step 89.
+   Mine: (a) kept (4.10 NP "TBR"; 3.6.2.2.2.1 names a valid or invalid
+   position referred only to an unlinked group, LRBG "unknown"); valid
+   after the power-up without a cold movement, invalid when one is
+   detected or the information is not available (4.11.1.1, 4.11.1.3).
+   (b) Deleted only while still invalid: in level 2 at D34's second
+   bullet (A24, or A39), in levels 0/1 following E10, E12, E30 to E32
+   (5.4.3.3); a valid one stays (D34's first bullet). (c) The sequence
+   gives no cold movement step (power off and on, steps 50 and 52);
+   step 89 (NID_SOLR known, Q_LRBG 0: no LRBG, SUBSET-027 4.2.3.5) after
+   step 87 ("not able to confirm ... accepts") is D34's first bullet and
+   needs the position valid, that is no cold movement. The runner gives
+   "not available" (`S076_Run.Set_Cold_At_Power_Up`), ours keeps the
+   position invalid and A24 deletes it: right for that input. Step 89 is
+   the sequence's data; this reverses last round's "ours" for the step
+   (the keeping was ours and is built now, `EVC_Position.Keep` and
+   `Restore` with `Unlinked`, but the step does not follow from it).
+   Author (Se8e0d3d0 rewritten s076): the same, with a stronger reason
+   I had not used: the sequence's own steps 58 (level N/A) and 61 (the
+   level selected: D2 -> S2) say the stored data are invalid. Agree.
+
+5. Three presses the DMI refuses. Mine: (a) 4080420_01 step 29: the
+   TRN entered at steps 6 to 8 in SB stays valid, D12 goes to D10 and
+   level 1 to S20, the Main window; step 29's comment belongs to case
+   5040300 46 joined after a case that entered it: the sequence's data.
+   (b) 4100103_45 step 56: Level pressed in SH; DMI Table 33 #5 and 4.7.2
+   ("ERTMS/ETCS level": SB, FS, AD, LS, SR, OS, NL, UN, SN) exclude SH:
+   the sequence's data. (c) 9990400_45 step 70: no packet 3 in the file,
+   Q_NVDRIVER_ADHES "Not allowed" by default (A.3.2), Table 35 #1 needs
+   it allowed: the sequence's data. `DMI_Conditions.Main_Level` and
+   `Special_Adhesion` are the tables' rows. Author (S274cb49d,
+   S4a8f271f, S389c6f32 s076): the same. Agree.
+
+6. 3170200_10 step 122. Mine: the linking of the SM authorisation
+   (packet 5, step 102) announces NID_BG 3 at 550, NID_BG 3 again at 70
+   and NID_BG 5 at 30, never 4, in ERA's PDF too; BG4d is marked linked,
+   so 3.4.4.4.2 rejects its message and its packet 2 (2.0, which would
+   make 2.2 operated) is never evaluated (3.17.2.5 needs a message
+   received). The sequence's data. Author (Sfbc6ab9e s076, moved 118 ->
+   122 by the engine's border): the same. Agree. I had added a runner
+   note from an estimate (the engine short of the border when BG4d was
+   read, 42 m after BG3d); it was not measured, and the author's trace
+   puts the engine's passing at step 119, after the relocation on BG3d:
+   I withdraw it.
+
+7. The driver at standstill. Mine: 4120100_10: standstill from step 54
+   (165 m) to 97, step 69 "The train is at standstill" (ERA's row the
+   same): the reversal turns the train without moving it, Table 33 #3
+   enabled. 4100103_19: step 66 the speed down to the permitted, step
+   68's comment (ERA's row 68 the same) "Train is at standstill", no
+   ODO step for it: the driver stops before the press; Override needs
+   the speed under V_NVALLOWOVTRP, 0 by default (5.8.2.1 a), Table 34
+   #1). Both pass today. Where the rules would stop a train the sequence
+   means running: the DMI input rule, a comment that names standstill as
+   a condition or a later state ("enabled only when the train is at
+   standstill") on a press meant in motion, and a distance column that
+   stays put while the chart keeps a speed (the rule takes the comment);
+   the reversal rule, a reversal meant to be followed by a short roll
+   back (a reverse or runaway movement check) that the metre column does
+   not show. 4080421_03 step 156: the session is established at steps
+   137 to 141 and the Train Data validated at 150; 3.18.3.4 sends the 129
+   "following any validation ... when a communication session is already
+   established", S11 only waits for the acknowledgement: the sequence's
+   data. Author (B4323, B4325 done; S13f5df67 s076): the same. Agree.
+
+8. 5180500_01 step 87 and 9990400_31 step 57. Mine: the connection is
+   lost at step 73 (550 m, in the announced radio hole); step 79's
+   comment counts 5 minutes after the loss, after which both sides
+   consider the session terminated (3.5.4.1, A.3.1), so step 87's 155 is
+   a new session's. In the run the loss lasted 85 s (74.7 s to 160.2 s):
+   the session is kept and continued. The runner. Author (Se82bb986
+   model, B4326): the same. Agree. 9990400_31: BG1d inconsistent (step
+   44), the service brake, standstill at 250 m, 3.16.2.4.4.2 shortens the
+   MA there (ours: ma 0); the press is at 300 m, and the runner drives
+   the train 50 m at 35 km/h past the shortened EOA to reach it: trip,
+   the button disabled. Mine: the runner first (a driver does not start
+   against a zero permitted speed with the EOA at the train; he presses
+   Override at 250 m), the sequence's distance column the cause in the
+   data. Author (S560e94da, 9990400_31 s076: "the chart restarts the
+   train"): the sequence's data. Disagree in part on the category
+   (B4343): not ours either way, but the same author triaged the same
+   pattern in 4120100_15 (the MA shortened at standstill at 506 m, the
+   move to 540 m trips) as the model's (B4324).
+
+Counts: 8 items. Agreed: seven (1 to 7).
+Disagreed in part: one (8: 5180500_01 agreed, 9990400_31 the runner or the sequence's data,
+B4343). Undecided: none. My calls: B4343 is a runner item with low
+stakes, decided together with B4324 (one rule for a train whose MA was
+shortened at standstill: hold it until an MA or an override, or follow
+the chart and triage s076); B4242 should be built as e6/border-engine
+found it (the request after the held text), which my reading of item 2
+confirms. Calls: 77 of 130 at this point.
