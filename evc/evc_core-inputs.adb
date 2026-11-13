@@ -335,21 +335,17 @@ is
       Code : Unsigned_32;
       NID_C : Unsigned_64;
       Marker : Unsigned_64;
-      Taken : constant Boolean :=
-        Current_Mode = M_SB
-        and then EVC_Mission.VBC_Step
-                   (Level_Valid => EVC_Levels.Valid,
-                    Radio_Step  => EVC_Sessions.SoM_Opening
-                                   or else
-                                     EVC_Sessions.SoM_Awaiting_Registration
-                                   or else EVC_Sessions.Train_Data_Awaited);
+      Taken : constant Boolean := VBC_Entry_Taken;
    begin
       EVC_VBC.Expire
         (Now_Ms    => Unsigned_64 (Clock_Ms),
          UTC_Known => UTC_Known,
          UTC_Now   =>
            Unsigned_64 (UTC_Seconds) + Unsigned_64 (Clock_Ms) / 1000);
-      if Entered (Set_VBC) then
+      --  SUBSET-027 4.3.1.1: the records 28 and 29 are written when the
+      --  driver sets or removes a VBC; a refused entry sets or removes
+      --  none, so it is dropped unrecorded
+      if Taken and then Entered (Set_VBC) then
          Code := VBC_Code (Set_VBC);
          NID_C := Unsigned_64 (Shift_Right (Code, 6) and 16#3FF#);
          Marker := Unsigned_64 (Code and 16#3F#);
@@ -362,14 +358,12 @@ is
                         Bits  => 8),
              others => (Value => 0, Bits => 0)),
             No_Data);
-         if Taken then
-            EVC_VBC.Set
-              (NID_C  => NID_C_T (NID_C),
-               Marker => NID_VBCMK_T (Marker),
-               T      => T_VBC_T (Shift_Right (Code, 16) and 16#FF#));
-         end if;
+         EVC_VBC.Set
+           (NID_C  => NID_C_T (NID_C),
+            Marker => NID_VBCMK_T (Marker),
+            T      => T_VBC_T (Shift_Right (Code, 16) and 16#FF#));
       end if;
-      if Entered (Remove_VBC) then
+      if Taken and then Entered (Remove_VBC) then
          Code := VBC_Code (Remove_VBC);
          NID_C := Unsigned_64 (Code and 16#3FF#);
          Marker := Unsigned_64 (Shift_Right (Code, 10) and 16#3F#);
@@ -379,11 +373,9 @@ is
              2      => (Value => Marker, Bits => 6),
              others => (Value => 0, Bits => 0)),
             No_Data);
-         if Taken then
-            EVC_VBC.Remove
-              (NID_C  => NID_C_T (NID_C),
-               Marker => NID_VBCMK_T (Marker));
-         end if;
+         EVC_VBC.Remove
+           (NID_C  => NID_C_T (NID_C),
+            Marker => NID_VBCMK_T (Marker));
       end if;
    end Take_VBC_Requests;
 

@@ -128,14 +128,18 @@ package DMI_Test_Support is
    -- of the Data view that the DMI now holds
    ---------------------------------------------------------------------
 
-   --  MSG_ONBOARD national bits 2 and 3 (dmi_protocol.ads)
+   --  MSG_ONBOARD national bits 2, 3 and 5 (dmi_protocol.ads)
    VBC_Room_Bit   : constant Win_U8 := 16#04#;
    VBC_Stored_Bit : constant Win_U8 := 16#08#;
+   VBC_Entry_Bit  : constant Win_U8 := 16#20#;
 
-   procedure VBC_Onboard (National : Win_U8;
-                          Train    : Win_U8 := Win_Standing;
-                          Data     : Win_U8 := Win_Data_All;
-                          Radio    : Win_U8 := 0);
+   --  A MSG_ONBOARD with National, the VBC entry bit added when
+   --  VBC_Entry (the on-board takes a Set / Remove VBC now), and a cycle
+   procedure VBC_Onboard (National  : Win_U8;
+                          Train     : Win_U8 := Win_Standing;
+                          Data      : Win_U8 := Win_Data_All;
+                          Radio     : Win_U8 := 0;
+                          VBC_Entry : Boolean := True);
 
    procedure Lang_English;
 

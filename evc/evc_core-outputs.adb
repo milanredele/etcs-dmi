@@ -508,6 +508,11 @@ is
                    when 2      => Train_Entry_Switchable,
                    when others => Train_Entry_Flexible)));
 
+   --  MSG_ONBOARD national bit 5 (dmi_protocol.ads): the on-board takes
+   --  a Set VBC / Remove VBC entry now; kept out of EVC_DMI_Port, whose
+   --  spec every unit of the ports sees in its proof context
+   National_VBC_Entry : constant Bits_T := 32;
+
    function National_Bits return Bits_T is
      ((if EVC_VBC.Full then 0 else National_VBC_Room)
       or (if EVC_VBC.Count > 0 then National_VBC_Stored else 0)
@@ -598,7 +603,11 @@ is
          --  included (DMI Table 34 #1 reads this bit alone)
          National => National_Bits
                      or (if EVC_Procedures.Override_Selectable
-                         then National_Override_Selectable else 0),
+                         then National_Override_Selectable else 0)
+                     --  5.4.5.3 i), DMI Table 36 #5, #6: the reading of
+                     --  the taking itself
+                     or (if VBC_Entry_Taken then National_VBC_Entry
+                         else 0),
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
          --  desk is open and no session with an RBC exists or is being
       --  established, so the start of mission may begin (the desk is

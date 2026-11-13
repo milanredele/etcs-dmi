@@ -237,7 +237,11 @@ is
       --  request asked in the same cycle as the text (5.4.1.9.1) the
       --  status entry and the procedures' brake are seen from the next
       --  cycle, so the text goes first (3) before 5) and 6)); the
-      --  protections' brake is seen in its own cycle, so the text waits
+      --  protections' brake, which the monitoring wrote earlier in this
+      --  cycle, too: it holds the text once a cycle before sent its
+      --  request to the DMI (Status_Brake_Sent), so a text and a request
+      --  of the same cycle reach the DMI together and its FIFO puts the
+      --  text first; the text waits only behind a request asked before it
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
          S.Train.Est_Front, Unsigned_64 (Clock_Ms),
@@ -247,7 +251,8 @@ is
            EVC_Mission.Proposed or else EVC_Procedures.Ack_Requested
            or else EVC_Levels.Ack_Asked
            or else EVC_JRU_Records.Entry_Shown (SS_NL_No_Longer_Permitted)
-           or else Brake_Output.Ack_Required
+           or else (Brake_Output.Ack_Required
+                    and then Status_Brake_Sent = Brake_Ack)
            or else EVC_Procedures.Brake_Demand.Ack_Required);
    end Run_Procedures;
 

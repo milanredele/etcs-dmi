@@ -146,8 +146,9 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_Entry_Terminating;
 
    --  5.4.5.3 i), 5.4.3.2 S1: a Set / Remove VBC taken at S1, S10 and
-   --  S20 only, refused at S2, during the Train Data entry (S12) and at
-   --  S13
+   --  S20 only, refused at S2, during the Train Data entry (S12), at S13
+   --  and after 'Start'; DMI Table 36 #5, #6: MSG_ONBOARD national bit 5
+   --  says which; SUBSET-027 4.3.1.1: a refused code is not recorded
    procedure Scenario_SoM_VBC_Steps;
 
    --  5.4.3.3 Table, 5.4.5.3 e): the level re-entered at S20 takes the

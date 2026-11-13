@@ -191,7 +191,13 @@ package DMI_Protocol is
    --    (SUBSET-026 5.8.2.1 a) to c), 5.4.5.3 a): the speed, the mode,
    --    the data, only at S10 and S20 in SB): the EOA button of the
    --    Override window is enabled on this bit (DMI Table 34 #1), so
-   --    that a press is never refused; train bit1 is its speed term
+   --    that a press is never refused; train bit1 is its speed term,
+   --    bit5 the on-board takes a Set VBC / Remove VBC entry now
+   --    (SUBSET-026 5.4.3.2 S1, 5.4.5.3 i): SB at the steps S1, S10 and
+   --    S20 of the start of mission): the Set VBC and Remove VBC buttons
+   --    of the Settings window are enabled on this bit with their other
+   --    terms (DMI Table 36 #5, #6: bit2 the room, bit3 a VBC stored), so
+   --    that a press is never refused
    --  som u8: start of mission (SUBSET-026 5.4, DMI Table 49)
    --    0 no start of mission is going on,
    --    1 the cab is active and the mode is SB but a communication

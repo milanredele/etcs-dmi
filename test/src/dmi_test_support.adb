@@ -276,13 +276,16 @@ package body DMI_Test_Support is
    -- and Supervised Manoeuvre (11.7.8, Table 54a) dialogue sequences
    ---------------------------------------------------------------------
 
-   procedure VBC_Onboard (National : Win_U8;
-                          Train    : Win_U8 := Win_Standing;
-                          Data     : Win_U8 := Win_Data_All;
-                          Radio    : Win_U8 := 0) is
+   procedure VBC_Onboard (National  : Win_U8;
+                          Train     : Win_U8 := Win_Standing;
+                          Data      : Win_U8 := Win_Data_All;
+                          Radio     : Win_U8 := 0;
+                          VBC_Entry : Boolean := True) is
    begin
-      Send_Onboard_Raw (Data, 0, 0, Train, Win_NV or National, 0, 0, 0,
-                        Radio, 0, 0);
+      Send_Onboard_Raw (Data, 0, 0, Train,
+                        Win_NV or National
+                          or (if VBC_Entry then VBC_Entry_Bit else 0),
+                        0, 0, 0, Radio, 0, 0);
       Step;
    end VBC_Onboard;
 

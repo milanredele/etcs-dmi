@@ -31,6 +31,11 @@ package EVC_Test_Profiles is
       --  5.4.1.9.1 6): a text to be acknowledged held behind the
       --  acknowledgement of a brake's release asked before it
       procedure Scenario_Text_Behind_Brake_Ack;
+
+   --  5.4.1.9.1 3) before 6): a text to be acknowledged and the
+   --  acknowledgement of a brake's release asked in the same cycle: the
+   --  text is sent in that cycle, the request waits in the DMI's queue
+   procedure Scenario_Text_Brake_Ack_Same_Cycle;
       procedure Scenario_Track_Condition_Roll_Back;
       procedure Scenario_MA_Timers_Roll_Back;
       procedure Scenario_LX_Roll_Back;
