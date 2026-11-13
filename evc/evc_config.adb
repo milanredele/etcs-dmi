@@ -531,11 +531,54 @@ is
       end if;
    end Get_Tail;
 
-   function Decoded (Bytes : Byte_Array) return Decoded_T is
-      R : Decoded_T := (Status => Truncated, Config => Default);
-      C : Config_T;
-      --  the format version and the length of the header
-      Version, L : Natural;
+   --  The header of an image: the magic, the format version and the
+   --  length L (8 bytes), and the CRC of the bytes before it at L - 4;
+   --  Accepted when all hold, so that the L bytes of a format's length
+   --  are there (the postcondition: all that a reader after it needs)
+   procedure Get_Header (Bytes   : Byte_Array;
+                         Version : out Natural;
+                         L       : out Natural;
+                         S       : out Status_T)
+     with Global => null,
+          Post => S in Accepted .. Bad_CRC
+                  and then (if S = Accepted
+                            then Version in 1 .. Format_Version
+                                 and then Length_OK (Version, L)
+                                 and then L <= Bytes'Length
+                                 and then Bytes'Length >= Image_Length)
+   is
+   begin
+      Version := 0;
+      L := 0;
+      S := Truncated;
+      if Bytes'Length < 8 then
+         return;
+      end if;
+      if Bytes (Bytes'First .. Bytes'First + 3) /= Magic then
+         S := Bad_Magic;
+         return;
+      end if;
+      Version := Natural (Get_U16 (Bytes, Bytes'First + 4));
+      L := Natural (Get_U16 (Bytes, Bytes'First + 6));
+      if Version not in 1 .. Format_Version then
+         S := Bad_Version;
+      elsif not Length_OK (Version, L) then
+         S := Bad_Length;
+      elsif Fits (Bytes, Version, L) then
+         S := (if CRC_32 (Bytes (Bytes'First .. Bytes'First + (L - 5)))
+                    = Get_U32 (Bytes, Bytes'First + (L - 4))
+               then Accepted else Bad_CRC);
+      end if;
+   end Get_Header;
+
+   --  The version 1 fields of an image (offsets 8 to 31) into C: the
+   --  supervision options and the antenna offsets; Bad_Field, C
+   --  unchanged, when one is out of its range
+   procedure Get_Fixed (Bytes : Byte_Array;
+                        C     : in out Config_T;
+                        S     : out Field_Status_T)
+     with Pre => Bytes'Length >= Image_Length
+   is
 
       --  the byte at Offset of the image
       function At_Offset (Offset : Natural) return Byte is
@@ -571,35 +614,6 @@ is
                     and then Offset < Image_Length
                     and then At_Offset (Offset) <= 3;
    begin
-      --  the header: magic, version, length (8 bytes)
-      if Bytes'Length < 8 then
-         return R;
-      end if;
-      if Bytes (Bytes'First .. Bytes'First + 3) /= Magic then
-         R.Status := Bad_Magic;
-         return R;
-      end if;
-      Version := Natural (Get_U16 (Bytes, Bytes'First + 4));
-      L := Natural (Get_U16 (Bytes, Bytes'First + 6));
-      if Version not in 1 .. Format_Version then
-         R.Status := Bad_Version;
-         return R;
-      end if;
-      if not Length_OK (Version, L) then
-         R.Status := Bad_Length;
-         return R;
-      end if;
-      if not Fits (Bytes, Version, L) then
-         return R;
-      end if;
-      if CRC_32 (Bytes (Bytes'First .. Bytes'First + (L - 5)))
-           /= Get_U32 (Bytes, Bytes'First + (L - 4))
-      then
-         R.Status := Bad_CRC;
-         return R;
-      end if;
-
-      --  the fields
       if not (Flag_OK (8) and then Flag_OK (9) and then Flag_OK (10)
               and then Flag_OK (11) and then Flag_OK (18)
               and then Flag_OK (19)
@@ -611,8 +625,8 @@ is
               and then U16 (28) <= 60_000
               and then U16 (30) <= 3_000)
       then
-         R.Status := Bad_Field;
-         return R;
+         S := Bad_Field;
+         return;
       end if;
       C.Supervision :=
         (Service_Brake_Command       => Flag (8),
@@ -631,14 +645,26 @@ is
          SB_Failure_Decel_Mms2       => Natural (U16 (30)));
       C.Antenna_To_Cab_A := Antenna_Offset_T (U32 (20));
       C.Antenna_To_Cab_B := Antenna_Offset_T (U32 (24));
+      S := Accepted;
+   end Get_Fixed;
 
-      --  the train of version 2: the model, the special brakes, the gamma
-      --  train or the CRC
-      if Version >= 2 then
+   --  The header, the version 1 fields, the parts of the later formats,
+   --  each by its reader; then Table 3 over the whole
+   function Decoded (Bytes : Byte_Array) return Decoded_T is
+      R : Decoded_T := (Status => Truncated, Config => Default);
+      C : Config_T;
+      --  the format version and the length of the header
+      Version, L : Natural;
+   begin
+      Get_Header (Bytes, Version, L, R.Status);
+      if R.Status = Accepted then
+         Get_Fixed (Bytes, C, R.Status);
+      end if;
+      if R.Status = Accepted and then Version >= 2 then
          Get_Tail (Bytes, Version, L, C.Train, C.Zones, R.Status);
-         if R.Status /= Accepted then
-            return R;
-         end if;
+      end if;
+      if R.Status /= Accepted then
+         return R;
       end if;
 
       --  3.13.2.2.6.1 Table 3
