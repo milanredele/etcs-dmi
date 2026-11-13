@@ -720,6 +720,9 @@ is
             Show (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
          when EVC_Ports.FRMCS_Registered | EVC_Ports.FRMCS_Not_Registered =>
             null;   -- taken above
+         when EVC_Ports.Message_Failed =>
+            --  a message: EVC_Core.Inputs.Read_Radio_Messages
+            null;
       end case;
    end Take_Event;
 
@@ -870,8 +873,8 @@ is
       end loop;
    end Take_Radio_Transition;
 
-   --  3.16.3.1.1 a) is the Euroradio port's (a message it refuses never
-   --  reaches the on-board); c) and 3.16.1.1: a message the codec refuses
+   --  3.16.3.1.1 a): a message the Euroradio check failed (the RTM
+   --  port's event 9); c) and 3.16.1.1: a message the codec refuses
    --  on a usable session, M_ERROR 3 (7.5.1.64); on a session not usable
    --  (not set up, terminated) there is no RBC to inform
    procedure Take_Inconsistent (S : EVC_Radio.Session_T) is

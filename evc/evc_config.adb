@@ -304,6 +304,13 @@ is
       else L in Min_Image_V4_Length .. Max_Image_Length)
      with Post => (if Length_OK'Result then L >= Image_Length);
 
+   --  Bytes hold the L bytes of an image whose length L is that of the
+   --  format Version, so the version 1 fields (the postcondition, the
+   --  fact the reads of Decoded rest on, stated on Bytes)
+   function Fits (Bytes : Byte_Array; Version, L : Natural) return Boolean
+   is (Length_OK (Version, L) and then Bytes'Length >= L)
+     with Post => (if Fits'Result then Bytes'Length >= Image_Length);
+
    --  The zones of an image of format version 3 at Offset: the count,
    --  then Zone_Max entries of a u16 first NID_C, a u16 last NID_C, a
    --  u16 standard offset + 720 minutes and a u8 summer-time rule (0
@@ -481,7 +488,7 @@ is
          R.Status := Bad_Length;
          return R;
       end if;
-      if Bytes'Length < L then
+      if not Fits (Bytes, Version, L) then
          return R;
       end if;
       if CRC_32 (Bytes (Bytes'First .. Bytes'First + (L - 5)))

@@ -355,7 +355,8 @@ is
       Registered,             -- 5
       Registration_Failed,    -- 6
       FRMCS_Registered,       -- 7
-      FRMCS_Not_Registered);  -- 8
+      FRMCS_Not_Registered,   -- 8
+      Message_Failed);        -- 9, with the message (Valid_RTM_Failed)
 
    type RTM_Request_T is
      (Request_Set_Up,         -- 1
@@ -398,7 +399,7 @@ is
       and then Payload (Payload'First) = RTM_Tag_Event
       and then Valid_RTM_Session (Payload (Payload'First + 1))
       and then Payload (Payload'First + 2) in 1 .. RTM_Event_T'Pos
-                                                     (RTM_Event_T'Last) + 1);
+                                                (FRMCS_Not_Registered) + 1);
 
    --  Whether a valid event reports the identity of the called RBC
    function RTM_Event_Has_RBC (Payload : Byte_Array) return Boolean is
@@ -417,14 +418,28 @@ is
                   and then RTM_Event_Has_RBC (Payload),
           Post => RTM_Event_NID_RBC'Result < 16384;
 
-   --  An RTM input: a message without a tag, a tagged message or an event
+   --  The event 9 of a session: tag, session, 9, then the message that
+   --  failed the checks of the Euroradio protocol, as received
+   --  @req 3.16.3.1.1.2
+   function Valid_RTM_Failed (Payload : Byte_Array) return Boolean is
+     (Payload'Length > RTM_Event_Length + RTM_Min_Length - 1
+      and then Payload (Payload'First) = RTM_Tag_Event
+      and then Valid_RTM_Session (Payload (Payload'First + 1))
+      and then Payload (Payload'First + 2)
+                 = RTM_Event_T'Pos (Message_Failed) + 1
+      and then Valid_RTM_Frame (Payload (Payload'First + RTM_Event_Length
+                                         .. Payload'Last)));
+
+   --  An RTM input: a message without a tag, a tagged message, an event
+   --  or a message that failed the Euroradio check
    --  @req 3.16.3.1.1.2
    function Valid_RTM_Input (Payload : Byte_Array) return Boolean is
      (Payload'Length >= RTM_Min_Length
       and then (if Payload (Payload'First) < RTM_Tag_First
                 then Valid_RTM (Payload)
                 else Valid_RTM_Tagged (Payload)
-                     or else Valid_RTM_Event (Payload)));
+                     or else Valid_RTM_Event (Payload)
+                     or else Valid_RTM_Failed (Payload)));
 
    --  The session of a valid RTM input (1 for a message without a tag)
    function RTM_Session (Payload : Byte_Array) return RTM_Session_T is
@@ -442,7 +457,8 @@ is
      (if Payload (Payload'First) < RTM_Tag_First then Payload
       else Payload (Payload'First + RTM_Tagged_Header .. Payload'Last))
      with Pre  => Valid_RTM_Input (Payload)
-                  and then not Valid_RTM_Event (Payload),
+                  and then not Valid_RTM_Event (Payload)
+                  and then not Valid_RTM_Failed (Payload),
           Post => Valid_RTM_Frame (RTM_Message'Result);
 
    --  True when Payload has the documented shape of an input on Port
@@ -804,6 +820,16 @@ is
    --       identity, as EURORADIO reports it (3.18.4.3.4: stored when the
    --       driver chose the EIRENE short number); the 3 byte form leaves
    --       the identity unknown.
+   --    RTM_Tag_Event u8, session u8, 9, then one message of chapter 8
+   --       as above: a message received on that session that failed the
+   --       checks of the Euroradio protocol (3.16.3.1.1 a), its bytes as
+   --       received. Decision: the radio hands the bytes over with the
+   --       event, so that the on-board records the message received
+   --       (SUBSET-027 4.2.4.9, the record 9) before it reports it
+   --       inconsistent (M_ERROR 3, 3.16.3.1.1.2); the message is not
+   --       evaluated, its time stamp is not taken (3.16.3.4.1: not a
+   --       message received for the supervision of the safe radio
+   --       connection). Event 9 has no 3 byte form.
    --    The core takes, in each cycle, the events latched since the last
    --    one before the messages (an event and a message latched between
    --    the same two cycles: the event first).

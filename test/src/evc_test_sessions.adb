@@ -2674,6 +2674,58 @@ package body EVC_Test_Sessions is
              & Img (Count) & Img (Error) & Img (Recorded));
    end Scenario_Session_Error_Report;
 
+   procedure Scenario_Message_Failed_Check is
+      Count, Error, Errors_Recorded, From_RBC : Natural := 0;
+      T : Unsigned_64;
+
+      --  Two cycles, the error reports and the records 9 and 13 added up
+      procedure Step is
+         C, E : Natural;
+      begin
+         for K in 1 .. 2 loop
+            Stand;
+            Error_Reports (0, C, E);
+            Count := Count + C;
+            Errors_Recorded := Errors_Recorded + JRU_Count (13);
+            From_RBC := From_RBC + JRU_Count (3);
+            if C > 0 then
+               Error := E;
+            end if;
+         end loop;
+      end Step;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      T := Now_T (100);
+      Step;
+      Count := 0;
+      Error := 0;
+      Errors_Recorded := 0;
+      From_RBC := 0;
+      --  the event 9 of session 1 with the message as received
+      Input (RTM, Byte_Array'(RTM_Tag_Event, 1,
+                              Byte (RTM_Event_T'Pos (Message_Failed) + 1))
+                  & Msg (MCat.Track_M24, T));
+      Step;
+      Check (Count = 1 and then Error = 3 and then Errors_Recorded = 1
+             and then From_RBC = 1,
+             "failed Euroradio check: the message recorded (record 9), "
+             & "reported by packet 4 M_ERROR 3 (3.16.3.1.1 a, "
+             & "3.16.3.1.1.2, 7.5.1.64) and the error recorded (record "
+             & "13), got" & Img (Count) & Img (Error)
+             & Img (Errors_Recorded) & Img (From_RBC));
+      --  not evaluated: its time stamp is not the latest received, a
+      --  message of the same stamp is taken without a sequence error
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T));
+      Step;
+      Check (Count = 1 and then From_RBC = 2,
+             "failed Euroradio check: the message not evaluated, the next "
+             & "of the same time stamp taken (no M_ERROR 4, 3.16.3.3.3), "
+             & "got" & Img (Count) & Img (Error) & Img (From_RBC));
+   end Scenario_Message_Failed_Check;
+
    --  e5/jru-radio, SUBSET-027 record 9 (the on-board's JRU event 3):
    --  every message received (3.16.3.1.1.2) recorded once, at reception,
    --  used or not, consistent or not (SUBSET-076 4080436_01 step 70)

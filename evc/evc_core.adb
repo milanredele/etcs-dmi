@@ -232,7 +232,7 @@ is
       Latched_BTM_Count := 0;
       Latched_BTM_Alarm := False;
       BTM_Alarm_Run := (others => <>);
-      Latched_RTM := (others => (Session => 1, Length => 0,
+      Latched_RTM := (others => (Session => 1, Failed => False, Length => 0,
                                  Data => (others => 0)));
       Latched_RTM_Count := 0;
       Latched_Events := (others => (Session => 1,

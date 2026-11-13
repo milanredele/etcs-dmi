@@ -93,6 +93,10 @@ package EVC_Test_Sessions is
    --  e5/error-report: 3.16.3.1.1.2, an inconsistent message reported to
    --  the RBC by packet 4 in message 136
    procedure Scenario_Session_Error_Report;
+   --  3.16.3.1.1 a), 3.16.3.1.1.2: a message the Euroradio check failed
+   --  (the RTM port's event 9 with its bytes) recorded, reported by
+   --  M_ERROR 3, not evaluated
+   procedure Scenario_Message_Failed_Check;
    --  e5/jru-radio: one JRU record of a message from the RBC (SUBSET-027
    --  record 9, event 3) per message received (3.16.3.1.1.2), at
    --  reception, whatever its later use
