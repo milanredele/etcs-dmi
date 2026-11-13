@@ -547,9 +547,10 @@ private
    type BTM_Slots_T is array (1 .. BTM_Latch_Size) of BTM_Slot_T;
 
    --  a message with its session (1 for a message without a tag,
-   --  EVC_Ports)
+   --  EVC_Ports); Failed: it failed the Euroradio check (the event 9)
    type RTM_Slot_T is record
       Session : RTM_Session_T := 1;
+      Failed  : Boolean := False;
       Length  : Natural range 0 .. RTM_Max_Length := 0;
       Data    : EVC_Bytes.Byte_Array (1 .. RTM_Max_Length) := (others => 0);
    end record;

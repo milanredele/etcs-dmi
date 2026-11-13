@@ -403,6 +403,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;
    Scenario_Session_Error_Report;
+   Scenario_Message_Failed_Check;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;
    Scenario_SoM_S4_Without_Contact;

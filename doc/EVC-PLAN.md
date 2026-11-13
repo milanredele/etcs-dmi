@@ -24071,3 +24071,74 @@ shows the text first. The status entry and the procedures' brake were
 already seen from the next cycle. Left as it was: a text held for
 another reason (the 1 s gap, another text) that a brake request
 overtakes stays held behind it. Runner 0 moved, goldens unchanged.
+
+### A radio message failing the Euroradio check: the port's event, M_ERROR 3 and the runner's faulty message; the RBC/RBC border by the engine's front; a record 9 not written (e6/radio-check) (2026-11-13)
+
+**A message that failed the Euroradio check (B3380).** 3.16.3.1.1 a)
+counts a message failing the checks of the Euroradio protocol
+(SUBSET-037: the MAC) as inconsistent, and 3.16.3.1.1.2 has the
+trackside informed (7.5.1.64: M_ERROR 3, "message consistency error,
+3.16.3.1.1 except b"). The safety layer is outside the on-board, so the
+RTM port says it: event 9 (`EVC_Ports.RTM_Event_T'(Message_Failed)`),
+tag, session, 9, then the message as received
+(`EVC_Ports.Valid_RTM_Failed`; no 3 byte form). Decision: the bytes
+come with the event, so that the on-board records the message received
+(SUBSET-027 4.2.4.9, the record 9 "sent after receiving a message from
+an RBC") before it reports it; both sequences of the corpus that mark a
+message '[faulty] MAC-Error see Subset-037' (3160300_01 step 156,
+4080433_01 step 210) expect that record 9. `EVC_Core.Inputs.Latch_RTM`
+latches it as a message flagged `Failed`; `Read_Radio_Messages` records
+it, calls `EVC_Sessions.Take_Inconsistent` (M_ERROR 3 in the next 136,
+the record 13) and neither parses nor evaluates it: its time stamp is
+not noted, so neither the sequence check of 3.16.3.3.3 nor the
+supervision of T_NVCONTACT (3.16.3.4.1, "the latest received message")
+takes it. `EVC_Sessions.Take_Event` has the value as a message's (no
+branch work). Scenario `EVC_Test_Sessions.Scenario_Message_Failed_Check`
+(failed before the fix: 0 reports, 0 records): the record 9, one 136
+with M_ERROR 3, the record 13, then a message of the same time stamp
+taken without M_ERROR 4. The runner (`S076_Run.Radio_Input`) gives a
+message whose comment carries '[faulty] MAC-Error' as that event.
+3160300_01 SV22 and SV30 move from step 156 to step 168 (Se794ff7e
+gone): step 168's message has "T_TRAIN_2 < T_TRAIN_1", the stamp of
+step 156's message that "cannot be decoded"; ours compares with the
+last message it evaluated (step 144's, 41410; step 148's message was
+itself reported inconsistent) and takes the stamp 43439 and its
+immediate transition to level 0. Triaged s076 (Sa9a23bd2): an on-board
+cannot read the stamp of a message that failed the Euroradio check.
+4080433_01 stops at step 50, before its faulty message. Row 3.16.3.1.1.2
+noted. Edits outside the listed units: the record `RTM_Slot_T` in
+`EVC_Core` (its field `Failed`, the power-up's aggregate) and the
+heading of `EVC_Sessions.Take_Inconsistent` (a) is no longer "the
+port's"). The proof's canaries: the new case of
+`EVC_Ports.Valid_RTM_Input` took three checks of the unchanged
+`EVC_Config.Decoded` (the version 1 fields' reads after the length
+checks) to 94752 steps of 100000; eased at the fact's source by
+`EVC_Config.Fits` (the length of the format and the bytes available in
+one function, postcondition `Bytes'Length >= Image_Length`) in place of
+the bytes' check, no line added to `Decoded`: the unit's hardest check
+takes 5583 steps; `evc_core-inputs` 3980.
+
+**A record 9 not written (S63b7a729), traced.** One sequence left,
+9990200_13 SV30 step 71: "MESSAGE FROM RBC (NID_MESSAGE_JRU=9) is
+recorded" directly after step 70's message 136 to the Handing Over RBC
+at the border (1000 m); no radio message is given after step 67's
+message 24, whose record 9 step 68 matched. ERA's PDF of the sequence
+has the same rows (step 71, and step 108 after the 136 at 1500 m): the
+record of a message sent is the record 10, which ours writes. Triaged
+s076 (the line's earlier families are history there).
+
+**The RBC/RBC border by the engine's front (B4124): left.** Not taken:
+at the bound of the round's method (120 of 160 calls) with B3380's
+proofs still queued, the item (a second border trigger for the
+engine's max safe front end in `EVC_Position`, the handing over RBC's
+version kept by `EVC_Sessions.Follow_Version` until it, a scenario in
+SM with a consist in front) did not fit with its "Done" list. The
+premises checked at the source: 3.17.2.8 c) takes the accepting RBC's
+version at the train's max safe front end with a session established,
+e) applies the balise group orders again only when the engine passes
+the border with its max safe front end and no accepting session;
+`EVC_Position.Evaluate_Border` sets `Border_Front` from `Front_X` (the
+estimated front end, shifted to the far end of the consist in SM:
+`Front_Shifted`), `EVC_Sessions.Handover.Evaluate` then `Switch`, and
+`Follow_Version` releases the RBC's precedence as soon as no session
+supervises. B4124 stays open, the next round's first item.

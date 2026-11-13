@@ -22,7 +22,23 @@ is
    procedure Latch_RTM (Payload : EVC_Bytes.Byte_Array) is
       S : constant RTM_Session_T := RTM_Session (Payload);
    begin
-      if Valid_RTM_Event (Payload) then
+      if Valid_RTM_Failed (Payload) then
+         if Latched_RTM_Count < RTM_Latch_Size then
+            declare
+               First  : constant Positive := Payload'First + RTM_Event_Length;
+               Length : constant Natural := Payload'Last - First + 1;
+            begin
+               Latched_RTM_Count := Latched_RTM_Count + 1;
+               Latched_RTM (Latched_RTM_Count).Session := S;
+               Latched_RTM (Latched_RTM_Count).Failed := True;
+               Latched_RTM (Latched_RTM_Count).Length := Length;
+               Latched_RTM (Latched_RTM_Count).Data (1 .. Length) :=
+                 Payload (First .. Payload'Last);
+            end;
+         else
+            Count (Overflow_Count (RTM));
+         end if;
+      elsif Valid_RTM_Event (Payload) then
          if Latched_Event_Count < RTM_Latch_Size then
             Latched_Event_Count := Latched_Event_Count + 1;
             Latched_Events (Latched_Event_Count) :=
@@ -49,6 +65,7 @@ is
               (Valid_RTM_Frame (Payload (First .. Payload'Last)));
             Latched_RTM_Count := Latched_RTM_Count + 1;
             Latched_RTM (Latched_RTM_Count).Session := S;
+            Latched_RTM (Latched_RTM_Count).Failed := False;
             Latched_RTM (Latched_RTM_Count).Length := Length;
             Latched_RTM (Latched_RTM_Count).Data (1 .. Length) :=
               Payload (First .. Payload'Last);
@@ -204,7 +221,14 @@ is
          declare
             Slot : RTM_Slot_T renames Latched_RTM (I);
          begin
-            if Valid_RTM (Slot.Data (1 .. Slot.Length)) then
+            if Slot.Failed then
+               --  3.16.3.1.1 a), 3.16.3.1.1.2: the Euroradio check failed
+               --  (the event 9, EVC_Ports): recorded as received, not
+               --  parsed nor evaluated, reported inconsistent (M_ERROR 3)
+               Put_From_RBC (Slot);
+               EVC_Sessions.Take_Inconsistent (Slot.Session);
+               Record_Radio_Error;
+            elsif Valid_RTM (Slot.Data (1 .. Slot.Length)) then
                --  the message from the RBC (SUBSET-027 record
                --  9) recorded at reception, whatever its later use: one
                --  record per message the RTM port delivers with a

@@ -583,6 +583,19 @@ begin
             return Pass ("RTM message " & Nid & " held");
          end if;
          RBC_Given_Ms := B.Time_Ms;
+         if Has (Image (St.Comment), "[faulty] MAC-Error") then
+            --  3160300_01 step 156, 4080433_01 step 210: the message fails
+            --  the Euroradio check (3.16.3.1.1 a): the port's event 9 of
+            --  the session with the message as received (EVC_Ports)
+            B.RTM_Input (B.Byte_Array'(EVC_Ports.RTM_Tag_Event,
+                                       Unsigned_8 (S),
+                                       EVC_Ports.RTM_Event_T'Pos
+                                         (EVC_Ports.Message_Failed) + 1)
+                         & Data);
+            return Pass ("RTM message " & Nid & " given failing the "
+                         & "Euroradio check (session" & Natural'Image (S)
+                         & ")");
+         end if;
          B.RTM_Input (B.Byte_Array'(EVC_Ports.RTM_Tag_Message,
                                     Unsigned_8 (S)) & Data);
          return Pass ("RTM message " & Nid & " given (session"
