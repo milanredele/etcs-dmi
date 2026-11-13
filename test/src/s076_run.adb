@@ -1727,6 +1727,21 @@ package body S076_Run is
       Verb : constant String := W (3);
       Item : constant String := W (4);
    begin
+      --  a driver's input the comment gives with the train at
+      --  standstill, the next step at the same place: the driver stops
+      --  the train first (4100103_19 step 68 'Train is at standstill',
+      --  the steps to 83 at 500 m where the chart keeps 17.7 km/h; the
+      --  Override EoA button of step 69 needs it, 5.8.2.1 a))
+      if B.Speed /= 0
+        and then Has (Image (St.Comment), "is at standstill")
+        and then not Has (Image (St.Comment), "not at standstill")
+        and then Cur < Seq.Step_Count
+        and then abs (Seq.Steps (Cur + 1).Dist_Cm - St.Dist_Cm) <= 100
+      then
+         Explicit_Speed := -1;
+         B.Set_Speed (0);
+         B.Cycle;
+      end if;
       if Same (Verb, "enter") and then Same (Item, "Driver-ID") then
          if not Top_Is (W_Driver_ID) then
             declare
