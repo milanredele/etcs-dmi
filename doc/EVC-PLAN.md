@@ -24142,3 +24142,131 @@ estimated front end, shifted to the far end of the consist in SM:
 `Front_Shifted`), `EVC_Sessions.Handover.Evaluate` then `Switch`, and
 `Follow_Version` releases the RBC's precedence as soon as no session
 supervises. B4124 stays open, the next round's first item.
+
+### Review of the seventy-second round: eight verdicts re-derived blind (e5/review-72) (2026-11-13)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items were taken. No code,
+no triage line and no line of the authors was changed. One limit of the
+blindness: the head commit's subject line, which names the verdicts of
+items 6 and 7, was in the context the harness gave me at the start.
+
+1. The VBC entries. Mine: (a) one predicate of the on-board (SB at the
+   steps S1, S10 and S20: 5.4.3.2 S1 offers the VBC too, 5.4.5.3 i))
+   both sets the bit and decides the taking at the entry's reception;
+   the two can differ only by the transport delay, and then the
+   on-board's own reading wins. With the bit, DMI Table 36 #5 is bit
+   AND standstill AND SB AND room, #6 bit AND standstill AND SB AND a
+   VBC stored; standstill, SB and the store's terms stay the DMI's.
+   (b) A simplified on-board sends the bit set, so that Table 36 alone
+   decides. (c) Nothing set or removed, no record 28 or 29 (SUBSET-027
+   4.3.1.1 writes them when the driver sets or removes a VBC). Author
+   (MSG_ONBOARD national bit 5, `EVC_Core.VBC_Entry_Taken` read by
+   `EVC_Core.Inputs.Take_VBC_Requests` and the output,
+   `DMI_Conditions.Settings_Set_VBC` / `Settings_Remove_VBC` with
+   `VBC_Entry`, `EVC_Mock` bit 5 always, rows 5.4.5.3 and 5.4.5.3 i)
+   done): the same. Agree. "So that a press is never refused" holds
+   only up to the delay between the frame and the press.
+
+2. A text and a brake release request. Mine: (a) the text first (DMI
+   5.4.1.9.1: 3) and 4) before 6)); (b) a text held for the 1 s gap or
+   behind another text when a brake release request arises later was
+   triggered first: by the FIFO of 5.4.1.9 it goes first, and the
+   request must not overtake it; (c) by what an earlier cycle sent to
+   the DMI. Author (`Asked` in `EVC_Core.Modes.Run_Procedures`:
+   `Brake_Output.Ack_Required and then Status_Brake_Sent = Brake_Ack`;
+   `Scenario_Text_Brake_Ack_Same_Cycle`): (a) and (c) the same; (b)
+   "left as it was": `EVC_Text_Messages.Waits` holds such a text behind
+   the request once it was sent, so the request goes first. Disagree in
+   part on (b) (B4242).
+
+3. The session after a power-up. Mine: NP to SB is not a mode change of
+   3.5.3.4 c): no RBC knows the train (the End of Mission released the
+   session), and 5.4.3.2 opens the session of a) at A31 after S1 (the
+   Driver ID), D2, D3, D7; if c) held there, A31 would never be where a
+   level 2 start of mission opens it. Author (`EVC_Sessions.Mode_Changed`:
+   `From /= M_NP` in the c) condition, decision in its comment;
+   `Scenario_Session_Power_Up`): the same. Agree.
+
+4. (a) The order of Shunting at the power-up. Mine: the stored order,
+   the previous level and the table (both invalid) are kept; the order
+   is evaluated before the revalidation by the cold movement
+   information, with the previous level as the current one (4.11.1.4 a),
+   b)): a conditional order listing it keeps it (5.10.3.14.2), an
+   immediate one changes from it; the old table is deleted (d)), the
+   resulting level and the order's table are invalid (e)) and 4.11.1.1
+   then makes them valid without a cold movement and leaves them invalid
+   with one (S2); no acknowledgement (c)). The order matters: revalidated
+   first, the old level and table would be valid data that a) says the
+   table must not touch. Author (`EVC_Levels.Restore_Order` in the
+   power-up before `EVC_Core.Modes.Revalidate_Kept`,
+   `Scenario_SH_Order_Power_Up`, rows 4.11.1.4 a) to e) done): the same.
+   Agree. (b) The position referred only to an unlinked group. Mine: kept
+   over No Power and valid again without a cold movement (4.10: to be
+   revalidated; 3.6.2.2.2.1 names a valid position referred only to an
+   unlinked group; 3.6.4.2.2.1 sets the SOLR to the stored LRBG "if
+   any"), the LRBG "unknown". The code does not keep it
+   (`EVC_Position.Keep` keeps a position referring to an LRBG only, and
+   the heading of `Kept_Position_T` says a position referred to unlinked
+   groups only is deleted over No Power); the author's verdict (triage
+   Se8e0d3d0 onboard, B4202 open: the position and its SOLR should be
+   kept) is mine. Agree; the heading of `Kept_Position_T` describes the
+   gap as a rule and goes with B4202.
+
+5. The Train Data of a configuration. Mine: (a) the second way of
+   2.6.4.1, the number selecting a pre-configured set; 2.6.4.3 asks
+   further for a source configurable per item. (b) A number without a
+   set: the Train Data stay as they are (2.6.4.4) and so nothing has
+   changed: no A7 and no 3.18.3.7. (c) 3.18.3.7 for the train category,
+   the axle load category, the loading gauge and the traction systems
+   (not the maximum speed, which goes D1 to A1 then A7 with no
+   shortening); 3.18.3.8 for a longer train; 3.18.3.4 the set a) to i)
+   to the RBC when a session is established. (d) One table can serve
+   both, a set found by its number and offered as a train type: a
+   decision. Author (format 5 sets, `EVC_Core.Stored.Take_Train_Configuration`,
+   `EVC_Train_Data.Take_Configuration_Set`, `Scenario_TIU_Set`, row
+   5.17.2.2 A7, B4223 for 2.6.4.3): (a), (c), (d) the same. (b): the
+   values are unchanged, but without a set the input's category bit still
+   applies 3.18.3.7 (D1). Disagree in part on (b) (B4243): restrictive,
+   not unsafe.
+
+6. A message failing the Euroradio check, 3160300_01 SV30 step 168.
+   Mine: (a) not evaluated (3.16.3.1.1 a)), reported by M_ERROR 3
+   (7.5.1.64; the 136 of step 160 and the record 13), recorded as a
+   record 9 (SUBSET-027 4.2.4.9 "after receiving"; the sequence expects
+   it at step 158), so the port delivers its bytes; its stamp counts for
+   neither 3.16.3.3.3 nor T_NVCONTACT, being unauthenticated. (b) The
+   last message ours evaluated is step 144's (step 148's was
+   inconsistent); step 168's stamp is above it, so 3.16.3.3.3 accepts it
+   and ours goes to level 0 (UN at 4252 m). The sequence compares with
+   T_TRAIN_1 of step 156, which cannot be read: the sequence's data.
+   Author (`EVC_Ports.Valid_RTM_Failed`, the `Failed` slot of
+   `EVC_Core.Inputs` recorded, `EVC_Sessions.Take_Inconsistent`, the
+   radio error; `Scenario_Message_Failed_Check`; Sa9a23bd2 s076): the
+   same. Agree. A note: the runner gives step 168 the stamp 43439, one
+   below step 148's (43440). Under a reading where every message whose
+   header decodes counts as "the preceding message", ours would refuse
+   it. Our reading (the last message evaluated) does not.
+
+7. 9990200_13 SV30 step 71. Mine: no radio message is received between
+   step 67 (its record 9 matched at step 68) and step 71. Step 70 is a
+   136 sent to the Handing Over RBC, whose record is the 10 (SUBSET-027
+   4.2.4.10), and ours writes that record. ERA's PDF has the same row 71
+   (MESSAGE FROM RBC). Mine is the sequence's data. Author (S63b7a729
+   s076): the same. Agree.
+
+8. 3150800_05 SV30 step 137. Mine: no cold movement (step 89), so
+   4.11.1.1 revalidates the position (LRBG 1048580, Q_LRBG 1). 5.4.3.2
+   S23 and the 5.4.3.3 row "Following E10, E12, E30, E31, E32" delete
+   the position only if it is "still invalid". The step's own comment
+   says the step "should be removed as incompatible" when the position
+   is not invalid. Mine is the sequence's data. Author (S1d478b68 s076,
+   `EVC_Core.Modes.Delete_Invalid_Position`): the same. Agree.
+
+Counts: 8 items. Agreed: six (1, 3, 4, 6, 7, 8). Disagreed in part: two
+(2 b), a text already held that a later brake release request
+overtakes, B4242; 5 b), 3.18.3.7 applied by the category bit for a
+configuration without a set, B4243). Undecided: none. My calls: B4242
+should be built: such a text keeps its place before a request
+triggered after it. B4243 is a decision with low stakes (the author's
+reading only restricts more). Calls: 75 of 130 at this point.
