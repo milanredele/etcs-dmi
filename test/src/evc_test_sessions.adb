@@ -2808,6 +2808,56 @@ package body EVC_Test_Sessions is
       end loop;
    end Scenario_Session_Mode_Change;
 
+   --  3.5.3.4 a) and c), 5.4.3.2 S0, S1, D2, D3, D7, A31, 4.11.1.1: in
+   --  level 2 with a valid RBC contact, a power cycle at standstill
+   --  without a cold movement: the kept level and contact valid again,
+   --  the power-up's entry into Stand-By opens no session (no RBC to
+   --  report it to; neither with the desk opened), the start of mission
+   --  opens it once the driver ID is entered
+   procedure Scenario_Session_Power_Up is
+   begin
+      --  the position: the group passed in Shunting, level 2
+      Start_X;
+      Add_Group (Group (10, 100));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      Run_X (15_000);
+      Stand_X (2_000);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L2);
+      R.Set_Contact ((Known => True, Valid => True,
+                      RBC   => (NID_C => 5, NID_RBC => 300),
+                      Radio => 16#0077_FFFF_FFFF_FFFF#));
+      Stand;
+      Check (EVC_Position.Status = EVC_Position.Valid,
+             "power-up session: the position before the power cycle");
+      EVC_Core.Power_Up;
+      Cold_Byte := 1;
+      Cold_Distance := 100;
+      for I in 1 .. 5 loop
+         Stand;
+      end loop;
+      Check (EVC_Core.Mode = EVC_Modes.M_SB
+             and then EVC_Levels.Valid
+             and then EVC_Modes."=" (EVC_Levels.Level, EVC_Modes.L2)
+             and then R.Contact.Known and then R.Contact.Valid
+             and then R.Info (1).State = R.Idle,
+             "power-up session: no cold movement, the level 2 and the RBC "
+             & "contact valid again (4.11.1.1), no session opened by the "
+             & "entry into SB (3.5.3.4 a), c)) "
+             & R.Session_State_T'Image (R.Info (1).State));
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 1));
+      Stand;
+      Check (R.Info (1).State = R.Idle,
+             "power-up session: the desk opened, the driver ID awaited "
+             & "(5.4.3.2 S1): no session");
+      Send (Text_Entry (0, "1234"));
+      Check (R.Info (1).State = R.Connecting,
+             "power-up session: the driver ID entered, the stored level 2 "
+             & "and valid contact: the session opened (D2, D3, D7, A31) "
+             & R.Session_State_T'Image (R.Info (1).State));
+      Cold_Byte := 0;
+      Cold_Distance := 0;
+   end Scenario_Session_Power_Up;
+
    --  3.5.3.7 a): the session of a mode change to report (3.5.3.4 c) is
    --  given up after the third failed set-up of its safe radio connection
    --  (A.3.1), no start of mission ongoing: "No Connection" (3.5.7.5

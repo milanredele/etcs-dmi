@@ -1628,10 +1628,15 @@ is
       --  (5.5.2) and not out of SB (decision: the start of mission's
       --  exits from SB are a) and g)), except into Sleeping (4.4.6.1.10
       --  b): entering and exiting SL in level 2); the level and the
-      --  contact are looked at by the next Evaluate (Mode_Session_Order)
+      --  contact are looked at by the next Evaluate (Mode_Session_Order).
+      --  Decision: nor the power-up's entry into SB from NP, the start of
+      --  the start of mission (5.4.3.2 S0), whose session is a)'s, opened
+      --  at A31 after the driver ID (S1, D2, D3, D7); the level and the
+      --  contact revalidated by 4.11.1.1 are its data, not an order
       Sleeping := To = M_SL;
       if Reports.Mode_Reported (From, To)
         and then not Mission.Ends_Mission (From, To)
+        and then From /= M_NP
         and then (From /= M_SB or else To = M_SL)
       then
          Mode_Capped := not Mode_Session or else Mode_Capped;

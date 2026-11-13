@@ -102,6 +102,9 @@ package EVC_Test_Sessions is
    procedure Scenario_Train_Length_To_Position;
    --  3.5.3.4 c): a session for a mode change to report in level 2
    procedure Scenario_Session_Mode_Change;
+   --  3.5.3.4 a), 5.4.3.2 S1, D7: after a power-up the session waits
+   --  for the driver ID of the start of mission
+   procedure Scenario_Session_Power_Up;
    procedure Scenario_Session_Mode_Change_Capped;
    procedure Scenario_Session_Lost_Send;
 
