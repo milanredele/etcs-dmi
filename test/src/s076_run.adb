@@ -2882,7 +2882,16 @@ package body S076_Run is
       elsif Same (Kind, "direction-reversed") then
          B.Set_Direction (-B.Direction);
          Controller_For_Movement;
-         if B.Speed = 0 then
+         --  a reversal the comment gives at standstill with the next step
+         --  at the same place turns the train without moving it
+         --  (4120100_10 step 69: "The train is at standstill", the steps
+         --  to 97 at 165 m, the Train data entry of 5.17 at standstill)
+         if B.Speed = 0
+           and then not (Has (Image (St.Comment), "is at standstill")
+                         and then Cur < Seq.Step_Count
+                         and then abs (Seq.Steps (Cur + 1).Dist_Cm
+                                       - St.Dist_Cm) <= 100)
+         then
             B.Set_Speed (Kmh_To_Cms (5.0));
          end if;
          return Pass ("ODO direction reversed");
