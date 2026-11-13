@@ -24450,3 +24450,73 @@ Runner: 1262 passed (from 1253 before this package: 4120100_10,
 4060300_08 and 4100103_19, 3 SV each), 0 regressions. Backlog B4323 and
 B4325 done, B4324 and B4326 open (runner). No golden changed, no edit
 in dmi/ or evc/.
+
+### The RBC/RBC border by the engine's front in Supervised Manoeuvre, a held text before a later brake release request, a message 133 not sent (e6/border-engine) (2026-11-13)
+
+**The RBC/RBC border by the engine's front (B4124): built.** The
+premises held at the source: `EVC_Position.Evaluate_Border` measured
+the border's passing from `Front_X`, the far end of the consist in
+front of the engine in SM, `EVC_Sessions.Handover.Switch` then left no
+session supervising, and `EVC_Sessions.Follow_Version` released the
+RBC's precedence (`EVC_System_Version.Follow` without a session), so
+the next balise group's order was taken. 3.17.2.8 c) takes the
+Accepting RBC's version once the *train* has passed the border with its
+max safe front end; e) applies the version control of the non-RBC
+constituents and the balise group orders again only when the *engine*
+has passed it with its max safe front end and no session with the
+Accepting RBC is established. Decision, from the words: the handover's
+switch (3.15.1.3.1 b), 3.15.1.3.5) stays at the train's max safe front
+end; a third border item of `EVC_Position` watches the engine's max
+safe front end, the engine's end along the orientation (the antenna
+offset of that side) with the consist in front of it left out
+(4.4.21.1.7, the same point as the train's front when the front end is
+not shifted), with the same confidence interval as the train's;
+`EVC_Position.Engine_Short_Of_Border` is true between the two passings,
+and `Follow_Version` keeps the precedence of the RBC whose version is
+operated, in level 2 and without an established supervising session
+with a known version, until it is false (level 2 left: d) at once). In
+the orientation opposite to the active cab the engine's end along it is
+its other cab end (the antenna offset of that side), the engine being
+part of the consist in rear (3.18.3.2.4). Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Border_Engine` (the SM helpers are
+there; the brief named `EVC_Test_Version` or `_Handover`): in SM with
+70 m in front, the order at 300 m, no session with RBC 400, a group
+ordering 2.0 read between the two passings leaves 3.0 (failed before the
+fix: 2 operated), one read after the engine's passing makes 2.0
+operated. Row 3.17.2.8 e) noted (`@req` on
+`EVC_Position.Engine_Short_Of_Border` and `Follow_Version`). Proofs:
+`evc_position` (checks of 16 VCs or more: 2, the largest at
+evc_position.ads:485, unchanged by this item: no loop or postcondition
+added) and `evc_sessions` (0). 3170200_10 SV30 moved 118 -> 122
+(Sfbc6ab9e, triaged s076): the engine passes the border at step 119
+(637 m) and the precedence is released, but BG4d (step 120, packet 2
+ordering 2.0, Q_LINK 1) is rejected by 3.4.4.4.2: message 4's linking
+(packet 5, step 102) announces NID_BG 3, 3 and 5, never 4; ERA's PDF of
+the sequence has the same linking, so 3.0 stays where step 122 expects
+2.2.
+
+**A held text and a later brake release request (B4242): left at the
+bound.** Taken before the bound and stopped after it (the scenario's
+case not yet built). Checked at the source: the DMI's FIFO keeps the
+order of arrival across cycles (`dmi/dmi_ack.adb`: the requests of
+earlier cycles keep their place, 5.4.1.9.1 orders those arriving in one
+cycle), so the brake's term of `Asked` compared with the text's start
+alone would not do: the request, sent in the cycle it arises
+(`EVC_Core.Outputs`, `Status_Brake_Sent = Brake_Ack`), still reaches the
+DMI before a text sent after its 1 s. The smaller change found: the
+on-board sends the request after the text, the brake status
+`Brake_Ack_Pending` instead of `Brake_Ack` while a text to be
+acknowledged is held and the request not yet sent (a query of
+`EVC_Text_Messages` over `Held` and `To_Ack`); `Asked` is unchanged,
+its brake term being false until the request is sent; not for
+`EVC_Procedures.Brake_Demand.Ack_Required`, which `Asked` counts
+whatever was sent (both would wait). It is an edit of `EVC_Core.Outputs`
+at the brake status. B4242 stays open with these findings.
+
+**A message 133 not sent (S143d6aa2, 3110200_03 SV30 step 77): not
+taken** (the bound). The brief's premise that the line's note dates
+from before the message existed does not hold: triage.csv has two
+lines for S143d6aa2, the later (onboard) one already says that the
+step is L2 SR without any SM request, where 3.18.3.10 asks the 133 in
+SB or from a request for SM only; the earlier (model) one triages the
+same step s076.

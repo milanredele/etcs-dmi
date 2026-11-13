@@ -262,8 +262,9 @@ is
    M_Loc              : M_LOC_T := 2;
    Locations          : Locations_T;
    --  3.15.1.3.1 b), c): the RBC/RBC border, for the max safe front end
-   --  (1) and the min safe rear end (2)
-   type Border_T is array (1 .. 2) of Item_T;
+   --  (1) and the min safe rear end (2); 3.17.2.8 e): for the max safe
+   --  front end of the engine (3)
+   type Border_T is array (1 .. 3) of Item_T;
    Border             : Border_T := (others => No_Item);
    Last_Report_Ms     : Unsigned_64 := 0;
    --  the time of the last Update
@@ -370,6 +371,13 @@ is
                 else Antenna_Offset (Orient))))
      with Refined_Global => (Orient, Antenna_Offset, Manoeuvre,
                              EVC_Odometry.State);
+
+   --  The frame position of the engine's estimated front end: its end
+   --  along the orientation, the consist in front of it in Supervised
+   --  Manoeuvre left out (4.4.21.1.7); Front_X when the front end is not
+   --  shifted
+   function Engine_Front_X return Dist_T is
+     (Advance (EVC_Odometry.Position, Orient, Antenna_Offset (Orient)));
 
    --  Against an anchor, along the orientation
    function Front_From (A : Anchor_T) return Dist_T is
@@ -582,6 +590,7 @@ is
       end loop;
       Relocate_Item (Border (1));
       Relocate_Item (Border (2));
+      Relocate_Item (Border (3));
       --  the origins of the stored information likewise
       for I in EVC_Origins.Index_T loop
          pragma Loop_Invariant (SOLR_A = A);
@@ -1686,23 +1695,27 @@ is
 
    --  3.15.1.3.1 b), c), 5.15.1.4: the RBC/RBC border passed by the max
    --  safe front end (1), by the min safe rear end (2), as the locations
-   --  of packet 58 (Table 2a); each once
+   --  of packet 58 (Table 2a); 3.17.2.8 e): by the max safe front end of
+   --  the engine (3), without a trigger; each once
    procedure Evaluate_Border is
       Low  : constant Length_T := EVC_Odometry.Low;
       High : constant Length_T := EVC_Odometry.High;
+
+      --  The max safe end of front end X past the border item K
+      function Max_Passed (K : Positive; X : Dist_T) return Boolean is
+        (Border (K).Valid
+         and then Max_Safe (Estimated (Border (K).Ref, Border (K).Sense, X),
+                            EVC_Location.Doubt_Under
+                              (Border (K).Ref, Border (K).Sense, Low, High))
+                  >= Border (K).D)
+        with Pre => K in Border'Range;
    begin
-      if Border (1).Valid then
-         declare
-            It  : constant Item_T := Border (1);
-            Est : constant Dist_T := Estimated (It.Ref, It.Sense, Front_X);
-         begin
-            if Max_Safe (Est, EVC_Location.Doubt_Under
-                                (It.Ref, It.Sense, Low, High)) >= It.D
-            then
-               Triggers.Border_Front := True;
-               Border (1).Valid := False;
-            end if;
-         end;
+      if Max_Passed (1, Front_X) then
+         Triggers.Border_Front := True;
+         Border (1).Valid := False;
+      end if;
+      if Max_Passed (3, Engine_Front_X) then
+         Border (3).Valid := False;
       end if;
       if Border (2).Valid and then Length_Known then
          declare
@@ -2391,7 +2404,7 @@ is
       for K in Border'Range loop
          Border (K) :=
            (Valid        => True,
-            Kind         => (if K = 1 then Max_Item else Min_Item),
+            Kind         => (if K = 2 then Min_Item else Max_Item),
             Ref          => A,
             Sense        => Orient,
             D            => D,
@@ -2763,6 +2776,10 @@ is
      (Border (1).Valid
       and then Estimated (Border (1).Ref, Border (1).Sense, X)
                < Border (1).D);
+
+   function Engine_Short_Of_Border return Boolean is
+     (Border (3).Valid and then not Border (1).Valid)
+     with Refined_Global => Border;
 
    procedure Delete_Geo
    is

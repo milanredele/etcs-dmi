@@ -1362,15 +1362,27 @@ is
 
    --  3.17.2.8 (EVC_System_Version): the RBC's X operated in level 2
    --  while the session with the supervising RBC is established and its
-   --  version known; else the version last operated stays
-   --  @req 3.17.2.8 c)
+   --  version known; else the version last operated stays. 3.17.2.8 e):
+   --  without that session in level 2, the precedence of the RBC whose
+   --  version is operated is kept until the engine's max safe front end
+   --  has passed the RBC/RBC border (the train's front end passed it,
+   --  the consist in front of the engine in Supervised Manoeuvre)
+   --  @req 3.17.2.8 c), 3.17.2.8 e)
    procedure Follow_Version
-     with Global => (Input  => (R.State, EVC_Levels.State),
+     with Global => (Input  => (R.State, EVC_Levels.State,
+                                EVC_Position.State),
                      In_Out => EVC_System_Version.State)
    is
       S : constant R.Session_Ref_T := R.Supervising;
    begin
-      if S = R.No_Session then
+      if EVC_Levels.Level = L2
+        and then EVC_Position.Engine_Short_Of_Border
+        and then (S = R.No_Session
+                  or else R.Info (Session_T (S)).State /= R.Established
+                  or else not R.Info (Session_T (S)).Version_Known)
+      then
+         null;
+      elsif S = R.No_Session then
          EVC_System_Version.Follow (False, False, 0);
       else
          EVC_System_Version.Follow
