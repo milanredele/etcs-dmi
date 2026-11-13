@@ -56,6 +56,10 @@ is
       Level_Known : Boolean := False;
       Level       : Level_T := L0;
       Table       : EVC_Levels.Priority_Table_T;
+      --  4.11.1.4: the level transition order stored in SH, PS or SM and
+      --  not evaluated when the power was lost
+      --  @req 4.11.1.4
+      Order       : EVC_Levels.Kept_Order_T;
       Position    : EVC_Position.Kept_Position_T;
       --  the RBC contact information (EVC_Radio.RBC_Contact_T: the
       --  type and its writer, EVC_Sessions, are EVC_Radio's); EVC_Core

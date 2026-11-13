@@ -293,6 +293,33 @@ is
           Post => Level = L and then Status = Invalid
                   and then not Switched;
 
+   --  An immediate or conditional level transition order stored in SH,
+   --  PS or SM and not evaluated yet (4.4.8.1.5, 4.4.20.1.11,
+   --  4.4.21.1.11.1), kept over No Power (EVC_Retained)
+   type Kept_Order_T is record
+      Stored      : Boolean := False;
+      Conditional : Boolean := False;
+      Table       : Priority_Table_T;
+   end record;
+
+   --  The order stored in SH, PS or SM, not yet due (none once another
+   --  mode was entered: it is evaluated in that mode)
+   procedure Keep_Order (K : out Kept_Order_T)
+     with Global => State;
+
+   --  4.11.1.4: at the power-up, after Restore, the order kept over No
+   --  Power evaluated with the restored level as the current one (b),
+   --  without an acknowledgement (c); the ordered table replaces the
+   --  restored one (d) and the resulting level is invalid (e), so that
+   --  4.11.1.1 then applies to it and not to the level before (a)
+   --  @req 4.11.1.4, 4.11.1.4 a), 4.11.1.4 b), 4.11.1.4 c)
+   --  @req 4.11.1.4 d), 4.11.1.4 e)
+   procedure Restore_Order (K : Kept_Order_T)
+     with Global => (In_Out => State),
+          Post => (if K.Stored and then K.Table.Count >= 1
+                   then Status = Invalid and then Ack_Asked = Ack_Asked'Old
+                   else Level = Level'Old and then Status = Status'Old);
+
    --  4.11.1.1: no cold movement occurred, the kept level is valid
    procedure Revalidate
      with Global => (In_Out => State),

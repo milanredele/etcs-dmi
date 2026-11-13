@@ -1309,9 +1309,9 @@ Subset-076-6-3_3150800_03_v400_SV30,blocked,94,E7-euroloop
 Subset-076-6-3_3150800_04_v400_SV21,passed,0,-
 Subset-076-6-3_3150800_04_v400_SV22,passed,0,-
 Subset-076-6-3_3150800_04_v400_SV30,passed,0,-
-Subset-076-6-3_3150800_05_v400_SV21,failed,90,S665c85c1
-Subset-076-6-3_3150800_05_v400_SV22,failed,90,S665c85c1
-Subset-076-6-3_3150800_05_v400_SV30,failed,92,S665c85c1
+Subset-076-6-3_3150800_05_v400_SV21,failed,135,S1d478b68
+Subset-076-6-3_3150800_05_v400_SV22,failed,135,S1d478b68
+Subset-076-6-3_3150800_05_v400_SV30,failed,137,S1d478b68
 Subset-076-6-3_3150900_01_v400_SV21,blocked,50,E7-version
 Subset-076-6-3_3150900_01_v400_SV22,blocked,50,E7-version
 Subset-076-6-3_3150900_01_v400_SV30,blocked,50,S076-defect

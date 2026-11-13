@@ -23829,3 +23829,81 @@ refuses it is not recorded (SUBSET-027 4.3.1.1: the records 28 and 29
 are written when the driver sets or removes a Virtual Balise Cover);
 with the bit only a faulty DMI sends one. Both are build items of the
 protocol, the DMI, `EVC_Core.Outputs` and `EVC_Core.Inputs`.
+
+### What the power-up does with what was kept: the session opened only in the start of mission, a level transition order of Shunting evaluated at the power-up (4.11.1.4), the reference location of an unlinked group (e6/power-up) (2026-11-13)
+
+**The session after a power-up (B4122).** Premise checked at the
+trace (3150800_01 SV30): the set-up request (RTM request 1) leaves at
+132.7 s, the cycle after the power-up, before any cab is active. The
+caller is none of the start of mission's: `EVC_Sessions.Mode_Changed`
+took the change NP -> SB of the power-up as a mode change to report
+(`Reports.Mode_Reported (NP, SB)` is true), 3.5.3.4 c), and
+`Mode_Session_Order` ordered the session in level 2 with the contact
+that `EVC_Core.Modes.Revalidate_Kept` had made valid (4.11.1.1).
+Decision: the change from NP opens no session by c); the entry into
+SB is the start of the start of mission (5.4.3.2 S0), whose session is
+a)'s, opened at A31 after the Driver ID (S1, D2, D3, D7); the level
+and contact revalidated by 4.11.1.1 are its data, not an order (the
+same reading as the existing decision for the exits from SB).
+Scenario `EVC_Test_Sessions.Scenario_Session_Power_Up` (level 2, a
+valid contact and a valid position, a power cycle without a cold
+movement: no session before the Driver ID, also with the desk open;
+the session requested once it is entered; failed before the fix with
+CONNECTING). 3150800_01 and _04 pass in SV21, SV22 and SV30; no other
+sequence moved. Sa8a3ba1a rewritten (no sequence left), B4122 closed.
+
+**The order of Shunting over No Power (B4123, 4.11.1.4).** Premise
+checked: `EVC_Levels` keeps the immediate (packet 41) or conditional
+(packet 46) order received in SH, PS or SM (`Kept`, 4.4.8.1.5,
+4.4.20.1.11, 4.4.21.1.11.1), but `EVC_Core.Power_Up` clears the
+levels' state and `EVC_Retained.Kept_T` had no place for it. Built:
+`EVC_Levels.Kept_Order_T` (the body's kept order, now public),
+`Keep_Order` (the order stored and not yet due: an order made due by
+the entry into another mode is evaluated there, 4.4.8.1.5) saved into
+`EVC_Retained.Kept_T.Order` by `EVC_Core.Modes.Save_Retained`, and
+`EVC_Levels.Restore_Order`, called by `Power_Up` after the level's
+restore: b) the restored level is the current one of the evaluation (a
+conditional order that lists it keeps it, 5.10.3.14.2; else the first
+level of the table the on-board is equipped for, 5.10.3.14.3); c) the
+level is set without `Switch`, no acknowledgement; d) the ordered
+table replaces the restored one; e) the result is invalid, and
+`Revalidate_Kept` then applies 4.11.1.1 to it: valid without a cold
+movement, invalid with the table deleted with one; a) holds because
+the evaluation comes before the revalidation. Decision: the order is
+evaluated in `Power_Up` itself, not in the first cycle's
+`EVC_Levels.Evaluate`, so that the cold movement information of the
+first odometer sample never revalidates the level of before. Scenario
+`EVC_Test_Levels.Scenario_SH_Order_Power_Up` (level 1, SH, a packet 41
+to level 0 at distance 0, a power cycle with and without a cold
+movement; a packet 46 to levels 1 and 0: level 1 stays with the
+ordered table); failed before (5 checks). Rows 4.11.1.4 and a) to e)
+done with `@req` on `EVC_Levels.Restore_Order` and the component of
+`EVC_Retained`. No host stores the image of `Kept_T` (ports, sim,
+test/src); `Kept_T` grows by one priority table and two flags; the
+stack tool is the coordinator's. 3150800_05 moves from step 90 (SV30
+92) to 135 (SV30 137): level 0 after the power-up, no acknowledgement,
+the start of mission in level 0 to UN pass; the new step expects the
+JRU header with the position deleted (NID_SOLR 16777215, Q_LRBG 0),
+which 5.4.3.3 "Following E10, E12, E30, E31, E32" does only for a
+position invalid or unknown, and ours is valid after "Cold movement
+not detected"; the step's own comment says the step is to be removed
+as incompatible when the position is not invalid at the start of the
+test case: S1d478b68 s076. S665c85c1 rewritten, B4123 closed.
+
+**The reference location of an unlinked group (Se8e0d3d0).** Traced
+at 5040300_16 SV30: BG2d (NID_C 64, NID_BG 2, Q_LINK 0) is read in SR
+level 1 at 50 m and is the only group of the position; its LRBG is
+"unknown" (3.6.2.2.2.1). At the power cut `EVC_Position.Keep` keeps a
+position only when it refers to an LRBG (the heading of
+`Kept_Position_T`), so after the power-up the SOLR is unknown and the
+JRU header at step 89 codes NID_SOLR 16777215, where the sequence
+keeps the stored position (4.10 column NP: the train position kept to
+be revalidated; 3.6.4.2.2.1 sets the SOLR to the stored LRBG only "if
+any"). Not under 30 lines (the kept position, its restore, and the
+start of mission's A24 / A39 with a position referred to an unlinked
+group): the line rewritten with the cause, B4202 opened.
+
+Outcome: runner 1253 passed (+6), 1015 failed (-6), 922 blocked; 0
+regressions; `triage: NONE` 0. Proofs: `evc_sessions` (margin 7517
+steps), `evc_levels`, `evc_retained`, `evc_core-modes` (8648),
+`evc_core`.

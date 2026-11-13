@@ -334,6 +334,9 @@ is
          if K.Level_Known then
             EVC_Levels.Restore (K.Level, K.Table);
          end if;
+         --  4.11.1.4: the order of SH, PS or SM left to No Power,
+         --  evaluated now; the result is what 4.11.1.1 revalidates
+         EVC_Levels.Restore_Order (K.Order);
          EVC_Position.Restore (K.Position);
          --  3.18.2.7: the national values applicable before No Power
          --  (Start deleted the set not yet applicable, 3.18.2.9)

@@ -49,5 +49,7 @@ package EVC_Test_Levels is
    --  4.8.4 [5], [7] and the order of message 24 (8.4.1)
    procedure Scenario_Radio_Level_Orders;
    procedure Scenario_SH_Order_At_Zero;
+   --  4.11.1.4: the order kept in SH evaluated at the power-up
+   procedure Scenario_SH_Order_Power_Up;
 
 end EVC_Test_Levels;

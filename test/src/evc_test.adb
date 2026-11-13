@@ -521,6 +521,7 @@ begin
    Scenario_SR_Order_Single_Group;
    Scenario_Radio_Level_Orders;
    Scenario_SH_Order_At_Zero;
+   Scenario_SH_Order_Power_Up;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

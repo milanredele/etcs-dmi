@@ -819,4 +819,78 @@ package body EVC_Test_Levels is
              & "stays (4.8.4 [7])");
    end Scenario_SH_Order_At_Zero;
 
+   --  4.11.1.4 a) to e): an immediate order to level 0 kept in SH in
+   --  level 1 (4.4.8.1.5), SH left to No Power (the power cut): at the
+   --  power-up the order is evaluated with the level 1 of before as the
+   --  current one (b), level 0 without an acknowledgement (c), the
+   --  ordered table in place of the old one (d), both invalid until the
+   --  cold movement information (e, 4.11.1.1): valid without a cold
+   --  movement, the level invalid and the table deleted with one. A
+   --  conditional order (packet 46) to level 1 or 0: level 1, the
+   --  current one, stays, with the ordered table
+   procedure Scenario_SH_Order_Power_Up is
+      P46 : TP46.Packet_T;
+   begin
+      for Cold in Boolean loop
+         Start_X;
+         EVC_Core.Set_Mode_For_Test (M_SH, L1);
+         Add_Group (Group (10, 100));
+         Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_0, 0));
+         Run_X (15_000);
+         Stand_X (2_000);
+         Check (EVC_Levels.Level = L1 and then EVC_Levels.Deferred,
+                "levels power-up: in SH the order to level 0 kept "
+                & "(4.4.8.1.5)");
+         EVC_Core.Power_Up;
+         Check (EVC_Levels.Level = L0
+                and then EVC_Levels.Status = Invalid
+                and then EVC_Levels.Contains (EVC_Levels.Table, L0)
+                and then not EVC_Levels.Contains (EVC_Levels.Table, L1),
+                "levels power-up: the kept order evaluated with level 1 "
+                & "as the current one: level 0 and the ordered table, "
+                & "invalid (4.11.1.4 b, d, e)");
+         Cold_Byte := 1;
+         Cold_Distance := (if Cold then 250 else 100);
+         Stand_X (500);
+         Check (EVC_Levels.Level = L0
+                and then EVC_Levels.Valid = not Cold
+                and then EVC_Levels.Contains (EVC_Levels.Table, L0) = not Cold
+                and then not EVC_Levels.Ack_Asked
+                and then EVC_Core.Mode = M_SB,
+                "levels power-up: level 0 "
+                & (if Cold then "invalid, the table deleted, after a cold "
+                   & "movement" else "valid without a cold movement")
+                & ", no acknowledgement asked (4.11.1.4 c, e; 4.11.1.1)");
+         Cold_Byte := 0;
+         Cold_Distance := 0;
+      end loop;
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SH, L1);
+      Add_Group (Group (10, 100));
+      P46.Q_DIR := 1;
+      P46.M_LEVELTR := ETCS_Variables.M_LEVELTR_Level_1;
+      P46.Has_NID_NTC := False;
+      P46.NID_NTC := 0;
+      P46.N_ITER := 1;
+      P46.M_LEVELTR_List (1) :=
+        (M_LEVELTR   => ETCS_Variables.M_LEVELTR_Level_0,
+         Has_NID_NTC => False,
+         NID_NTC     => 0);
+      Carry (Track_N, 0, P46);
+      Run_X (15_000);
+      Stand_X (2_000);
+      EVC_Core.Power_Up;
+      Cold_Byte := 1;
+      Cold_Distance := 100;
+      Stand_X (500);
+      Check (EVC_Levels.Level = L1 and then EVC_Levels.Valid
+             and then EVC_Levels.Contains (EVC_Levels.Table, L0)
+             and then EVC_Levels.Contains (EVC_Levels.Table, L1),
+             "levels power-up: a kept conditional order holding the "
+             & "level 1 of before: level 1 stays, with the ordered table "
+             & "(4.11.1.4 b, d; 5.10.3.14.2)");
+      Cold_Byte := 0;
+      Cold_Distance := 0;
+   end Scenario_SH_Order_Power_Up;
+
 end EVC_Test_Levels;

@@ -560,6 +560,8 @@ is
       K.Level_Known := EVC_Levels.Status /= Unknown;
       K.Level := EVC_Levels.Level;
       K.Table := EVC_Levels.Table;
+      --  4.11.1.4: the order of SH, PS or SM not evaluated yet
+      EVC_Levels.Keep_Order (K.Order);
       EVC_Position.Keep (K.Position);
       --  the RBC contact information (EVC_Sessions writes it)
       K.RBC := EVC_Radio.Contact;

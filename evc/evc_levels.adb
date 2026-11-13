@@ -31,11 +31,7 @@ is
    end record;
 
    --  An immediate or conditional order kept in SH, PS or SM
-   type Kept_T is record
-      Stored      : Boolean := False;
-      Conditional : Boolean := False;
-      Table       : Priority_Table_T;
-   end record;
+   subtype Kept_T is Kept_Order_T;
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
 
@@ -564,6 +560,34 @@ is
       Applicable := T;
       Switched_N := False;
    end Restore;
+
+   procedure Keep_Order (K : out Kept_Order_T) is
+   begin
+      if Kept.Stored and then not Kept_Due then
+         K := Kept;
+      else
+         K := (others => <>);
+      end if;
+   end Keep_Order;
+
+   procedure Restore_Order (K : Kept_Order_T) is
+   begin
+      if K.Stored and then K.Table.Count >= 1 then
+         --  b): the conditional order keeps a restored level it lists
+         --  (5.10.3.14.2), else the first level of the table the on-board
+         --  is equipped for (5.10.3.14.3, 5.10.2.4); c): no
+         --  acknowledgement
+         if K.Conditional and then Current_Status /= Unknown
+           and then Contains (K.Table, Current)
+         then
+            null;
+         else
+            Current := K.Table.List (Selected (K.Table)).Level;
+         end if;
+         Current_Status := Invalid;
+         Applicable := K.Table;
+      end if;
+   end Restore_Order;
 
    procedure Revalidate is
    begin
