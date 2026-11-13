@@ -1499,6 +1499,77 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Text_Behind_Brake_Ack;
 
+   --  The same fixed text from 320 m; at 300 m the train rolls 3 m
+   --  backwards (the protection's emergency brake, 3.14.3.4), then in
+   --  one cycle the odometer counts it 33 m forward at standstill: the
+   --  release's acknowledgement is asked (3.14.1.9) in the cycle the
+   --  text starts, and the text is sent in that cycle (ERA_ERTMS_015560
+   --  5.4.1.9.1: 3) the text before 6) the brake's release)
+   procedure Scenario_Text_Brake_Ack_Same_Cycle is
+      TP      : ETCS_Track_Packets.P74.Packet_T;
+      W       : Writer_T;
+      OK      : Boolean;
+      Saved   : constant Unsigned_16 := Speed_Cms;
+      Shown_N : Natural := 0;
+      procedure Count is
+      begin
+         for I in 1 .. EVC_Text_Messages.Event_Count loop
+            if Natural (EVC_Text_Messages.Event (I).Kind)
+              = EVC_Text_Messages.Event_Displayed
+            then
+               Shown_N := Shown_N + 1;
+            end if;
+         end loop;
+      end Count;
+   begin
+      Start_X;
+      Speed_Cms := 500;
+      Add_Group (Group (10, 100));
+      TP.Q_DIR := 2;
+      TP.Q_SCALE := 1;
+      TP.Q_TEXT := 1;
+      TP.D_TEXTDISPLAY := 220;
+      TP.L_TEXTDISPLAY := 1000;
+      TP.T_TEXTDISPLAY := 1023;
+      TP.M_MODETEXTDISPLAY := 15;
+      TP.M_LEVELTEXTDISPLAY := 4;
+      TP.M_MODETEXTDISPLAY_2 := 15;
+      TP.M_LEVELTEXTDISPLAY_2 := 4;
+      TP.Q_TEXTCONFIRM := 1;
+      TP.Has_Q_CONFTEXTDISPLAY := True;
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      ETCS_Track_Packets.P74.Encode (TP, W, OK);
+      Finish_Carry (1, 0, W, OK);
+      Carry (1, 1, MA_Of ((1 => 3000)));
+      Run_X (20_000);
+      while Train_Cm < 30_000 loop
+         Step_X (50);
+         Count;
+      end loop;
+      for I in 1 .. 6 loop
+         Step_X (-50);
+         Count;
+      end loop;
+      Check (EVC_Core.Brake_Commands.EB
+               and then not EVC_Core.Brake_Commands.Ack_Required
+               and then Shown_N = 0,
+             "text and brake in one cycle: 3 m backwards, the emergency "
+             & "brake, the train still moving, got "
+             & EVC_Core.Brake_Commands.EB'Image
+             & EVC_Core.Brake_Commands.Ack_Required'Image & Shown_N'Image);
+      Feed_X (3_300);
+      Sample (0);
+      Cycle_X;
+      Count;
+      Check (EVC_Core.Brake_Commands.Ack_Required and then Shown_N = 1,
+             "text and brake in one cycle: the release's acknowledgement "
+             & "asked in the cycle the text starts, the text sent in it "
+             & "(ERA_ERTMS_015560 5.4.1.9.1: 3) before 6)), got "
+             & EVC_Core.Brake_Commands.Ack_Required'Image & Shown_N'Image);
+      Speed_Cms := Saved;
+   end Scenario_Text_Brake_Ack_Same_Cycle;
+
    --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
    --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls
    --  back 1.5 m in rear of the location where "Lowered pantograph" is

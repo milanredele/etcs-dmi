@@ -194,6 +194,7 @@ begin
    Scenario_Mode_Profile_Roll_Back;
    Scenario_Text_Behind_Mode_Ack;
    Scenario_Text_Behind_Brake_Ack;
+   Scenario_Text_Brake_Ack_Same_Cycle;
    Scenario_Track_Condition_Roll_Back;
    Scenario_MA_Timers_Roll_Back;
    Scenario_LX_Roll_Back;

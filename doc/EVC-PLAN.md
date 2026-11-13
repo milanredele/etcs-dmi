@@ -23829,3 +23829,78 @@ refuses it is not recorded (SUBSET-027 4.3.1.1: the records 28 and 29
 are written when the driver sets or removes a Virtual Balise Cover);
 with the bit only a faulty DMI sends one. Both are build items of the
 protocol, the DMI, `EVC_Core.Outputs` and `EVC_Core.Inputs`.
+
+### The on-board enables the VBC entries: the bit of MSG_ONBOARD and Table 36, a refused code not recorded, a text and a brake release request of the same cycle (e6/vbc-enable) (2026-11-13)
+
+B4082 (decided 2026-11-13). The premise held at the source: the
+on-board took Set VBC / Remove VBC only in SB at S1, S10 and S20
+(`EVC_Mission.VBC_Step` inside `EVC_Core.Inputs.Take_VBC_Requests`),
+the DMI enabled the two buttons by Table 36 #5, #6 (standstill, SB,
+the room / a VBC stored) alone. Built: `EVC_Core.VBC_Entry_Taken`, an
+expression function of the parent's private part, is the one reading
+of the taking: `Take_VBC_Requests` takes an entry on it and
+`EVC_Core.Outputs.Send_Onboard` sends it as MSG_ONBOARD national bit 5
+(dmi_protocol.ads, next to bit 4, the Override's enabling), so the two
+cannot differ; the bit's constant is in the body of `EVC_Core.Outputs`,
+not in `EVC_DMI_Port` (below). The DMI reads it into
+`DMI_Conditions.VBC_Entry`; `Settings_Set_VBC` and
+`Settings_Remove_VBC` add it to their terms (Table 36 #5, #6 keep the
+room and the stored VBC, bits 2 and 3): from the driver's seat a press
+of Set VBC or Remove VBC is never refused. `EVC_Mock` sets the bit
+always (it has no start of mission steps): `obj/dmi_test` unchanged, no
+DMI golden changed. Scenarios, both failing before the change:
+`EVC_Test_Sessions.Scenario_SoM_VBC_Steps` (the bit set at S1, S10,
+S20, cleared at S2, S12, S13 and after 'Start' in level 1),
+`DMI_Test_VBC.Scenario_VBC_Settings` (SB at standstill with room and a
+VBC stored: both buttons disabled with the bit cleared, the System
+version button enabled; `DMI_Test_Support.VBC_Onboard` gained
+`VBC_Entry`, default True). The on-board goldens: ten changed, nine
+reviewed with `golden_review.py` (three on-board groups, the only
+change `DMI:ONBOARD national 5 -> 37` in the cycles of S1, S10 and S20
+in SB: bench_onboard 3 cycles (data 0, 5, 15), seven position and
+profiles goldens their first cycle (S1), position_orientation 4 cycles
+(data 36, the Driver ID not valid: S1); verdict as intended for the
+three), `bench_level2` a digest of the DMI frames computed in the test
+(no dump to diff), the same field by construction. Runner: 0 moved;
+the 18 sv30 sequences naming VBC kept their outcome and step.
+Rows 5.4.5.3 and 5.4.5.3 i) done (k) stays deferred in its own row).
+
+B4142 (decided): `Take_VBC_Requests` wrote the records 28 / 29 for every
+code entered, also when refused (the premise held). Built: the record
+and the set / remove only when the entry is taken; decision of the
+user, SUBSET-027 4.3.1.1 ("when the driver sets / removes a Virtual
+Balise Cover": a refused entry sets or removes none). With the bit
+only a DMI that ignores it sends a refused entry. The scenario above
+checks no record at S2 and S12 and one at S10 and S20 (before the
+change one record each at S2 and S12). Items 1 and 2 were built in one
+edit of `Take_VBC_Requests` and are committed together.
+
+The proof's canaries: `evc_core-inputs` 3980 steps at most; with the
+constant `National_VBC_Entry` added to `EVC_DMI_Port` (one line, no
+expression function), `evc_config` failed the margin rule (five checks
+of `EVC_Config.Decoded` at evc_config.adb:495-501 at 94340 to 94722
+steps of 100000, the Flag_OK reads of round 71's case): the constant
+moved to the body of `EVC_Core.Outputs`, `EVC_DMI_Port` is as on
+master.
+
+B4143 (the review's line). The premise held: `Asked` in
+`EVC_Core.Modes.Run_Procedures` read `Brake_Output.Ack_Required`,
+written by `EVC_Core.Monitoring` earlier in the same cycle, so a text
+to be acknowledged that started in the cycle the protections' brake
+asked its release was held. The scenario first,
+`EVC_Test_Profiles.Scenario_Text_Brake_Ack_Same_Cycle` (next to
+`Scenario_Text_Behind_Brake_Ack`, its helpers): the fixed text from
+320 m, 3 m backwards at 300 m (the reverse movement protection's
+emergency brake), then one cycle counting 33 m forward at standstill:
+the release's acknowledgement asked and the text started in that cycle;
+before the change the text was held (0 shown). Decision, DMI 5.4.1.9.1
+(requests triggered simultaneously: 3) the fixed text before 6) the
+brake's release): the protections' brake holds a text only once a
+previous cycle sent its request to the DMI (`Brake_Output.Ack_Required
+and then Status_Brake_Sent = Brake_Ack`; `Status_Brake_Sent` added to
+the Global of `Run_Procedures`, so `evc_core` is proved too); a text
+and a request of the same cycle reach the DMI together and its FIFO
+shows the text first. The status entry and the procedures' brake were
+already seen from the next cycle. Left as it was: a text held for
+another reason (the 1 s gap, another text) that a brake request
+overtakes stays held behind it. Runner 0 moved, goldens unchanged.
