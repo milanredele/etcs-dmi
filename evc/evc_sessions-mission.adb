@@ -485,7 +485,8 @@ is
 
    --  Sent when the supervising session is established with valid Train
    --  Data (not while the start of mission sends its report, decision
-   --  2), when the driver validates them in a session, again after a
+   --  2), when the driver validates them in a session or the train
+   --  interface's configuration changes them (5.17.2.2 A7), again after a
    --  connection lost before the acknowledgement (3.18.3.4.2) and, not
    --  acknowledged, repeated Max_Repeats times Repeat_Ms apart (decision
    --  4, A.3.1: four sendings in all; then the acknowledgement is still
@@ -539,7 +540,8 @@ is
             First := (R.Session_Ref_T (S) = Sv and then not Was_Up (S)
                       and then (TD_Awaited (S)
                                 or else not R.Train_Data_Acknowledged))
-                     or else EVC_Mission.Train_Data_Validated;
+                     or else EVC_Mission.Train_Data_Validated
+                     or else EVC_Train_Data.Set_By_Interface;
             if EVC_Train_Data.Valid and then Step not in Opening | Report_Due
               and then (First
                         or else (TD_Awaited (S)

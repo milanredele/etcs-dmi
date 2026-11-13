@@ -252,6 +252,7 @@ begin
    Scenario_Config_Behaviour;
    Scenario_Config_Zones;
    Scenario_Config_Traction;
+   Scenario_Config_Sets;
    EVC_Test_Core.Scenario_Local_Time;
    Scenario_JRU_Format;
    Scenario_JRU_On_Board;
@@ -291,6 +292,7 @@ begin
    Scenario_Train_Data_Categories;
    EVC_Test_Train_Data.Scenario_Transition_Deleted;
    EVC_Test_Train_Data.Scenario_TIU_Categories;
+   EVC_Test_Train_Data.Scenario_TIU_Set;
    EVC_Test_Train_Data.Scenario_Longer_Train;
    EVC_Test_Train_Data.Scenario_RBC_TRN;
    EVC_Test_Train_Data.Scenario_Engine_Length;

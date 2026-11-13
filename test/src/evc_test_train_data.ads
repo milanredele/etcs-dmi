@@ -17,6 +17,12 @@ package EVC_Test_Train_Data is
    --  train interface's configuration changes the categories (its bit 7)
    --  at standstill, no driver validation asked
    procedure Scenario_TIU_Categories;
+   --  5.17.2.2 A7 with the Train Data sets of the configuration image
+   --  (SUBSET-034 2.6.4.1): the set of the train configuration taken,
+   --  sent to the RBC (3.18.3.4), 3.18.3.7 b) by the set's categories,
+   --  and a longer train's track description deleted in rear of the
+   --  former min safe rear end (3.18.3.8)
+   procedure Scenario_TIU_Set;
 
    --  3.18.3.8: the train length increased: the gradient section that
    --  ends in rear of the former min safe rear end deleted

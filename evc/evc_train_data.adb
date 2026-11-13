@@ -6,7 +6,7 @@ package body EVC_Train_Data
        Refined_State => (State => (Is_Valid, Current, Current_Categories,
                                    SCL_Available, SCL_Known, SCL,
                                    SCL_Front_Rose, SM_Set, SM_Data,
-                                   SM_Categories, Type_Index))
+                                   SM_Categories, Type_Index, By_Interface))
 is
 
    Is_Valid           : Boolean := False;
@@ -22,6 +22,11 @@ is
    SM_Data            : Train_Data_T := Default;
    SM_Categories      : Categories_T := Default_Categories;
    Type_Index         : Type_Index_T := 0;
+   --  the last Stored step took a set of the train interface
+   By_Interface       : Boolean := False;
+
+   function Set_By_Interface return Boolean is (By_Interface)
+     with Refined_Global => By_Interface;
 
    function Type_In_Force return Type_Index_T is (Type_Index)
      with Refined_Global => Type_Index;
@@ -90,6 +95,7 @@ is
       SM_Data := Default;
       SM_Categories := Default_Categories;
       Type_Index := 0;
+      By_Interface := False;
    end Clear;
 
    --  decision: the safe consist length is "captured as part of valid
@@ -113,6 +119,62 @@ is
       SM_Set := False;
       Type_Index := T;
    end Set;
+
+   procedure Take_Configuration_Set (I                  : Positive;
+                                     Categories_Changed : out Boolean)
+   is
+      S : constant EVC_Config.Train_Type_T := EVC_Config.Train_Set (I).Data;
+      F : constant EVC_Config.Fixed_Train_T := EVC_Config.Current.Train;
+      C : constant Categories_T :=
+        (Cant_Deficiency => S.Cant_Deficiency,
+         Other           => S.Other,
+         Axle_Load       => S.Axle_Load,
+         Loading_Gauge   => S.Loading_Gauge,
+         Voltages        => F.Voltages,
+         Airtight        => S.Airtight,
+         N_Axle          => F.N_Axle);
+      D : Train_Data_T :=
+        (Length                => EVC_Distances.Length_T (S.Length_M) * 100,
+         --  km/h to cm/s, rounded down, as for an entry
+         Max_Speed             => Speed_Cms_T (S.Max_Speed_Kmh * 250 / 9),
+         Model                 => F.Model,
+         Brake_Percentage      => S.Brake_Percentage,
+         --  7.5.1.84 as for an entry: bit 2 passenger train (in P), bit 1
+         --  freight train in G, bit 0 freight train in P
+         Brake_Position        =>
+           (if Natural (S.Other) / 4 mod 2 = 1 then Passenger_P
+            elsif Natural (S.Other) / 2 mod 2 = 1 then Freight_G
+            elsif Natural (S.Other) mod 2 = 1 then Freight_P
+            else Passenger_P),
+         A_Brake_Emergency     => (Count => 0, Steps => (others => (0, 0))),
+         A_Brake_Service       => (Count => 0, Steps => (others => (0, 0))),
+         A_Brake_Normal        => (Count => 0, Steps => (others => (0, 0))),
+         T_Brake_Emergency     => 0,
+         T_Brake_Service       => 0,
+         Has_Regenerative      => F.Has_Regenerative,
+         Has_Eddy_Current      => F.Has_Eddy_Current,
+         Has_Magnetic_Shoe     => F.Has_Magnetic_Shoe,
+         Has_Electro_Pneumatic => F.Has_Electro_Pneumatic,
+         T_Traction_Cut_Off    => F.T_Traction_Cut_Off);
+   begin
+      --  a gamma train: the braking models of the installation
+      if F.Model = Gamma then
+         EVC_Config.Gamma_Models (D);
+      end if;
+      Categories_Changed :=
+        C.Cant_Deficiency /= Current_Categories.Cant_Deficiency
+        or else C.Other /= Current_Categories.Other
+        or else C.Axle_Load /= Current_Categories.Axle_Load
+        or else C.Loading_Gauge /= Current_Categories.Loading_Gauge
+        or else C.Voltages /= Current_Categories.Voltages;
+      Set (D, C);
+      By_Interface := True;
+   end Take_Configuration_Set;
+
+   procedure No_Configuration_Set is
+   begin
+      By_Interface := False;
+   end No_Configuration_Set;
 
    procedure Invalidate is
    begin
