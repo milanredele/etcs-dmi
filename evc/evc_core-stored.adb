@@ -158,10 +158,50 @@ is
       end loop;
    end Bound_Transition_Buffer;
 
+   --  5.17.2.2 A7 in the last cycle, with a Train Data set of the
+   --  installation for the train configuration of the train interface
+   --  (SUBSET-034 2.6.4.1: the bits 0 to 5 of its input): the set's
+   --  Train Data (EVC_Train_Data; 3.18.3.4 by EVC_Sessions, 3.18.3.8 by
+   --  the next Evaluate of the stored information), and Categories
+   --  (3.18.3.7) when they changed the train category, axle load
+   --  category, loading gauge or traction systems at standstill; without
+   --  a set (2.6.4.4), the categories changed by the input's bit (D1).
+   --  Decision: with a set, its comparison with the Train Data before
+   --  decides 3.18.3.7, as it knows which data changed; the bit still
+   --  decides the branch of D1 in EVC_Procedures
+   --  @req 5.17.2.2 A7, 3.18.3.4, 3.18.3.7
+   procedure Take_Train_Configuration (Categories : out Boolean)
+     with Global => (Input  => (Config_Last, EVC_Procedures.State,
+                                EVC_Config.State),
+                     In_Out => EVC_Train_Data.State)
+   is
+      N       : constant Natural :=
+        Natural (Config_Last) mod (EVC_Config.Configuration_Max + 1);
+      I       : Natural;
+      Changed : Boolean;
+   begin
+      Categories := EVC_Procedures.Train_Data_Categories_Changed;
+      if EVC_Procedures.Train_Data_Changed_By_Interface
+        and then EVC_Train_Data.Valid
+      then
+         I := EVC_Config.Set_Of_Configuration (N);
+         if I > 0 then
+            EVC_Train_Data.Take_Configuration_Set (I, Changed);
+            Categories := Changed
+              and then EVC_Procedures.Train_Data_Changed_At_Standstill;
+            return;
+         end if;
+      end if;
+      EVC_Train_Data.No_Configuration_Set;
+   end Take_Train_Configuration;
+
    procedure Evaluate_Stored_Information is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
+      --  3.18.3.7 after the train interface's change (A7)
+      TIU_Categories : Boolean;
    begin
+      Take_Train_Configuration (TIU_Categories);
       --  3.12.3: the text messages of the radio messages, while
       --  the origins of their LRBG are kept; 4.8.3: R [2] outside
       --  level 2 (a set of the transition buffer when level 2 is
@@ -212,12 +252,10 @@ is
       --  3.18.3.7 a): after the Train Data entered in the last cycle, or
       --  changed by the train interface (5.17.2.2 A7)
       EVC_Stored_Information.Train_Data_Shortening
-        (EVC_Mission.Categories_Changed
-         or else EVC_Procedures.Train_Data_Categories_Changed);
+        (EVC_Mission.Categories_Changed or else TIU_Categories);
       Apply_Cut;
       --  3.18.3.7 b): the radio information held for a transition
-      if (EVC_Mission.Categories_Changed
-          or else EVC_Procedures.Train_Data_Categories_Changed)
+      if (EVC_Mission.Categories_Changed or else TIU_Categories)
         and then EVC_Odometry.Standstill
       then
          EVC_Radio_Authority.Delete_Transition_Information;

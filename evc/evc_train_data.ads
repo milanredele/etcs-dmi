@@ -15,6 +15,8 @@
 --  loading gauge G1, traction system AC 25 kV 50 Hz, no special brake,
 --  a traction cut-off time of 1 s.
 
+pragma Unevaluated_Use_Of_Old (Allow);
+
 with ETCS_Variables;        use ETCS_Variables;
 with EVC_Config;
 with EVC_Distances;         use type EVC_Distances.Cm_T;
@@ -201,6 +203,34 @@ is
      with Global => (In_Out => State),
           Post => Valid and then Data = D and then Categories = C
                   and then not Manoeuvre_Set and then Type_In_Force = T;
+
+   --  5.17.2.2 A7 with the set I of the installation (EVC_Config
+   --  Train_Set, selected by the train configuration of the train
+   --  interface, SUBSET-034 2.6.4.1): its Train Data with the engine's
+   --  fixed ones, set as an entry is (Set, of no train type);
+   --  Categories_Changed: the data of 3.18.3.7 (the train category, the
+   --  axle load category, the loading gauge, the traction systems)
+   --  differ from those before. Set_By_Interface holds until the next
+   --  call of this or No_Configuration_Set
+   --  @req 5.17.2.2 A7, 3.18.3.2
+   procedure Take_Configuration_Set (I                  : Positive;
+                                     Categories_Changed : out Boolean)
+     with Global => (In_Out => State, Input => EVC_Config.State),
+          Pre  => I <= EVC_Config.Train_Sets_Max,
+          Post => Valid and then not Manoeuvre_Set and then Type_In_Force = 0
+                  and then Set_By_Interface;
+
+   --  A cycle without a set taken from the train interface
+   procedure No_Configuration_Set
+     with Global => (In_Out => State),
+          Post => not Set_By_Interface and then Valid = Valid'Old
+                  and then Manoeuvre_Set = Manoeuvre_Set'Old;
+
+   --  The Train Data were set from the train interface by the last call
+   --  of Take_Configuration_Set or No_Configuration_Set (3.18.3.4: a
+   --  modification of valid Train Data, sent to the RBC)
+   function Set_By_Interface return Boolean
+     with Global => State;
 
    --  The Train Data are no longer valid
    procedure Invalidate

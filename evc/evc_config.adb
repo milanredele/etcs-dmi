@@ -4,7 +4,7 @@
 package body EVC_Config
   with SPARK_Mode => On,
        Refined_State => (State => (Cfg, Is_Loaded, Refused, Pending,
-                                   Last, Gam))
+                                   Last, Gam, Sets_In))
 is
 
    --  The configuration in use is always valid
@@ -18,6 +18,8 @@ is
    Last      : Status_T := Accepted;
    --  the gamma train of the image loaded (No_Gamma for a lambda train)
    Gam       : Gamma_T := No_Gamma;
+   --  the Train Data sets of the image loaded (none before version 5)
+   Sets_In   : Train_Set_Table_T := No_Train_Sets;
 
    function Current return Config_T is (Cfg)
      with Refined_Global => Cfg;
@@ -33,6 +35,10 @@ is
      with Refined_Global => Pending;
    function Last_Status return Status_T is (Last)
      with Refined_Global => Last;
+   function Train_Set_Count return Natural is (Sets_In.Count)
+     with Refined_Global => Sets_In;
+   function Train_Set (I : Positive) return Train_Set_T is (Sets_In.Sets (I))
+     with Refined_Global => Sets_In;
 
    --  The image
 
@@ -297,12 +303,92 @@ is
    --  The length L is that of an image of the format Version; every
    --  format's image holds the version 1 fields (the postcondition, on
    --  which the reads of Decoded rest without unfolding the formats)
+   --  (by tables of the bounds, not a chain of cases: the reads of
+   --  Decoded after the check prove without splitting on the versions)
+   type Bounds_T is array (1 .. Format_Version) of Natural;
+   Min_Length : constant Bounds_T :=
+     (Image_Length, Min_Image_V2_Length, Min_Image_V3_Length,
+      Min_Image_V4_Length, Min_Image_V5_Length);
+   Max_Length : constant Bounds_T :=
+     (Image_Length, Max_Image_V2_Length, Max_Image_V3_Length,
+      Max_Image_V4_Length, Max_Image_Length);
    function Length_OK (Version, L : Natural) return Boolean is
-     (if Version = 1 then L = Image_Length
-      elsif Version = 2 then L in Min_Image_V2_Length .. Max_Image_V2_Length
-      elsif Version = 3 then L in Min_Image_V3_Length .. Max_Image_V3_Length
-      else L in Min_Image_V4_Length .. Max_Image_Length)
+     (Version in Bounds_T'Range
+      and then L in Min_Length (Version) .. Max_Length (Version))
      with Post => (if Length_OK'Result then L >= Image_Length);
+
+   --  The Train Data sets of an image of format version 5 at Offset (see
+   --  the layout in the spec); the entries after the count are not read
+   --  @req 3.18.3.2
+   procedure Get_Sets (Bytes  : Byte_Array;
+                       Offset : Natural;
+                       T      : out Train_Set_Table_T;
+                       S      : out Field_Status_T)
+     with Global => null,
+          Pre  => Bytes'Length >= Sets_Image_Length
+                  and then Offset <= Bytes'Length - Sets_Image_Length,
+          Post => (if S = Accepted then Sets_Valid (T))
+   is
+      N : constant Byte := Bytes (Bytes'First + Offset);
+   begin
+      T := No_Train_Sets;
+      S := Accepted;
+      if N > Train_Sets_Max then
+         S := Bad_Field;
+         return;
+      end if;
+      for I in 1 .. Natural (N) loop
+         pragma Loop_Invariant (T.Count = I - 1 and then Sets_Valid (T));
+         declare
+            P     : constant Positive :=
+              Bytes'First + Offset + 1 + Set_Image_Length * (I - 1);
+            Num   : constant Byte := Bytes (P);
+            Name  : constant Byte_Array (1 .. Train_Type_Name_Max) :=
+              Bytes (P + 2 .. P + 17);
+            Len   : constant Byte := Bytes (P + 18);
+            Train : constant Unsigned_16 := Get_U16 (Bytes, P + 19);
+            Speed : constant Unsigned_16 := Get_U16 (Bytes, P + 22);
+            Set   : Train_Set_T;
+         begin
+            if (Num > Configuration_Max and then Num /= 255)
+              or else Bytes (P + 1) > 1
+              or else (for some C of Name => C not in 32 .. 126)
+              or else Len not in 1 .. Train_Type_Name_Max
+              or else Train not in 1 .. 4_095
+              or else Bytes (P + 21) not in 10 .. 250
+              or else Speed not in 5 .. 600
+              or else Bytes (P + 24) > 10 or else Bytes (P + 25) > 7
+              or else Bytes (P + 26) > 12 or else Bytes (P + 27) > 1
+              or else Bytes (P + 28) > 4
+              or else (Num /= 255
+                       and then (for some J in 1 .. T.Count =>
+                                   T.Sets (J).Configuration = Natural (Num)))
+            then
+               T := No_Train_Sets;
+               S := Bad_Field;
+               return;
+            end if;
+            Set.Configuration :=
+              (if Num = 255 then No_Configuration else Natural (Num));
+            Set.Driver_Key := Bytes (P + 1) = 1;
+            for K in Name'Range loop
+               pragma Loop_Invariant (True);
+               Set.Data.Name (K) := Character'Val (Name (K));
+            end loop;
+            Set.Data.Name_Length := Natural (Len);
+            Set.Data.Length_M := Natural (Train);
+            Set.Data.Brake_Percentage := Natural (Bytes (P + 21));
+            Set.Data.Max_Speed_Kmh := Natural (Speed);
+            Set.Data.Cant_Deficiency := NC_CDTRAIN_T (Bytes (P + 24));
+            Set.Data.Other := NC_TRAIN_T (Bytes (P + 25));
+            Set.Data.Axle_Load := M_AXLELOADCAT_T (Bytes (P + 26));
+            Set.Data.Airtight := M_AIRTIGHT_T (Bytes (P + 27));
+            Set.Data.Loading_Gauge := M_LOADINGGAUGE_T (Bytes (P + 28));
+            T.Sets (I) := Set;
+            T.Count := I;
+         end;
+      end loop;
+   end Get_Sets;
 
    --  The zones of an image of format version 3 at Offset: the count,
    --  then Zone_Max entries of a u16 first NID_C, a u16 last NID_C, a
@@ -382,9 +468,10 @@ is
             else Accepted);
    end Get_Train;
 
-   --  The train of an image of format version 2, 3 or 4 of length L,
-   --  the zones of versions 3 and 4 after the train, and the traction
-   --  cut-off time of version 4 between the zones and the CRC
+   --  The train of an image of format version 2 to 5 of length L, the
+   --  zones of versions 3 to 5 after the train, the traction cut-off
+   --  time of versions 4 and 5 after the zones, and the Train Data sets
+   --  of version 5 between it and the CRC (checked here, taken by Load)
    --  @req 3.18.3.2 c) 1st bullet
    procedure Get_Tail (Bytes   : Byte_Array;
                        Version : Natural;
@@ -393,15 +480,18 @@ is
                        Z       : out Zone_Table_T;
                        S       : out Field_Status_T)
      with Global => null,
-          Pre  => Version in 2 .. 4 and then L <= Bytes'Length
+          Pre  => Version in 2 .. 5 and then L <= Bytes'Length
                   and then Length_OK (Version, L),
           Post => (if S = Accepted
                    then (for all I in 1 .. Z.Count =>
                            Z.Zones (I).First <= Z.Zones (I).Last))
    is
+      Sets  : constant Natural :=
+        (if Version = 5 then Sets_Image_Length else 0);
       Extra : constant Natural :=
-        (if Version = 4 then Traction_Image_Length else 0);
+        (if Version >= 4 then Traction_Image_Length + Sets else 0);
       V     : Unsigned_16;
+      Table : Train_Set_Table_T;
    begin
       Z := No_Zones;
       if Version = 2 then
@@ -412,13 +502,24 @@ is
       if S = Accepted then
          Get_Zones (Bytes, L - 4 - Zone_Image_Length - Extra, Z, S);
       end if;
-      if S = Accepted and then Version = 4 then
-         V := Get_U16 (Bytes, Bytes'First + (L - 6));
+      if S = Accepted and then Version >= 4 then
+         V := Get_U16 (Bytes, Bytes'First + (L - 6 - Sets));
          if V > Max_Traction_Cut_Off_Ms then
             Z := No_Zones;
             S := Bad_Field;
          else
             T.T_Traction_Cut_Off := Time_Ms_T (V);
+         end if;
+      end if;
+      if S = Accepted and then Version = 5 then
+         pragma Warnings
+           (GNATprove, Off, """Table"" is set by ""Get_Sets"" but not used*",
+            Reason => "the sets are checked here, Load_Sets takes them");
+         Get_Sets (Bytes, L - 4 - Sets, Table, S);
+         pragma Warnings
+           (GNATprove, On, """Table"" is set by ""Get_Sets"" but not used*");
+         if S /= Accepted then
+            Z := No_Zones;
          end if;
       end if;
    end Get_Tail;
@@ -831,6 +932,60 @@ is
       end loop;
    end Encode_V4;
 
+   procedure Encode_V5 (C      : Config_T;
+                        G      : Gamma_T;
+                        T      : Train_Set_Table_T;
+                        Image  : out Max_Image_T;
+                        Length : out Natural)
+   is
+      Pos : Natural;
+      CRC : Unsigned_32;
+   begin
+      Encode_V4 (C, G, Image, Length);
+      --  the sets in place of the CRC of version 4
+      Pos := Length - 4;
+      Image (5) := 5;
+      Image (Pos + 1 .. Pos + Sets_Image_Length) := (others => 0);
+      Image (Pos + 1) := Byte (T.Count);
+      for I in 1 .. T.Count loop
+         pragma Loop_Invariant (Pos = Length - 4);
+         declare
+            S : Train_Set_T renames T.Sets (I);
+            P : constant Positive := Pos + 2 + Set_Image_Length * (I - 1);
+         begin
+            Image (P) :=
+              (if S.Configuration > Configuration_Max then 255
+               else Byte (S.Configuration));
+            Image (P + 1) := (if S.Driver_Key then 1 else 0);
+            for K in 1 .. Train_Type_Name_Max loop
+               pragma Loop_Invariant (True);
+               Image (P + 1 + K) :=
+                 Byte (Character'Pos (S.Data.Name (K)) mod 256);
+            end loop;
+            Image (P + 18) := Byte (S.Data.Name_Length);
+            Image (P + 19) := Byte_Of (Unsigned_64 (S.Data.Length_M), 0);
+            Image (P + 20) := Byte_Of (Unsigned_64 (S.Data.Length_M), 1);
+            Image (P + 21) := Byte (S.Data.Brake_Percentage);
+            Image (P + 22) := Byte_Of (Unsigned_64 (S.Data.Max_Speed_Kmh), 0);
+            Image (P + 23) := Byte_Of (Unsigned_64 (S.Data.Max_Speed_Kmh), 1);
+            Image (P + 24) := Byte (S.Data.Cant_Deficiency);
+            Image (P + 25) := Byte (S.Data.Other mod 256);
+            Image (P + 26) := Byte (S.Data.Axle_Load);
+            Image (P + 27) := Byte (S.Data.Airtight);
+            Image (P + 28) := Byte (S.Data.Loading_Gauge);
+         end;
+      end loop;
+      Pos := Pos + Sets_Image_Length;
+      Length := Pos + 4;
+      Image (7) := Byte_Of (Unsigned_64 (Length), 0);
+      Image (8) := Byte_Of (Unsigned_64 (Length), 1);
+      CRC := CRC_32 (Image (1 .. Pos));
+      for N in 0 .. 3 loop
+         pragma Loop_Invariant (True);
+         Image (Pos + 1 + N) := Byte_Of (Unsigned_64 (CRC), N);
+      end loop;
+   end Encode_V5;
+
    --  The years of the clock: the seconds since 2000 of an Unsigned_32
    --  end in 2136
    subtype Year_T is Natural range 2000 .. 2137;
@@ -943,6 +1098,43 @@ is
       end if;
    end Load_Gamma;
 
+   --  The Train Data sets of an accepted image of version 5, else none
+   procedure Load_Sets (Bytes : Byte_Array)
+     with Global => (Output => Sets_In)
+   is
+      L : Natural;
+      S : Field_Status_T;
+   begin
+      Sets_In := No_Train_Sets;
+      if Bytes'Length < Min_Image_V5_Length
+        or else Get_U16 (Bytes, Bytes'First + 4) /= 5
+      then
+         return;
+      end if;
+      L := Natural (Get_U16 (Bytes, Bytes'First + 6));
+      if L in Min_Image_V5_Length .. Bytes'Length then
+         Get_Sets (Bytes, L - 4 - Sets_Image_Length, Sets_In, S);
+         if S /= Accepted then
+            Sets_In := No_Train_Sets;
+         end if;
+      end if;
+   end Load_Sets;
+
+   function Set_Of_Configuration (N : Natural) return Natural
+     with Refined_Global => Sets_In
+   is
+   begin
+      for I in 1 .. Sets_In.Count loop
+         pragma Loop_Invariant (True);
+         if N /= No_Configuration
+           and then Sets_In.Sets (I).Configuration = N
+         then
+            return I;
+         end if;
+      end loop;
+      return 0;
+   end Set_Of_Configuration;
+
    procedure Gamma_Models (D : in out Train_Data_T) is
    begin
       D.A_Brake_Emergency := Gam.A_Brake_Emergency;
@@ -964,6 +1156,7 @@ is
          Cfg := R.Config;
          Is_Loaded := True;
          Load_Gamma (Bytes, R.Config.Train.Model);
+         Load_Sets (Bytes);
       else
          Count_Refusal;
       end if;

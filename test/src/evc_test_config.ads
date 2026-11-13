@@ -16,5 +16,9 @@ package EVC_Test_Config is
       --  3.18.3.2 c) 1st bullet, 3.13.2.2.2.1: the image of format version
       --  4 carries the traction cut-off time; version 3 keeps the default
       procedure Scenario_Config_Traction;
+      --  3.18.3.2.1, SUBSET-034 2.6.4.1: the image of format version 5
+      --  carries the Train Data sets of the train configurations; a set
+      --  out of its ranges or a configuration number twice refuses it
+      procedure Scenario_Config_Sets;
 
 end EVC_Test_Config;

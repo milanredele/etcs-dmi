@@ -76,8 +76,8 @@ is
                      EVC_Mission.State, EVC_Radio_Authority.State);
 
    procedure Evaluate_Stored_Information
-     with Global => (Input  => (Clock_Ms,
-                                EVC_Odometry.State, EVC_Train_Data.State,
+     with Global => (Input  => (Clock_Ms, Config_Last,
+                                EVC_Odometry.State,
                                 TIU_Now, EVC_Config.State, Current_Mode,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 SDM_Result,
@@ -85,7 +85,7 @@ is
                                 EVC_Driver_Requests.State, DMI_Restarted),
                      In_Out => (SDM_Work, EVC_Stored_Information.State,
                                 EVC_Position.State, EVC_Procedures.State,
-                                EVC_Radio.State,
+                                EVC_Train_Data.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,

@@ -23907,3 +23907,92 @@ Outcome: runner 1253 passed (+6), 1015 failed (-6), 922 blocked; 0
 regressions; `triage: NONE` 0. Proofs: `evc_sessions` (margin 7517
 steps), `evc_levels`, `evc_retained`, `evc_core-modes` (8648),
 `evc_core`.
+
+### The Train Data of a train interface configuration: the sets of the configuration image (format 5), the data changed at A7, the report to the RBC and the longer train (e6/train-config) (2026-11-13)
+
+**The source.** SUBSET-034 2.6.4.1 (PDF page 19) gives two ways for the
+train data over the train interface: the data themselves, or the "type
+of train configuration", a number (2.6.4.2) by which the on-board
+selects one set among pre-configured ones; 2.6.4.3 makes the source
+configurable per data, 2.6.4.4 keeps the driver's or the pre-configured
+values when the interface gives none. 5.17.2.2 A7 (PDF page 79): "consider
+the Train Data as being changed and ... apply, when relevant, 3.18.3.4,
+3.18.3.7 and 3.18.3.8". The TIU input 13 carries the configuration number
+(bits 0 to 5), the validation bit (6, D0) and the category bit (7, D1).
+Decision of the brief, checked against these clauses and kept: the second
+way, the port unchanged.
+
+**1. The sets in the image (format 5).** `EVC_Config`: the image of
+version 4, then `Sets_Image_Length` (233) bytes before the CRC: a count
+(0 .. 8) and 8 entries of 29 bytes (the configuration number 0 .. 63 or
+255 none, a driver-key flag, the name, its length, then the items of a
+train type in the codes and ranges of the driver's entry, A.3.11: length
+1 .. 4095 m, brake percentage 10 .. 250, maximum speed 5 .. 600 km/h,
+NC_CDTRAIN 0 .. 10, NC_TRAIN 0 .. 7, axle load 0 .. 12, airtight 0 .. 1,
+loading gauge 0 .. 4). A field out of range, a count above 8, a name
+character outside 32 .. 126 or a configuration number in two counted sets
+refuse the image (Bad_Field). The sets are checked in `Get_Tail` (new
+`Get_Sets`) and taken by `Load` (`Load_Sets`), held apart from `Config_T`
+as the gamma train is (no large object returned: `Train_Set_Count`,
+`Train_Set (I)`, `Set_Of_Configuration (N)`); `Decoded` unchanged (100
+code lines). `Encode_V5`, test/tools/evc_config.py (`[[train_set]]`
+tables, format 5), the fixture test/config/sets_v5 (compared in
+test/check.sh). Decision on B2081: one table serves both uses, the
+train types of the driver's fixed entry by their order among the sets
+with the flag, the configurations by their number: the items are the
+same (the Train Data of 3.18.3.2 that are not the engine's), a set may
+be both. B2081 narrowed: the two readers of `Default_Train_Types`
+(`EVC_Mission.Type_Matches`, `EVC_Core.Outputs.Send_Train_Types`) are not
+of this package. Decision: as many sets as keys (8). `Length_OK` became
+tables of the bounds by version: with its fifth case as one more branch,
+six reads of the unchanged `Decoded` took 94843 of 100000 steps (the
+lesson of round 71 again); with the tables the unit's hardest check takes 3520 steps (evc_config.ads:552), the canary evc_core-inputs 3980. Scenario
+`EVC_Test_Config.Scenario_Config_Sets` (round trip against the fixture,
+four refusals, the lookup, version 4 still accepted with no set).
+
+**2. A7 with a set.** `EVC_Procedures.Train_Data_Step` tells A7 reached
+(after A1 or A5) and the standstill then
+(`Train_Data_Changed_By_Interface`, `Train_Data_Changed_At_Standstill`).
+`EVC_Core.Stored.Take_Train_Configuration`, at the start of the next
+`Evaluate_Stored_Information`, looks up the set of the input's number
+(`Config_Last` mod 64) and gives it to
+`EVC_Train_Data.Take_Configuration_Set`, which builds the Train Data as
+an entry does (km/h to cm/s rounded down, the brake position from
+NC_TRAIN, the engine's fixed data and gamma models) and writes them by
+`Set`, the writer of the driver's entry. Decision: with a set, 3.18.3.7
+follows the comparison of the set's categories (train category, axle
+load, loading gauge, traction systems) with those before, as the set
+says which data changed; the category bit still decides D1's branch in
+the procedure (whether S2 brakes) and 3.18.3.7 without a set. A number
+without a set changes nothing (2.6.4.4). 3.18.3.4: `Set_By_Interface`
+(true in the cycle of the change) makes `EVC_Sessions.Mission.Evaluate_TD`
+send the 129 to every established session as after the driver's
+validation. The DMI reads `EVC_Train_Data` each cycle (`EVC_Core.Outputs`),
+no protocol change. Global of `Evaluate_Stored_Information` widened
+(`Config_Last` read, `EVC_Train_Data.State` written): `evc_core` proved.
+
+**3. 3.18.3.8.** Nothing to build: `EVC_Stored_Information.Delete_Behind_Former`
+compares the train length of every Evaluate with the former one; the
+set's longer length takes it (its one caller, `EVC_Stored_Information.Evaluate`, gives it the frame of
+`Train_Frame`). Checked in the scenario.
+
+Scenario `EVC_Test_Train_Data.Scenario_TIU_Set` (next to
+`Scenario_TIU_Categories`): an image with sets 5 (600 m, other
+categories, axle load and gauge) and 6 (400 m, 120 km/h, the entry's
+categories); level 2 with two sessions and a held message of the
+Accepting RBC: configuration 6 takes 400 m and 120 km/h, two 129s sent,
+the held message kept; configuration 7 (no set) changes nothing and sends
+nothing; configuration 5 without the category bit deletes the held
+message by the set's categories (3.18.3.7 b); then in FS with gradients,
+the set of 400 m after the driver's 200 m deletes the gradient section
+ending in rear of the former min safe rear end (3.18.3.8). Run before the
+fix: 5 failures; after: 0.
+
+Rows: 5.17.2.2 A7 partial -> done; 3.18.3.2, 3.18.3.4, 3.18.3.7, 3.18.3.8
+notes name the interface's change. Runner: 0 regressions, 0
+improvements (5170200 has no configuration image with sets, the bench
+none). Proofs: evc_config 3520, evc_core-inputs 3980, evc_train_data 2, evc_procedures 4525, evc_core-stored 6357, evc_sessions-mission 173, evc_core 10434 steps of 100000 at most, no check unproved. Backlog: B4102 done; B2081 narrowed; B4222 (the
+conversion of a train type into Train Data written twice, in
+`EVC_Train_Data` and `EVC_Mission.Train_Data_Of`), B4223 (2.6.4.3, a
+source per item). Edits outside the units: test/check.sh (the fixture
+in the configuration comparison), test/src/evc_test.adb (the two calls).

@@ -230,6 +230,154 @@ package body EVC_Test_Train_Data is
              & "deleted (3.18.3.7 b)");
    end Scenario_TIU_Categories;
 
+   --  An image of format version 5 with two sets: configuration 5, a
+   --  freight train of 600 m at 100 km/h (other categories 2, axle load
+   --  6, loading gauge 2), and configuration 6, a train of 400 m at 120
+   --  km/h of the categories of Train_Entry
+   procedure Load_Sets is
+      T   : EVC_Config.Train_Set_Table_T := EVC_Config.No_Train_Sets;
+      Img : EVC_Config.Max_Image_T;
+      L   : Natural;
+   begin
+      T.Count := 2;
+      T.Sets (1) :=
+        (Configuration => 5,
+         Driver_Key    => False,
+         Data          =>
+           (Name => "Freight         ", Name_Length => 7, Length_M => 600,
+            Brake_Percentage => 80, Max_Speed_Kmh => 100,
+            Cant_Deficiency => 2, Other => 2, Axle_Load => 6, Airtight => 0,
+            Loading_Gauge => 2));
+      T.Sets (2) :=
+        (Configuration => 6,
+         Driver_Key    => False,
+         Data          =>
+           (Name => "Long            ", Name_Length => 4, Length_M => 400,
+            Brake_Percentage => 135, Max_Speed_Kmh => 120,
+            Cant_Deficiency => 2, Other => 4, Axle_Load => 0, Airtight => 0,
+            Loading_Gauge => 1));
+      EVC_Config.Encode_V5 (EVC_Config.Default, EVC_Config.No_Gamma, T, Img,
+                            L);
+      EVC_Config.Load (Img (1 .. L));
+      Check (EVC_Config.Train_Set_Count = 2,
+             "train data from the train interface: the sets loaded");
+   end Load_Sets;
+
+   --  Standing N cycles: the messages 129 sent in them
+   function Sent_129 (N : Positive) return Natural is
+      M     : ETCS_Message.Message_T;
+      St    : ETCS_Message.Status_T;
+      Count : Natural := 0;
+   begin
+      for K in 1 .. N loop
+         Stand;
+         for I in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (I, M, St);
+            if ETCS_Message."=" (St, ETCS_Message.Accepted)
+              and then MCat."=" (M.Kind, MCat.Train_M129)
+            then
+               Count := Count + 1;
+            end if;
+         end loop;
+      end loop;
+      return Count;
+   end Sent_129;
+
+   procedure Scenario_TIU_Set is
+      W  : Writer_T;
+      OK : Boolean;
+      N  : Natural;
+      G0 : Natural;
+   begin
+      Load_Sets;
+      Start_X;
+      Add_Group (Group (10, 100));
+      ETCS_Track_Packets.P42.Encode
+        ((NID_PACKET => 42, Q_DIR => 2, L_PACKET => 0, Q_RBC => 1,
+          NID_C => 5, NID_RBC => 300, NID_RADIO => 16#0077#,
+          Q_SLEEPSESSION => 0), W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Input (TIU, (13, 1));
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Send (Train_Entry (200));
+      Give_Radio_Message (2, M24 (10, False, 1, 400));
+      Stand;
+      Check (R.Accepting = 2 and then EVC_Radio_Authority.Buffered = 1
+             and then Natural (EVC_Train_Data.Length) = 20_000,
+             "train data from the train interface: a message of the "
+             & "Accepting RBC held (4.8.2.1 c), the driver's 200 m");
+      Input (TIU, (13, 6));
+      N := Sent_129 (10);
+      Check (EVC_Train_Data.Valid and then Natural (EVC_Train_Data.Length) = 40_000
+             and then Natural (EVC_Train_Data.Data.Max_Speed) = 3_333
+             and then Natural (EVC_Train_Data.Categories.Other) = 4,
+             "train data from the train interface: the configuration 6 "
+             & "without the validation and the category bits (5.17.2.2 "
+             & "D1 -> A1, A7): its set's 400 m and 120 km/h taken "
+             & "(SUBSET-034 2.6.4.1)");
+      Check (N = 2,
+             "train data from the train interface: the changed set sent to "
+             & "both RBCs of the established sessions (3.18.3.4), got"
+             & Img (N));
+      Check (EVC_Radio_Authority.Buffered = 1,
+             "train data from the train interface: the set's categories "
+             & "those before: the held message kept (3.18.3.7)");
+      Input (TIU, (13, 7));
+      N := Sent_129 (10);
+      Check (Natural (EVC_Train_Data.Length) = 40_000 and then N = 0,
+             "train data from the train interface: the configuration 7 "
+             & "has no set: the Train Data unchanged, nothing sent "
+             & "(SUBSET-034 2.6.4.4)");
+      Input (TIU, (13, 5));
+      Stand_X (200);
+      Check (Natural (EVC_Train_Data.Length) = 60_000
+             and then Natural (EVC_Train_Data.Categories.Axle_Load) = 6
+             and then EVC_Radio_Authority.Buffered = 0,
+             "train data from the train interface: the configuration 5, its "
+             & "set of other categories, axle load and loading gauge, the "
+             & "category bit not set: the categories changed at standstill "
+             & "by the set, the information of the RBC transition deleted "
+             & "(3.18.3.7 b)");
+      --  3.18.3.8: a train of the driver's 200 m running, then the set
+      --  of 400 m at standstill
+      EVC_Test_Modes.Start_E4;
+      Input (TIU, (13, 1));
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      Send (Train_Entry (200));
+      Send (Text_Entry (1, "5678"));
+      Send (Action (5));
+      Send (Ack_Of (1));
+      Add_Group (Group (10, 50));
+      Carry (Track_N, 0, SSP ((1 => (0, 100, True))));
+      Carry (Track_N, 0, Grad (((0, 0), (100, 5), (1_000, 0))));
+      Carry (Track_N, 1, MA_Of ((1 => 1_000)));
+      Speed_Cms := 500;
+      while Train_Cm < 40_000 loop
+         Step_X (500);
+      end loop;
+      Speed_Cms := 0;
+      Stand_X (2_000);
+      G0 := EVC_Track_Description.Gradients_Count;
+      Input (TIU, (13, 6));
+      Stand_X (200);
+      Check (G0 = 3 and then Natural (EVC_Train_Data.Length) = 40_000
+             and then EVC_Track_Description.Gradients_Count = G0 - 1,
+             "train data from the train interface: the set of the "
+             & "configuration 6 200 m longer than the driver's train: the "
+             & "gradient section ending 50 m in rear of the former min safe "
+             & "rear end deleted (3.18.3.8), got" & Img (G0)
+             & Img (EVC_Track_Description.Gradients_Count));
+      EVC_Config.Load (EVC_Config.Encode (EVC_Config.Default));
+   end Scenario_TIU_Set;
+
    --  The TIU frame of an available safe consist length (EVC_Ports signal
    --  15): the lengths in front of the engine (nominal, min, max), then
    --  in rear of it, metres
