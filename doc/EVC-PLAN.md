@@ -23818,3 +23818,14 @@ check), B4143 (the tie of a text and a brake release request), B4122
 the engine's front in SM), B4102 (the Train Data values of a
 configuration), B3700, the review again (eight items, readings first,
 no backlog read).
+
+Decisions B4082 and B4142 (2026-11-13, the user): B4082: the on-board
+tells the DMI when it takes the Set VBC and Remove VBC entries, by one
+more bit of MSG_ONBOARD national (bit 5, "VBC entry allowed now", as
+bit 4 for Override); the DMI's Table 36 #5 and #6 enable the two
+buttons on it, so that a press is never refused without the driver
+being told. B4142: a VBC code entered at a step where the on-board
+refuses it is not recorded (SUBSET-027 4.3.1.1: the records 28 and 29
+are written when the driver sets or removes a Virtual Balise Cover);
+with the bit only a faulty DMI sends one. Both are build items of the
+protocol, the DMI, `EVC_Core.Outputs` and `EVC_Core.Inputs`.
