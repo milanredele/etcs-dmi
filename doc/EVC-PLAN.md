@@ -24445,3 +24445,29 @@ ordering 2.0, Q_LINK 1) is rejected by 3.4.4.4.2: message 4's linking
 (packet 5, step 102) announces NID_BG 3, 3 and 5, never 4; ERA's PDF of
 the sequence has the same linking, so 3.0 stays where step 122 expects
 2.2.
+
+**A held text and a later brake release request (B4242): left at the
+bound.** Taken before the bound and stopped after it (the scenario's
+case not yet built). Checked at the source: the DMI's FIFO keeps the
+order of arrival across cycles (`dmi/dmi_ack.adb`: the requests of
+earlier cycles keep their place, 5.4.1.9.1 orders those arriving in one
+cycle), so the brake's term of `Asked` compared with the text's start
+alone would not do: the request, sent in the cycle it arises
+(`EVC_Core.Outputs`, `Status_Brake_Sent = Brake_Ack`), still reaches the
+DMI before a text sent after its 1 s. The smaller change found: the
+on-board sends the request after the text, the brake status
+`Brake_Ack_Pending` instead of `Brake_Ack` while a text to be
+acknowledged is held and the request not yet sent (a query of
+`EVC_Text_Messages` over `Held` and `To_Ack`); `Asked` is unchanged,
+its brake term being false until the request is sent; not for
+`EVC_Procedures.Brake_Demand.Ack_Required`, which `Asked` counts
+whatever was sent (both would wait). It is an edit of `EVC_Core.Outputs`
+at the brake status. B4242 stays open with these findings.
+
+**A message 133 not sent (S143d6aa2, 3110200_03 SV30 step 77): not
+taken** (the bound). The brief's premise that the line's note dates
+from before the message existed does not hold: triage.csv has two
+lines for S143d6aa2, the later (onboard) one already says that the
+step is L2 SR without any SM request, where 3.18.3.10 asks the 133 in
+SB or from a request for SM only; the earlier (model) one triages the
+same step s076.
