@@ -335,14 +335,62 @@ package body S076_Run is
    --  says 13 km/h); B160: the speed of the language for the chart's
    --  drawing (S076_Sequences.Calibrated; the reverse chart is drawn
    --  below the same zero, its speed without its sign)
+   --  B4324: the chart of the leg the train runs: a sequence that
+   --  reverses and goes on has a chart per leg in each direction, in the
+   --  order of the run; the next one of a direction is taken when the
+   --  train turns into that direction (the second and later reversals for
+   --  the reverse charts) or, going forward, passes the end of the
+   --  current one, provided the train is within the next one's locations
+   --  (10 m either side). 4120100_15 SV30: forward 0 to 350 m, back to
+   --  225 m, forward 225 to 715 m; the first chart alone ended at 350 m
+   --  at 0.5 km/h, so the train stood at every step from 400 m on (BG3d
+   --  at 506 m with the chart's 33.8 km/h to 510 m)
+   Fwd_Chart, Rev_Chart : Positive := 1;
+   Rev_Begun : Boolean := False;
+   Chart_Dir : Integer := 1;
+
+   procedure Follow_Leg is
+      X : constant Long_Float := Long_Float (B.Position) / 100.0;
+
+      function Within (Forward : Boolean; K : Positive) return Boolean is
+        (X >= Chart_From (Seq, Forward, K) - 10.0
+         and then X <= Chart_To (Seq, Forward, K) + 10.0);
+   begin
+      if B.Direction /= Chart_Dir then
+         Chart_Dir := B.Direction;
+         if Chart_Dir > 0 then
+            if Fwd_Chart < Seq.Fwd_Charts and then Within (True, Fwd_Chart + 1)
+            then
+               Fwd_Chart := Fwd_Chart + 1;
+            end if;
+         else
+            if Rev_Begun and then Rev_Chart < Seq.Rev_Charts
+              and then Within (False, Rev_Chart + 1)
+            then
+               Rev_Chart := Rev_Chart + 1;
+            end if;
+            Rev_Begun := True;
+         end if;
+      elsif Chart_Dir > 0 and then Fwd_Chart < Seq.Fwd_Charts
+        and then X > Chart_To (Seq, True, Fwd_Chart)
+        and then Within (True, Fwd_Chart + 1)
+      then
+         Fwd_Chart := Fwd_Chart + 1;
+      end if;
+   end Follow_Leg;
+
    function Chart_Kmh return Long_Float is
-     (if B.Direction < 0 and then Seq.Rev_Count > 0
-      then Calibrated
-        (Seq, Chart_Speed_Reverse (Seq, Long_Float (B.Position) / 100.0)
-              + 2.0 * Seq.Chart_Zero)
-      elsif Seq.Chart_Count = 0 then -1.0
-      else Calibrated
-        (Seq, Chart_Speed (Seq, Long_Float (B.Position) / 100.0)));
+      X : constant Long_Float := Long_Float (B.Position) / 100.0;
+   begin
+      Follow_Leg;
+      return
+        (if B.Direction < 0 and then Seq.Rev_Count > 0
+         then Calibrated
+           (Seq, Chart_Speed_Of (Seq, False, Rev_Chart, X)
+                 + 2.0 * Seq.Chart_Zero)
+         elsif Seq.Chart_Count = 0 then -1.0
+         else Calibrated (Seq, Chart_Speed_Of (Seq, True, Fwd_Chart, X)));
+   end Chart_Kmh;
 
    --  the calibration's own error, km/h: a plateau of the "mrsp" chart
    --  is within it of a multiple of 5 km/h (S076_Sequences.Calibrated)
@@ -432,6 +480,35 @@ package body S076_Run is
       end if;
       Forced_Speed := Explicit_Speed;
    end Force_Explicit;
+
+   --  B3700: a speed decrease "under restriction of the braking curve"
+   --  (ODO_Input) is in force while its explicit speed lasts: the driver
+   --  keeps the train under the permitted speed shown as it falls
+   --  towards the target, at most that speed less 2 km/h (at least 1
+   --  km/h), re-read every cycle, never raised; the chart band of
+   --  Chart_Left stays the one of the step. 3180400_04 SV30: 14 km/h set
+   --  at 1011 m (permitted 16) and held to BG7d at 1037 m, where the
+   --  permitted speed was 12 and the on-board braked again
+   Curve_Follow : Boolean := False;
+
+   procedure Follow_Curve is
+   begin
+      if Explicit_Speed < 0 then
+         Curve_Follow := False;
+      elsif Curve_Follow and then B.State.Has_Speed then
+         declare
+            V    : constant Natural := Kmh_To_Cms
+              (Long_Float (Integer'Max (B.State.V_Perm - 2, 1)));
+            Keep : constant Long_Float := Explicit_Chart;
+         begin
+            if V < Explicit_Speed then
+               Explicit_Speed := V;
+               Force_Explicit;
+               Explicit_Chart := Keep;
+            end if;
+         end;
+      end if;
+   end Follow_Curve;
 
    --  B490: an explicit speed ends where the chart leaves the speed it
    --  had where the speed came by more than Chart_Band km/h, either way
@@ -538,6 +615,7 @@ package body S076_Run is
       B.Set_Direction (Dir);
       B.Set_Brake_Floor (Kmh_To_Cms (10.0));
       for I in 1 .. 36_000 loop
+         Follow_Curve;
          Force_Explicit;
          --  an explicit speed a brake has lowered and released is spent:
          --  the chart's speed again (4120100_01: the EB revoked on the
@@ -593,6 +671,7 @@ package body S076_Run is
 
    procedure Wait_Cycle is
    begin
+      Follow_Curve;
       Force_Explicit;
       if Explicit_Speed < 0 and then B.Speed > 0 and then not Hold_Speed then
          Arrive;
@@ -606,6 +685,118 @@ package body S076_Run is
 
    function Our_Mode return Mode_T is
      (if B.Powered then EVC_Core.Mode else M_NP);
+
+   --  B4343, B4324: a train at standstill in a mode supervising an end
+   --  of authority (FS, LS, OS) whose movement authority ends where it
+   --  stands (the estimated front end within a metre of the EOA, no LOA
+   --  speed: the permitted speed is zero, 3.16.2.4.4.2 shortened it there
+   --  at the standstill) and no override active: the driver does not start
+   --  it, a step's place alone does not move it (Run_Loaded). It moves
+   --  again once the on-board gives a new authority, an override or a
+   --  mode the driver may move in, or at a step whose input is the
+   --  driver's own movement (an ODO input) or a balise group to be read.
+   --  9990400_31 SV30: standstill at 250 m after the group error of step
+   --  44, the MA shortened there, "Override EoA" pressed at 250 m, not
+   --  after a run of 50 m past the EOA to the step's 300 m (5.8.2.1 a))
+   function Held_At_EOA return Boolean is
+      S    : constant EVC_Supervision_Input.Snapshot_T :=
+        EVC_Stored_Information.Current;
+      Left : Integer_64;
+   begin
+      if not B.Powered or else B.Speed /= 0 or else B.State.Override
+        or else Our_Mode not in M_FS | M_LS | M_OS
+        or else not S.MA.Present or else S.MA.LOA_Speed /= 0
+      then
+         return False;
+      end if;
+      Left := (if EVC_Distances."=" (S.Train.Ahead, EVC_Distances.Plus)
+               then Integer_64 (S.MA.EOA) - Integer_64 (S.Train.Est_Front)
+               else Integer_64 (S.Train.Est_Front) - Integer_64 (S.MA.EOA));
+      return Left <= 100;
+   end Held_At_EOA;
+
+   --  B4326: the bench time each step was run at (after its move) and
+   --  the time of the last loss of the safe radio connection the runner
+   --  gave (an input "RTM disconnect"), 0 before one
+   type Step_Ms_T is array (1 .. S076_Sequences.Max_Steps) of Unsigned_64;
+   Step_Ms : Step_Ms_T := (others => 0);
+   Lost_Ms : Unsigned_64 := 0;
+
+   --  B4326: the time a step's comment says has passed, in ms, and the
+   --  bench time of the event it counts from: "<n> min|minutes|s|sec|
+   --  seconds after Step <k>" (a step run before this one) or "... after
+   --  EURORADIO indicates the loss" (Lost_Ms); False for any other
+   --  comment
+   function Named_Time (I : Positive; Need, From : out Unsigned_64)
+     return Boolean
+   is
+      C    : constant String := Up (Image (Seq.Steps (I).Comment));
+      P    : Natural := Ada.Strings.Fixed.Index (C, " AFTER STEP ");
+      Loss : constant Natural :=
+        Ada.Strings.Fixed.Index (C, " AFTER EURORADIO INDICATES THE LOSS");
+      At_P, U, D : Natural;
+      K, N : Natural := 0;
+   begin
+      Need := 0;
+      From := 0;
+      if P = 0 and then Loss = 0 then
+         return False;
+      end if;
+      if P > 0 then
+         --  the step named
+         D := P + 12;
+         while D <= C'Last and then C (D) in '0' .. '9' loop
+            K := K * 10 + (Character'Pos (C (D)) - Character'Pos ('0'));
+            exit when K > S076_Sequences.Max_Steps;
+            D := D + 1;
+         end loop;
+         if K = 0 or else K >= I or else K > S076_Sequences.Max_Steps
+           or else Step_Ms (K) = 0
+         then
+            return False;
+         end if;
+         From := Step_Ms (K);
+      else
+         if Lost_Ms = 0 then
+            return False;
+         end if;
+         P := Loss;
+         From := Lost_Ms;
+      end if;
+      --  the unit, then the number before " AFTER"
+      At_P := P - 1;
+      U := At_P;
+      while U >= C'First and then C (U) in 'A' .. 'Z' loop
+         U := U - 1;
+      end loop;
+      declare
+         Unit : constant String := C (U + 1 .. At_P);
+         Mult : constant Unsigned_64 :=
+           (if Unit in "MIN" | "MINS" | "MINUTE" | "MINUTES" then 60_000
+            elsif Unit in "S" | "SEC" | "SECS" | "SECOND" | "SECONDS" then 1_000
+            else 0);
+         Q    : Natural := U;
+         Base : Unsigned_64 := 1;
+      begin
+         if Mult = 0 then
+            return False;
+         end if;
+         if Q >= C'First and then C (Q) = ' ' then
+            Q := Q - 1;
+         end if;
+         while Q >= C'First and then C (Q) in '0' .. '9' and then N < 10_000
+         loop
+            N := N + Natural (Base) * (Character'Pos (C (Q)) - Character'Pos ('0'));
+            Base := Base * 10;
+            Q := Q - 1;
+         end loop;
+         if N = 0 then
+            return False;
+         end if;
+         Need := Unsigned_64 (N) * Mult;
+      end;
+      return True;
+   end Named_Time;
 
    function Our_Level return Level_Kind_T is
    begin
@@ -2911,6 +3102,7 @@ package body S076_Run is
          end if;
          return Pass ("ODO direction reversed");
       elsif Same (Kind, "speed") then
+         Curve_Follow := False;
          declare
             E   : constant String := W (5);
             S   : constant B.State_T := B.State;
@@ -2982,6 +3174,7 @@ package body S076_Run is
                Kmh := Integer'Max (Kmh, 1);
                Explicit_Speed := Kmh_To_Cms (Long_Float (Kmh));
                B.Set_Speed (Explicit_Speed);
+               Curve_Follow := True;
                return Pass ("ODO speed" & Integer'Image (Kmh)
                             & " km/h, under the braking curve (permitted"
                             & S.V_Perm'Image & ")");
@@ -8010,6 +8203,13 @@ package body S076_Run is
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;
       Hold_Speed := False;
+      Step_Ms := (others => 0);
+      Lost_Ms := 0;
+      Curve_Follow := False;
+      Fwd_Chart := 1;
+      Rev_Chart := 1;
+      Rev_Begun := False;
+      Chart_Dir := 1;
       Train_Configuration := 1;
       SCL_Given := False;
       SCL_Inputs := 0;
@@ -8272,9 +8472,28 @@ package body S076_Run is
                                           and then (Same (W (3), "reach-point")
                                                     or else Same (W (3),
                                                       "start-moving")))))
+                 and then not (Held_At_EOA
+                               and then not (St.IO = Input
+                                             and then W (2) = "ODO"))
                then
                   Move_To (St.Dist_Cm);
                end if;
+               --  B4326: a step whose comment gives a time since a step it
+               --  names or since the loss of the safe radio connection,
+               --  met with the train standing, is judged once that time
+               --  has passed (5180500_01 step 79 at 900 m: '5 minutes after
+               --  EURORADIO indicates the loss ...', the loss at step 73)
+               declare
+                  Need, From : Unsigned_64;
+               begin
+                  if B.Speed = 0 and then Named_Time (I, Need, From) then
+                     for K in 1 .. 36_000 loop
+                        exit when B.Now_Ms >= From + Need;
+                        Wait_Cycle;
+                     end loop;
+                  end if;
+               end;
+               Step_Ms (I) := Unsigned_64'Max (1, B.Now_Ms);
                if St.IO = Input then
                   declare
                      C : Judgement_T;
@@ -8290,6 +8509,9 @@ package body S076_Run is
                            else Apply_Input (St));
                      if W (2) = "BTM" then
                         Group_Input_Ms := B.Now_Ms;
+                     end if;
+                     if W (2) = "RTM" and then Same (W (3), "disconnect") then
+                        Lost_Ms := B.Now_Ms;
                      end if;
                      --  not a group's: its reading comes before the end of
                      --  Apply_Input's move (4090100_01 step 131, the

@@ -162,6 +162,8 @@ package S076_Sequences is
       X_M, V_Kmh : Long_Float := 0.0;
    end record;
    type Points_T is array (1 .. Max_Points) of Point_T;
+   Max_Charts : constant := 8;
+   type Chart_Ends_T is array (1 .. Max_Charts) of Natural;
 
    --  The braking curve results of the ERA braking curves tool filled by
    --  the test authors (a workbook's "curves <sheet>" block: "limit",
@@ -370,6 +372,14 @@ package S076_Sequences is
       --  its points by increasing location, the speed without its sign)
       Rev       : Points_T;
       Rev_Count : Natural := 0;
+      --  B4324: every chart of each kind in the order of the file, one
+      --  per run in that direction (a sequence that reverses and goes on
+      --  has a chart for each leg): the points of all of them in a row,
+      --  the last point of the K-th at Fwd_Ends (K), Rev_Ends (K); Chart
+      --  and Rev above keep the first
+      All_Fwd, All_Rev     : Points_T;
+      Fwd_Ends, Rev_Ends   : Chart_Ends_T := (others => 0);
+      Fwd_Charts, Rev_Charts : Natural := 0;
       --  B160: the axis of its charts (see Calibrated): the speed drawn
       --  for standstill and the scale; 0 and 1 when not calibrated
       Chart_Zero  : Long_Float := 0.0;
@@ -437,6 +447,15 @@ package S076_Sequences is
    function Chart_Speed (S : Sequence_T; X_M : Long_Float) return Long_Float;
    --  B303: the same of the reverse movement's chart, -1.0 without one
    function Chart_Speed_Reverse (S : Sequence_T; X_M : Long_Float)
+     return Long_Float;
+   --  B4324: the speed of the K-th chart of a direction (Forward: the
+   --  speedprofile charts, else the reverse ones) at X_M, -1.0 without it,
+   --  and its first and last location (0.0 without it)
+   function Chart_Speed_Of (S : Sequence_T; Forward : Boolean; K : Positive;
+                            X_M : Long_Float) return Long_Float;
+   function Chart_From (S : Sequence_T; Forward : Boolean; K : Positive)
+     return Long_Float;
+   function Chart_To (S : Sequence_T; Forward : Boolean; K : Positive)
      return Long_Float;
 
    --  B160: the speed of the language for a speed V_Kmh read from a

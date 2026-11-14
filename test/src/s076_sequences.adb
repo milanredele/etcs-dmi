@@ -1108,45 +1108,69 @@ package body S076_Sequences is
          end;
       elsif K = "chart" and then L.Count >= 2
         and then Word (L, 2) = "speedprofile-reverse"
-        and then S.Rev_Count = 0
+        and then S.Rev_Charts < Max_Charts
       then
-         for I in reverse 3 .. L.Count loop
-            exit when S.Rev_Count = Max_Points;
-            Scn_Reader.Valid := True;
-            declare
-               W : constant String := Word (L, I);
-               X : constant Real := To_Real (Field (W, 1, ":"));
-               V : constant Real := To_Real (Field (W, 2, ":"));
-            begin
-               if Scn_Reader.Valid then
-                  S.Rev_Count := S.Rev_Count + 1;
-                  S.Rev (S.Rev_Count) := (X, abs V);
-               end if;
-            end;
-         end loop;
-      elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "mrsp"
-      then
-         On_Mrsp_Chart (S, L);
-      elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "speedprofile"
-        and then S.Chart_Count = 0
-      then
-         for I in 3 .. L.Count loop
-            exit when S.Chart_Count = Max_Points;
-            declare
-               W : constant String := Word (L, I);
-            begin
+         declare
+            First : constant Boolean := S.Rev_Charts = 0;
+            N     : Natural :=
+              (if First then 0 else S.Rev_Ends (S.Rev_Charts));
+         begin
+            for I in reverse 3 .. L.Count loop
+               exit when N = Max_Points;
                Scn_Reader.Valid := True;
                declare
+                  W : constant String := Word (L, I);
                   X : constant Real := To_Real (Field (W, 1, ":"));
                   V : constant Real := To_Real (Field (W, 2, ":"));
                begin
                   if Scn_Reader.Valid then
-                     S.Chart_Count := S.Chart_Count + 1;
-                     S.Chart (S.Chart_Count) := (X, V);
+                     N := N + 1;
+                     S.All_Rev (N) := (X, abs V);
+                     if First then
+                        S.Rev_Count := S.Rev_Count + 1;
+                        S.Rev (S.Rev_Count) := (X, abs V);
+                     end if;
                   end if;
                end;
-            end;
-         end loop;
+            end loop;
+            S.Rev_Charts := S.Rev_Charts + 1;
+            S.Rev_Ends (S.Rev_Charts) := N;
+         end;
+      elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "mrsp"
+      then
+         On_Mrsp_Chart (S, L);
+      elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "speedprofile"
+        and then S.Fwd_Charts < Max_Charts
+      then
+         declare
+            First : constant Boolean := S.Fwd_Charts = 0;
+            N     : Natural :=
+              (if First then 0 else S.Fwd_Ends (S.Fwd_Charts));
+         begin
+            for I in 3 .. L.Count loop
+               exit when N = Max_Points;
+               declare
+                  W : constant String := Word (L, I);
+               begin
+                  Scn_Reader.Valid := True;
+                  declare
+                     X : constant Real := To_Real (Field (W, 1, ":"));
+                     V : constant Real := To_Real (Field (W, 2, ":"));
+                  begin
+                     if Scn_Reader.Valid then
+                        N := N + 1;
+                        S.All_Fwd (N) := (X, V);
+                        if First then
+                           S.Chart_Count := S.Chart_Count + 1;
+                           S.Chart (S.Chart_Count) := (X, V);
+                        end if;
+                     end if;
+                  end;
+               end;
+            end loop;
+            S.Fwd_Charts := S.Fwd_Charts + 1;
+            S.Fwd_Ends (S.Fwd_Charts) := N;
+         end;
       end if;
    exception
       when others =>
@@ -1175,6 +1199,8 @@ package body S076_Sequences is
       Loaded.Timer_Count := 0;
       Loaded.Chart_Count := 0;
       Loaded.Rev_Count := 0;
+      Loaded.Fwd_Charts := 0;
+      Loaded.Rev_Charts := 0;
       Loaded.Chart_Zero := 0.0;
       Loaded.Chart_Scale := 1.0;
       Loaded.Truncated := False;
@@ -1316,6 +1342,57 @@ package body S076_Sequences is
    function Chart_Speed_Reverse (S : Sequence_T; X_M : Long_Float)
      return Long_Float
    is (Interpolate (S.Rev, S.Rev_Count, X_M));
+
+   --  the K-th chart of a direction as points of its own
+   function Chart_Points (S : Sequence_T; Forward : Boolean; K : Positive;
+                          N : out Natural) return Points_T
+   is
+      Count : constant Natural := (if Forward then S.Fwd_Charts
+                                   else S.Rev_Charts);
+      P     : Points_T;
+      From  : Natural;
+   begin
+      N := 0;
+      if K > Count then
+         return P;
+      end if;
+      From := (if K = 1 then 0
+               elsif Forward then S.Fwd_Ends (K - 1)
+               else S.Rev_Ends (K - 1));
+      N := (if Forward then S.Fwd_Ends (K) else S.Rev_Ends (K)) - From;
+      for I in 1 .. N loop
+         P (I) := (if Forward then S.All_Fwd (From + I)
+                   else S.All_Rev (From + I));
+      end loop;
+      return P;
+   end Chart_Points;
+
+   function Chart_Speed_Of (S : Sequence_T; Forward : Boolean; K : Positive;
+                            X_M : Long_Float) return Long_Float
+   is
+      N : Natural;
+      P : constant Points_T := Chart_Points (S, Forward, K, N);
+   begin
+      return Interpolate (P, N, X_M);
+   end Chart_Speed_Of;
+
+   function Chart_From (S : Sequence_T; Forward : Boolean; K : Positive)
+     return Long_Float
+   is
+      N : Natural;
+      P : constant Points_T := Chart_Points (S, Forward, K, N);
+   begin
+      return (if N = 0 then 0.0 else P (1).X_M);
+   end Chart_From;
+
+   function Chart_To (S : Sequence_T; Forward : Boolean; K : Positive)
+     return Long_Float
+   is
+      N : Natural;
+      P : constant Points_T := Chart_Points (S, Forward, K, N);
+   begin
+      return (if N = 0 then 0.0 else P (N).X_M);
+   end Chart_To;
 
    function Curve_Distance
      (C : Curve_Set_T; Column : Curve_Column_T; V_Kmh : Long_Float)
