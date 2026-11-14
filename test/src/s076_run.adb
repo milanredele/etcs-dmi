@@ -6419,10 +6419,15 @@ package body S076_Run is
       Case_No  : Positive;
       First    : Positive;
    end record;
-   Single_Session_Cases : constant array (1 .. 5) of Single_Case_T :=
+   --  Case 13 (3150100_09 and _11, "TC 3150100.13 can handle only one
+   --  communication session established through GSM-R" in ERA's
+   --  description) is 3.15.1.3.2.4, the new order once the max safe
+   --  front end has left the Handing Over RBC's area.
+   Single_Session_Cases : constant array (1 .. 7) of Single_Case_T :=
      (("3150100_02", 3, 76), ("3150100_02", 4, 112),
       ("3150100_02", 7, 148), ("3150100_07", 10, 70),
-      ("3150100_07", 11, 125));
+      ("3150100_07", 11, 125), ("3150100_09", 13, 67),
+      ("3150100_11", 13, 67));
 
    function Single_Session_Case (St : Step_T) return Boolean is
      (for some C of Single_Session_Cases =>
