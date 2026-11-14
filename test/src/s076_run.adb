@@ -335,14 +335,62 @@ package body S076_Run is
    --  says 13 km/h); B160: the speed of the language for the chart's
    --  drawing (S076_Sequences.Calibrated; the reverse chart is drawn
    --  below the same zero, its speed without its sign)
+   --  B4324: the chart of the leg the train runs: a sequence that
+   --  reverses and goes on has a chart per leg in each direction, in the
+   --  order of the run; the next one of a direction is taken when the
+   --  train turns into that direction (the second and later reversals for
+   --  the reverse charts) or, going forward, passes the end of the
+   --  current one, provided the train is within the next one's locations
+   --  (10 m either side). 4120100_15 SV30: forward 0 to 350 m, back to
+   --  225 m, forward 225 to 715 m; the first chart alone ended at 350 m
+   --  at 0.5 km/h, so the train stood at every step from 400 m on (BG3d
+   --  at 506 m with the chart's 33.8 km/h to 510 m)
+   Fwd_Chart, Rev_Chart : Positive := 1;
+   Rev_Begun : Boolean := False;
+   Chart_Dir : Integer := 1;
+
+   procedure Follow_Leg is
+      X : constant Long_Float := Long_Float (B.Position) / 100.0;
+
+      function Within (Forward : Boolean; K : Positive) return Boolean is
+        (X >= Chart_From (Seq, Forward, K) - 10.0
+         and then X <= Chart_To (Seq, Forward, K) + 10.0);
+   begin
+      if B.Direction /= Chart_Dir then
+         Chart_Dir := B.Direction;
+         if Chart_Dir > 0 then
+            if Fwd_Chart < Seq.Fwd_Charts and then Within (True, Fwd_Chart + 1)
+            then
+               Fwd_Chart := Fwd_Chart + 1;
+            end if;
+         else
+            if Rev_Begun and then Rev_Chart < Seq.Rev_Charts
+              and then Within (False, Rev_Chart + 1)
+            then
+               Rev_Chart := Rev_Chart + 1;
+            end if;
+            Rev_Begun := True;
+         end if;
+      elsif Chart_Dir > 0 and then Fwd_Chart < Seq.Fwd_Charts
+        and then X > Chart_To (Seq, True, Fwd_Chart)
+        and then Within (True, Fwd_Chart + 1)
+      then
+         Fwd_Chart := Fwd_Chart + 1;
+      end if;
+   end Follow_Leg;
+
    function Chart_Kmh return Long_Float is
-     (if B.Direction < 0 and then Seq.Rev_Count > 0
-      then Calibrated
-        (Seq, Chart_Speed_Reverse (Seq, Long_Float (B.Position) / 100.0)
-              + 2.0 * Seq.Chart_Zero)
-      elsif Seq.Chart_Count = 0 then -1.0
-      else Calibrated
-        (Seq, Chart_Speed (Seq, Long_Float (B.Position) / 100.0)));
+      X : constant Long_Float := Long_Float (B.Position) / 100.0;
+   begin
+      Follow_Leg;
+      return
+        (if B.Direction < 0 and then Seq.Rev_Count > 0
+         then Calibrated
+           (Seq, Chart_Speed_Of (Seq, False, Rev_Chart, X)
+                 + 2.0 * Seq.Chart_Zero)
+         elsif Seq.Chart_Count = 0 then -1.0
+         else Calibrated (Seq, Chart_Speed_Of (Seq, True, Fwd_Chart, X)));
+   end Chart_Kmh;
 
    --  the calibration's own error, km/h: a plateau of the "mrsp" chart
    --  is within it of a multiple of 5 km/h (S076_Sequences.Calibrated)
@@ -606,6 +654,35 @@ package body S076_Run is
 
    function Our_Mode return Mode_T is
      (if B.Powered then EVC_Core.Mode else M_NP);
+
+   --  B4343, B4324: a train at standstill in a mode supervising an end
+   --  of authority (FS, LS, OS) whose movement authority ends where it
+   --  stands (the estimated front end within a metre of the EOA, no LOA
+   --  speed: the permitted speed is zero, 3.16.2.4.4.2 shortened it there
+   --  at the standstill) and no override active: the driver does not start
+   --  it, a step's place alone does not move it (Run_Loaded). It moves
+   --  again once the on-board gives a new authority, an override or a
+   --  mode the driver may move in, or at a step whose input is the
+   --  driver's own movement (an ODO input) or a balise group to be read.
+   --  9990400_31 SV30: standstill at 250 m after the group error of step
+   --  44, the MA shortened there, "Override EoA" pressed at 250 m, not
+   --  after a run of 50 m past the EOA to the step's 300 m (5.8.2.1 a))
+   function Held_At_EOA return Boolean is
+      S    : constant EVC_Supervision_Input.Snapshot_T :=
+        EVC_Stored_Information.Current;
+      Left : Integer_64;
+   begin
+      if not B.Powered or else B.Speed /= 0 or else B.State.Override
+        or else Our_Mode not in M_FS | M_LS | M_OS
+        or else not S.MA.Present or else S.MA.LOA_Speed /= 0
+      then
+         return False;
+      end if;
+      Left := (if EVC_Distances."=" (S.Train.Ahead, EVC_Distances.Plus)
+               then Integer_64 (S.MA.EOA) - Integer_64 (S.Train.Est_Front)
+               else Integer_64 (S.Train.Est_Front) - Integer_64 (S.MA.EOA));
+      return Left <= 100;
+   end Held_At_EOA;
 
    function Our_Level return Level_Kind_T is
    begin
@@ -8005,6 +8082,10 @@ package body S076_Run is
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;
       Hold_Speed := False;
+      Fwd_Chart := 1;
+      Rev_Chart := 1;
+      Rev_Begun := False;
+      Chart_Dir := 1;
       Train_Configuration := 1;
       SCL_Given := False;
       SCL_Inputs := 0;
@@ -8267,6 +8348,9 @@ package body S076_Run is
                                           and then (Same (W (3), "reach-point")
                                                     or else Same (W (3),
                                                       "start-moving")))))
+                 and then not (Held_At_EOA
+                               and then not (St.IO = Input
+                                             and then W (2) = "ODO"))
                then
                   Move_To (St.Dist_Cm);
                end if;
