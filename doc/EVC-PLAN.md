@@ -25458,3 +25458,47 @@ these three sequences established a session in SM and passed with it
 until step 99. Triage: a new line `Sa8a3ba1a,s076` for the three
 (appended; the triage file's reader files a signature's sequences under
 its first line, E7, until e5/triage-names lands); baseline re-recorded.
+
+**B4443: the brake release request before a text triggered after it:
+built (the reviewer's second reading).** At the source the line held:
+`EVC_Text_Messages.Ack_Awaited` was true for any text to be acknowledged
+held or shown, and `EVC_Core.Outputs.Send_Status` kept the protections'
+release request back (`Brake_Ack_Pending`) while it was true and the
+request not yet sent. DMI 5.4.1.9 is a FIFO of the acknowledgement
+requests by their triggers with 1 s between displays; 5.4.1.9.1 orders
+only those triggered simultaneously (a text 3) or 4) before the brake's
+release 6)). Which trigger came first, and what the driver sees: text 1
+shown, the request arises at standstill, text 2 starts later. Before the
+change: text 1, then text 2 (1 s after text 1's acknowledgement, the
+request still kept back by text 2 held), then the request after text 2's
+acknowledgement: the brake applied through both texts. After it: text 1,
+the request sent in the cycle text 1's acknowledgement is taken (the DMI
+shows it 1 s later), text 2 held behind the sent request (`Asked`, as
+before) and sent 1 s after the request's acknowledgement. Decision on the
+state: the moment, not a set of slots: `EVC_Text_Messages` keeps
+`Request_On` and `Request_Ms`, the on-board time of the cycle the
+protections' brake first asked its release, written by `Note_Request`
+from `Evaluate`'s new parameter `Request` (`EVC_Core.Modes.Run_Procedures`
+passes `Brake_Output.Ack_Required`, which the monitoring wrote earlier in
+the cycle; the parameter defaults to False); `Ack_Awaited` counts only
+the texts whose start conditions were fulfilled no later
+(`Start_Ms <= Request_Ms`; a text started in the same cycle as the
+request goes first, as 5.4.1.9.1 and `Scenario_Text_Brake_Ack_Same_Cycle`
+have it). A brake that stops asking (the moment cleared) and asks again
+begins a new request with a new moment, so a text started in between
+precedes the second request. Nothing new waits for ever: text 1 never
+acknowledged keeps the request back, the brake applied until the driver
+acts on the text that came first (said in the heading of `Ack_Awaited`);
+the procedures' request is not withheld (unchanged). Scenario
+`EVC_Test_Profiles.Scenario_Text_After_Brake_Request` (next to
+`Scenario_Text_Held_Before_Brake_Ack`, its two texts, the first not
+acknowledged before the stop): before the change its third check failed
+(the request not sent at text 1's acknowledgement, text 2 shown 1 s
+after it), after it all four pass; `Scenario_Text_Held_Before_Brake_Ack`
+(a text started with the request goes first) still passes. Proofs:
+`evc_text_messages` margin 187 steps (92 recorded by e6/held-request),
+wide 0; `evc_core-modes` margin 8652, wide 0; `evc_core-outputs` 5961 (as
+recorded before; a comment only), wide 0. No Global widened (`Evaluate`
+was In_Out on the texts' state, `Run_Procedures` read `Brake_Output`):
+the parent's proof not needed. Edit outside the units: the one argument
+in `EVC_Core.Modes.Run_Procedures`.

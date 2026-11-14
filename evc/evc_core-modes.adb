@@ -253,7 +253,8 @@ is
            or else EVC_JRU_Records.Entry_Shown (SS_NL_No_Longer_Permitted)
            or else (Brake_Output.Ack_Required
                     and then Status_Brake_Sent = Brake_Ack)
-           or else EVC_Procedures.Brake_Demand.Ack_Required);
+           or else EVC_Procedures.Brake_Demand.Ack_Required,
+         Request => Brake_Output.Ack_Required);
    end Run_Procedures;
 
    function Any_Holds (L : Condition_List_T) return Boolean is

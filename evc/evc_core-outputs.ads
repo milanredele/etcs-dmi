@@ -139,11 +139,12 @@ is
    --  change; the reversing possible (5.13), the tunnel stopping area
    --  (5.18.8). D, Text_SB, Text_EB: the brake demands of the procedures
    --  and of the text messages. The release request of the protections'
-   --  brake is not sent while a text to be acknowledged awaits the
-   --  driver (EVC_Text_Messages.Ack_Awaited), the brake shown as awaiting
-   --  an acknowledgement meanwhile: the DMI queues by arrival and the
-   --  text came first (DMI 5.4.1.9); once sent it stays, and the texts
-   --  wait behind it (Asked). Not for the procedures' request
+   --  brake is not sent while a text to be acknowledged started before
+   --  it awaits the driver (EVC_Text_Messages.Ack_Awaited), the brake
+   --  shown as awaiting an acknowledgement meanwhile: the DMI queues by
+   --  arrival and the text came first (DMI 5.4.1.9); a text started
+   --  after the request does not keep it back; once sent it stays, and
+   --  the texts wait behind it (Asked). Not for the procedures' request
    --  (D.Ack_Required), which holds the texts whatever was sent: both
    --  would wait
    --  @req 3.5.7.1, 5.22.4.1
