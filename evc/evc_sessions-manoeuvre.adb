@@ -94,7 +94,9 @@ is
 
    --  S0: level 2, a valid position referred to an LRBG, the safe consist
    --  length available, standstill, and FS, AD, OS, LS, SR, PT or SB
-   --  without an RBC transition order stored, or SM
+   --  without an RBC transition order stored, or SM; in SB the driver's
+   --  selection of the start of mission (5.4.3.2 S10, 5.4.5.3 k) at S20)
+   --  @req 5.4.5.3 k)
    function Possible (Mode : Mode_T; Order_Stored : Boolean) return Boolean
    is (EVC_Levels.Valid and then EVC_Levels.Level = L2
        and then EVC_Position.Status = EVC_Position.Valid
