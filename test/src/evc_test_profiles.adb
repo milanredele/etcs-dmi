@@ -1699,6 +1699,138 @@ package body EVC_Test_Profiles is
       Speed_Cms := Saved;
    end Scenario_Text_Held_Before_Brake_Ack;
 
+   --  The two texts of Scenario_Text_Held_Before_Brake_Ack, the first
+   --  not acknowledged: the train rolls back from 300 m under the
+   --  protection's emergency brake and stops, the brake asks its release
+   --  while the first text is shown (the request kept back behind it),
+   --  then the odometer counts the train over 320 m and the second text
+   --  starts after the request (held behind the first). By the triggers
+   --  (DMI 5.4.1.9) the request goes once the first is acknowledged, the
+   --  second text waits behind the request (5.4.1.9.1 6)) and is sent 1 s
+   --  after the request's acknowledgement
+   procedure Scenario_Text_After_Brake_Request is
+      TP       : ETCS_Track_Packets.P74.Packet_T;
+      W, W2    : Writer_T;
+      OK       : Boolean;
+      Saved    : constant Unsigned_16 := Speed_Cms;
+      N        : Natural := 0;
+      Ids      : array (1 .. 2) of Unsigned_16 := (others => 0);
+      Shown_At : array (1 .. 2) of Natural := (others => 0);
+      Cycles   : Natural := 0;
+      Req_At   : Natural := 0;
+      procedure Count is
+      begin
+         Cycles := Cycles + 1;
+         if Find_DMI (EVC_DMI_Port.MSG_TEXT) /= 0 and then N < 2 then
+            N := N + 1;
+            Ids (N) := Unsigned_16 (DMI_Byte (EVC_DMI_Port.MSG_TEXT, 6)
+                                    + DMI_Byte (EVC_DMI_Port.MSG_TEXT, 7)
+                                      * 256);
+            Shown_At (N) := Cycles;
+         end if;
+         if Req_At = 0 and then Status_Brake = 2 then
+            Req_At := Cycles;
+         end if;
+      end Count;
+      procedure Wait (Ms : Natural) is
+      begin
+         for C in 1 .. Ms / 100 loop
+            Stand_X (100);
+            Count;
+         end loop;
+      end Wait;
+      procedure Ack (Kind : Byte; Id : Unsigned_16) is
+      begin
+         Input (DMI, (16#40#, 5, 0, 0, 0, 2, Kind, 0, Byte (Id mod 256),
+                      0));
+      end Ack;
+   begin
+      Start_X;
+      Speed_Cms := 500;
+      Add_Group (Group (10, 100));
+      TP.Q_DIR := 2;
+      TP.Q_SCALE := 1;
+      TP.Q_TEXT := 1;
+      TP.D_TEXTDISPLAY := 150;
+      TP.L_TEXTDISPLAY := 1000;
+      TP.T_TEXTDISPLAY := 1023;
+      TP.M_MODETEXTDISPLAY := 15;
+      TP.M_LEVELTEXTDISPLAY := 4;
+      TP.M_MODETEXTDISPLAY_2 := 15;
+      TP.M_LEVELTEXTDISPLAY_2 := 4;
+      TP.Q_TEXTCONFIRM := 1;
+      TP.Has_Q_CONFTEXTDISPLAY := True;
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      ETCS_Track_Packets.P74.Encode (TP, W, OK);
+      Finish_Carry (1, 0, W, OK);
+      Carry (1, 1, MA_Of ((1 => 3000)));
+      TP.Q_TEXT := 0;
+      TP.D_TEXTDISPLAY := 220;
+      ETCS_Track_Packets.P74.Encode (TP, W2, OK);
+      Finish_Carry (1, 1, W2, OK);
+      Run_X (20_000);
+      Count;
+      while Train_Cm < 30_000 loop
+         Step_X (50);
+         Count;
+      end loop;
+      for I in 1 .. 6 loop
+         Step_X (-50);
+         Count;
+      end loop;
+      Sample (0);
+      Cycle_X;
+      Count;
+      Wait (1000);
+      Check (N = 1 and then EVC_Core.Brake_Commands.Ack_Required
+               and then Req_At = 0,
+             "text before a brake request: the first text shown, the "
+             & "brake asks its release at standstill, the request kept "
+             & "back behind the text, got" & N'Image
+             & EVC_Core.Brake_Commands.Ack_Required'Image & Req_At'Image
+             & Train_Cm'Image);
+      Feed_X (3_300);
+      Sample (0);
+      Cycle_X;
+      Count;
+      Wait (1500);
+      Check (N = 1 and then Req_At = 0
+               and then EVC_Text_Messages.Ack_Awaited,
+             "text before a brake request: the second text started after "
+             & "the request, held behind the first, got" & N'Image
+             & Req_At'Image & Train_Cm'Image);
+      Ack (2, Ids (1));
+      Stand_X (100);
+      Count;
+      declare
+         Acked_At : constant Natural := Cycles;
+      begin
+         Wait (1500);
+         Check (Req_At = Acked_At and then N = 1,
+                "text before a brake request: the request sent in the "
+                & "cycle the first text's acknowledgement is taken, the "
+                & "second text held behind it (DMI 5.4.1.9, 5.4.1.9.1 6)), "
+                & "got" & Acked_At'Image & Req_At'Image & N'Image
+                & Shown_At (2)'Image);
+      end;
+      Ack (5, 0);
+      Stand_X (100);
+      Count;
+      declare
+         Released_At : constant Natural := Cycles;
+      begin
+         Wait (1500);
+         Check (not EVC_Core.Brake_Commands.Ack_Required and then N = 2
+                  and then Shown_At (2) >= Released_At + 9,
+                "text before a brake request: the brake released by the "
+                & "request's acknowledgement, the second text sent 1 s "
+                & "after it, got" & EVC_Core.Brake_Commands.Ack_Required'Image
+                & N'Image & Released_At'Image & Shown_At (2)'Image);
+      end;
+      Speed_Cms := Saved;
+   end Scenario_Text_After_Brake_Request;
+
    --  A.3.5.1 7th bullet: a powerless section with the pantograph to be
    --  lowered from 1100 to 1300 m (the group 10 at 100 m); the train rolls
    --  back 1.5 m in rear of the location where "Lowered pantograph" is

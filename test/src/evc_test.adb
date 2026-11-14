@@ -197,6 +197,7 @@ begin
    Scenario_Text_Behind_Brake_Ack;
    Scenario_Text_Brake_Ack_Same_Cycle;
    Scenario_Text_Held_Before_Brake_Ack;
+   Scenario_Text_After_Brake_Request;
    Scenario_Track_Condition_Roll_Back;
    Scenario_MA_Timers_Roll_Back;
    Scenario_LX_Roll_Back;
@@ -403,6 +404,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Brake_Reasons;
    EVC_Test_Manoeuvre.Scenario_SM_Post_Trip;
    EVC_Test_Manoeuvre.Scenario_SM_Start_Of_Mission;
+   EVC_Test_Manoeuvre.Scenario_SM_Session_Order;
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;

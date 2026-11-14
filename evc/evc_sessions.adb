@@ -1136,7 +1136,8 @@ is
    end Mode_Session_Order;
 
    --  @req 3.5.3.8 c), 3.5.3.13, 3.5.3.13.1, 3.5.3.15, 3.5.5.1 a)
-   --  @req 4.8.4.2 Table-footnote [3], 4.4.6.1.10 a), 4.4.8.1.5.2
+   --  @req 4.8.4.2 Table-footnote [3], 4.8.4.2 Table-footnote [12]
+   --  @req 4.4.6.1.10 a), 4.4.8.1.5.2
    --  @req 4.4.20.1.12
    procedure Apply_Order (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Order, Links, Pending, R.State,
@@ -1153,6 +1154,11 @@ is
          --  4.8.3 [15]: an order to establish received together with a
          --  Radio Network transition order to a network the on-board is
          --  not registered to: rejected, neither session nor contact
+         null;
+      elsif Order.Establish and then Mode = M_SM then
+         --  4.8.4.2 [12]: in SM only the order to terminate a session is
+         --  accepted; an order to establish is rejected, neither session
+         --  nor contact
          null;
       elsif Order.Establish and then Order.RBC.NID_RBC = Last_Known_RBC
       then

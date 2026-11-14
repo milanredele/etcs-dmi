@@ -106,10 +106,16 @@ is
 
    --  Whether a text to be acknowledged awaits the driver: held by the
    --  on-board (it waits, Show_Or_Hold) or shown and not yet
-   --  acknowledged. Decision: a brake's release request arising then is
-   --  sent once the driver has acknowledged the text (DMI 5.4.1.9, a FIFO
-   --  by the triggers: the DMI queues by arrival, so a request sent while
-   --  the text is held would overtake it)
+   --  acknowledged, and, while the protections' brake asks its release,
+   --  started no later than the cycle it began to ask (Evaluate's
+   --  Request). Decision: the request is sent once the driver has
+   --  acknowledged the texts started before it, not those started after
+   --  (DMI 5.4.1.9, a FIFO by the triggers: the DMI queues by arrival, so
+   --  a request sent while such a text is held would overtake it; a
+   --  later text waits behind the sent request, 5.4.1.9.1 6)); a brake
+   --  that stops asking and asks again begins a new request. A text
+   --  never acknowledged keeps the request back: the brake stays applied
+   --  until the driver has acted on the text that came first
    function Ack_Awaited return Boolean
      with Global => State;
 
@@ -205,14 +211,17 @@ is
    --  estimated front end (a frame position) and the on-board time; Asked:
    --  an acknowledgement other than of a text is asked of the driver in
    --  the cycle (a mode, a level transition, a system status message, a
-   --  brake's release), which holds the texts to be acknowledged
+   --  brake's release), which holds the texts to be acknowledged;
+   --  Request: the protections' brake asks the acknowledgement of its
+   --  release in the cycle (Ack_Awaited counts the texts started before)
    procedure Evaluate (Mode        : Mode_T;
                        Level_Valid : Boolean;
                        Level       : Level_T;
                        Est_Front   : Dist_T;
                        Now_Ms      : Unsigned_64;
                        Taken       : Boolean := True;
-                       Asked       : Boolean := False)
+                       Asked       : Boolean := False;
+                       Request     : Boolean := False)
      with Global => (In_Out => State,
                      Input  => (EVC_Position.State,
                                 EVC_Driver_Requests.State));

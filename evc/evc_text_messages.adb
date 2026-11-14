@@ -14,7 +14,7 @@ package body EVC_Text_Messages
                                    Events, Event_N, Last_Level_Valid,
                                    Last_Level, Pending, Pending_N,
                                    Reports, Report_N, Gap_Until, Freed,
-                                   Asked_Last))
+                                   Asked_Last, Request_On, Request_Ms))
 is
 
    No_Mode  : constant := 15;   -- M_MODETEXTDISPLAY: no sub-condition
@@ -109,6 +109,11 @@ is
    --  a mode or a level transition awaited the driver's acknowledgement
    --  in the last cycle (5.4.1.9: its end starts the gap too)
    Asked_Last : Boolean := False;
+   --  the protections' brake asks the acknowledgement of its release
+   --  (Request_On), since the on-board time Request_Ms: the cycle it
+   --  first asked, taken again when it asks after a cycle without
+   Request_On : Boolean := False;
+   Request_Ms : Unsigned_64 := 0;
 
    Last_Level_Valid : Boolean := False;
    Last_Level       : Level_T := L0;
@@ -632,6 +637,8 @@ is
       Gap_Until := 0;
       Freed := False;
       Asked_Last := False;
+      Request_On := False;
+      Request_Ms := 0;
       Pending := (others => No_Message);
       Pending_N := 0;
       Reports := (others => (others => <>));
@@ -729,8 +736,10 @@ is
    function Ack_Awaited return Boolean is
      (for some J in Messages'Range =>
         Messages (J).Used and then To_Ack (Messages (J))
-        and then (Messages (J).Held or else Messages (J).Shown))
-     with Refined_Global => Messages;
+        and then (Messages (J).Held or else Messages (J).Shown)
+        and then (not Request_On
+                  or else Messages (J).Start_Ms <= Request_Ms))
+     with Refined_Global => (Messages, Request_On, Request_Ms);
 
    --  Whether the started text M of the slot I waits before it is sent:
    --  one to be acknowledged while another acknowledgement (a mode, a
@@ -822,13 +831,27 @@ is
       end if;
    end Show_Or_Hold;
 
+   --  The moment the protections' brake began to ask its release
+   procedure Note_Request (Request : Boolean; Now_Ms : Unsigned_64)
+     with Global => (In_Out => (Request_On, Request_Ms))
+   is
+   begin
+      if not Request then
+         Request_On := False;
+      elsif not Request_On then
+         Request_On := True;
+         Request_Ms := Now_Ms;
+      end if;
+   end Note_Request;
+
    procedure Evaluate (Mode        : Mode_T;
                        Level_Valid : Boolean;
                        Level       : Level_T;
                        Est_Front   : Dist_T;
                        Now_Ms      : Unsigned_64;
                        Taken       : Boolean := True;
-                       Asked       : Boolean := False)
+                       Asked       : Boolean := False;
+                      Request     : Boolean := False)
    is
       Level_Left : constant Boolean :=
         Last_Level_Valid
@@ -837,6 +860,7 @@ is
       Output_N := 0;
       Event_N := 0;
       Report_N := 0;
+      Note_Request (Request, Now_Ms);
       Take_All (Taken);
       if Freed or else (Asked_Last and then not Asked) then
          Gap_Until := Now_Ms + Ack_Gap_Ms;

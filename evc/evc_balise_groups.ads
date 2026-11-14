@@ -105,6 +105,7 @@ is
    --  Decision: a balise detected without a decoded telegram (Detect)
    --  does not end the passage, which ends Group_End_Cm beyond its last
    --  balise read as with a balise missed (EVC_Position)
+   --  @req 3.16.2.2.2 b)
    function Complete (P : Passage_T) return Boolean is
      (P.Count > Natural (P.N_TOTAL)
       or else (Has (P, 0) and then Has (P, N_PIG_T (P.N_TOTAL))));

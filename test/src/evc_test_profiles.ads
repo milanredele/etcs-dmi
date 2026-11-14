@@ -37,6 +37,9 @@ package EVC_Test_Profiles is
    --  text is sent in that cycle, the request waits in the DMI's queue
    procedure Scenario_Text_Brake_Ack_Same_Cycle;
    procedure Scenario_Text_Held_Before_Brake_Ack;
+   --  DMI 5.4.1.9: a text shown, then the brake's release request, then
+   --  a second text: the request waits only for the first
+   procedure Scenario_Text_After_Brake_Request;
       procedure Scenario_Track_Condition_Roll_Back;
       procedure Scenario_MA_Timers_Roll_Back;
       procedure Scenario_LX_Roll_Back;

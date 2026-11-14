@@ -66,6 +66,11 @@ package EVC_Test_Manoeuvre is
    --  SM (E34), refused by the RBC back to S10 (E35), then authorised
    procedure Scenario_SM_Start_Of_Mission;
 
+   --  4.8.4.2 Table-footnote [12]: in SM a balise group's order to
+   --  establish a session with another RBC is rejected (no session, the
+   --  contact unchanged), an order to terminate is taken
+   procedure Scenario_SM_Session_Order;
+
    --  3.6.4.1.5 last sentence: gamma 1 in Stand-By without valid Train
    --  Data with the safe consist length, in a Supervised Manoeuvre
    --  request and from the first authorisation to Non Leading
