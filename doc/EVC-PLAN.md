@@ -25297,3 +25297,125 @@ the condition in `EVC_Core.Outputs.Send_Status` (keep the request back
 only behind a text triggered before it) with a scenario; B4446 is a
 runner fix of a few lines with three sequences to re-run; B4444 and
 B4445 low stakes. Calls: 90 of 130 at this point.
+
+### E5 integration after the seventy-fourth round, the forty-second of E6 (2026-11-14)
+
+Merged: e5/traces-onboard (the lines of the triage filed onboard and E5
+traced: none is a defect of ours today. 9990400_25 step 108, s076: SR is
+entered by Start and kept over the transition to level 2, the sequence
+gives no message 2 and so no list of packet 63, and by 4.4.11.1.3 c)
+every group can be passed when no list is sent; 5220200_02 step 59,
+s076: the packet 67 of BG2d puts the big metal mass area at 450 to 600 m
+and the train stands at 200 m; 3110200_03 step 77, s076: no 133 is due
+in SR without a request for Supervised Manoeuvre, 3.18.3.10; 3160300_01
+SV21, E7 under B010; 3131040_62, a line of its own S7289686e, s076: the
+workbook's target speed is 20 km/h and the packet 12 gives 60;
+3131040_14 stays with B016, the text line filed curves; 3150100_09 and
+_11 are the test case of an on-board with one session, 3.15.1.3.2.4, a
+row the matrix has n/a: case 13 added to
+`S076_Run.Single_Session_Cases`, the six sequences go from failed at
+step 75 to blocked at step 67 as not applicable; the three of 6060500
+stay E7), e6/held-request (B4242: `EVC_Text_Messages.Ack_Awaited`, true
+while a text to be acknowledged is held or shown and not acknowledged;
+`EVC_Core.Outputs.Send_Status` sends `Brake_Ack_Pending` instead of
+`Brake_Ack` while it is true and the request has not been sent, not for
+the brake demand of a procedure, for which `Asked` holds the texts;
+`Scenario_Text_Held_Before_Brake_Ack` failed before the change; B4284, a
+real defect: a format 5 image with a gamma train read the gamma model at
+the wrong offset, `EVC_Config.Tail_Length` now gives `Get_Tail` and
+`Load_Gamma` one length, the case at the end of `Scenario_Config_Sets`;
+B4283: 5.4.5.3 k) done by `EVC_Sessions.Manoeuvre.Possible` with its
+`@req`, 4.8.4.2 footnote [12] partial: the order to terminate is taken
+in SM, an order to establish is not rejected, B4363), e5/traces-trip
+(the lines filed E6 and dmi traced. One defect of ours, fixed: a group
+read with its first and last balise by number and one between missed was
+evaluated only 15 m beyond the last balise read, so a train stopped
+inside that distance by an earlier linking reaction never got the trip
+of 3.16.2.4.1 a); `EVC_Balise_Groups.Complete` now ends the passage when
+the first and the last are read, 3.16.2.2.2 b), the case in
+`Scenario_Consistency_Reactions`; 3040400_07 SV22 and SV30 pass. The
+rest: 9990600_04 step 95, s076: D_SECTIONTIMERSTOPLOC 100 m is measured
+from the start of the section, 7.5.1.24, so the stop location lies at
+200 m behind the train and the EOA at 5100 m, no trip is due at 2250 m;
+4120100_02 and 4060300_03 SV22, E7: the SV22 forms carry M_VERSION 3.0,
+which ours supports, the trip is that of an on-board whose highest
+version is 2; the three DMI lines s076: no step closes the Settings
+window in 3170200_02, the Driver ID is to be revalidated on entering SB
+in 4041500_01, the SM request is still awaiting its answer in
+4080455_04, DMI Table 54a S1; no change in dmi/), e5/runner-standstill
+(B4324's premise was wrong: the train of 4120100_15 stood because
+`S076_Sequences` read only the first speed chart of a sequence; every
+chart of each direction is kept now and `S076_Run.Follow_Leg` follows
+the chart of the current leg; B4343: `Held_At_EOA`, a train at
+standstill in FS, LS or OS whose EOA is at its front is not moved by a
+step's place alone; B4326: `Named_Time`, a step whose comment names a
+time since a step or since the loss of the radio connection waits for it
+at standstill; 4120100_15 and 5170200_01 pass in three versions,
+5180500_01 moves from step 87 to 99, s076, 9990400_31 stays at step 57
+under S7341fea5, s076: the override is taken at standstill and gives SR
+by 4.6.3 [37] where the rows keep FS; B3700 built as `Follow_Curve`,
+nothing moved, left open: 3180400_04 still brakes at BG7d).
+
+The report's table of first failures after the round: onboard 0 (19), E5
+0 (1), E6 0 (10), dmi 0 (4), runner 0; model 256, s076 459, E7 179,
+curves 95, NTC 3. A finding of e5/runner-standstill against the round
+brief: `S076_Main.Triage_Of` files every sequence of a signature under
+the first line of its id, so the order of the lines chooses one category
+for all of them and a line cannot hold a part (S27eb0678 shows two E7
+sequences under s076, Sfbc6ab9e three s076 sequences under E7): B4383.
+
+The review (e5/review-74, the twenty-third): nine items, seven agreed,
+two disagreed in part, none undecided. B4443, item 1 b): a second text
+triggered after the protections' request and held behind the first keeps
+`Ack_Awaited` true, so the driver sees text 1, text 2, request where the
+triggers give text 1, request, text 2 (DMI 5.4.1.9): the query is to
+count only a text whose start came before the request. B4444: 3170200_02
+step 56 is the runner's first (its driver opens Settings to reach System
+version and should close it), our DMI right either way. Two findings on
+agreed items: B4445, `Held_At_EOA` tests the distance to the EOA (100
+m), not the permitted speed, and would hold a train with a release speed
+short of its EOA; B4446, `Named_Time` reads "after Step N" as the
+sequence's step where three comments mean the case's row. Twenty-three
+rounds of reviews: 194 items, 166 agreed, 31 disagreed, 8 undecided; 48
+lines, of which 12 became fixes (B4242 and B4343 built this round);
+152.9 USD.
+
+Verification of the merged tree: the whole check green after the first
+and the second merge; the full chain on the three packages that touch
+evc/ green at once: the full proof 14521 checks, none unproved, margin
+47726 steps, the wide checks 4 of 6; cross build and stack 32768 B
+budget, margin 6016 B (unchanged); wasm and both smokes 0 failures;
+after the fourth merge (test/src and records only) and after the
+review's the whole check again: the runner 1270 / 992 / 928 (from 1262 /
+1006 / 922), 0 regressions against the merged baseline, 0 untriaged. The
+merge: traces-onboard fast-forwarded; held-request and traces-trip
+conflicted on the plan; runner-standstill on the plan, the backlog and
+two lines of the triage (S29046d63 the runner's, S607331e5 the trace's:
+one from each side).
+
+Costs (doc/ROUNDS.csv): 41.9 USD with the review (34.5 for the four
+packages, 7.4 the review), 15 of 17 package items done, 2 left (B3700
+built without effect, Sfbc6ab9e's order, which B4383 replaces), 4 of 20
+brief premises wrong (the service brake as the cause in 4120100_15; the
+s076 note of 3150100; the two SV22 sequences "like Sd9c6ae99"; the order
+of the lines filing each sequence), no agent over budget, three past the
+bound (130, 144, 149 of 160). Lessons: a rule of the triage file is
+checked in the reader before a round is built on it; a runner premise
+about one train ("it stands because of the brake") is checked against
+what the runner read of the sequence, not only against its trace; a
+build that withholds one output for another gets the review's question
+"which trigger came first" in its brief.
+
+The matrix: clauses left 3 (partial: 4.11.1.1 and 4.11.1.3 on E7 and E8,
+4.8.4.2 footnote [12] under B4363; done 2145, deferred 220). Open items:
+doc/BACKLOG.csv (21 open after this round; 6 added of which 4 by the
+review and 1 by the coordinator, 6 closed). Next, the closing round of
+E6: B4363 (an order to establish a session rejected in SM), B4443 (the
+request before a text triggered after it), B4383 (a triage line names
+its sequences) with the lines of several causes split, B4444, B4445 and
+B4446 (the runner's driver closing Settings, the hold by the permitted
+speed, the step or the row a time is counted from), B3700 with a probe
+per cycle before BG7d; then the closure of E6 written: no first failure
+of the corpus is filed onboard, E5, E6, dmi or runner, and what stays
+open of the on-board is E7's (B010), E8's (B1840, B2982), the curves'
+(B016) and B4223.
