@@ -1158,14 +1158,29 @@ package body S076_Run is
       end if;
    end Controller_For_Movement;
 
+   --  The menu window the runner opened itself as its way to a button
+   --  the sequence pressed (the Settings window from the Driver ID
+   --  window for "System version", DMI 11.7.2): the sequence closing the
+   --  window of that button goes back to it (11.7.7), and the driver
+   --  closes it too (DMI_Input, "close"); forgotten at the sequence's
+   --  next DMI input other than a close, and never set when the window
+   --  was open already (the sequence pressed it itself)
+   Way_Opened : Boolean := False;
+   Way_Window : Window_ID_T := W_Settings;
+
    --  Press button Index of the menu window Wid
    function Press_Menu (Wid : Window_ID_T; Index : Positive; Name : String)
      return Judgement_T
    is
+      Was_Top : constant Boolean := Top_Is (Wid);
    begin
       if not Open_Window (Wid) then
          return Fail ("DMI " & Name & ": " & Window_ID_T'Image (Wid)
                       & " cannot be opened over " & Top_Image);
+      end if;
+      if not Was_Top then
+         Way_Opened := True;
+         Way_Window := Wid;
       end if;
       --  A button that needs standstill: the train may have stopped in
       --  this very cycle and the DMI not yet received it; the driver
@@ -1945,6 +1960,9 @@ package body S076_Run is
       Verb : constant String := W (3);
       Item : constant String := W (4);
    begin
+      if not Same (Verb, "close") then
+         Way_Opened := False;
+      end if;
       --  a driver's input the comment gives with the train at
       --  standstill, the next step at the same place: the driver stops
       --  the train first (4100103_19 step 68 'Train is at standstill',
@@ -2234,7 +2252,20 @@ package body S076_Run is
          elsif not DMI_Windows.Close_Enabled then
             return Fail ("DMI close " & Item & ": [Close] disabled");
          end if;
-         Press_Area (DMI_Windows.Close_Button_Area);
+         declare
+            Way : constant Boolean :=
+              Way_Opened and then not Top_Is (Way_Window);
+         begin
+            Way_Opened := False;
+            Press_Area (DMI_Windows.Close_Button_Area);
+            if Way and then Top_Is (Way_Window)
+              and then DMI_Windows.Close_Enabled
+            then
+               Press_Area (DMI_Windows.Close_Button_Area);
+               return Pass ("DMI " & Item & " closed, then "
+                            & Window_ID_T'Image (Way_Window));
+            end if;
+         end;
          return Pass ("DMI " & Item & " closed");
       elsif (Same (Verb, "modify") or else Same (Verb, "confirm"))
         and then Same (Item, "Adhesion-Factor")
@@ -8231,6 +8262,7 @@ package body S076_Run is
       Step_Start_Ms := 0;
       Hold_Speed := False;
       Step_Ms := (others => 0);
+      Way_Opened := False;
       Lost_Ms := 0;
       Curve_Follow := False;
       Fwd_Chart := 1;
