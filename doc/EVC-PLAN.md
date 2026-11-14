@@ -25792,3 +25792,122 @@ The report's table after these edits (986 failed sequences): model 222,
 s076 496, E7 182, curves 80, NTC 3, E8 3, dmi 0, onboard 0, E6 0, E5 0,
 runner 0. Nothing is left under dmi, onboard or E6; the three under E8
 are B1840's.
+
+### Review of the seventy-fifth round: eight verdicts re-derived blind (e5/review-75) (2026-11-14)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items were taken, three
+traces run (6060500_10, 3080400_05, 3170200_02). No code, no triage line
+and no line of the authors was changed.
+
+1. A brake release request between two texts. Mine: (a) text 1, the
+   request, text 2 (DMI 5.4.1.9, a FIFO by the triggers); (b) the moment
+   the request began; a text triggered in the same cycle goes before it
+   (5.4.1.9.1, 3) and 4) before 6)); (c) the request ends with the
+   command, a new command is a new request behind any text triggered in
+   between; (d) a text 1 never acknowledged keeps the request back and the
+   brake applied at standstill: acceptable, the driver's FIFO shows text 1
+   first anyway and a revocation releases it. Author (B4443:
+   `EVC_Text_Messages.Ack_Awaited` counts the texts started no later than
+   `Request_Ms`, `Note_Request` clears the moment when the brake stops
+   asking; `Scenario_Text_After_Brake_Request`): the same. Agree.
+
+2. 3131040_39 step 58. BG1d at 300 m, packet 3 with Q_SCALE 1 m,
+   D_VALIDNV 0, D_NVSTFF 1200; SR entered at 0 m under D_NVSTFF 32767.
+   (a) 4.4.11.1.3.1 a) counts a national value from the SR entry, and
+   3.18.2.11 keeps an ongoing distance supervision's starting location when
+   a new set overwrites it: the SR distance ends at 1200 m. (b) ERA's step
+   list counts from the LRBG: the Indication limit "668 m from the EoA",
+   "532 m from the LRBG", an EoA at 1500 m. (c) ours tripping before
+   1266 m is due. The sequence's data. Author (S8f6332fa s076, by
+   4.4.11.1.3.1 a)): the same. Agree; 3.18.2.11 is the clause that settles
+   the value arriving after the entry.
+
+3. (a) 3131050_07 step 54: BG2d at 150 m, L_ENDSECTION 600 (EOA 750 m),
+   D_DP 50, V_RELEASEDP 50 km/h, 30 km/h from 750 m; steps 54 and 55 at
+   887 m expect release speed monitoring in FS, 137 m beyond the EOA,
+   where 4.6.3 [12] has tripped the train (the PDF itself puts the RSM
+   start 63 m before the EoA). The sequence's data. (b) 3160200_14 step
+   41: BG0d of step 39 is one balise with every value 0 in ERA's table
+   (NID_C 0, NID_BG 0, N_TOTAL 0, Q_LINK 0, packet 12 V_MAIN 0,
+   L_ENDSECTION 0, Q_DIR nominal); the position is unknown since the SR
+   entry (step 38), so the one-direction data of an unlinked single group
+   is rejected (3.6.3.1.4, 3.6.3.1.4.2); 3.16.2.4.3 is for a linked group
+   and does not apply; nothing in the file gives FS. The sequence's data.
+   Author (S27459fc4 s076; S1ebd7f2d s076, B4485): the same. Agree.
+
+4. 4040600_01 step 27. 4.4.6.1.6 is informative in chapter 9 and says
+   "should ... try": a 4.0.0 on-board shall enter SF at a fault that
+   affects safety (4.4.5.1.1, 4.6.3 [13], from SL too) and may memorise it
+   in SL and report it. A bench whose only fault input is the failure
+   handling cannot run the case; the missing part is a fault the on-board
+   can live with, from a host's self-test: E8 (B1840, B3863). No matrix
+   row for 4.4.6.1.6. Author (B4484, E8): the same. Agree.
+
+5. The triage file's reader. `S076_Main.Triage_Of`: a line of the id
+   that names the sequence wins wherever it stands, else the first line in
+   the file among the id's first line without names and any `~text` line
+   the signature contains. Two silent misfilings: a named line keeps its
+   sequence when the sequence later stops at another step under the same
+   id (it holds by name, not by step); a `~text` line ahead of the id's
+   line takes the sequence. The three re-filed: 3131050_19 SV30 (step 55,
+   `S388a7b2a@3131050_19` s076, the comments' trip location with Q_LOCACC
+   0): consistent. 6060500_04 SV30 (step 52, `Sde099aa7@6060500_04` E7,
+   packet 72 of a 2.1 trackside, 6.6.5.2.3 deferred): consistent.
+   3131050_11 SV30 (step 71, the Seb6766c6 line without names, model): it
+   speaks of this sequence at this step (standstill at 295 m in release
+   speed monitoring, the EOA 22 m ahead, the next case's group at 395 m),
+   but its cause "the sequences join a case that starts beyond the EOA
+   where the previous one leaves the train" is the sequence's data, not the
+   runner's model. Author (e5/triage-names: Seb6766c6 s076 -> model by the
+   line's category): disagree in part on the category (B4523).
+
+6. Trace, 6060500_10 step 91. (a) 4.8.4.2, Session Management, column
+   SM: A [12], only an order to terminate is accepted; an order to
+   establish, by balise or by the RBC, is rejected. (b) in SM a session
+   still comes by the RBC transition order (A in SM), the end of a radio
+   hole (3.5.3.4 e)), a session lost with its safe connection (f)), a
+   mode change to report (c)); there 6.6.3.4.1.3 applies with an RBC of
+   version 2 (step 95's 32 carries M_VERSION 2.0). BG4d (M_VERSION 3.0,
+   packet 42 Q_RBC 1) is read in SM at 609 m and ours sends no connect:
+   due. The sequence's data, against 4.8.4.2 [12]. Author (B4363,
+   `EVC_Sessions.Apply_Order`'s SM branch,
+   `EVC_Test_Manoeuvre.Scenario_SM_Session_Order`, Sa8a3ba1a s076): the
+   same. Agree.
+
+7. Trace, 3080400_05 step 77. The time-out at 1000 m at 35 km/h: the EOA
+   withdrawn to the train (3.8.4.1.2 a)), the emergency brake, TR at
+   1011 m inside step 72's window by 4.6.3 [16]: due; the sequence lists
+   its outputs 73 to 78 and the trip (79, 80) at the same place. Step 77
+   is the FS information with target 0 / 0, shown in the FS cycles between
+   the expiry and the trip. Before the round: the runner's judgement (the
+   end of the window only). Author (B4483, the rule "a mode of the dial
+   seen in the window"): the same. Agree. The case of the rule: it tests a
+   mode seen, not the dial: an on-board that leaves FS or SR wrongly after
+   one cycle of the window passes a "displayed" step (in 3131040_39 a trip
+   inside step 60's window would pass steps 61 to 64, nothing judging a
+   mode before step 65's NP), and a window over the dial passes too; not
+   traced to a sequence passing wrongly today (B4524).
+
+8. Trace, 3170200_02 SV30 step 101. The case 6060500 1 at 150 m in L2
+   SR: the RBC's 32 carries M_VERSION 2.0, so the on-board operates with
+   system version 2 and its 159 carries packet 3, the telephone numbers
+   (6.6.3.4.1.1 and footnote [6] of table 6.6.3.4.5, applied for X = 2 as
+   the step's comment says); ours sends packet 2. A later phase, E7.
+   Author (Se18f3f0a E7): the same. Agree. `Way_Opened`: none found; in
+   sv30 the only window expected right after the close of a way's
+   sub-window is this sequence's Driver ID window, which the rule serves,
+   and a later press through `Press_Menu` opens the way again.
+   `Named_Time`: 3180400_03 step 174 (case 3180400 16, row 10) resolves to
+   row 3, step 167, and 4080453_01 step 124 (case 3180400 15, row 8) to
+   row 3, step 119, both the SA-CONNECT.Request with no answer that "40s
+   after Step 3" counts from: the events meant.
+
+Counts: 8 items. Agreed: seven (1, 2, 3, 4, 6, 7, 8; 7 with a finding on
+the runner's rule, B4524). Disagreed in part: one (5, the category of
+3131050_11, B4523, model vs s076). Undecided: none. My calls: B4523 is a
+reading of three PDFs and one line of the triage, low stakes for the
+on-board (the sequence fails either way); B4524 matters for the
+runner's trust: a judgement by a mode seen once can hide a wrong trip,
+and a check of the step's mode at the end of the window would close it.
+Calls: 79 of 130 at this point.
