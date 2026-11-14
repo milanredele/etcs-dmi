@@ -1427,6 +1427,55 @@ package body EVC_Test_Manoeuvre is
              & "(5.4.3.2 S10 E34, 4.6.3 [81])");
    end Scenario_SM_Start_Of_Mission;
 
+   --  SM entered as in the Start of Mission of S10 (session 1 with RBC 1
+   --  established), then the group 30 at 230 m orders a session with RBC
+   --  300 and the group 40 at 320 m the termination of the sessions
+   procedure Scenario_SM_Session_Order is
+      use type ETCS_Variables.NID_RBC_T;
+      use type ETCS_Variables.NID_BG_T;
+      use type EVC_Radio.RBC_Contact_T;
+      use type EVC_Radio.Session_State_T;
+      T      : Unsigned_64;
+      Before : EVC_Radio.RBC_Contact_T;
+
+      function With_300 return Boolean is
+        (for some S in EVC_Radio.Session_T =>
+            EVC_Radio.Info (S).State /= EVC_Radio.Idle
+            and then EVC_Radio.Info (S).RBC.NID_RBC = 300);
+   begin
+      Start_L2_SM;
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Stand_X (300);
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      Give_Radio_Message (1, SM_Authorisation (T));
+      Stand_X (300);
+      Check (T /= 0 and then EVC_Core.Mode = M_SM,
+             "SM order: Supervised Manoeuvre entered (5.4.3.2 S10 E34)");
+      Before := EVC_Radio.Contact;
+      Order_Session_Group (30, 230, Q_RBC => 1, NID_RBC => 300);
+      Order_Session_Group (40, 320, Q_RBC => 0, NID_RBC => 1);
+      Run_X (27_000, 250);
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SM and then EVC_Position.LRBG.Id.NID_BG = 30
+             and then not With_300 and then EVC_Radio.Contact = Before
+             and then EVC_Radio.Info (1).State = EVC_Radio.Established,
+             "SM order: in SM the order to establish a session with RBC "
+             & "300 rejected, no session, the contact unchanged (4.8.4.2 "
+             & "[12]); LRBG" & EVC_Position.LRBG.Id.NID_BG'Image & " with 300 "
+             & With_300'Image & " session 1 "
+             & EVC_Radio.Info (1).State'Image);
+      Run_X (33_500, 250);
+      Stand_X (300);
+      Check (EVC_Position.LRBG.Id.NID_BG = 40
+             and then EVC_Radio.Info (1).State
+                      in EVC_Radio.Terminating | EVC_Radio.Idle,
+             "SM order: in SM the order to terminate taken, session 1 "
+             & "terminated (4.8.4.2 [12], 3.5.5.1 a); LRBG"
+             & EVC_Position.LRBG.Id.NID_BG'Image & " session 1 "
+             & EVC_Radio.Info (1).State'Image);
+   end Scenario_SM_Session_Order;
+
    procedure Scenario_SM_Gamma is
       T   : Unsigned_64;
       F   : Dist_T;

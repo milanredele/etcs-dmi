@@ -25419,3 +25419,42 @@ per cycle before BG7d; then the closure of E6 written: no first failure
 of the corpus is filed onboard, E5, E6, dmi or runner, and what stays
 open of the on-board is E7's (B010), E8's (B1840, B2982), the curves'
 (B016) and B4223.
+
+### An order to establish a session rejected in Supervised Manoeuvre, the brake release request before a text triggered after it, the tag of a missed balise (e6/sm-order) (2026-11-14)
+
+**B4363: an order to establish a session in SM: built.** At the source
+(SUBSET-026 4.8.4.2, PDF page 71, the layout page read column by column):
+the Session Management row has `A [12]` in the SM column, [12] "only order
+to terminate a communication session shall be accepted"; the RBC
+Transition Order row has a plain `A` in SM, and ours follows it
+(`EVC_Acceptance.Third_Filter`: for M_SM only the information listed as
+excluded is rejected, `RBC_Transition_Order` is not among them).
+`EVC_Acceptance` takes packet 42 in SM whatever Q_RBC (from a balise
+group or by radio, the one row), and `EVC_Sessions.Apply_Order` treated an
+order to establish as in FS: the contact stored and the session opened
+with the order's RBC, the existing session terminated for it. Rejected
+information is ignored (Figure 3 of 4.8.1.2: "REJECTED INFORMATION", no
+reaction), so the branch is `null` as for 4.8.3 [15]: in `Apply_Order`,
+`Order.Establish and then Mode = M_SM`, before the order for the last
+known RBC (3.5.3.13 is an order to establish too) and next to the mode
+test of [3]. Scenario `EVC_Test_Manoeuvre.Scenario_SM_Session_Order`: SM
+entered as in `Scenario_SM_Start_Of_Mission`, then the group 30 at 230 m
+orders a session with RBC 300 (Q_RBC 1) and the group 40 at 320 m the
+termination (Q_RBC 0). Before the change the first check failed (a session
+with RBC 300 being set up, session 1 with RBC 1 terminating); after it no
+session with 300, the contact unchanged, session 1 established, and at
+group 40 session 1 terminating. Row 4.8.4.2 Table-footnote [12] done,
+`@req` above `Apply_Order`. Proof `evc_sessions`: margin 6857 steps before,
+7517 after; wide 0 and 0.
+
+Sequences moved: three, the same case in three sequences (ERA's twins),
+`6060500_10`, `6060504_02`, `6060505_02` (SV30), from failed at step 99
+(S185bee31) to failed at step 91 (Sa8a3ba1a). Traced on 6060500_10: in SM
+in level 2 the session was terminated by the RBC's packet 42 Q_RBC 0
+(steps 82 to 88), then the balise group BG4d at 600 m brings packet 42
+Q_RBC 1 (step 89) and step 91 expects SA-CONNECT.Request (case 6060500 11;
+ERA's own PDF of the sequence says the same). This contradicts [12]:
+these three sequences established a session in SM and passed with it
+until step 99. Triage: a new line `Sa8a3ba1a,s076` for the three
+(appended; the triage file's reader files a signature's sequences under
+its first line, E7, until e5/triage-names lands); baseline re-recorded.
