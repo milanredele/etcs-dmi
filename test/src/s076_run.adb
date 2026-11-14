@@ -684,6 +684,89 @@ package body S076_Run is
       return Left <= 100;
    end Held_At_EOA;
 
+   --  B4326: the bench time each step was run at (after its move) and
+   --  the time of the last loss of the safe radio connection the runner
+   --  gave (an input "RTM disconnect"), 0 before one
+   type Step_Ms_T is array (1 .. S076_Sequences.Max_Steps) of Unsigned_64;
+   Step_Ms : Step_Ms_T := (others => 0);
+   Lost_Ms : Unsigned_64 := 0;
+
+   --  B4326: the time a step's comment says has passed, in ms, and the
+   --  bench time of the event it counts from: "<n> min|minutes|s|sec|
+   --  seconds after Step <k>" (a step run before this one) or "... after
+   --  EURORADIO indicates the loss" (Lost_Ms); False for any other
+   --  comment
+   function Named_Time (I : Positive; Need, From : out Unsigned_64)
+     return Boolean
+   is
+      C    : constant String := Up (Image (Seq.Steps (I).Comment));
+      P    : Natural := Ada.Strings.Fixed.Index (C, " AFTER STEP ");
+      Loss : constant Natural :=
+        Ada.Strings.Fixed.Index (C, " AFTER EURORADIO INDICATES THE LOSS");
+      At_P, U, D : Natural;
+      K, N : Natural := 0;
+   begin
+      Need := 0;
+      From := 0;
+      if P = 0 and then Loss = 0 then
+         return False;
+      end if;
+      if P > 0 then
+         --  the step named
+         D := P + 12;
+         while D <= C'Last and then C (D) in '0' .. '9' loop
+            K := K * 10 + (Character'Pos (C (D)) - Character'Pos ('0'));
+            exit when K > S076_Sequences.Max_Steps;
+            D := D + 1;
+         end loop;
+         if K = 0 or else K >= I or else K > S076_Sequences.Max_Steps
+           or else Step_Ms (K) = 0
+         then
+            return False;
+         end if;
+         From := Step_Ms (K);
+      else
+         if Lost_Ms = 0 then
+            return False;
+         end if;
+         P := Loss;
+         From := Lost_Ms;
+      end if;
+      --  the unit, then the number before " AFTER"
+      At_P := P - 1;
+      U := At_P;
+      while U >= C'First and then C (U) in 'A' .. 'Z' loop
+         U := U - 1;
+      end loop;
+      declare
+         Unit : constant String := C (U + 1 .. At_P);
+         Mult : constant Unsigned_64 :=
+           (if Unit in "MIN" | "MINS" | "MINUTE" | "MINUTES" then 60_000
+            elsif Unit in "S" | "SEC" | "SECS" | "SECOND" | "SECONDS" then 1_000
+            else 0);
+         Q    : Natural := U;
+         Base : Unsigned_64 := 1;
+      begin
+         if Mult = 0 then
+            return False;
+         end if;
+         if Q >= C'First and then C (Q) = ' ' then
+            Q := Q - 1;
+         end if;
+         while Q >= C'First and then C (Q) in '0' .. '9' and then N < 10_000
+         loop
+            N := N + Natural (Base) * (Character'Pos (C (Q)) - Character'Pos ('0'));
+            Base := Base * 10;
+            Q := Q - 1;
+         end loop;
+         if N = 0 then
+            return False;
+         end if;
+         Need := Unsigned_64 (N) * Mult;
+      end;
+      return True;
+   end Named_Time;
+
    function Our_Level return Level_Kind_T is
    begin
       --  a level kept over No Power is "invalid" (4.10 column NP) until
@@ -8082,6 +8165,8 @@ package body S076_Run is
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;
       Hold_Speed := False;
+      Step_Ms := (others => 0);
+      Lost_Ms := 0;
       Fwd_Chart := 1;
       Rev_Chart := 1;
       Rev_Begun := False;
@@ -8354,6 +8439,22 @@ package body S076_Run is
                then
                   Move_To (St.Dist_Cm);
                end if;
+               --  B4326: a step whose comment gives a time since a step it
+               --  names or since the loss of the safe radio connection,
+               --  met with the train standing, is judged once that time
+               --  has passed (5180500_01 step 79 at 900 m: '5 minutes after
+               --  EURORADIO indicates the loss ...', the loss at step 73)
+               declare
+                  Need, From : Unsigned_64;
+               begin
+                  if B.Speed = 0 and then Named_Time (I, Need, From) then
+                     for K in 1 .. 36_000 loop
+                        exit when B.Now_Ms >= From + Need;
+                        Wait_Cycle;
+                     end loop;
+                  end if;
+               end;
+               Step_Ms (I) := Unsigned_64'Max (1, B.Now_Ms);
                if St.IO = Input then
                   declare
                      C : Judgement_T;
@@ -8369,6 +8470,9 @@ package body S076_Run is
                            else Apply_Input (St));
                      if W (2) = "BTM" then
                         Group_Input_Ms := B.Now_Ms;
+                     end if;
+                     if W (2) = "RTM" and then Same (W (3), "disconnect") then
+                        Lost_Ms := B.Now_Ms;
                      end if;
                      --  not a group's: its reading comes before the end of
                      --  Apply_Input's move (4090100_01 step 131, the
