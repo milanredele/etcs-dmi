@@ -427,8 +427,12 @@ is
       --  brakes (4.4.3.1.1)
       Brake : constant EVC_Bytes.Byte :=
         (if Current_Mode = M_IS then Brake_None
-         elsif Brake_Output.Ack_Required or else D.Ack_Required
+         elsif D.Ack_Required
+           or else (Brake_Output.Ack_Required
+                    and then (Status_Brake_Sent = Brake_Ack
+                              or else not EVC_Text_Messages.Ack_Awaited))
          then Brake_Ack
+         elsif Brake_Output.Ack_Required then Brake_Ack_Pending
          elsif Brake_Output.EB or else Brake_Output.SB
            or else Current_Mode = M_SF or else D.Trip or else D.Other
            or else EVC_Sessions.Service_Brake

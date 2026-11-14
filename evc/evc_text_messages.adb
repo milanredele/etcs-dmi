@@ -726,6 +726,12 @@ is
    function To_Ack (M : Message_T) return Boolean is
      (M.Confirm /= 0 and then not M.Acked);
 
+   function Ack_Awaited return Boolean is
+     (for some J in Messages'Range =>
+        Messages (J).Used and then To_Ack (Messages (J))
+        and then (Messages (J).Held or else Messages (J).Shown))
+     with Refined_Global => Messages;
+
    --  Whether the started text M of the slot I waits before it is sent:
    --  one to be acknowledged while another acknowledgement (a mode, a
    --  level transition, a status message, a brake's release) is asked

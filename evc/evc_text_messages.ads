@@ -104,6 +104,15 @@ is
    function Displayed return Natural
      with Global => State;
 
+   --  Whether a text to be acknowledged awaits the driver: held by the
+   --  on-board (it waits, Show_Or_Hold) or shown and not yet
+   --  acknowledged. Decision: a brake's release request arising then is
+   --  sent once the driver has acknowledged the text (DMI 5.4.1.9, a FIFO
+   --  by the triggers: the DMI queues by arrival, so a request sent while
+   --  the text is held would overtake it)
+   function Ack_Awaited return Boolean
+     with Global => State;
+
    --  The message of a slot as displayed, to show again on a DMI that
    --  restarted (MSG_DMI_HELLO): Shown when it was shown and not removed
    --  since; its Show output with the request for acknowledgement only
