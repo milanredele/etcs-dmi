@@ -481,6 +481,35 @@ package body S076_Run is
       Forced_Speed := Explicit_Speed;
    end Force_Explicit;
 
+   --  B3700: a speed decrease "under restriction of the braking curve"
+   --  (ODO_Input) is in force while its explicit speed lasts: the driver
+   --  keeps the train under the permitted speed shown as it falls
+   --  towards the target, at most that speed less 2 km/h (at least 1
+   --  km/h), re-read every cycle, never raised; the chart band of
+   --  Chart_Left stays the one of the step. 3180400_04 SV30: 14 km/h set
+   --  at 1011 m (permitted 16) and held to BG7d at 1037 m, where the
+   --  permitted speed was 12 and the on-board braked again
+   Curve_Follow : Boolean := False;
+
+   procedure Follow_Curve is
+   begin
+      if Explicit_Speed < 0 then
+         Curve_Follow := False;
+      elsif Curve_Follow and then B.State.Has_Speed then
+         declare
+            V    : constant Natural := Kmh_To_Cms
+              (Long_Float (Integer'Max (B.State.V_Perm - 2, 1)));
+            Keep : constant Long_Float := Explicit_Chart;
+         begin
+            if V < Explicit_Speed then
+               Explicit_Speed := V;
+               Force_Explicit;
+               Explicit_Chart := Keep;
+            end if;
+         end;
+      end if;
+   end Follow_Curve;
+
    --  B490: an explicit speed ends where the chart leaves the speed it
    --  had where the speed came by more than Chart_Band km/h, either way
    --  (3130234_08: 25 km/h held from 1035 m past the chart's rise to 75
@@ -586,6 +615,7 @@ package body S076_Run is
       B.Set_Direction (Dir);
       B.Set_Brake_Floor (Kmh_To_Cms (10.0));
       for I in 1 .. 36_000 loop
+         Follow_Curve;
          Force_Explicit;
          --  an explicit speed a brake has lowered and released is spent:
          --  the chart's speed again (4120100_01: the EB revoked on the
@@ -641,6 +671,7 @@ package body S076_Run is
 
    procedure Wait_Cycle is
    begin
+      Follow_Curve;
       Force_Explicit;
       if Explicit_Speed < 0 and then B.Speed > 0 and then not Hold_Speed then
          Arrive;
@@ -3071,6 +3102,7 @@ package body S076_Run is
          end if;
          return Pass ("ODO direction reversed");
       elsif Same (Kind, "speed") then
+         Curve_Follow := False;
          declare
             E   : constant String := W (5);
             S   : constant B.State_T := B.State;
@@ -3142,6 +3174,7 @@ package body S076_Run is
                Kmh := Integer'Max (Kmh, 1);
                Explicit_Speed := Kmh_To_Cms (Long_Float (Kmh));
                B.Set_Speed (Explicit_Speed);
+               Curve_Follow := True;
                return Pass ("ODO speed" & Integer'Image (Kmh)
                             & " km/h, under the braking curve (permitted"
                             & S.V_Perm'Image & ")");
@@ -8167,6 +8200,7 @@ package body S076_Run is
       Hold_Speed := False;
       Step_Ms := (others => 0);
       Lost_Ms := 0;
+      Curve_Follow := False;
       Fwd_Chart := 1;
       Rev_Chart := 1;
       Rev_Begun := False;

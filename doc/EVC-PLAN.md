@@ -24880,3 +24880,69 @@ E6 that still stop sequences under notes older than the code
 (S185bee31 nine sequences, S27eb0678 eight, Sdecbd2e2 three), then the
 closure of E6: with the matrix at two rows that wait for E7 and E8,
 what is left of the phase is the runner's triage.
+
+### The runner's driver: a train held at an authority shortened at standstill, a step that names a time elapsed, the speed kept under the curve before a target (e5/runner-standstill) (2026-11-14)
+
+Three rules in the driver of S076_Run (and the reader of the speed
+charts, S076_Sequences), no edit in evc/ or dmi/.
+
+- B4343 with B4324. The premise for 4120100_15 was wrong: its train did
+  not stand at 506 m because of the service brake of 3.16.2.4.4 but
+  because S076_Sequences read only the first `chart speedprofile` line
+  (0 to 350 m); the second forward chart (225 to 715 m, after the
+  reversal to 225 m) was ignored and the chart gave 0.5 km/h from 350 m
+  on, so every step's place was reached at 10 km/h and stopped at (v 0
+  already at BG2d, 406 m). Every chart of each direction is now kept
+  (`Fwd_Charts`, `Rev_Charts`) and `S076_Run.Chart_Kmh` follows the
+  chart of the leg (`Follow_Leg`: the next chart of a direction when the
+  train turns into it, the second and later reversals for the reverse
+  charts, or going forward past the end of the current chart, the train
+  within 10 m of the next chart's locations). At BG3d the train runs at
+  34 km/h, brakes under the service brake to 21 km/h at 541 m, the desk
+  closes while moving: 4120100_15 passes. Of the 38 SV30 sequences with
+  more than one forward chart no other moved. The hold for 9990400_31 as
+  the reviewer read it: `S076_Run.Held_At_EOA`, a train at standstill in
+  FS, LS or OS, no override shown, an MA without LOA speed whose EOA is
+  within 1 m of the estimated front end, is not moved to a step's place;
+  an ODO input (the driver's own movement) and a balise group input
+  still move it, and a new MA, an override or another mode end the hold
+  by the same test. 9990400_31: Override EoA pressed at 250 m at
+  standstill (V_NVALLOWOVTRP 0, 5.8.2.1 a)), taken, 4.6.3 [37] FS to SR
+  in level 1, where rows 57 and 58 of the step list (ERA's PDF the same)
+  keep FS: S7341fea5 s076 at the same step. 5170200_01 passes: case 4
+  ('The train is at standstill') is run at 350 m where 3.18.3.7 a) left
+  the EOA at the train, not after a drive of 200 m without an MA. A
+  counter-case looked for: no moved sequence has a comment 'start(s)
+  moving', and the full runner shows no regression.
+- B4326. `S076_Run.Named_Time` reads '<n> min|minutes|s|sec|seconds after
+  Step <k>' (a step already run, 5 SV30 sequences) and '... after
+  EURORADIO indicates the loss' (the last 'RTM disconnect' input, 2);
+  a step met with the train standing waits in Run_Loaded until that
+  time has passed from the event, then is judged; another comment
+  changes nothing. 5180500_01 step 79 at 900 m waits from 74.7 s to
+  374.4 s, ours ends the session (3.5.4.1, A.3.1), step 87's 155 comes;
+  it stops at step 99 (S13c9beb3, s076): ours sends the report of
+  3.6.5.1.4 h) with the 159 at 1277 m, the sequence expects a 136 of
+  packet 0 after the RBC's 8 at 1450 m with no other event of 3.6.5.1.4
+  there (no packet 58, the next group at 1850 m, no standstill). The
+  line is kept behind the family line of S13c9beb3: the report takes the
+  first line of an id, and the family's 17 sequences are not all
+  5180500_01's.
+- B3700 built, left open: `S076_Run.Follow_Curve` lowers, each cycle of
+  Drive_To and Wait_Cycle, the explicit speed of a step 'under
+  restriction of the braking curve' to the permitted speed shown less 2
+  km/h. Nothing moved; 3180400_04 still brakes at BG7d (perm 12, the
+  train at 13, EB and SB, reason bit 1) in the window of the group with
+  packet 3 'Reset NV'; whether the permitted speed fell before the group
+  is not shown by the window (a probe per cycle is the next step).
+
+Sequences moved (old -> new step, all three versions each): 4120100_15
+126 -> passed (the second speed chart); 5170200_01 106 -> passed (held at
+350 m); 9990400_31 57 -> 57, S560e94da -> S7341fea5 (the press at the
+standstill, [37]); 5180500_01 87 -> 99 (S13c9beb3). Runner 1268 / 1000 /
+922 (from 1262 / 1006 / 922), 0 regressions. Backlog B4343, B4324,
+B4326 done, B3700 open with the finding. Triage: S29046d63, S560e94da
+(9990400_31's line), S3a9e8361 and Se82bb986 marked "(no sequence
+left)", S7341fea5 and the 5180500_01 line of S13c9beb3 added. Outside
+the units named: test/src/s076_sequences.ads/.adb (the charts kept), the
+triage line S3a9e8361 (a sequence the hold moved).
