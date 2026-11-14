@@ -25502,3 +25502,21 @@ recorded before; a comment only), wide 0. No Global widened (`Evaluate`
 was In_Out on the texts' state, `Run_Procedures` read `Brake_Output`):
 the parent's proof not needed. Edit outside the units: the one argument
 in `EVC_Core.Modes.Run_Procedures`.
+
+**3.16.2.2.2 b): the tag of a missed balise.** The row was done with
+`EVC_Position.Take_Telegrams`; its note now names
+`EVC_Balise_Groups.Complete` and `EVC_Test_Consistency.Scenario_Consistency_Reactions`,
+and `@req 3.16.2.2.2 b)` stands above `Complete` (a comment line, the
+proof unchanged). The questions, from the code (`Complete`: more readings
+than N_TOTAL, or the balises numbered 0 and N_TOTAL both read, whatever
+their order): a group passed in the reverse direction reads N_PIG N_TOTAL
+first and 0 last, and `Complete` is true at the reading of the second of
+the two ends; a group of two balises (N_TOTAL 1) has no balise between
+its ends, and `Complete` is true at the second reading by either term. A
+duplicate of a missed balise cannot arrive after the first and last are
+read: the missed balise lies between the two ends, which the train has
+passed when both are read. No build.
+
+Done: three items of three; 3 sequences moved, all by B4363 (6060500_10,
+6060504_02, 6060505_02 SV30, failed 99 to failed 91), B4443 and the row
+none; the runner 1270 / 992 / 928, 0 untriaged.
