@@ -1,10 +1,10 @@
 # ETCS on-board (EVC) — Plan
 
-> **Status (2026-10-01):** E0 closed (§5), E1 closed (§6), E2 closed
-> (§7), E3 integrated and merged (§8 plan, §9 outcome). E4 (§10 plan,
-> §11 bench, §12 outcome): the modes and the procedures integrated on
-> `e4/integration`; its open rows are listed in §12. Next: E5 (radio,
-> level 2).
+> **Status (2026-11-14):** E0 to E6 closed: E0 (§5), E1 (§6), E2 (§7),
+> E3 (§9), E4 (§12), E5 (§13 the rounds, §14 the outcome), E6 (§15).
+> Level 1 and level 2 are drivable on the bench. Left: E7
+> (compatibility with older system versions, radio infill, Euroloop) and
+> E8 (the TMS570 board).
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
@@ -25911,3 +25911,196 @@ on-board (the sequence fails either way); B4524 matters for the
 runner's trust: a judgement by a mode seen once can hide a wrong trip,
 and a check of the step's mode at the end of the window would close it.
 Calls: 79 of 130 at this point.
+
+### E5 integration after the seventy-fifth round, the forty-third and last of E6 (2026-11-14)
+
+Merged: e5/runner-findings (the review's three findings on the runner's
+driver and B3700. B4445 refuted at the source: the hold distance of
+`Held_At_EOA` is 100 cm, not 100 m, and a probe over the corpus showed
+the rule keeping a train from a place ahead at 20 steps only, those it
+exists for; the rule kept. B4446: `Named_Time` reads "after Step k" as
+the row k of the step's own case when that row ran earlier, else the
+sequence's step k. B4444: a window the runner opened itself as the way
+to a button (`Way_Opened`) is closed again at the sequence's next close;
+3170200_02 SV30 moves from step 56 to 101, E7: the session established
+report with packet 3 for an RBC of version 2. B3700: the brake at BG7d
+was the runner's, `Chart_Left` ending a speed held under the braking
+curve when the chart falls; fixed, the sequence still stops at step
+226), e5/triage-names (B4383: a triage line may name its sequences,
+`id@names,category,note`; `S076_Main.Triage_Of` takes the line of the id
+that names the sequence, else the first line among the id's line without
+names and the `~text` lines; the report counts each sequence under its
+own line and lists the lines without a sequence (232); a malformed name
+fails the run; 73 lines named, 4 split, 102 sequences changed category),
+e6/sm-order (B4363: an order to establish a session is ignored in SM,
+one branch of `EVC_Sessions.Apply_Order`, the row 4.8.4.2 footnote [12]
+done, `Scenario_SM_Session_Order`; the three sequences of 6060500 that
+established a session in SM by a balise group's packet 42 now stop at
+step 91, s076: the sequences contradict [12]. B4443: `EVC_Text_Messages`
+keeps the moment the protections' request first arose (`Note_Request`),
+`Ack_Awaited` counts only a text started at or before it, so the driver
+sees text 1, the request, text 2; `Scenario_Text_After_Brake_Request`.
+The row 3.16.2.2.2 b) tagged above `EVC_Balise_Groups.Complete`),
+e5/traces-last (a fourth package, started when the filing by sequence
+showed 12 sequences under dmi, 3 under onboard and 3 under E6 by old
+notes: 3080400_05 and _07 were the runner's judgement, the dial of FS
+shown between the End Section timer's expiry and the trip that 3.8.4.1.2
+a) and 4.6.3 [16] bring inside the same window: a mode of the dial seen
+in the window counts for "displayed", six sequences pass; 3131040_39
+s076: the SR distance counts from the SR entry, 4.4.11.1.3.1 a), ERA's
+steps count from the group that brought the value; 3131050_07 s076:
+steps placed 137 m beyond the sequence's own EOA; 3160200_14 s076: a
+single balise with every value 0 read with the position unknown;
+4040600_01 E8: the report of a safety critical fault in SL, 4.4.6.1.6,
+B1840).
+
+The report's table of first failures after the round, each sequence
+under its own line: onboard 0, E5 0, E6 0, dmi 0, runner 0; s076 499,
+model 222, E7 179, curves 80, E8 3, NTC 3.
+
+The review (e5/review-75, the twenty-fourth): eight items, seven agreed,
+one disagreed in part, none undecided. B4523: 3131050_11 (and perhaps
+two more under the same sentence of Seb6766c6) is the sequence's data by
+the line's own words, filed model. A finding on an agreed item, B4524:
+the dial's judgement tests that a mode with the dial was seen in the
+window, not the dial itself; no sequence passes wrongly today. Agreed
+with the reading that 6060500_10 contradicts [12]: 6.6.3.4.1.3 keeps its
+cases, a session brought by an RBC transition order with an RBC of
+version 2. Twenty-four rounds of reviews: 202 items, 173 agreed, 32
+disagreed, 8 undecided; 50 lines, of which 15 became fixes; 159.2 USD.
+
+Verification of the merged tree: the whole check green after each of the
+first three merges; the full chain after the fourth green at once: the
+full proof 14525 checks, none unproved, margin 47726 steps, the wide
+checks 4 of 6 (38 minutes on a machine loaded by other work: the limits
+are in steps); cross build and stack 32768 B budget, margin 6016 B; wasm
+and both smokes 0 failures; the runner 1276 / 986 / 928 (from 1270 / 992
+/ 928), 0 regressions, 0 untriaged. The merge: runner-findings and the
+review fast-forwarded; triage-names conflicted on the plan, the backlog
+and one triage line (the note of one side, the names of the other);
+sm-order on the plan and the backlog, its appended triage line given its
+names; traces-last on the plan and the end of the triage file.
+
+Costs (doc/ROUNDS.csv): 34.0 USD with the review (27.7 for the four
+packages, 6.3 the review), 13 of 13 package items done, 3 of 11 brief
+premises wrong (the 100 m of the review's finding; two old notes of the
+triage), no agent over budget or past the bound. Lessons: a finding of
+the review is a claim like any other and is checked at the source first
+(one of four was wrong by a unit); a filing that is right per signature
+can be wrong per sequence, and making the file say which sequences a
+line holds found 18 the table had hidden; the proof's time depends on
+the machine, its result does not.
+
+The matrix: clauses left 2 (partial: 4.11.1.1 and 4.11.1.3, on E7 and
+E8; done 2146, deferred 220). Open items: doc/BACKLOG.csv (16 open after
+this round; 5 added of which 2 by the review, 10 closed). The phases E5
+and E6 are closed with this round: §14 and §15.
+
+## 14. E5 — Radio, level 2: outcome (2026-11-14)
+
+The detail of every package is in §13, by round; this section is the
+state at the closure. E5 was planned as the radio of level 2 (3.5, 3.8
+but 3.8.4, 3.10, 3.15.1, 3.16.3, 5.15); its work ran from the third
+round (2026-10-05) and, from the thirty-second (2026-10-19), side by
+side with E6.
+
+**What the on-board has.** The radio behind one port: the RTM port's
+format (connect, disconnect, the network registration, the messages with
+their Euroradio outcome) at the end of `EVC_Ports`; the messages of
+chapter 8 in the format of SUBSET-027 through the generated codec.
+`EVC_Radio` holds the communication sessions, the RBC contact and the
+outbox; `EVC_Sessions` is the only writer of the session table, with its
+children for the start of mission (`.Mission`), the radio network
+(`.Network`), the reports (`.Reports`: position reports and their
+parameters, the mode and level reports, the errors), the RBC/RBC
+handover (`.Handover`), the train integrity (`.Integrity`) and
+Supervised Manoeuvre (`.Manoeuvre`); `EVC_Radio_Authority` takes the
+authority by radio (the MA and its request, the acceptance of 4.8 for
+radio, the co-operative shortening, the emergency messages, the track
+ahead free, the SR authorisation, the texts) with its buffer in a child;
+`EVC_Radio_Acceptance`, `EVC_Radio_Info` and `EVC_Level_Sessions`
+complete it. Level 2 is drivable on the bench: the start of mission by
+touch reaches SR, then FS under an MA by radio, and the page's second
+track exercises a level transition and back.
+
+**The matrix.** Of the rows of phase E5: 161 done, 13 n/a, 6 deferred,
+none todo or partial. The six deferred are radio infill (3.5.3.8 h),
+3.5.4.3 third bullet, 3.5.6.8, 3.5.7.7, 3.8.5.1 b), 3.8.5.1.2): E7.
+
+**The SUBSET-076 runner** came with this phase (`evc_s076_run`: every
+sequence of the corpus replayed through the ports with `DMI_Core` in the
+loop, a baseline, a triage of every failure signature). At the closure:
+3190 sequences, 1276 passed, 986 failed, 928 blocked; no first failure
+is filed as a defect of the on-board, of the DMI or of the runner.
+
+## 15. E6 — Special functions and data: outcome (2026-11-14)
+
+E6 was planned as the special functions and the data (3.15 but 3.15.1,
+3.16 but 3.16.3, 3.17, 3.18, 3.20, A.3.2); it ran in forty-three rounds
+from 2026-10-19 to 2026-11-14, each merged, verified with the full chain
+and, from the twenty-first on, reviewed blind after the merge. The
+detail is in §13.
+
+**What the on-board has.** The consistency of balise groups and of
+linking with their reactions (`EVC_Balise_Groups`, `EVC_Linking`,
+`EVC_Position`; 3.16.1, 3.16.2, 3.16.4); the system version management
+of 3.17 (`EVC_System_Version`: the operated version by balise group and
+by RBC, its precedence at an RBC/RBC border); the national values with
+their validity and defaults (`EVC_National_Values`, A.3.2); the Train
+Data from the driver, the train interface and the configuration image,
+their validation and their reports to the RBC (`EVC_Train_Data`,
+`EVC_Mission`, `EVC_Config`: the image in its format 5 with the Train
+Data sets by configuration number); the virtual balise covers
+(`EVC_VBC`); the big metal masses and the other track conditions with
+their outputs (`EVC_Track_Conditions`); the text messages with their
+order towards the DMI (`EVC_Text_Messages`); the functions of 3.15
+beyond the handover (the non-leading engine, the splitting and joining,
+the track ahead free, the cold movement), Supervised Manoeuvre, and the
+data kept over No Power (`EVC_Retained`); the juridical data of 3.20 on
+the JRU port (`EVC_JRU_Messages`, `EVC_JRU_Records`,
+`EVC_Core.Records`); the clock of 3.18.5 as an input of the host. The
+DMI protocol grew with it where the driver's seat asked for the on-board
+to tell the DMI (the enabling bits of MSG_ONBOARD, the sounds reported
+back, the texts shown before).
+
+**The matrix.** Of the rows of phase E6: 225 done, 3 n/a, 5 deferred,
+none todo or partial. The deferred: Euroloop (3.17.3.6 and a) to c)):
+E7; the ATO selector (3.15.11.2): a module of its own on the ATO port.
+Over all phases: 2146 done, 30 n/a, 220 deferred (154 of them the rows
+of phase E7), 2 partial: 4.11.1.1 and 4.11.1.3, the revalidation of the
+data kept over No Power, built but for what the cold movement detector
+and the target's non-volatile store bring (E7, E8).
+
+**Verification at the closure.** The whole check, `evc_test` and
+`dmi_test` at 0 failures, both fuzzers at raised 0, the EFS frames at 0
+failures; the full proof 14525 checks, none unproved, the hardest at
+47726 of 100000 steps, 4 checks of 16 VCs or more of the 6 allowed; the
+cross build for the TMS570 and the stack at 26752 of 32768 bytes; the
+wasm bench and both smokes. The on-board is 67 units and 57700 lines
+under `evc/`, all SPARK, with 428 scenarios in `evc_test`.
+
+**The SUBSET-076 corpus at the closure** (3190 sequences): 1276 passed,
+986 failed, 928 blocked. The blocked, by reason: chapter 6, radio infill
+and Euroloop (E7), NTC and ATO (out of scope or their own port), level 3
+(absent from 4.0.0), what the runner does not model, the sequences the
+sibling cannot read. The failed, each by the triage of its first failure
+under its own line: 499 the sequences' data (s076, each traced: a value
+against the sequence's own steps or a clause), 222 the runner's model
+(the chart's speeds and places, the bench's train), 179 E7, 80 the
+braking curves against ERA's workbook (B016), 3 E8, 3 NTC; none onboard,
+dmi or runner. The blind reviews re-derived 202 verdicts of twenty-four
+rounds: 173 agreed, 32 disagreed, 8 undecided; 15 of their 50 lines
+became fixes.
+
+**Left open, by where it belongs** (doc/BACKLOG.csv, 16 open). E7: the
+older system versions and their translations (B010, B703), radio infill,
+Euroloop. E8: the report of a safety critical fault (B1840), the
+calendar clock (B2982), the non-volatile store. The braking curves
+against the workbook (B016, with the runner's B140, B201, B370). The
+on-board: a source per Train Data item, SUBSET-034 2.6.4.3 (B4223); the
+relocation over a linked group read inside its window (B720). The
+runner: B443, B762, B2880, B4523, B4524. Tooling: B1482.
+
+**Next.** E7 (compatibility: chapter 6, radio infill and Euroloop if
+wanted) and E8 (the TMS570 board) are the two phases left; the plan's
+table gives E7 as deferrable. Which comes first is the user's decision.
