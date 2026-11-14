@@ -1,8 +1,14 @@
 # The triage of the failure signatures of obj/evc_s076_run (see the
 # header of test/src/s076_main.adb): match,category,note. A match is a
-# signature id (S + 8 hex digits) or ~text (a part of the signature);
-# the first line that matches gives the triage, so the specific lines
-# come before the families at the end. Categories: onboard (a defect or
+# signature id (S + 8 hex digits), the id with the sequences the line
+# holds (S27eb0678@4120100_02_SV22+4060300_03_SV22: a name is the test
+# case nnnnnnn_nn, its three system versions, or nnnnnnn_nn_SVnn, one;
+# any other name fails the run), or ~text (a part of the signature). A
+# failed sequence takes the first line of its id that names it, else
+# the first line in the file that is its id without names or a ~text
+# that matches; untriaged when neither exists (the run fails). The
+# names stand in the first field so that re-filing a sequence changes
+# that field only and the file stays sortable by id. Categories: onboard (a defect or
 # gap of this on-board still open), E5, E6, E7 (a later phase), curves
 # (the supervision limits against the ERA tool's), s076 (SUBSET-076 or
 # its extraction), model (the runner's model of the train, the driver,

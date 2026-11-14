@@ -14,7 +14,11 @@
 --  fails. Improvements are reported; UPDATE=1 records the baseline
 --  anew. The report obj/evc_s076_run.txt has the counts per system
 --  version, per feature and per reason, and the failure signatures
---  ranked by the number of sequences they stop.
+--  ranked by the number of sequences they stop; each failed sequence
+--  is counted under its own line of test/s076/triage.csv (a line may
+--  name the sequences it holds, see Read_Triage), the run fails on a
+--  sequence no line holds and on a malformed name, and the lines no
+--  sequence of the run takes are listed at the end.
 --
 --  Usage:  obj/evc_s076_run              the fixture and the corpus
 --          obj/evc_s076_run NAME|PATH    one sequence; VERBOSE=1 for a
