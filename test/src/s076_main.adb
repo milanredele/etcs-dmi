@@ -133,10 +133,10 @@ package body S076_Main is
    --  of them, nnnnnnn_nn_SVnn), or "~text", a part of the signature's
    --  text. A failed sequence takes the first line of its signature's
    --  id that names it, else the first line in the file that is the id
-   --  without names or a "~text" that matches; a signature whose id has
-   --  only lines with names, none naming the sequence, leaves it
-   --  untriaged. A line with a name of another shape is malformed and
-   --  fails the run. Categories: onboard (an on-board defect still
+   --  without names or a "~text" that matches: a sequence is untriaged
+   --  when its id has only lines with names, none naming it, and no
+   --  "~text" line matches. A line with a name of another shape is
+   --  malformed and fails the run. Categories: onboard (an on-board defect still
    --  open), E5, E6, E7 (a later phase), curves (the braking curves
    --  against the ERA workbook's), s076 (a defect of SUBSET-076 or of
    --  its extraction), model (a gap of the runner's model of the train,
@@ -270,7 +270,6 @@ package body S076_Main is
    --  Id, Text (Seq empty: of the signature alone), 0 when none holds it
    function Triage_Of (Id, Text, Seq : String) return Natural is
       Unnamed : Natural := 0;
-      Named   : Boolean := False;
    begin
       for I in 1 .. Triage_N loop
          if Image (Triage (I).Match) = Id then
@@ -278,19 +277,16 @@ package body S076_Main is
                if Unnamed = 0 then
                   Unnamed := I;
                end if;
-            else
-               Named := True;
-               if Names_Hold (Image (Triage (I).Names), Seq) then
-                  return I;
-               end if;
+            elsif Names_Hold (Image (Triage (I).Names), Seq) then
+               return I;
             end if;
          end if;
       end loop;
-      if Named and then Unnamed = 0 then
-         return 0;
-      end if;
       --  decision: between the id's line without names and a "~text"
-      --  line the first in the file wins, as before lines had names
+      --  line the first in the file wins, as before lines had names; a
+      --  "~text" line is a family line without names, so a sequence that
+      --  no named line of its id holds stays on it (the braking curve
+      --  families), and is untriaged only when neither exists
       for I in 1 .. Triage_N loop
          declare
             M : constant String := Image (Triage (I).Match);
