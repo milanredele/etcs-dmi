@@ -25419,3 +25419,86 @@ per cycle before BG7d; then the closure of E6 written: no first failure
 of the corpus is filed onboard, E5, E6, dmi or runner, and what stays
 open of the on-board is E7's (B010), E8's (B1840, B2982), the curves'
 (B016) and B4223.
+
+### The runner's driver after the review: the hold by the permitted speed, the step or the row a time is counted from, the Settings window closed again, the speed under the curve before a target (e5/runner-findings) (2026-11-14)
+
+Four findings on the driver of S076_Run, no edit in evc/ or dmi/.
+
+- B4445, the rule kept. `S076_Run.Held_At_EOA` compares the EOA and the
+  estimated front in cm (EVC_Distances.Dist_T): it holds within 100 cm,
+  1 m, so the review's train 60 to 100 m short of an EOA is never held.
+  The corpus counted with a temporary probe at every step the hold
+  applied (a step neither an ODO nor a BTM input, removed after): 820
+  steps in 101 sequences. The permitted speed shown is above zero at
+  734 of them: it is the ceiling (9990400_31 80 km/h, 5170200_01 150),
+  since at a speed of 0 the indication location of 3.13.10.3.8 (no
+  target below the estimated speed, the EOA's own at d_EOA) is the EOA
+  itself and a train within a metre of it is in ceiling speed
+  monitoring; zero at 86. A release speed is shown at 6 (3131040_97
+  SV30 steps 62 to 70, their places 490 to 770 m behind the train). The
+  target speed 0 at 0 m is shown at each step looked at. The hold kept a
+  train from a place ahead at 20 steps only: 5170200_01 106 to 110 (200
+  m), 9990400_31 57 (50 m), all three versions, and 4080404_02 SV21 and
+  SV22 62 (290 m, the train in EB intervention, the step not judged,
+  E7). A condition "permitted speed shown 0 and no release speed" would
+  release the two trains the rule is for; what the driver sees there is
+  the target 0 at 0 m, and 3.13.10.2.7 trips a level 1 train whose min
+  safe antenna passes the EOA, release speed or not. The premise "ma 0,
+  perm 0" for 9990400_31: its trace at 250 m shows "perm=80/0 ... tgt0@0
+  ma0/c80", the permitted speed 80, the target 0 at 0 m, the planning's
+  MA 0.
+- B4446. `S076_Run.Named_Time` takes the k of "<n> <unit> after Step <k>"
+  as the row k of the step's own case (Step_T.Case_Feature, Case_No,
+  Row) when the case ran a step of that row before this one, else the
+  sequence's step k run before (by its number; the index was used
+  before, the same where the numbering has no gap), else nothing. The
+  corpus, 5 comments per version:
+
+  | sequence, step | comment | old rule | new rule |
+  |---|---|---|---|
+  | 3070300_01 103 (row 27) | 5 seconds after step 25 | step 25 at 0 m | row 25, step 101 at 1050 m |
+  | 3180400_03 174 (row 10) | 40s after Step 3 | step 3 at 0 m | row 3, step 167 at 2100 m |
+  | 4080453_01 124 (row 8) | 40s after Step 3 | step 3 at 0 m | row 3, step 119 at 1250 m |
+  | 5180500_01 77 (row 8) | 6 min after Step 69 | none (no step 69) | none |
+  | 9990400_24 72 (row 1) | 10 s after Step 67 | step 67 at 400 m | step 67 (its case has no row 67) |
+
+  4080453_01 SV30 waits at 1300 m from 314.5 s to 340.7 s, 40 s after the
+  connection request of step 119 (300.7 s); no request comes (the
+  attempts aborted by the network selection), step 124 and the sequence
+  pass. 3070300_01 step 103 is met at 39 km/h (no wait at a movement;
+  its step 102 ran the 5 s of T_STEP); 3180400_03 is not run to 174 (it
+  stops at 49). Nothing moved, the step counts unchanged.
+- B4444. `S076_Run.Press_Menu` reaches a button of a menu window by
+  opening it (`Open_Window`: the Settings window from the Driver ID
+  window by its last button, 11.7.2 S1-1). It now remembers a window it
+  opened itself (`Way_Opened`, `Way_Window`; not one already on top, so
+  not when the sequence pressed Settings itself); the sequence's next
+  close goes back to it (11.7.7 S5) and the driver closes it too when
+  its [Close] is enabled; any other DMI input forgets it. 3170200_02
+  SV30: step 55 closes the System version window then the Settings
+  window, the Driver ID window at step 56 (11.7.2 E1-1), steps 56 to 100
+  pass, it stops at step 101 (Se18f3f0a, E7: the 159 with packet 3 of
+  the X = 1 translation of chapter 6, 6.6.3.4.5). SV21 and SV22 keep
+  their first failure at 42; their later steps pass as SV30's (65 steps
+  more passed in each version: 214973 -> 215168 passed in all).
+- B3700, the runner's. A probe per cycle of 3180400_04 SV30 from 1000 to
+  1045 m: 14 km/h from 1011 m under a permitted speed falling from 21 to
+  16 (status 1, no brake) until 1023 m (178.4 s), where
+  `S076_Run.Chart_Left` ended the speed of step 204: the chart falls
+  from 28.7 km/h at 1010 m to 0.9 at 1080 m, more than 5 km/h under the
+  28.4 where the speed came. The train took the chart's 22 km/h and the
+  on-board commanded EB and SB at 1023 m (intervention, perm shown 0),
+  14 m before BG7d; the group's packet 3 'Reset NV' read at 1037 m came
+  after the brake. `Chart_Left` no longer ends a speed kept under the
+  curve (`Follow_Curve`) on a fall of the chart: 14, 12 then 11 km/h
+  under 15 to 17, BG7d read at 1036 m at 11 km/h, permitted 16, no
+  brake. No step's judgement changed (step 211 judges the group, not the
+  brake); 3180400_04 still stops at step 226 (S7d250784).
+
+Sequences moved: 3170200_02 SV30 56 -> 101 (S12fb6c82 -> Se18f3f0a, the
+Settings window closed again; the 159's packet 3 of chapter 6). Runner
+1270 / 992 / 928 sequences (unchanged), steps 215168 / 10271 / 4147
+(from 214973 / 10469 / 4144), 0 regressions. Backlog B4444, B4445,
+B4446, B3700 done. Triage: notes of S12fb6c82 (no sequence left) and of
+the 3180400_04 line of Sd56a8154 (the brake at BG7d traced) edited in
+place. Outside the units named: none.

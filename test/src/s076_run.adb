@@ -481,14 +481,14 @@ package body S076_Run is
       Forced_Speed := Explicit_Speed;
    end Force_Explicit;
 
-   --  B3700: a speed decrease "under restriction of the braking curve"
+   --  A speed decrease "under restriction of the braking curve"
    --  (ODO_Input) is in force while its explicit speed lasts: the driver
    --  keeps the train under the permitted speed shown as it falls
    --  towards the target, at most that speed less 2 km/h (at least 1
    --  km/h), re-read every cycle, never raised; the chart band of
-   --  Chart_Left stays the one of the step. 3180400_04 SV30: 14 km/h set
-   --  at 1011 m (permitted 16) and held to BG7d at 1037 m, where the
-   --  permitted speed was 12 and the on-board braked again
+   --  Chart_Left stays the one of the step, and the chart's fall does
+   --  not end it. 3180400_04 SV30: 14 km/h set at 1011 m (permitted 16),
+   --  11 km/h at BG7d at 1036 m (permitted 16), no brake
    Curve_Follow : Boolean := False;
 
    procedure Follow_Curve is
@@ -518,13 +518,19 @@ package body S076_Run is
    --  Decision: a fall ends it too, although 3131020_04 reached its step
    --  70 by holding the 78 km/h of step 55 over the chart's fall to 60.7
    --  km/h (its step 68 now judges the chart's speed against our curves,
-   --  [workbook train])
+   --  [workbook train]). A speed kept under the braking curve
+   --  (Follow_Curve) is not ended by a fall: the chart falls towards
+   --  the target as the curve does (3180400_04 SV30: the chart from 28.7
+   --  km/h at 1010 m to 0.9 at 1080 m, the speed of step 204 ended at
+   --  1023 m and the train run at the chart's 22 km/h, the permitted
+   --  speed 16: the emergency brake 14 m before BG7d)
    Chart_Band : constant Long_Float := 5.0;
 
    function Chart_Left return Boolean is
      (Explicit_Speed >= 0 and then Explicit_Chart >= 0.0
       and then Chart_Kmh >= 0.0
-      and then abs (Chart_Kmh - Explicit_Chart) > Chart_Band);
+      and then abs (Chart_Kmh - Explicit_Chart) > Chart_Band
+      and then not (Curve_Follow and then Chart_Kmh < Explicit_Chart));
 
    --  B3301: the stop in rear of a non-protected level crossing that a
    --  step's comment asks for ("Then, the train shall stop in rear of the
