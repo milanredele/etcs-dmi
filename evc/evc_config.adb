@@ -475,6 +475,15 @@ is
             else Accepted);
    end Get_Train;
 
+   --  The bytes of an image of format version Version between its
+   --  train (the gamma train included) and the CRC: the zones of
+   --  versions 3 to 5, the traction cut-off time of versions 4 and 5 and
+   --  the Train Data sets of version 5
+   function Tail_Length (Version : Natural) return Natural is
+     ((if Version >= 3 then Zone_Image_Length else 0)
+      + (if Version >= 4 then Traction_Image_Length else 0)
+      + (if Version = 5 then Sets_Image_Length else 0));
+
    --  The train of an image of format version 2 to 5 of length L, the
    --  zones of versions 3 to 5 after the train, the traction cut-off
    --  time of versions 4 and 5 after the zones, and the Train Data sets
@@ -495,8 +504,6 @@ is
    is
       Sets  : constant Natural :=
         (if Version = 5 then Sets_Image_Length else 0);
-      Extra : constant Natural :=
-        (if Version >= 4 then Traction_Image_Length + Sets else 0);
       V     : Unsigned_16;
       Table : Train_Set_Table_T;
    begin
@@ -505,9 +512,9 @@ is
          Get_Train (Bytes, L, T, S);
          return;
       end if;
-      Get_Train (Bytes, L - Zone_Image_Length - Extra, T, S);
+      Get_Train (Bytes, L - Tail_Length (Version), T, S);
       if S = Accepted then
-         Get_Zones (Bytes, L - 4 - Zone_Image_Length - Extra, Z, S);
+         Get_Zones (Bytes, L - 4 - Tail_Length (Version), Z, S);
       end if;
       if S = Accepted and then Version >= 4 then
          V := Get_U16 (Bytes, Bytes'First + (L - 6 - Sets));
@@ -1105,6 +1112,7 @@ is
      with Global => (Output => Gam)
    is
       L : Natural;
+      V : Natural;
       S : Field_Status_T;
    begin
       Gam := No_Gamma;
@@ -1112,16 +1120,10 @@ is
          return;
       end if;
       L := Natural (Get_U16 (Bytes, Bytes'First + 6));
-      --  the zones of version 3 between the train and the CRC, and the
-      --  traction cut-off time of version 4 after them
-      if Get_U16 (Bytes, Bytes'First + 4) = 3
-        and then L >= Min_Image_V3_Length
-      then
-         L := L - Zone_Image_Length;
-      elsif Get_U16 (Bytes, Bytes'First + 4) = 4
-        and then L >= Min_Image_V4_Length
-      then
-         L := L - Zone_Image_Length - Traction_Image_Length;
+      V := Natural (Get_U16 (Bytes, Bytes'First + 4));
+      --  what versions 3 to 5 carry between the train and the CRC
+      if V in 3 .. 5 and then Length_OK (V, L) then
+         L := L - Tail_Length (V);
       end if;
       if L in Min_Image_V2_Length .. Bytes'Length then
          Get_Gamma (Bytes, L - 4, Gam, S);
