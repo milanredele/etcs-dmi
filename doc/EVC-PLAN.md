@@ -24880,3 +24880,63 @@ E6 that still stop sequences under notes older than the code
 (S185bee31 nine sequences, S27eb0678 eight, Sdecbd2e2 three), then the
 closure of E6: with the matrix at two rows that wait for E7 and E8,
 what is left of the phase is the runner's triage.
+
+### The sequences on the on-board's lines of the triage: a group read in SR that no list expects, the 156 family, the BMM reaction inhibition symbol in SH (e5/traces-onboard) (2026-11-14)
+
+A trace package: the nineteen sequences the report filed under onboard
+and the one under E5, each traced at SV30 (VERBOSE=1 DEBUG=1, the
+step's data in the scn file and ERA's PDF, the clause); no change in
+evc/, one in the runner.
+
+- Sdecbd2e2, 9990400_25 (SV21, SV22, SV30) step 108: SR was entered in
+  level 1 by Start and kept over the immediate transition to level 2
+  of BG1d; the sequence gives no message 2 at all, so no list of
+  expected balise groups (packet 63) exists when BG3d (packet 255
+  alone) is read at step 104. 4.4.11.1.3 c): "When no list is sent,
+  all balise groups can be passed"; 4.6.3 [36] needs the list. The
+  joined case 4041100 4 has its message 2 with packet 63 in the two
+  sequences that pass it (4100103_20 step 64, 5080400_03 step 80).
+  The sequence's data (s076).
+- S185bee31: 3150100_09 and _11 (SV21, SV22, SV30) step 75. ERA's
+  description of both says "TC 3150100.13 can handle only one
+  communication session established through GSM-R": the case is
+  3.15.1.3.2.4 (a new order to RBC3 after the max safe front end left
+  RBC1's area, the 156 to RBC1), n/a for this on-board, which handles
+  two sessions (it requests session 2 at the order of step 67 and gets
+  no connect for it from the sequence). The runner: case 13 added to
+  `S076_Run.Single_Session_Cases` with the five single-session cases
+  of 3150100_02 and _07; the six failed 75 -> blocked 67 (optional,
+  not applicable: 3.15.1.3.2), the six regressions of the commit,
+  recorded. 6060500_10 SV30 (steps 95 to 99, message 32 M_VERSION 2.0
+  in SM, 6.6.3.4.1.3): the E7 line holds and now comes first; the
+  onboard line (B788, B789 done, 5060400_01 and 4080451_01 pass) and
+  the 3150100 line (now model) carry "(no sequence left)" behind it.
+- Sa06b325b, 5220200_02 SV30 step 59: BG2d (step 44, 100 m) packet 67
+  Q_SCALE 1 m, D_TRACKCOND 350, L_TRACKCOND 150 puts the BMM area at
+  450 m to 600 m; the train stands at 200 m from step 49 (Shunting) to
+  step 59, so at the reset of the entry to SH the antenna is 250 m short
+  of the area and 5.22.3.1 triggers nothing (EVC_Procedures.BMM_Reset,
+  EVC_Track_Conditions.BMM_At_Antenna). ERA's PDF has the same values.
+  The sequence's data (s076).
+- Sfb725745: the s076 line (5040300_25) first, the onboard line behind
+  it with "(no sequence left)". S4a1bcab7 (3160300_01 SV21 step 87,
+  packet 72 of step 83): chapter 6, B010 open, now E7.
+- `~expect RTM message: 133 not sent`, 3110200_03 SV30 step 77: in L2
+  SR with no request for SM sent, the safe consist length becoming
+  unavailable (step 72); 3.18.3.10 asks the 133 only in SB or from the
+  first SM request on, as S143d6aa2's lines say: s076 (was E5, whose
+  "EVC_Radio_Authority not written yet" no longer held).
+- `~the workbook's location passed`: 3131040_62 (SV21, SV22, SV30)
+  step 56 get a line of their own (S7289686e, s076): the workbook's
+  target speed is 20 km/h (Track!B2), BG2d's packet 12 carries V_EMA 12
+  (60 km/h at the LOA); with the workbook's own target, curve_probe.py
+  places ours within B175's margin of the workbook (95 km/h W 1659.6
+  against 1597, margin -62, rest -0.6 m). 3131040_14 SV30 step 59
+  (S5c408600) is an accelerating workbook train (A_est 1.1 m/s2) the
+  probe refuses: B016's family, the text line's category now curves.
+
+Sequences moved (for the merged baseline): 3150100_09 and 3150100_11,
+SV21, SV22 and SV30, failed 75 -> blocked 67. The report's table
+after the package: onboard 0 (was 19), E5 0 (was 1); s076 450, E7
+179, curves 95, model 259. No backlog line added or closed; no edit
+outside the units.
