@@ -25008,3 +25008,76 @@ scenario): B4363.
 Edits outside the units: none in evc/ beyond `EVC_Core.Outputs`,
 `EVC_Text_Messages`, `EVC_Config` and the comment of
 `EVC_Sessions.Manoeuvre`; test/efs/ regenerated (unchanged).
+
+### The sequences on the E6 and DMI lines of the triage: a trip expected after a reversal and at a linked group's error, the System version and Level windows of the start up (e5/traces-trip) (2026-11-14)
+
+Three items done, the extra (Sfbc6ab9e's order) not taken: the bound
+of 120 calls was passed during the third item. One commit holds the
+three items (their triage lines are in one file).
+
+S27eb0678 (eight sequences, the family line filed E6). 9990600_04
+(SV21, SV22, SV30) step 95, traced at SV30 with `DEBUG=1`, ERA's PDF
+read: the trip expected at 2250 m (step 94, the min safe front end past
+the EOA, 4.6.3 [16]) comes from an EOA withdrawn by a section timer at
+step 89. The MA of step 77 (message 3 at 1450 m, NID_LRBG BG2 at 100 m)
+has one section, L_ENDSECTION 5000 m, T_SECTIONTIMER 10 s and
+D_SECTIONTIMERSTOPLOC 100 m, a distance from the beginning of the
+section (7.5.1.24): the stop location at 200 m, the EOA at 5100 m. At
+the reception the stop location lies in rear of the min safe front end:
+3.8.4.2.5, the timer considered stopped, 3.8.4.2.2 not applied; the
+reversal to 1300 m does not bring the min safe front end back in rear of
+200 m (3.8.4.2.4 not met). Ours keeps the EOA at 5097 m (ma 2800 m at
+2296 m): no trip is due; the steps put the stop location at 1550 m.
+Triaged s076. 4120100_02 SV22 step 46 and 4060300_03 SV22 step 143 are
+not like Sd9c6ae99: BG2d and BG4d, which their comments say carry a
+version above the highest the on-board supports (3.17.3.5 d), carry
+M_VERSION 3.0 in the SV22 forms (4.0 in the SV30 forms, where ours
+trips and passes the step): triaged E7 (an on-board whose highest X
+is 2, chapter 6). 4080300_16 keeps its own s076 line. The order of
+S27eb0678's lines: the 9990600_04 line (s076, 3 sequences) first, the
+SV22 line (E7, 2), then 4080300_16 (s076, 3), then the two lines no
+sequence stops on any more, with "(no sequence left)" at their head:
+3131040_17 (passes) and the old family line (4060300_13 and 5110400_02
+pass). The report takes the first line: the eight show under s076.
+
+Sd9c6ae99 (3040400_07 SV22 and SV30 step 76; SV21 is blocked at step
+44 by E7-version): ours, fixed. BG8d at 700 m, N_TOTAL 2 (three
+balises), N_PIG 0 and 2 read (+5 m), N_PIG 1 missed and not duplicated,
+announced by BG1d's packet 5 with Q_LINKREACTION 00, train trip (ERA's
+PDF the same). Ours kept the passage open until Group_End_Cm (15 m)
+beyond the last balise read; the train, braked by BG7's linking
+reaction (Q_LINKREACTION 01, step 69), stood at 710 m, so the message
+was never evaluated. By 3.16.2.2.2 b) balise 1 is missed when balise 2
+is received; with the first and the last balises by number read no
+balise can come that makes the message consistent (In_Order).
+`EVC_Balise_Groups.Complete` now also holds when N_PIG 0 and N_PIG
+N_TOTAL are read, and 3.16.2.4.1 a) gives the trip (4.6.3 [17]).
+Scenario: `EVC_Test_Consistency.Scenario_Consistency_Reactions`
+(balise 1 of three missed, the train stopping 4 m beyond balise 2: TR;
+it failed before the fix). Proofs: `evc_balise_groups` (0 checks of 16
+VCs or more) and `evc_position` (1, evc_position.ads:495, the
+postcondition of before; 2 listed for the unit in round 72's note).
+Moved: 3040400_07 SV22 and SV30 failed 76 -> passed.
+
+The DMI lines, all three the sequences' data (s076), ERA's PDFs read.
+S12fb6c82, 3170200_02 SV30 step 56: the System version window is
+reached from the Driver ID window through Settings (DMI 11.7.2 S1-1,
+11.7.7 S5); its Close goes back to the Settings window (11.7.7 S5) and
+only the closing of Settings to the Driver ID window (11.7.2 E1-1): the
+sequence has no step closing the Settings window. S79fc4827,
+4041500_01 SV21 and SV22 step 63 (SV30 blocked at step 53 by the
+runner): after NL to SB at standstill the Driver ID is to be
+revalidated (chapter 4's table of stored data, SB column TBR), so
+5.4.3.2 S1 and the Driver ID window; the sequence joins the level
+selection (case 5040300 10) without a Driver ID step. S607331e5,
+4080455_04 SV30 step 120: the SM request of step 109 awaits its answer
+(the message 5 of step 111 rejected, 4.8.4 exception [1], as its
+comment says; 1.6 s later, short of the fixed waiting time), so DMI
+Table 54a S1 keeps every button of the Main window disabled; the
+sequence joins case 5110200 5 after that rejection. No change in dmi/.
+
+The report's table after these edits: E6 0 (was 10), dmi 0 (was 4);
+the 8 of S27eb0678 under s076, the 3 DMI ones under s076. Left of the
+extra: Sfbc6ab9e's order (the E7 line first, holding the SV22 family's
+sequences; its two s076 lines hold 6060302_04 and _06 SV30 and
+3170200_10 SV30, shown under E7). No backlog line added.

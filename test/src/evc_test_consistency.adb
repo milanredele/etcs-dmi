@@ -471,6 +471,19 @@ package body EVC_Test_Consistency is
       Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_TR),
              "reactions: the expected group's message inconsistent, its "
              & "linking reaction train trip (3.16.2.4.1 a)");
+      --  3.16.2.2.2 b): the group's last balise by its number read after
+      --  a missed one (0, 2 of three), the train stopping 4 m beyond it,
+      --  short of the passage's end: the balise is missed when the
+      --  following one is received, the reaction is not held back
+      Inconsistent_Track (Linking => True, Reaction => 0, Skip => 2,
+                          Balises => 3);
+      Run_X (61_000);
+      Stand;
+      Stand;
+      Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_TR),
+             "reactions: balise 1 of three missed, balise 2 read, the "
+             & "train stopping within the group's end: the linking "
+             & "reaction train trip (3.16.2.2.2 b), 3.16.2.4.1 a)");
       Inconsistent_Track (Linking => True, Reaction => 1);
       Run_Watch (80_000, SB);
       Check (SB and then Brake_Error >= 1

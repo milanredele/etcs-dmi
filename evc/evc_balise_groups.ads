@@ -98,12 +98,16 @@ is
    function Has (P : Passage_T; N_PIG : N_PIG_T) return Boolean is
      (for some I in 1 .. P.Count => P.Readings (I).N_PIG = N_PIG);
 
-   --  Every balise of the group was read. Decision: a balise detected
-   --  without a decoded telegram (Detect) does not end the passage, which
-   --  ends Group_End_Cm beyond its last balise read as with a balise
-   --  missed (EVC_Position)
+   --  Every balise of the group was read, or its first and last by
+   --  their numbers were: a balise between them not read is missed when
+   --  a following one is received (3.16.2.2.2 b), and none can come
+   --  after the last that would make the message consistent (In_Order).
+   --  Decision: a balise detected without a decoded telegram (Detect)
+   --  does not end the passage, which ends Group_End_Cm beyond its last
+   --  balise read as with a balise missed (EVC_Position)
    function Complete (P : Passage_T) return Boolean is
-     (P.Count > Natural (P.N_TOTAL));
+     (P.Count > Natural (P.N_TOTAL)
+      or else (Has (P, 0) and then Has (P, N_PIG_T (P.N_TOTAL))));
 
    --  3.16.2.4.4.1 a), 3.16.2.5.1.1 a), 1st bullet: the telegram holds
    --  directional information, a packet with the standard header
