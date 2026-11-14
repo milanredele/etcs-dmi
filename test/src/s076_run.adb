@@ -4730,11 +4730,25 @@ package body S076_Run is
                        and then SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH);
             Matched : Boolean;
             J : constant Judgement_T := Speed_Info_Object (St, St_W, Matched);
+            In_W : Boolean := Dial;
          begin
             if Matched then
                return J;
             end if;
-            return Shown (St_W, Dial, Dial,
+            --  "displayed" in at least one cycle since the input, as every
+            --  object shown: a mode of the dial seen in the window (the
+            --  trip after an EOA withdrawn to the train, 3.8.4.1.2 a), comes
+            --  within the confidence interval, before the outputs the
+            --  sequence lists at the place of the time-out)
+            for M in Mode_T loop
+               if M in M_FS | M_AD | M_LS | M_SM | M_RV | M_UN
+                      | M_OS | M_SR | M_SH
+                 and then DMI_Code (M) <= 63
+               then
+                  In_W := In_W or else Seen.Mode (DMI_Code (M));
+               end if;
+            end loop;
+            return Shown (St_W, In_W, Dial,
                           "speed and distance information on the DMI");
          end;
       elsif Same (Kind, "window") then

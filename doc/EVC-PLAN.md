@@ -25709,3 +25709,86 @@ passed when both are read. No build.
 Done: three items of three; 3 sequences moved, all by B4363 (6060500_10,
 6060504_02, 6060505_02 SV30, failed 99 to failed 91), B4443 and the row
 none; the runner 1270 / 992 / 928, 0 untriaged.
+
+### The last sequences filed dmi, onboard and E6 by their own lines: the speed and distance information expected, a fault in Sleeping, a group with a balise in error (e5/traces-last) (2026-11-14)
+
+The 18 sequences the report's table showed under dmi (12), onboard (3)
+and E6 (3) once every sequence was filed under its own line, each traced
+at SV30 with `VERBOSE=1 DEBUG=1`, its step list checked in ERA's PDF.
+None is a cause of our DMI or of our on-board.
+
+B4483, S256875a4 (12 sequences, the family line of kind dmi): four
+families, two causes.
+- 3080400_05 step 77 and 3080400_07 step 72 (End Section timer): the
+  timer expires at 35 km/h in L2 FS (step 72 of _05, step 71 of _07), the
+  on-board withdraws the EOA to the estimated front end (3.8.4.1.2 a),
+  `EVC_Movement_Authority.End_Section_Over`) and commands the emergency
+  brake; the min safe front end passes that EOA within the confidence
+  interval, and the trip of 4.6.3 [16] comes inside the time-out's window
+  (TR by 1011 m and by 700 m). The sequences list the speed and distance
+  information (FS, target distance and speed 0) before the trip (their
+  steps 79 and 75: "the min safe front passes the location where the End
+  Section timer expired"). The JRU record 20 of the same window passed
+  (status 4, D_TARGET 0); the DMI judgement looked at the DMI's mode at
+  the end of the window only, where every other object shown is judged in
+  at least one cycle since the input. Runner (`S076_Run`, the judgement of
+  "speed-distance-monitoring"): a mode of the dial (FS, AD, LS, SM, RV, UN,
+  and OS, SR, SH as before) seen in the window counts for "displayed";
+  "not displayed" keeps the end of the window. The six sequences pass; no
+  other sequence of the corpus moved.
+- 3131040_39 step 58 (now S8f6332fa, same step, s076): L1 SR entered at
+  0 m, BG1d at 300 m gives packet 3 with D_NVSTFF 1200 m; a national value
+  determining the SR distance is supervised from the SR entry (4.4.11.1.3.1
+  a)), so ours ends it at 1200 m and trips by [42] before 1266 m. ERA's
+  step list counts the 1200 m from the LRBG BG1d: the Indication limit
+  668 m from the EoA "532 m from the LRBG" (step 51), the Permitted Speed
+  limit 493 m from the EoA "707 m from the LRBG" (step 54), an EoA at
+  1500 m, and SR expected at 1211 m (step 57).
+- 3131050_07 step 54 (now S27459fc4, same step, s076): BG2d at 150 m gives
+  packet 12 with L_ENDSECTION 600 (the EOA at 750 m), D_DP 50,
+  V_RELEASEDP 50 km/h, the SSP at 30 km/h from 600 m: the release speed of
+  30 km/h from the RSM start (step 53, 655 m), the trip of 4.6.3 [12] at
+  the EOA. ERA places steps 54 and 55 (release speed monitoring in FS) at
+  887 m and the power-off of step 56 at 940 m, 137 m and 190 m beyond the
+  EOA of its own MA.
+
+B4484, Sa8a3ba1a@4040600_01 (3 sequences, step 27, onboard): E8. In L2 SL
+(packet 41 M_LEVELTR 3 at 200 m) the sequence injects a safety critical
+fault (step 25) and expects the session opened to report it: the connect
+(27), the 155 (29), the 159 (33), the 136 with packet 4 (36), no SF while
+SL (38 to 41) and SF when the desk opens (42 to 46). That is the
+informative 4.4.6.1.6 ("should": memorised, handled when SL is left, an
+error to the RBC), B1840's `EVC_Core.Report_Fault`, which waits for the
+TMS570 port's self-tests by the decision B3863. The runner's fault is
+`EVC_Core.Enter_Failure`; ours stays SL without a session.
+
+B4485, S1ebd7f2d@3160200_14 (3 sequences, step 41, E6): s076, not the
+consistency of 3.16.2. Step 39 belongs to the joined case 4060300 44 (the
+entry into FS; the case 3160200 20 starts after step 43), and its BG0d is
+one balise with every value 0 in ERA's own table (PDF page 13: NID_C 0,
+NID_BG 0, N_TOTAL 0, M_DUP 00, Q_LINK 0, packet 12 V_MAIN 0 and
+L_ENDSECTION 0, packet 27 V_STATIC 0). No balise is missing or
+duplicated; the position is unknown since the SR entry (step 38), so the
+nominal packets of an unlinked single group are rejected (3.6.3.1.4,
+3.6.3.1.4.2): ours records the telegram and the position unknown (JRU 2,
+JRU 8) and stays SR where step 41 expects FS. The clauses of the linking
+reaction (3.16.2.4.3) and of the duplicated balises were read and do not
+apply to a group of one balise that is read whole.
+
+The triage: named lines before the family line of S256875a4 (3080400_05
+and _07 runner, fixed; 3131040_39 and 3131050_07 s076, pointing at their
+new signatures), two new lines S8f6332fa@3131040_39 and
+S27459fc4@3131050_07 (s076) at the end of the file, the lines of
+4040600_01 (E8) and 3160200_14 (s076) rewritten in place. The family line
+of S256875a4 (dmi) holds no sequence now. A category E8 appears in the
+report's table for the first time.
+
+The sequences moved (all three system versions): 3080400_05 failed 77 ->
+passed, 3080400_07 failed 72 -> passed; 3131040_39 and 3131050_07 at the
+same steps under new signatures. Runner 1276 / 986 / 928 (was 1270 / 992 /
+928), 0 regressions, 0 untriaged.
+
+The report's table after these edits (986 failed sequences): model 222,
+s076 496, E7 182, curves 80, NTC 3, E8 3, dmi 0, onboard 0, E6 0, E5 0,
+runner 0. Nothing is left under dmi, onboard or E6; the three under E8
+are B1840's.
