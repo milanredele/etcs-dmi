@@ -14,7 +14,11 @@
 --  fails. Improvements are reported; UPDATE=1 records the baseline
 --  anew. The report obj/evc_s076_run.txt has the counts per system
 --  version, per feature and per reason, and the failure signatures
---  ranked by the number of sequences they stop.
+--  ranked by the number of sequences they stop; each failed sequence
+--  is counted under its own line of test/s076/triage.csv (a line may
+--  name the sequences it holds, see Read_Triage), the run fails on a
+--  sequence no line holds and on a malformed name, and the lines no
+--  sequence of the run takes are listed at the end.
 --
 --  Usage:  obj/evc_s076_run              the fixture and the corpus
 --          obj/evc_s076_run NAME|PATH    one sequence; VERBOSE=1 for a
@@ -127,23 +131,94 @@ package body S076_Main is
    ---------------------------------------------------------------------
    --  The triage of the failure signatures (test/s076/triage.csv): a
    --  line "match,category,note" where match is a signature id
-   --  (S + 8 hex digits) or "~text", a part of the signature's text; the
-   --  first line that matches a signature gives its triage. Categories:
-   --  onboard (an on-board defect still open), E5, E6, E7 (a later
-   --  phase), curves (the braking curves against the ERA workbook's),
-   --  s076 (a defect of SUBSET-076 or of its extraction), model (a gap of
-   --  the runner's model of the train, the driver or the track), dmi
-   --  (our DMI).
+   --  (S + 8 hex digits), the id with the sequences the line holds
+   --  ("S27eb0678@4120100_02_SV22+4060300_03_SV22": a name is a test
+   --  case and its number, nnnnnnn_nn, all its system versions, or one
+   --  of them, nnnnnnn_nn_SVnn), or "~text", a part of the signature's
+   --  text. A failed sequence takes the first line of its signature's
+   --  id that names it, else the first line in the file that is the id
+   --  without names or a "~text" that matches: a sequence is untriaged
+   --  when its id has only lines with names, none naming it, and no
+   --  "~text" line matches. A line with a name of another shape is
+   --  malformed and fails the run. Categories: onboard (an on-board defect still
+   --  open), E5, E6, E7 (a later phase), curves (the braking curves
+   --  against the ERA workbook's), s076 (a defect of SUBSET-076 or of
+   --  its extraction), model (a gap of the runner's model of the train,
+   --  the driver or the track), dmi (our DMI).
    ---------------------------------------------------------------------
 
    Triage_Path : constant String := "test/s076/triage.csv";
    Max_Triage  : constant := 512;
    type Triage_T is record
       Match, Category, Note : Text_T;
-      Used : Natural := 0;
+      Names : Text_T;          -- the sequences it holds, '+' between
+      Used  : Natural := 0;    -- the failed sequences it holds
    end record;
    Triage   : array (1 .. Max_Triage) of Triage_T;
    Triage_N : Natural := 0;
+   --  the lines with a name of another shape than the two above
+   Malformed_Triage : Natural := 0;
+
+   --  Whether S is a name a triage line may hold: nnnnnnn_nn or
+   --  nnnnnnn_nn_SVnn
+   function Name_Valid (S : String) return Boolean is
+      function Digits_At (From, Count : Natural) return Boolean is
+        (for all K in From .. From + Count - 1 => S (K) in '0' .. '9');
+      F : constant Natural := S'First;
+   begin
+      return (S'Length = 10 or else S'Length = 15)
+        and then Digits_At (F, 7) and then S (F + 7) = '_'
+        and then Digits_At (F + 8, 2)
+        and then (S'Length = 10
+                  or else (S (F + 10 .. F + 12) = "_SV"
+                           and then Digits_At (F + 13, 2)));
+   end Name_Valid;
+
+   --  Whether every name of the '+' separated list Names is valid and
+   --  the list has one at least
+   function Names_Valid (Names : String) return Boolean is
+      From : Natural := Names'First;
+   begin
+      if Names'Length = 0 then
+         return False;
+      end if;
+      for K in Names'First .. Names'Last + 1 loop
+         if K > Names'Last or else Names (K) = '+' then
+            if not Name_Valid (Names (From .. K - 1)) then
+               return False;
+            end if;
+            From := K + 1;
+         end if;
+      end loop;
+      return True;
+   end Names_Valid;
+
+   --  Whether the sequence Seq (its file name,
+   --  Subset-076-6-3_<nnnnnnn_nn>_v400_<SVnn>) is one of Names
+   function Names_Hold (Names, Seq : String) return Boolean is
+      From : Natural := Names'First;
+   begin
+      for K in Names'First .. Names'Last + 1 loop
+         if K > Names'Last or else Names (K) = '+' then
+            declare
+               N : constant String := Names (From .. K - 1);
+            begin
+               if N'Length >= 10
+                 and then Ada.Strings.Fixed.Index
+                   (Seq, "_" & N (N'First .. N'First + 9) & "_v") > 0
+                 and then (N'Length = 10
+                           or else (Seq'Length >= 5
+                                    and then Seq (Seq'Last - 4 .. Seq'Last)
+                                      = "_" & N (N'First + 11 .. N'Last)))
+               then
+                  return True;
+               end if;
+            end;
+            From := K + 1;
+         end if;
+      end loop;
+      return False;
+   end Names_Hold;
 
    procedure Read_Triage is
       F : File_Type;
@@ -158,13 +233,30 @@ package body S076_Main is
             C1 : constant Natural := Ada.Strings.Fixed.Index (L, ",");
             C2 : constant Natural :=
               (if C1 > 0 then Ada.Strings.Fixed.Index (L, ",", C1 + 1) else 0);
+            At_Sign : constant Natural :=
+              (if C1 > 0 then Ada.Strings.Fixed.Index (L (L'First .. C1), "@")
+               else 0);
+            Last_Id : constant Integer :=
+              (if At_Sign > 0 then At_Sign - 1 else C1 - 1);
          begin
             if L'Length > 0 and then L (L'First) /= '#' and then C2 > 0 then
+               if At_Sign > 0
+                 and then (L (L'First) /= 'S'
+                           or else Last_Id - L'First + 1 /= 9
+                           or else not Names_Valid (L (At_Sign + 1 .. C1 - 1)))
+               then
+                  Malformed_Triage := Malformed_Triage + 1;
+                  Put_Line ("evc_s076_run: " & Triage_Path & ": malformed "
+                            & "names: " & L (L'First .. C1 - 1));
+               end if;
                Triage_N := Triage_N + 1;
                Triage (Triage_N) :=
-                 (Match    => To_Text (L (L'First .. C1 - 1)),
+                 (Match    => To_Text (L (L'First .. Last_Id)),
                   Category => To_Text (L (C1 + 1 .. C2 - 1)),
                   Note     => To_Text (L (C2 + 1 .. L'Last)),
+                  Names    =>
+                    (if At_Sign > 0 then To_Text (L (At_Sign + 1 .. C1 - 1))
+                     else To_Text ("")),
                   Used     => 0);
             end if;
          end;
@@ -172,14 +264,38 @@ package body S076_Main is
       Close (F);
    end Read_Triage;
 
-   --  The triage line of a signature, 0 when none matches
-   function Triage_Of (Id, Text : String) return Natural is
+   --  The first field of a triage line, the id and its names
+   function Match_Image (T : Positive) return String is
+     (Image (Triage (T).Match)
+      & (if Triage (T).Names.N > 0 then "@" & Image (Triage (T).Names)
+         else ""));
+
+   --  The triage line of the sequence Seq failed first on the signature
+   --  Id, Text (Seq empty: of the signature alone), 0 when none holds it
+   function Triage_Of (Id, Text, Seq : String) return Natural is
+      Unnamed : Natural := 0;
    begin
+      for I in 1 .. Triage_N loop
+         if Image (Triage (I).Match) = Id then
+            if Triage (I).Names.N = 0 then
+               if Unnamed = 0 then
+                  Unnamed := I;
+               end if;
+            elsif Names_Hold (Image (Triage (I).Names), Seq) then
+               return I;
+            end if;
+         end if;
+      end loop;
+      --  decision: between the id's line without names and a "~text"
+      --  line the first in the file wins, as before lines had names; a
+      --  "~text" line is a family line without names, so a sequence that
+      --  no named line of its id holds stays on it (the braking curve
+      --  families), and is untriaged only when neither exists
       for I in 1 .. Triage_N loop
          declare
             M : constant String := Image (Triage (I).Match);
          begin
-            if M = Id
+            if I = Unnamed
               or else (M'Length > 1 and then M (M'First) = '~'
                        and then Ada.Strings.Fixed.Index
                                   (Text, M (M'First + 1 .. M'Last)) > 0)
@@ -294,6 +410,21 @@ package body S076_Main is
    Old_N    : Natural := 0;
    New_Rows : array (1 .. Max_Rows) of Row_T;
    New_N    : Natural := 0;
+
+   --  the failed sequences of the corpus with their first failure's
+   --  signature (an index of Sigs), for the triage by sequence
+   type Failed_Seq_T is record
+      Name : Text_T;
+      Sig  : Positive := 1;
+   end record;
+   Failed_Seqs : array (1 .. Max_Rows) of Failed_Seq_T;
+   Failed_N    : Natural := 0;
+
+   --  The triage line of the failed sequence F
+   function Triage_Of_Failed (F : Positive) return Natural is
+     (Triage_Of (Sigs (Failed_Seqs (F).Sig).Id,
+                 Image (Sigs (Failed_Seqs (F).Sig).Text),
+                 Image (Failed_Seqs (F).Name)));
 
    Regressions, Improvements, New_Seqs : Natural := 0;
    --  the failure signatures of the report without a triage line
@@ -636,6 +767,11 @@ package body S076_Main is
                   if K > 0 and then not Is_Fixture then
                      Sigs (K).Sequences := Sigs (K).Sequences + 1;
                      Add_Example (K, Name);
+                     if Failed_N < Max_Rows then
+                        Failed_N := Failed_N + 1;
+                        Failed_Seqs (Failed_N) :=
+                          (Name => To_Text (Name), Sig => K);
+                     end if;
                   end if;
                end;
          end case;
@@ -711,15 +847,14 @@ package body S076_Main is
          for I in 1 .. Triage_N loop
             Triage (I).Used := 0;
          end loop;
-         for I in 1 .. Sig_N loop
+         for I in 1 .. Failed_N loop
             declare
-               T : constant Natural :=
-                 Triage_Of (Sigs (I).Id, Image (Sigs (I).Text));
+               T : constant Natural := Triage_Of_Failed (I);
             begin
                if T > 0 then
-                  Triage (T).Used := Triage (T).Used + Sigs (I).Sequences;
+                  Triage (T).Used := Triage (T).Used + 1;
                else
-                  Untriaged := Untriaged + Sigs (I).Sequences;
+                  Untriaged := Untriaged + 1;
                end if;
             end;
          end loop;
@@ -742,7 +877,7 @@ package body S076_Main is
                        and then Triage (J).Used > 0
                      then
                         Put_Line (F, "      " & Img (Triage (J).Used) & "  "
-                                  & Image (Triage (J).Match) & "  "
+                                  & Match_Image (J) & "  "
                                   & Image (Triage (J).Note));
                      end if;
                   end loop;
@@ -801,17 +936,48 @@ package body S076_Main is
       for I of Order loop
          declare
             T : constant Natural :=
-              Triage_Of (Sigs (I).Id, Image (Sigs (I).Text));
+              Triage_Of (Sigs (I).Id, Image (Sigs (I).Text), "");
+            --  the sequences of the signature per triage line, 0 none
+            Held  : array (0 .. Triage_N) of Natural := (others => 0);
+            Lines : Natural := 0;
          begin
             Put_Line (F, Img (Sigs (I).Sequences) & "  "
                       & Img (Sigs (I).Steps) & "  " & Sigs (I).Id & "  "
                       & Image (Sigs (I).Text));
-            if T > 0 then
-               Put_Line (F, "        triage: " & Image (Triage (T).Category)
-                         & ": " & Image (Triage (T).Note));
-            elsif Sigs (I).Sequences > 0 then
-               Put_Line (F, "        triage: NONE");
-               Untriaged_Signatures := Untriaged_Signatures + 1;
+            for S in 1 .. Failed_N loop
+               if Failed_Seqs (S).Sig = I then
+                  declare
+                     L : constant Natural := Triage_Of_Failed (S);
+                  begin
+                     if Held (L) = 0 and then L > 0 then
+                        Lines := Lines + 1;
+                     end if;
+                     Held (L) := Held (L) + 1;
+                  end;
+               end if;
+            end loop;
+            if Sigs (I).Sequences = 0 then
+               if T > 0 then
+                  Put_Line (F, "        triage: "
+                            & Image (Triage (T).Category) & ": "
+                            & Image (Triage (T).Note));
+               end if;
+            else
+               for L in 1 .. Triage_N loop
+                  if Held (L) > 0 then
+                     Put_Line (F, "        triage: "
+                               & Image (Triage (L).Category)
+                               & (if Lines > 1 or else Held (0) > 0
+                                  then " (" & Img (Held (L)) & ")" else "")
+                               & ": " & Image (Triage (L).Note));
+                  end if;
+               end loop;
+               if Held (0) > 0 then
+                  Put_Line (F, "        triage: NONE"
+                            & (if Lines > 0
+                               then " (" & Img (Held (0)) & ")" else ""));
+                  Untriaged_Signatures := Untriaged_Signatures + 1;
+               end if;
             end if;
             if Sigs (I).Example_N > 0 then
                Put_Line (F, "        e.g. " & Image (Sigs (I).Examples));
@@ -823,6 +989,26 @@ package body S076_Main is
       for I in 1 .. Feature_N loop
          Put_Line (F, Features (I).Name & "  " & Line_Of (Features (I).C));
       end loop;
+      --  the triage lines no failed sequence of this run takes, not an
+      --  error (a line kept for its history, or a run of a part of the
+      --  corpus)
+      declare
+         Idle : Natural := 0;
+      begin
+         for I in 1 .. Triage_N loop
+            if Triage (I).Used = 0 then
+               Idle := Idle + 1;
+            end if;
+         end loop;
+         Put_Line (F, "");
+         Put_Line (F, "triage lines without a sequence: " & Img (Idle));
+         for I in 1 .. Triage_N loop
+            if Triage (I).Used = 0 then
+               Put_Line (F, "    " & Match_Image (I) & "  "
+                         & Image (Triage (I).Category));
+            end if;
+         end loop;
+      end;
       Close (F);
    end Write_Report;
 
@@ -956,6 +1142,7 @@ begin
    --  (the baseline is still recorded): a re-recording is for a change
    --  understood, and a signature without its triage line is not
    if (Regressions > 0 and then not Update) or else Untriaged_Signatures > 0
+     or else Malformed_Triage > 0
    then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

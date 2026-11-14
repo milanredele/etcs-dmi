@@ -25502,3 +25502,109 @@ Settings window closed again; the 159's packet 3 of chapter 6). Runner
 B4446, B3700 done. Triage: notes of S12fb6c82 (no sequence left) and of
 the 3180400_04 line of Sd56a8154 (the brake at BG7d traced) edited in
 place. Outside the units named: none.
+
+### A triage line names its sequences: the reader, the lines of several causes split, the report's table by sequence (e5/triage-names) (2026-11-14)
+
+The premise, checked first on master's report: `S076_Main.Triage_Of`
+filed every sequence of a signature id under the first line of the id,
+S27eb0678 showed 8 under s076 (its E7 line for 4120100_02 and
+4060300_03 SV22 held none), Sfbc6ab9e 11 under the E7 line of the SV22
+family, S13c9beb3 17 under model (5180500_01's s076 line held none): as
+the brief said.
+
+The format: the names stand in the first field after the id,
+`S27eb0678@4120100_02_SV22+4060300_03_SV22,E7,"..."`. A line without
+names keeps `match,category,note`; the reader finds the names before the
+first comma without parsing the quoted note; re-filing a sequence onto a
+named line changes that field only; the file stays sortable by id (the
+line still begins with it). A fourth field would sit after a quoted note
+of up to 6600 characters. A name is a test case `nnnnnnn_nn` (its three
+system versions) or `nnnnnnn_nn_SVnn` (one); `4120100`, `SV22` or any
+other shape is reported as malformed and fails the run (checked with
+three such lines appended to a scratch copy: three messages, exit 1).
+
+The reader's rule (`Triage_Of (Id, Text, Seq)`): the first line of the
+id that names the sequence; else the first line in the file that is the
+id without names or a `~text` that matches; else none, untriaged.
+Decision: between the id's line without names and a `~text` line the
+file order still decides, as before names; taking the id's line first,
+as the brief's wording reads, changed the table with no line named
+(model 256 to 254, the track condition family 45 to 42, two old onboard
+lines of S0826aec1 and S143d6aa2 coming back over the families written
+after them). A `~text` family counts as a line without names: a
+sequence of a braking curve signature that no named line holds stays on
+its curve family (4100103_24 SV21 and SV22 of Sc70786e6), untriaged only
+when the id has only named lines and no `~text` matches. The report
+counts each failed sequence under its own line; the ranked list prints
+every line holding sequences of the signature, with the count when more
+than one does (`triage: E7 (2): ...`); the lines no sequence of the run
+takes are listed at its end, "triage lines without a sequence: 232".
+The runner's summary line and exit status keep their form (the exit
+status also fails on a malformed name). The fixture is unchanged: the
+corpus shows the rule (S27eb0678 has named lines and a family line
+without names), and the fixture's sequences are not counted in the
+triage.
+
+The lines: the 37 ids with several lines got the names their notes
+give, 73 lines changed in their first field only (the rest of each line
+as it was; S560e94da and the five ids of e5/runner-findings untouched).
+Four single lines filed sequences under another category in their own
+text; the sentence moved to a new named line right after its line:
+S13c9beb3 (3060500_03, 9990400_24, 8040400_01 SV21 and SV22: s076),
+Sa8a3ba1a (3050300_11, 4080500_02, 4080100_02, 3040200_01, 3060300_02:
+s076; 4040600_01: onboard), Saf042fa6 (5090200_02, 6060302_05: s076),
+S1ebd7f2d (3160200_14: E6). A line with names only for history
+("(no sequence left)") got them when the note named its sequences, so
+that it never becomes the family's line.
+
+The table of the 992 failed sequences, before / after: model 256 / 222,
+s076 459 / 488, E7 179 / 181, curves 95 / 80, dmi 0 / 12, E6 0 / 3,
+onboard 0 / 3, NTC 3 / 3, E5 0 / 0, runner 0 / 0, untriaged 0 / 0. The
+baseline is unchanged (1270 / 992 / 928, 0 regressions). The 102
+sequences that changed category (signature, old -> new; all three
+system versions unless named):
+S13c9beb3 model -> s076: 3060500_03, 5180500_01, 8040400_01 SV21/SV22,
+9990400_24;
+S1ebd7f2d s076 -> E6: 3160200_14;
+S256875a4 s076 -> dmi: 3080400_05, 3080400_07, 3131040_39, 3131050_07;
+S27eb0678 s076 -> E7: 4060300_03 SV22, 4120100_02 SV22;
+S30d22b77 s076 -> E7: 3110500_03 SV21/SV22;
+S388a7b2a curves -> s076: 3131050_19, 3131050_21;
+S49bc1c1a s076 -> E7: 3120200_05 SV21/SV22, 9990400_28 SV21;
+S69f1f87e model -> s076: 5080200_03;
+S82c622ac model -> s076: 5160000_06 SV30, 9990400_18;
+S99eb8ae1 model -> s076: 4080402_01;
+Sa03cccdc s076 -> E7: 4080100_06 SV21, 4100103_15 SV21/SV22;
+Sa8a3ba1a E7 -> onboard: 4040600_01;
+Sa8a3ba1a E7 -> s076: 3040200_01, 3050300_11, 3060300_02, 4080500_02;
+Saf042fa6 model -> s076: 5090200_02, 6060302_05, 9990200_01;
+Sb83b2c65 model -> s076: 9990500_09 SV21/SV22;
+Sc70786e6 curves -> s076: 3131030_24 SV21/SV22, 3131040_67, 3131040_68,
+4100103_24 SV30;
+Sde099aa7 model -> E7: 3120300_05 SV21, 4080100_05 SV21, 4080300_04
+SV21, 4080403_01 SV21, 6060500_04;
+Sde099aa7 model -> s076: 4080427_01 SV22/SV30;
+Seb6766c6 s076 -> E7: 3110600_01;
+Seb6766c6 s076 -> model: 3040400_04 SV22/SV30, 3131050_11, 3131050_22;
+Seddd5965 model -> s076: 4120100_14 SV30;
+Sfbc6ab9e E7 -> s076: 3170200_10 SV30, 6060302_04 SV30, 6060302_06 SV30.
+The three known cases came out as the brief asked: S27eb0678 6 s076 and
+2 E7, Sfbc6ab9e 3 s076 (SV30) and 8 E7 (the SV22 family), S13c9beb3
+5180500_01 s076.
+
+Findings (written down, not resolved; no trace run): the move of
+S256875a4's 12 sequences to dmi is explained by no note: their only
+line without names is the family line "the speed and distance
+information in SR / OS / SH after the driver's request (DMI 8.2.2.4,
+Table 10)", category dmi; they showed s076 before under the note of
+3110500_02 alone (B4483). Sa8a3ba1a's 4040600_01 is filed onboard by the
+family note's own sentence ("onboard, informative: 4.4.6.1.6, a safety
+critical fault in SL should be reported to an RBC, not modelled"), and
+S1ebd7f2d's 3160200_14 E6 by "consistency test, E6": both notes are
+older than the closure of E6 and are to be re-read (B4484, B4485). The
+moves from curves to s076 (S388a7b2a, Sc70786e6) are their own notes'
+(traced s076 lines written after the curve families, which shadowed
+them by the file's order). Question for the coordinator: 232 lines hold
+no sequence of the run, most of them "(no sequence left)" or fixed;
+whether they stay as history or leave the file (a line's text is also
+the record of a trace) is not decided here.
