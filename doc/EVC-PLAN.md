@@ -25147,3 +25147,153 @@ B4326 done, B3700 open with the finding. Triage: S29046d63, S560e94da
 left)", S7341fea5 and the 5180500_01 line of S13c9beb3 added. Outside
 the units named: test/src/s076_sequences.ads/.adb (the charts kept), the
 triage line S3a9e8361 (a sequence the hold moved).
+
+### Review of the seventy-fourth round: nine verdicts re-derived blind (e5/review-74) (2026-11-14)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All nine items were taken. No code,
+no triage line and no line of the authors was changed.
+
+1. A text awaiting its acknowledgement and a brake release request.
+   Mine: (a) a text held and not yet sent: the request waits until the
+   text is sent (5.4.1.9 is a FIFO by the triggers, the DMI queues by
+   arrival, `dmi/dmi_ack.adb`, so a request sent first overtakes it).
+   (b) a text shown and not acknowledged: sending the request at once is
+   right too (the DMI queues it behind the text and shows it 1 s after
+   the acknowledgement); keeping it back until the acknowledgement gives
+   the driver the same picture for one text. (c) the procedures' request
+   (`EVC_Procedures.Brake_Demand.Ack_Required`) holds the texts whatever
+   was sent, so it must not be kept back: holding it behind a held text
+   is a deadlock. (d) nothing else waits for ever: the protections'
+   request holds texts only once sent (`Status_Brake_Sent = Brake_Ack`).
+   Author (`EVC_Text_Messages.Ack_Awaited`, held or shown;
+   `EVC_Core.Outputs.Send_Status` keeps the protections' request back
+   while it is true, the procedures' never;
+   `Scenario_Text_Held_Before_Brake_Ack`): (a), (c), (d) the same. In
+   part I disagree on (b): a text 2 triggered after the request and held
+   behind text 1 (then the 1 s) keeps `Ack_Awaited` true, so the driver
+   gets text 1, text 2, request where the triggers give text 1, request,
+   text 2, and a run of texts keeps the brake applied longer (B4443).
+
+2. Two rows of Supervised Manoeuvre. Mine: 4.8.4.2 [12], only the order
+   to terminate a session accepted in SM: `EVC_Sessions.Apply_Order` has
+   no SM branch, an order to establish opens a session as in FS: partial
+   (terminate built, establish not refused). 5.4.5.3 k):
+   `EVC_Sessions.Manoeuvre.Possible` (SB, level 2, the safe consist
+   length available; S10 and S20 are both SB), a refusal back to SB,
+   `Scenario_SM_Start_Of_Mission`: done. Author (rows partial and done,
+   B4363 to build the SM branch): the same. Agree.
+
+3. A balise group read with its first and last balise, 3040400_07 step
+   76. Mine: (a) balise 1 is missed when balise 2 is received (3.16.2.2.2
+   b)); 2 is the last by N_TOTAL, so the group is complete and its
+   message may be evaluated then. (b) the same in the reverse direction,
+   0 being the last read; a first balise that is neither end leaves the
+   far end to come: wait for it or the distance. (c) a duplicate of the
+   missed balise (M_DUP of 0 or 2) is in a balise already read
+   (3.16.2.4.4.1 a)); none can come later. (d) none for a group whose
+   both ends are read. BG8d (N_TOTAL 2, N_PIG 0 and 2, M_DUP 00) is
+   announced by BG1's linking with Q_LINKREACTION 00, train trip
+   (3.4.4.2.3 a)), linking checked (step 71's comment): the trip at 700 m
+   is due by 3.16.2.4.1 a). Author (`EVC_Balise_Groups.Complete`, first
+   and last by number; the three-balise case of
+   `Scenario_Consistency_Reactions`, the train stopping 4 m beyond;
+   3040400_07 passes): the same. Agree.
+
+4. Two expectations in SR. (a) 9990400_25 step 108: SR entered in level
+   1 by Start and its acknowledgement (steps 29 to 35), level 2 by packet
+   41 at 50 m; no message 2, no packet 63 in the file: 4.4.11.1.3 c)
+   "When no list is sent, all balise groups can be passed", [36] needs a
+   list, packet 255 alone gives no stop if in SR: the sequence's data.
+   (b) 3110200_03 step 77: L2 SR at 350 m, Initiate SM only enabled
+   (step 71), no 131 before; 3.18.3.10 asks the 133 in SB or from the
+   first SM request: the sequence's data. Author (Sdecbd2e2 s076, the
+   133 line s076): the same. Agree.
+
+5. Two expectations against the track data. (a) 5220200_02 step 59:
+   BG2d at 100 m, packet 67 with Q_SCALE 1 m, D_TRACKCOND 350,
+   L_TRACKCOND 150: the area is 450 to 600 m, the train stands at 200 m;
+   5.22.3.1 needs the antenna in the area: the sequence's data. (b)
+   9990600_04 step 95: the MA of step 77 (LRBG BG2 at 100 m, one section,
+   L_ENDSECTION 5000) puts the EOA at 5100 m; D_SECTIONTIMERSTOPLOC 100 m
+   from the beginning of the section (7.5.1.24) is 200 m, already behind
+   the min safe front end at 1450 m: by 3.8.4.2.5 the timer never runs,
+   and the reversal to 1300 m does not bring the front behind 200 m
+   (3.8.4.2.4); no trip at 2250 m: the sequence's data. Author
+   (Sa06b325b, S27eb0678 s076): the same. Agree.
+
+6. (a) The SV22 forms of 4120100_02 step 46 and 4060300_03 step 143: the
+   group carries M_VERSION 3.0 (the others 2.2), the SV30 forms 4.0 (the
+   others 3.0). For an on-board supporting X 1 to 3, 3.0 is supported
+   (3.17.3.5 c)): no trip; the SV22 form is written for an on-board whose
+   highest X is 2. Author (S27eb0678 E7, another system version's
+   envelope): the same. Agree. (b) 3150100_09: ERA's description says
+   "TC 3150100.13 can handle only one communication session established
+   through GSM-R", the case from step 67 is 3.15.1.3.2 b) and
+   3.15.1.3.2.4; ours keeps two sessions (3.15.1.3.1 a), 3.15.1.3.2.3):
+   the steps from the announcement on do not apply, the case is not to
+   be judged. Author (`S076_Run.Single_Session_Cases`, blocked at 67):
+   the same. Agree.
+
+7. Three windows of the DMI. (a) 3170200_02 step 56: "System version" is
+   reached from the Driver ID window through the Settings window (DMI
+   11.7.2 S1-1, 11.7.7 S1 to S5); its close goes back to the Settings
+   window (11.7.7 S5), the Driver ID window only once that one is closed
+   (E1-1): our DMI right. Mine: the runner, which opens the Settings
+   window as its means to the press, should close it at the sequence's
+   close; author (S12fb6c82 s076, no step closing the Settings window):
+   the sequence's data. Disagree in part on the category, not ours either
+   way (B4444). (b) 4041500_01 SV22 step 63: NL left at standstill to
+   SB; chapter 4's table, column SB, Driver ID TBR: 5.4.3.2 S1 asks its
+   revalidation before the level; ours shows the Driver ID window, the
+   step skips S1: the sequence's data. Author (S79fc4827 s076): the same.
+   Agree. (c) 4080455_04 step 120: Initiate SM at 107, the 131 at 109,
+   message 5 rejected at 111 (4.8.4.2 [1] in PT): the request still
+   awaits its answer, DMI Table 54a S1 keeps every button of the Main
+   window disabled: the sequence's data. Author (S607331e5 s076, 1.6 s
+   after the request): the same. Agree.
+
+8. Trace, 9990400_31 step 57. The runner holds the train at 250 m (ma 0,
+   perm 0) and the press of Override EoA is taken at standstill; ours
+   enters SR, as 5.8.1.6 ("Staff Responsible mode is entered when the
+   driver selects override") and 4.6.3 [37] have it; the step's mode
+   column and ERA's rows 57 and 58 keep FS: the sequence's data. Author
+   (S7341fea5 s076): the same. Agree. `S076_Run.Held_At_EOA` holds a
+   powered train at standstill without override in FS, LS or OS whose
+   end is an EOA (not an LOA) within 100 m ahead or behind it. The case
+   I found: a train standing 60 to 100 m short of an EOA whose supervision
+   still lets it move (a release speed, or a permitted speed above zero),
+   its next step neither an ODO nor a BTM input but farther on: held where
+   the sequence means it creeping on; the rule tests the distance, not the
+   permitted speed (B4445, not traced to a sequence).
+
+9. Trace, 5180500_01 steps 69 to 99. The connection is lost at 74.7 s
+   (553 m); the runner holds the train at 900 m until 374.4 s (step 79,
+   "5 minutes after EURORADIO indicates the loss"); step 77's "6 min
+   after Step 69" is not applied (no step 69 in the file, the case joined
+   at 70), right. The new session: 155 at 418.4 s, the 32, then the 159,
+   the 129 and a 136 (packets 0 and 5) at 418.7 s at 1277 m, the 38 at
+   419.2 s, the 8 at 1450 m; no 136 there. (a) The sequence means time
+   passing on its chart; a standstill at the right place is equivalent for
+   what is judged. (b) 3.6.5.1.4 h): the session is established for the
+   on-board at the 32 (3.5.3.7 d)), and ours sends that report with the
+   159; at 1450 m no event a) to l) holds. Step 99 is row 26 right after
+   row 25 (the 38), steps 97 and 98 rows of a joined case: the 136
+   expected is h)'s, which ours sent before the 38. Not ours: the
+   sequence's order. Author (S13c9beb3 s076): the same. Agree.
+   `S076_Run.Named_Time` reads "<n> <unit> after Step <k>" and "... after
+   EURORADIO indicates the loss". A form it misreads: "after step N" where
+   N is the case's row, not the sequence's step: 3070300_01 step 103
+   (row 27) "5 seconds after step 25", 3180400_03 step 174 and 4080453_01
+   step 124 "40s after Step 3"; it takes the sequence's long past step N
+   and waits nothing (B4446).
+
+Counts: 9 items. Agreed: seven (2, 3, 4, 5, 6, 8, 9; 8 and 9 with a
+finding on the runner's rule each, B4445, B4446). Disagreed in part:
+two (1 (b), B4443, onboard; 7 (a), B4444, runner vs s076). Undecided:
+none. My calls: B4443 is the one with stakes for the driver (the order
+of a text and a brake release, the brake held longer), a small change of
+the condition in `EVC_Core.Outputs.Send_Status` (keep the request back
+only behind a text triggered before it) with a scenario; B4446 is a
+runner fix of a few lines with three sequences to re-run; B4444 and
+B4445 low stakes. Calls: 90 of 130 at this point.
