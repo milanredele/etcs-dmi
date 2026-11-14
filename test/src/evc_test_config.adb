@@ -1171,6 +1171,35 @@ package body EVC_Test_Config is
       CFG.Load (Img (1 .. L));
       Check (CFG.Last_Status = CFG.Accepted and then CFG.Train_Set_Count = 0,
              "config sets: an image of version 4 still accepted, no set");
+      --  a gamma train with the sets: its model data (3.13.2.2.3) read
+      --  between the train's fixed part and the zones, the traction
+      --  cut-off time and the sets
+      declare
+         G : constant CFG.Gamma_T := Gamma_Sample (False, False);
+         X : SIn.Train_Data_Extra_T;
+         M : SIn.Train_Data_T;
+      begin
+         C.Train.Model := SIn.Gamma;
+         CFG.Encode_V5 (C, G, T, Img, L);
+         D := CFG.Decoded (Img (1 .. L));
+         EVC_Core.Initialise;
+         EVC_Core.Configure (Img (1 .. L));
+         CFG.Gamma_Extra (X);
+         CFG.Gamma_Models (M);
+         Check (D.Status = CFG.Accepted and then D.Config = C
+                and then CFG.Train_Set_Count = 2
+                and then X = G.Extra
+                and then M.A_Brake_Emergency = G.A_Brake_Emergency
+                and then M.A_Brake_Service = G.A_Brake_Service
+                and then M.A_Brake_Normal = G.A_Brake_Normal
+                and then M.T_Brake_Emergency = G.T_Brake_Emergency
+                and then M.T_Brake_Service = G.T_Brake_Service,
+                "config sets: the gamma train of an image of version 5 "
+                & "loaded is the one encoded (3.13.2.2.3, 3.18.3.2 c)), "
+                & "got " & CFG.Status_T'Image (D.Status) & " "
+                & Boolean'Image (X = G.Extra));
+         EVC_Core.Configure (CFG.Encode (CFG.Default));
+      end;
       CFG.Load (CFG.Encode (CFG.Default));
    end Scenario_Config_Sets;
 

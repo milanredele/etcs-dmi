@@ -24940,3 +24940,71 @@ SV21, SV22 and SV30, failed 75 -> blocked 67. The report's table
 after the package: onboard 0 (was 19), E5 0 (was 1); s076 450, E7
 179, curves 95, model 259. No backlog line added or closed; no edit
 outside the units.
+
+### The brake release request sent after a held text, the gamma train of a format 5 image, two deferred rows of Supervised Manoeuvre (e6/held-request) (2026-11-14)
+
+Three items, all done; 0 sequences moved (the full runner 1262 / 1006 /
+922 before and after each change, 0 untriaged), nothing for the merged
+baseline to check.
+
+**B4242: the brake release request after a held text: built.** The
+premise held at the source: `EVC_Core.Outputs.Send_Status` chose
+`Brake_Ack` whenever `Brake_Output.Ack_Required`, and the DMI queues by
+arrival (`dmi/dmi_ack.adb`: the requests of earlier DMI cycles keep their
+place, 5.4.1.9.1 orders only those of one cycle), so a request sent while
+the on-board held a text to be acknowledged overtook it (5.4.1.9, a FIFO
+by the triggers). `EVC_Text_Messages.Ack_Awaited`: a text to be
+acknowledged held or shown and not yet acknowledged. Decision: shown
+too, not only held: the request goes out once the driver acknowledged
+the text, the on-board telling the DMI the order instead of relying on
+5.4.1.9.1 for a request and a text sent in one cycle; for a text shown
+before the request arose the driver sees the same as before (the DMI
+showed the queued request 1 s after the acknowledgement). `Send_Status`:
+while `Ack_Awaited` and the request not yet sent (`Status_Brake_Sent /=
+Brake_Ack`) the brake is shown as `Brake_Ack_Pending`; once sent it stays
+and the texts wait behind it (`Asked` unchanged); the procedures'
+`D.Ack_Required` is not withheld (`Asked` holds texts for it whatever was
+sent: both would wait). Scenario `Scenario_Text_Held_Before_Brake_Ack`
+(`EVC_Test_Profiles`, next to `Scenario_Text_Brake_Ack_Same_Cycle`): two
+fixed texts of the group at 100 m (Q_TEXT 1 from 200 m, Q_TEXT 0 from
+320 m; a first try with Q_TEXT 2 lost the whole group, no text, no MA),
+the first acknowledged rolling back under the emergency brake, then one
+cycle at standstill over 320 m: the second starts inside the 1 s and the
+release is asked. Before the change: the request at that cycle (208), the
+second text not sent within 1.5 s; after it: the text after the 1 s, the
+request in the cycle of the text's acknowledgement, the brake released by
+the request's acknowledgement. The driver waits longer for the release
+by the rest of the 1 s, the text's display until its acknowledgement and
+the DMI's 1 s after it. Proofs: `evc_text_messages` (margin 92 steps,
+wide 0), `evc_core-outputs` (margin 5961 steps, wide 0); the Global of
+`Send_Status` gained `EVC_Text_Messages.State` as an Input, which its
+caller already read: the parent's Globals unchanged.
+
+**B4284: the gamma train of a format 5 image: a defect, fixed.** At the
+source `Load_Gamma` took the zones (3) and zones plus traction cut-off
+(4) off the length, version 5 fell through and the gamma train was read
+up to 4 bytes before the CRC. The scenario first (the end of
+`Scenario_Config_Sets`: a gamma train with the two sets in a version 5
+image, read back after `EVC_Core.Configure`): accepted, the gamma extra
+read back different before; equal after. One function for both,
+`EVC_Config.Tail_Length (Version)`, used by `Get_Tail` and by
+`Load_Gamma` (subtracted when `Length_OK`). Proof `evc_config`: margin
+1214 steps before, 1117 after, wide 0 and 0. `test/tools/evc_config.py`'s
+decoder already took the three tails off: unchanged.
+
+**B4283: two deferred rows re-read.** 5.4.5.3 k) done:
+`EVC_Sessions.Manoeuvre.Possible` takes the driver's SM in SB in level 2
+with the safe consist length (S10 of 5.4.3.2 and S20 are both SB; the
+procedure's S0 adds the valid position and standstill), message 131, the
+authorisation of message 4 entering SM, a refusal back to SB;
+`Scenario_SM_Start_Of_Mission`; `@req` above `Possible` (a comment only,
+no proof change). 4.8.4.2 Table-footnote [12] (the SM column of the
+Session Management row: only the order to terminate a session accepted)
+partial: the order to terminate is taken in SM, an order to establish is
+not rejected (`EVC_Sessions.Apply_Order` treats it as in FS), not built
+here (a branch of `Apply_Order`, outside this package's units, with an SM
+scenario): B4363.
+
+Edits outside the units: none in evc/ beyond `EVC_Core.Outputs`,
+`EVC_Text_Messages`, `EVC_Config` and the comment of
+`EVC_Sessions.Manoeuvre`; test/efs/ regenerated (unchanged).
