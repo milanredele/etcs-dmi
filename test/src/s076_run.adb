@@ -686,12 +686,15 @@ package body S076_Run is
    function Our_Mode return Mode_T is
      (if B.Powered then EVC_Core.Mode else M_NP);
 
-   --  B4343, B4324: a train at standstill in a mode supervising an end
-   --  of authority (FS, LS, OS) whose movement authority ends where it
-   --  stands (the estimated front end within a metre of the EOA, no LOA
-   --  speed: the permitted speed is zero, 3.16.2.4.4.2 shortened it there
-   --  at the standstill) and no override active: the driver does not start
-   --  it, a step's place alone does not move it (Run_Loaded). It moves
+   --  A train at standstill in a mode supervising an end of authority
+   --  (FS, LS, OS) whose movement authority ends where it stands (the
+   --  estimated front end within a metre of the EOA, no LOA speed: the
+   --  DMI shows the target speed 0 at 0 m; the permitted speed it shows
+   --  is the ceiling, the indication location of 3.13.10.3.8 being the
+   --  EOA itself at a speed of 0) and no override active: the driver
+   --  does not start it (3.13.10.2.7, the trip past the EOA in level 1;
+   --  a release speed changes nothing within that metre), and a step's
+   --  place alone does not move it (Run_Loaded). It moves
    --  again once the on-board gives a new authority, an override or a
    --  mode the driver may move in, or at a step whose input is the
    --  driver's own movement (an ODO input) or a balise group to be read.
@@ -722,9 +725,10 @@ package body S076_Run is
    Step_Ms : Step_Ms_T := (others => 0);
    Lost_Ms : Unsigned_64 := 0;
 
-   --  B4326: the time a step's comment says has passed, in ms, and the
-   --  bench time of the event it counts from: "<n> min|minutes|s|sec|
-   --  seconds after Step <k>" (a step run before this one) or "... after
+   --  The time a step's comment says has passed, in ms, and the bench
+   --  time of the event it counts from: "<n> min|minutes|s|sec|seconds
+   --  after Step <k>" (the row k of the step's case or the step k, run
+   --  before this one) or "... after
    --  EURORADIO indicates the loss" (Lost_Ms); False for any other
    --  comment
    function Named_Time (I : Positive; Need, From : out Unsigned_64)
@@ -750,12 +754,35 @@ package body S076_Run is
             exit when K > S076_Sequences.Max_Steps;
             D := D + 1;
          end loop;
-         if K = 0 or else K >= I or else K > S076_Sequences.Max_Steps
-           or else Step_Ms (K) = 0
-         then
-            return False;
-         end if;
-         From := Step_Ms (K);
+         --  decision: k is the row k of the step's own case when the case
+         --  ran a step of that row before this one (3070300_01 step 103,
+         --  row 27, "5 seconds after step 25": row 25 is step 101), else
+         --  the sequence's step k when it was run before this one
+         declare
+            Here : Step_T renames Seq.Steps (I);
+            J    : Natural := 0;
+         begin
+            for L in reverse 1 .. I - 1 loop
+               if Seq.Steps (L).Case_Feature = Here.Case_Feature
+                 and then Seq.Steps (L).Case_No = Here.Case_No
+                 and then Seq.Steps (L).Row = K and then Step_Ms (L) /= 0
+               then
+                  J := L;
+                  exit;
+               end if;
+            end loop;
+            if J = 0 then
+               for L in 1 .. I - 1 loop
+                  if Seq.Steps (L).Number = K and then Step_Ms (L) /= 0 then
+                     J := L;
+                  end if;
+               end loop;
+            end if;
+            if K = 0 or else J = 0 then
+               return False;
+            end if;
+            From := Step_Ms (J);
+         end;
       else
          if Lost_Ms = 0 then
             return False;
