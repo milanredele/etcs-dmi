@@ -23,4 +23,10 @@ package EVC_Test_Version is
    --  3.17.2.6, 3.17.3.4.1: the country check against an immediate set of
    --  national values in the same group message
    procedure Scenario_Version_Country_Set;
+
+   --  6.6.1.1, 6.6.2, 6.6.4: the rules of chapter 6 by the operated X and
+   --  the supervising RBC (EVC_System_Version.Rules_Of): 1.1 ordered by
+   --  a group, an RBC of 2.1 and of 2.3 supervising, 3.0 everywhere;
+   --  6.6.3.4.1.2: no acknowledgement awaited from an RBC of 1.1
+   procedure Scenario_Version_Rules;
 end EVC_Test_Version;

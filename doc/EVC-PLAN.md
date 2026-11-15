@@ -26809,3 +26809,101 @@ Built here, 5.4.5.1 ("if it occurs in any step further than D11, the process sha
 The matrix by status, before: done 2146, deferred 220, n/a 30, partial 2; after: done 2165, deferred 198, n/a 30, partial 5. The 24 rows: 19 done (one built here), 3 partial, 2 deferred to E7 with a package. The unit proofs of the units given `@req` lines (comments only): EVC_Track_Description, EVC_Track_Conditions, EVC_Position, EVC_Radio_Authority, EVC_Level_Sessions, EVC_Core.Modes, EVC_Procedures, EVC_Transition_Conditions: no unproved check, 0 or 1 wide checks each as before (EVC_Position 1, of 19 VCs).
 
 Left at the bound: the tool (trace_subset026.py `--stale` and `--check` on a deferred row whose note names a closed phase; the AGENTS.md sentence) and B4564 (the rows 3.6.1.1 to 3.6.1.3.4); B4583 stays open for the tool.
+
+### The version rules as a record of the cycle, the first rows of 6.6.2 and 6.6.4, an older RBC and Supervised Manoeuvre (e7/version-rows) (2026-11-15)
+
+**The record (decision 4).** `EVC_System_Version.Rules_T`, eight
+Booleans named by what each switches, its clause above it, all False
+with X = 3 operated; `Rules_Of (X, Known, V)` computes it from the
+operated X and the supervising RBC's version, its postcondition one
+comparison of the whole record (written as a conjunction of eight it
+made a check of 16 VCs, the unit's first wide one; as one comparison the
+largest is 5 VCs again). `EVC_Core.Modes.Version_Rules` computes it once
+a cycle before `EVC_Sessions.Evaluate (Ctx, Rules)`, which passes it to
+`EVC_Sessions.Manoeuvre.Evaluate`, the only reader this round.
+
+| Component | Clauses | True when |
+|---|---|---|
+| Ack_Ends_Text | 6.6.2.1.1 (3.12.3.4.7.2) | X = 1 |
+| Engine_Front | 6.6.2.1.2, 6.6.2.2.3; 6.6.4.1.1, 6.6.4.2.1 | X = 1, or X = 2 with the supervising RBC 2.0 .. 2.2 |
+| TSR_Estimated | 6.6.2.1.3, 6.6.4.1.2 | X = 1 or 2 |
+| ASP_Lower_Categories | 6.6.2.1.4, 6.6.4.1.3 | X = 1 or 2 |
+| SR_Stop_Always | 6.6.2.2.1, 6.6.2.2.2 | X = 1 |
+| Texts_FS_Across_AD | 6.6.2.2.4 to .6 | X = 1 |
+| No_Supervised_Manoeuvre | 6.6.2.3.1, .2, .6, .7; 6.6.4.3.1 | X = 1, or X = 2 with the supervising RBC 2.0 .. 2.2 |
+| EoM_Awaits_Termination | 6.6.2.3.3 to .5 | X = 1 (with X = 2 the session's own RBC, 6.6.4.3.2) |
+
+Six components are read by nothing yet (e7/x1-supervision,
+e7/old-rbc-reports). The clauses of one session's messages (6.6.3.4,
+6.6.4.3.2, the tables of 6.6.5.3 to .5) and of a text's source
+(6.6.4.2.2) are not in the record: `EVC_System_Version.Below (V, X, Y)`
+and `Minor` decide them where the message is built;
+`Session_Acknowledged` is now `not Below (V, 2, 3)`;
+`RBC_2_0_To_2_2 (Known, V)` is the supervising RBC's condition.
+
+**The inventory's claims, at the source.** (1) "With X = 2 operated ...
+each [clause of 6.6.4] is the RBC's own Y": not for 6.6.4.1.2 and
+6.6.4.1.3, which apply with X = 2 whatever the RBC ("Clause 6.6.2.1.3
+shall apply"): the record has them by X alone (Scenario_Version_Rules:
+an RBC of 2.3 gives TSR_Estimated and ASP_Lower_Categories). (2) "The
+two voids are matrix rows": 6.6.2.4.1 and 6.6.4.4.1 have no row
+(`grep '^6\.6\.2\.4\|^6\.6\.4\.4' doc/TRACE-SUBSET-026.csv`: none), nothing
+to set. (3) 6.6.3.4.1.2 "built": confirmed, `Session_Acknowledged`, its
+one reader `EVC_Sessions.Take_Version` (evc_sessions.adb:759). (4)
+e7/old-rbc-sm "S" for `Manoeuvre.Evaluate (Possible)` and
+`Send_Onboard`: two of its three parts were built already:
+`EVC_Sessions.Manoeuvre.SM_By_Radio` refused the 131 and the 133 to an
+RBC of 1.x and 2.0 .. 2.2 (6.5.1.6.6.2.2, 6.5.1.6.6.3.1, 6.5.2.3.7.1;
+Scenario_SM_Consist_Info checks 1.0 and 2.2), and the DMI's 'Initiate
+SM' (Table 33 #11) needs session byte 3, which
+`EVC_Core.Outputs.Session_Byte` gives only with a supervising RBC above
+2.2 (2#010_0010#): the on-board tells the DMI already, `Send_Onboard`
+unchanged. What was missing: 6.6.3.4.1.3 (the session terminated in SM
+after its 159) and the on-board's own reading of 5.21 not applying (the
+selection gave "SM request failed", a 5.21.4.1 indication).
+
+**Built.** `EVC_Sessions.Manoeuvre.Evaluate`: with
+Rules.No_Supervised_Manoeuvre the driver's selection starts nothing (no
+131, no status). `EVC_Sessions.Produce_Session` (now with the mode): in
+SM, after the 159 to an RBC whose known version is below 2.3, the
+session is terminated (`Terminate_Session`; its 156 goes last in the same
+cycle, 3.5.5.3). `SM_By_Radio` written with `Below`.
+
+**Rows.** Done (16 E7 rows now, 140 deferred): 6.6.3.4.1.2, 6.6.5.3.3,
+6.6.5.4.2, 6.6.5.5.2 (no 38 awaited); 6.6.2.3.1, .2, .6, .7, 6.6.4.3.1
+(no SM); 6.6.3.4.1.3, 6.6.3.4.1.6, 6.6.5.3.4, 6.6.5.4.3, 6.6.5.5.3 (the
+termination in SM, no 133). Deferred with the reason written: 6.6.2.2.4
+to .6 and 6.6.4.2.2. Decision: neither done nor n/a. The clauses add
+clauses of the AD section (4.4.9.1.8, 4.4.16.1.7, .8) that change only a
+transition to or from AD and the evaluation in AD; AD is not entered
+(4.4.16.1.4 deferred, 4.6.3 [80] not implemented) and the matrix keeps
+every AD row deferred; without AD the text conditions of
+`EVC_Text_Messages` (Names: "Mode = FS" is M_FS) behave as the clauses
+say already, so no code; "done" would claim a built rule, "n/a" a rule
+that never applies. With AD they read Texts_FS_Across_AD and
+`Below (V, 2, 2)` on the text's source.
+
+**Scenarios.** `EVC_Test_Version.Scenario_Version_Rules` (the record for
+1.1 ordered by a group, an RBC of 2.1, of 2.3, 3.0; `Below`; no
+acknowledgement from an RBC of 1.1). `EVC_Test_Manoeuvre.Scenario_SM_Older_RBC`:
+run before the change, its two checks failed there ("SM request failed"
+shown with an RBC of 2.1; in SM the 159 to an RBC of 2.0 without a 156
+in its cycle: TRUE FALSE FALSE); after it, both pass, and its control
+(an RBC of 3.0 kept after its 159) passed before and after.
+
+**Proof** (`evc/prove.sh -u`, margin and checks of 16 VCs or more,
+before / after): evc_system_version 2 / 2 steps, 0 / 0 wide (largest 5
+VCs); evc_sessions-manoeuvre 188 / 183, 0 / 0 (largest 2);
+evc_sessions 6857 / 6857, 0 / 0 (largest 9); evc_core-modes 8652 / 8652, 0 / 0 (largest 11).
+No Global widened (the record is a parameter), so evc_core is not in
+the list.
+
+**Runner.** 1276 passed, 986 failed, 928 blocked, as on master: no
+sequence moved; 6060500_10, 6060504_02 and 6060505_02 SV30 still stop at
+step 91 under the triage line
+Sa8a3ba1a@6060500_10_SV30+6060504_02_SV30+6060505_02_SV30 (in SM, the
+group's packet 42 ordering a session; the sequence expects the
+SA-CONNECT.Request there), so no 159 of an older RBC is reached in SM.
+Baseline and triage unchanged; 0 untriaged. No backlog line: the six
+unread components are the clauses of the planned packages
+e7/x1-supervision and e7/old-rbc-reports.

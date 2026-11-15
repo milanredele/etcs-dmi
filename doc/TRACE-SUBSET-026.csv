@@ -1895,16 +1895,16 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.2.2.1,6,x,,,,,E7,deferred,E7
 6.6.2.2.2,6,x,,,,,E7,deferred,E7
 6.6.2.2.3,6,x,,,,,E7,deferred,E7
-6.6.2.2.4,6,x,,,,,E7,deferred,E7
-6.6.2.2.5,6,x,,,,,E7,deferred,E7
-6.6.2.2.6,6,x,,,,,E7,deferred,E7
-6.6.2.3.1,6,x,,,,,E7,deferred,E7
-6.6.2.3.2,6,x,,,,,E7,deferred,E7
+6.6.2.2.4,6,x,,,,,E7,deferred,"added clause of the AD section (4.4.9.1.8): the end condition Mode = FS by a transition from FS to another mode than AD; this on-board does not enter AD (4.4.16.1.4 deferred, 4.6.3 [80] not implemented), and without AD the text conditions of EVC_Text_Messages (Mode = FS is M_FS) already behave so; with AD: EVC_System_Version (Rules_T component Texts_FS_Across_AD, X = 1)"
+6.6.2.2.5,6,x,,,,,E7,deferred,"added clause of the AD section (4.4.16.1.7): the start condition Mode = FS evaluated in AD as in FS; this on-board does not enter AD (4.4.16.1.4 deferred, 4.6.3 [80] not implemented), and without AD the text conditions of EVC_Text_Messages (Mode = FS is M_FS) already behave so; with AD: EVC_System_Version (Rules_T component Texts_FS_Across_AD, X = 1)"
+6.6.2.2.6,6,x,,,,,E7,deferred,"added clause of the AD section (4.4.16.1.8): the end condition Mode = FS by a transition from AD to another mode than FS; this on-board does not enter AD (4.4.16.1.4 deferred, 4.6.3 [80] not implemented), and without AD the text conditions of EVC_Text_Messages (Mode = FS is M_FS) already behave so; with AD: EVC_System_Version (Rules_T component Texts_FS_Across_AD, X = 1)"
+6.6.2.3.1,6,x,,,,,E7,done,"S10 without SM: EVC_System_Version.Rules_Of (No_Supervised_Manoeuvre: X = 1 operated), read by EVC_Sessions.Manoeuvre.Evaluate (the selection starts nothing: no 131, no 'SM request failed'); the DMI does not offer 'Initiate SM' (Table 33 #11: the session byte of EVC_Core.Outputs.Session_Byte is 3 only with a supervising RBC above 2.2); evc_test Scenario_SM_Older_RBC, Scenario_Version_Rules"
+6.6.2.3.2,6,x,,,,,E7,done,"5.4.5.3 k) not applied: EVC_System_Version.Rules_Of (No_Supervised_Manoeuvre: X = 1 operated), read by EVC_Sessions.Manoeuvre.Evaluate (the selection starts nothing: no 131, no 'SM request failed'); the DMI does not offer 'Initiate SM' (Table 33 #11: the session byte of EVC_Core.Outputs.Session_Byte is 3 only with a supervising RBC above 2.2); evc_test Scenario_SM_Older_RBC, Scenario_Version_Rules"
 6.6.2.3.3,6,x,,,,,E7,deferred,E7
 6.6.2.3.4,6,x,,,,,E7,deferred,E7
 6.6.2.3.5,6,x,,,,,E7,deferred,E7
-6.6.2.3.6,6,x,,,,,E7,deferred,E7
-6.6.2.3.7,6,x,,,,,E7,deferred,E7
+6.6.2.3.6,6,x,,,,,E7,done,"S140 without SM: EVC_System_Version.Rules_Of (No_Supervised_Manoeuvre: X = 1 operated), read by EVC_Sessions.Manoeuvre.Evaluate (the selection starts nothing: no 131, no 'SM request failed'); the DMI does not offer 'Initiate SM' (Table 33 #11: the session byte of EVC_Core.Outputs.Session_Byte is 3 only with a supervising RBC above 2.2); evc_test Scenario_SM_Older_RBC, Scenario_Version_Rules"
+6.6.2.3.7,6,x,,,,,E7,done,"5.21 not applied: EVC_System_Version.Rules_Of (No_Supervised_Manoeuvre: X = 1 operated), read by EVC_Sessions.Manoeuvre.Evaluate (the selection starts nothing: no 131, no 'SM request failed'); the DMI does not offer 'Initiate SM' (Table 33 #11: the session byte of EVC_Core.Outputs.Session_Byte is 3 only with a supervising RBC above 2.2); evc_test Scenario_SM_Older_RBC, Scenario_Version_Rules"
 6.6.3.1.1,6,x,,,,,E7,deferred,E7
 6.6.3.1.1.1,6,x,,,,,E7,deferred,E7
 6.6.3.1.2,6,x,,,,,E7,deferred,E7
@@ -1938,11 +1938,11 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.3.3.2 Table-footnote [1],6,x,,,,,E7,deferred,E7
 6.6.3.3.2 Table-footnote [2],6,x,,,,,E7,deferred,E7
 6.6.3.4.1.1,6,x,,,,,E7,deferred,E7
-6.6.3.4.1.2,6,x,,,,,E7,deferred,E7
-6.6.3.4.1.3,6,x,,,,,E7,deferred,E7
+6.6.3.4.1.2,6,x,,,,,E7,done,EVC_System_Version.Session_Acknowledged (no message 38 awaited from an RBC of 1.x: no 159 again, no termination, 3.5.3.7.4 and .4.1 not applied; EVC_Sessions.Take_Version); evc_test Scenario_Version_Rules
+6.6.3.4.1.3,6,x,,,,,E7,done,"in SM the session with an RBC of 1.x terminated right after its 159 (added 3.5.3.7.6), its 156 last in the same cycle: EVC_Sessions.Produce_Session (EVC_System_Version.Below (V, 2, 3)); evc_test Scenario_SM_Older_RBC (2.0: the same predicate)"
 6.6.3.4.1.4,6,x,,,,,E7,deferred,E7
 6.6.3.4.1.5,6,x,,,,,E7,deferred,E7
-6.6.3.4.1.6,6,x,,,,,E7,deferred,E7
+6.6.3.4.1.6,6,x,,,,,E7,done,"3.18.3.10 not applied to an RBC of 1.x: no message 133 (EVC_Sessions.Manoeuvre.SM_By_Radio in Send_Consist, EVC_System_Version.Below); evc_test Scenario_SM_Consist_Info (1.0, 2.2), Scenario_SM_Older_RBC (2.0)"
 6.6.3.4.2,6,x,,,,,E7,deferred,E7
 6.6.3.4.3,6,x,,,,,E7,deferred,E7
 6.6.3.4.3.1,6,x,,,,,E7,deferred,E7
@@ -1968,8 +1968,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.4.1.2,6,x,,,,,E7,deferred,E7
 6.6.4.1.3,6,x,,,,,E7,deferred,E7
 6.6.4.2.1,6,x,,,,,E7,deferred,E7
-6.6.4.2.2,6,x,,,,,E7,deferred,E7
-6.6.4.3.1,6,x,,,,,E7,deferred,E7
+6.6.4.2.2,6,x,,,,,E7,deferred,"added clauses of the AD section (6.6.2.2.4 to .6 by the text's source): a telegram below 2.2 or an RBC of 2.0 or 2.1; this on-board does not enter AD (4.4.16.1.4 deferred, 4.6.3 [80] not implemented), and without AD the text conditions of EVC_Text_Messages (Mode = FS is M_FS) already behave so; with AD: EVC_System_Version.Below (V, 2, 2) on the source of each text"
+6.6.4.3.1,6,x,,,,,E7,done,"6.6.2.3.1, .2, .6, .7 with X = 2: EVC_System_Version.Rules_Of (No_Supervised_Manoeuvre: X = 2 with the supervising RBC of 2.0, 2.1 or 2.2), read by EVC_Sessions.Manoeuvre.Evaluate (the selection starts nothing: no 131, no 'SM request failed'); the DMI does not offer 'Initiate SM' (Table 33 #11: the session byte of EVC_Core.Outputs.Session_Byte is 3 only with a supervising RBC above 2.2); evc_test Scenario_SM_Older_RBC, Scenario_Version_Rules"
 6.6.4.3.2,6,x,,,,,E7,deferred,E7
 6.6.5.1.1,6,x,,,,,E7,deferred,E7
 6.6.5.1.2,6,x,,,,,E7,deferred,E7
@@ -1981,8 +1981,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.5.2.6,6,x,,,,,E7,deferred,E7
 6.6.5.2.7,6,x,,,,,E7,deferred,E7
 6.6.5.3.2,6,x,,,,,E7,deferred,E7
-6.6.5.3.3,6,x,,,,,E7,deferred,E7
-6.6.5.3.4,6,x,,,,,E7,deferred,E7
+6.6.5.3.3,6,x,,,,,E7,done,EVC_System_Version.Session_Acknowledged (no message 38 awaited from an RBC of 2.0: no 159 again, no termination, 3.5.3.7.4 and .4.1 not applied; EVC_Sessions.Take_Version); evc_test Scenario_Version_Rules (below 2.3)
+6.6.5.3.4,6,x,,,,,E7,done,"6.6.3.4.1.3 and .6 for an RBC of 2.0: the session terminated in SM right after its 159 (EVC_Sessions.Produce_Session), no message 133 (EVC_Sessions.Manoeuvre.SM_By_Radio), both by EVC_System_Version.Below (V, 2, 3); evc_test Scenario_SM_Older_RBC"
 6.6.5.3.5,6,x,,,,,E7,deferred,E7
 6.6.5.3.6,6,x,,,,,E7,deferred,E7
 6.6.5.3.7 Table,6,x,,,,,E7,deferred,E7
@@ -1994,8 +1994,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.5.3.7 Table-footnote [3],6,x,,,,,E7,deferred,E7
 6.6.5.3.7 Table-footnote [4],6,x,,,,,E7,deferred,E7
 6.6.5.3.7 Table-footnote [5],6,x,,,,,E7,deferred,E7
-6.6.5.4.2,6,x,,,,,E7,deferred,E7
-6.6.5.4.3,6,x,,,,,E7,deferred,E7
+6.6.5.4.2,6,x,,,,,E7,done,EVC_System_Version.Session_Acknowledged (no message 38 awaited from an RBC of 2.1: no 159 again, no termination, 3.5.3.7.4 and .4.1 not applied; EVC_Sessions.Take_Version); evc_test Scenario_Version_Negotiation
+6.6.5.4.3,6,x,,,,,E7,done,"6.6.3.4.1.3 and .6 for an RBC of 2.1: the session terminated in SM right after its 159 (EVC_Sessions.Produce_Session), no message 133 (EVC_Sessions.Manoeuvre.SM_By_Radio), both by EVC_System_Version.Below (V, 2, 3); evc_test Scenario_SM_Older_RBC (2.0, the same predicate), Scenario_SM_Consist_Info (2.2)"
 6.6.5.4.4,6,x,,,,,E7,deferred,E7
 6.6.5.4.5,6,x,,,,,E7,deferred,E7
 6.6.5.4.6 Table,6,x,,,,,E7,deferred,E7
@@ -2003,8 +2003,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.5.4.6 Table-footnote [2],6,x,,,,,E7,deferred,E7
 6.6.5.4.6 Table-footnote [3],6,x,,,,,E7,deferred,E7
 6.6.5.4.6 Table-footnote [4],6,x,,,,,E7,deferred,E7
-6.6.5.5.2,6,x,,,,,E7,deferred,E7
-6.6.5.5.3,6,x,,,,,E7,deferred,E7
+6.6.5.5.2,6,x,,,,,E7,done,EVC_System_Version.Session_Acknowledged (no message 38 awaited from an RBC of 2.2: no 159 again, no termination, 3.5.3.7.4 and .4.1 not applied; EVC_Sessions.Take_Version); evc_test Scenario_Version_Rules (below 2.3)
+6.6.5.5.3,6,x,,,,,E7,done,"6.6.3.4.1.3 and .6 for an RBC of 2.2: the session terminated in SM right after its 159 (EVC_Sessions.Produce_Session), no message 133 (EVC_Sessions.Manoeuvre.SM_By_Radio), both by EVC_System_Version.Below (V, 2, 3); evc_test Scenario_SM_Older_RBC, Scenario_SM_Consist_Info (2.2: no 133)"
 6.6.5.5.4,6,x,,,,,E7,deferred,E7
 6.6.5.5.5,6,x,,,,,E7,deferred,E7
 6.6.5.5.6 Table,6,x,,,,,E7,deferred,E7

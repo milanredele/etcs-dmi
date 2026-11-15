@@ -93,11 +93,22 @@ is
      ((Mode       => Current_Mode, Now_Ms => Unsigned_64 (Clock_Ms),
        Radio_Hole => EVC_Track_Conditions.Engine_In_Radio_Hole));
 
+   --  6.6.1.1: the rules of chapter 6 of the cycle, by the operated X and
+   --  the version of the supervising RBC
+   function Version_Rules return EVC_System_Version.Rules_T is
+     (EVC_System_Version.Rules_Of
+        (EVC_System_Version.Operated,
+         EVC_Radio.Supervising_Version_Known,
+         (if EVC_Radio.Supervising_Version_Known
+          then EVC_Radio.Info
+                 (EVC_Radio.Session_T (EVC_Radio.Supervising)).Version
+          else 0)));
+
    procedure Evaluate_Radio is
    begin
       --  the sessions of the level transitions (5.10.3)
       EVC_Level_Sessions.Evaluate (Current_Mode, Unsigned_64 (Clock_Ms));
-      EVC_Sessions.Evaluate (Radio_Context);
+      EVC_Sessions.Evaluate (Radio_Context, Version_Rules);
       --  5.4.3.2 A35: the RBC confirmed the reported position
       --  A24, A39: the RBC's answer (41 with the train
       --  unknown, 40) deletes it (EVC_Sessions.Mission, decision 5;

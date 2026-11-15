@@ -1789,4 +1789,88 @@ package body EVC_Test_Manoeuvre is
              & Natural'Image (EVC_Track_Description.TSR_Count));
    end Scenario_SM_Consist_Rejects;
 
+   procedure Scenario_SM_Older_RBC is
+      T      : Unsigned_64;
+      Failed : Natural;
+      V      : ETCS_Message.Value_Array := (others => 0);
+      --  over the cycles of Max_Ms: a 159 on session 2, a 156 on it in
+      --  the cycle of the 159, a 133 on it
+      Saw_159, Same_Cycle_156, Saw_133 : Boolean;
+
+      procedure Watch_Session_2 (Max_Ms : Natural) is
+         Has_159, Has_156 : Boolean;
+      begin
+         Saw_159 := False;
+         Same_Cycle_156 := False;
+         Saw_133 := False;
+         for C in 1 .. Max_Ms / 100 loop
+            Stand_X (100);
+            Has_159 := False;
+            Has_156 := False;
+            for N in 1 .. Radio_Outputs loop
+               if not Radio_Output (N).Request
+                 and then Radio_Output (N).Session = 2
+               then
+                  Has_159 := Has_159 or else Radio_Output (N).Kind = 159;
+                  Has_156 := Has_156 or else Radio_Output (N).Kind = 156;
+                  Saw_133 := Saw_133 or else Radio_Output (N).Kind = 133;
+               end if;
+            end loop;
+            if Has_159 then
+               Saw_159 := True;
+               Same_Cycle_156 := Has_156;
+            end if;
+         end loop;
+      end Watch_Session_2;
+
+      --  In SM, the session 2 with the Accepting RBC of version Ver
+      --  established by its message 32
+      procedure SM_Then_Session_2 (Ver : Unsigned_64) is
+      begin
+         Start_L2_SM;
+         Select_SM;
+         T := Wait_For (MCat.Train_M131, 1_000);
+         Give_Radio_Message (1, SM_Authorisation (T));
+         Stand_X (300);
+         Check (EVC_Core.Mode = M_SM, "SM older RBC: SM entered");
+         EVC_Radio.Set_Peer (2, (NID_C => 123, NID_RBC => 2), 0);
+         EVC_Radio.Set_State (2, EVC_Radio.Initiating);
+         EVC_Radio.Set_Roles (1, 2);
+         V (3) := Now_Stamp;
+         V (7) := Ver;
+         Give_Radio_Message (2, Message_Of (MCat.Track_M32, V));
+         Watch_Session_2 (1_000);
+      end SM_Then_Session_2;
+
+      use type EVC_Radio.Session_State_T;
+   begin
+      Start_L2_SM;
+      EVC_Radio.Set_Version (1, 16#21#);
+      Stand_X (300);
+      Failed := SS_Seen (Natural (EVC_DMI_Port.SS_SM_Request_Failed));
+      Select_SM;
+      Check (Wait_For (MCat.Train_M131, 2_000) = 0
+             and then not EVC_Sessions.SM_Waiting
+             and then SS_Seen (Natural (EVC_DMI_Port.SS_SM_Request_Failed))
+                      = Failed,
+             "SM older RBC: an RBC of 2.1 supervising, Supervised Manoeuvre "
+             & "does not apply: 'Initiate SM' sends no 131 and shows no 'SM "
+             & "request failed' (6.6.4.3.1, 6.6.2.3.7)");
+
+      SM_Then_Session_2 (16#20#);
+      Check (Saw_159 and then Same_Cycle_156 and then not Saw_133
+             and then EVC_Radio.Info (2).State /= EVC_Radio.Established,
+             "SM older RBC: in SM the session with an RBC of 2.0: the 159 "
+             & "sent, the session terminated in the same cycle (6.6.5.3.4, "
+             & "6.6.3.4.1.3), no 133 to it (6.6.3.4.1.6); "
+             & Boolean'Image (Saw_159) & Boolean'Image (Same_Cycle_156)
+             & Boolean'Image (Saw_133));
+
+      SM_Then_Session_2 (16#30#);
+      Check (Saw_159 and then not Same_Cycle_156
+             and then EVC_Radio.Info (2).State = EVC_Radio.Established,
+             "SM older RBC: in SM the session with an RBC of 3.0 kept after "
+             & "its 159");
+   end Scenario_SM_Older_RBC;
+
 end EVC_Test_Manoeuvre;

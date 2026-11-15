@@ -185,9 +185,11 @@ is
 
    --  5. The cycle of the half (after the levels and the mission): the
    --  sessions, the link supervision, the reports to send, the
-   --  conditions of 4.6.3
+   --  conditions of 4.6.3. Rules: those of chapter 6 of the cycle
+   --  (EVC_System_Version.Rules_Of), read by the Supervised Manoeuvre
    --  @req 3.5.3.4, 3.5.3.4 e), 3.5.3.7.4.1, 3.15.1.3.8, 3.17.2.8
-   procedure Evaluate (Ctx : EVC_Radio.Context_T)
+   procedure Evaluate (Ctx   : EVC_Radio.Context_T;
+                       Rules : EVC_System_Version.Rules_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Position.State,
                                 EVC_System_Version.State),
                      Input  => (EVC_National_Values.State,

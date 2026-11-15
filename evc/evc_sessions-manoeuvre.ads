@@ -32,6 +32,7 @@ with EVC_Mission;
 with EVC_Odometry;
 with EVC_Position;
 with EVC_Received;
+with EVC_System_Version;
 with EVC_Train_Data;
 
 --  @req 5.21.2.2 S0, 5.21.2.2 A045, 5.21.2.2 S050, 5.21.4.1
@@ -46,10 +47,15 @@ is
    --  S0, E015: the driver's selection of the cycle starts the request
    --  (Order_Stored: an RBC transition order is stored); S050, 5.21.4.1:
    --  the repetitions and their end. Status: the DMI system status entry
-   --  to show (0 none)
+   --  to show (0 none). Rules.No_Supervised_Manoeuvre (X = 1, or the
+   --  supervising RBC of 2.0 .. 2.2): 5.21 does not apply, the selection
+   --  starts nothing (the DMI does not offer it then: the session byte
+   --  of MSG_ONBOARD is 3 only with a supervising RBC above 2.2)
    --  @req 4.4.21.1.3
+   --  @req 6.6.2.3.1, 6.6.2.3.2, 6.6.2.3.6, 6.6.2.3.7, 6.6.4.3.1
    procedure Evaluate (Ctx          : EVC_Radio.Context_T;
                        Order_Stored : Boolean;
+                       Rules        : EVC_System_Version.Rules_T;
                        Status       : out Natural)
      with Global => (In_Out => State,
                      Input  => (EVC_Radio.State, EVC_Levels.State,

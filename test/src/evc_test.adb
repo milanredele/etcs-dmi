@@ -410,6 +410,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;
+   EVC_Test_Manoeuvre.Scenario_SM_Older_RBC;
    Scenario_Session_Error_Report;
    Scenario_Message_Failed_Check;
    Scenario_Session_JRU_Received;
@@ -455,6 +456,7 @@ begin
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;
    Scenario_Version_Country_Set;
+   Scenario_Version_Rules;
    EVC_Test_VBC.Scenario_VBC_Store;
    EVC_Test_VBC.Scenario_VBC_Driver;
    EVC_Test_VBC.Scenario_VBC_Rooms;

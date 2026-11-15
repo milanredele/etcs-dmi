@@ -395,4 +395,72 @@ package body EVC_Test_Version is
              & "its X operated (3.17.2.6)");
    end Scenario_Version_Country_Set;
 
+   --  The rules of the cycle as EVC_Core.Modes computes them
+   function Rules return SV.Rules_T is
+     (SV.Rules_Of (SV.Operated, R.Supervising_Version_Known,
+                   (if R.Supervising_Version_Known
+                    then R.Info (R.Session_T (R.Supervising)).Version
+                    else 0)));
+
+   procedure Scenario_Version_Rules is
+      use type SV.Rules_T;
+   begin
+      Check (SV.Below (16#22#, 2, 3) and then not SV.Below (16#23#, 2, 3)
+             and then SV.Below (16#11#, 2, 2)
+             and then SV.Below (16#21#, 2, 2)
+             and then not SV.Below (16#22#, 2, 2)
+             and then not SV.Below (16#30#, 2, 3),
+             "version rules: 2.2 and 1.1 below 2.3, 2.1 below 2.2, 2.2 "
+             & "not, 3.0 not below 2.3 (7.5.1.79)");
+
+      --  X = 1 by a group's order in level 1, no RBC: every rule of 6.6.2
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Add_Version_Group (1, 50, 16#30#, True, 16#11#);
+      Run_X (10_000);
+      Check (SV.Operated = 1 and then not R.Supervising_Version_Known
+             and then Rules = (others => True),
+             "version rules: 1.1 ordered by a group (3.17.2.5), every "
+             & "exception of 6.6.2 applies (6.6.2.1.1 to 6.6.2.3.7)");
+      EVC_Core.Initialise;
+
+      --  X = 2 with an RBC of 2.1 supervising: 6.6.4.1.1 to 6.6.4.3.1
+      Open_With (16#21#);
+      Check (SV.Operated = 2
+             and then Rules = (Engine_Front | TSR_Estimated
+                               | ASP_Lower_Categories
+                               | No_Supervised_Manoeuvre => True,
+                               others => False),
+             "version rules: an RBC of 2.1 supervising, X = 2: the engine's "
+             & "front, the TSR at its estimated location, the ASP of the "
+             & "lower categories, no Supervised Manoeuvre (6.6.4.1.1 to "
+             & "6.6.4.3.1)");
+
+      --  X = 2 with an RBC of 2.3: only the two rules of X = 2 itself
+      Open_With (16#23#);
+      Check (SV.Operated = 2
+             and then Rules = (TSR_Estimated | ASP_Lower_Categories => True,
+                               others => False),
+             "version rules: an RBC of 2.3 supervising: the TSR and ASP "
+             & "rules of X = 2 alone (6.6.4.1.2, 6.6.4.1.3; 6.6.4.1.1, "
+             & ".2.1, .3.1 only for 2.0 .. 2.2)");
+
+      --  3.0 everywhere: none
+      Open_With (16#30#);
+      Check (SV.Operated = 3 and then Rules = (others => False),
+             "version rules: an RBC of 3.0 supervising, X = 3: no rule of "
+             & "chapter 6");
+
+      --  6.6.3.4.1.2: an RBC of 1.1, no acknowledgement of the 159
+      --  awaited, the session kept
+      Open_With (16#11#);
+      Stand_X (32_000);
+      Check (R.Info (1).State = R.Established and then Output_Of (156) = 0
+             and then SV.Operated = 1,
+             "version rules: no acknowledgement awaited from an RBC of 1.1, "
+             & "the session kept (6.6.3.4.1.2: 3.5.3.7.4, .4.1 not applied)");
+      EVC_Core.Initialise;
+   end Scenario_Version_Rules;
+
 end EVC_Test_Version;
