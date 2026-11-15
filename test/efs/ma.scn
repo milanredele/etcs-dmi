@@ -4,7 +4,7 @@
 frame MA
 sequence Infill MA
 case Infill MA received only when FS or LS Mode and Linking information available
-clause E3 todo 3.8.4.6.2 ; efs 3.8.4.6.2
+clause E3 done 3.8.4.6.2 ; efs 3.8.4.6.2
 clause - absent 3.8.4.6.3 ; efs 3.8.4.6.3
 clause E3 todo 3.8.4.6.4 ; efs 3.8.4.6.4
 step Setup

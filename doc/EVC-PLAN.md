@@ -27375,3 +27375,23 @@ EVC_Movement_Authority before 716 steps, 0 of 6 wide, the largest 5 VCs
 (the last round's figures, same code); after 716 steps, 0 of 6 (5 VCs);
 EVC_Stored_Information 2216 steps, 0 of 6 (15 VCs). The runner: no
 sequence moved (3110600_01 still passes).
+
+**B4645, the modes of an infill MA.** The claim at the clause: 3.8.4.6.2
+holds for the MA, and 4.8.4.1.1 (the row was n/a) holds for every infill
+information: only the columns FS, AD and LS of the table of 4.8.4 apply
+(the row "Infill Location Reference" reads A in FS, AD, LS only). Built
+in EVC_Acceptance.Third_Filter: information marked infill (the packets
+after a packet 136, Context_T.Infill) rejected in any other mode, so in
+SR, OS, SB ... the infill MA, its V_MAIN and the other infill packets
+are not taken at reception (a set of the transition buffer does not
+keep the mark: B4644). 3.8.4.6.5 a) was built (Accept_MA starts only
+the appended sections' timers, at the message's M.Start_Ms, the passage
+over the infill group's first balise) and is now checked. Scenario:
+evc_test Scenario_Infill_Modes: in SR (Set_Mode_For_Test) the infill
+TSR and MA not taken (before: the TSR taken, the check failed); in FS
+both taken, the infill section's timer started within 0.2 s of the
+passage over the group 15, the cut End Section's running on from the
+group 10. Rows 3.8.4.6.2, 3.8.4.6.5 a), 4.8.4.1.1 done. Proof:
+EVC_Acceptance is a spec of expression functions (no statistics of its
+own); EVC_Stored_Information, its main caller, 2579 steps, 0 of 6 wide
+(15 VCs). The runner: no sequence moved.

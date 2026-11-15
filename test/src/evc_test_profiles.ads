@@ -69,4 +69,12 @@ package EVC_Test_Profiles is
       --  keeps its section timer
       procedure Scenario_Infill_MA_Refused;
 
+      --  3.8.4.6.2, 4.8.4.1.1: infill information rejected outside FS, AD
+      --  and LS; 3.8.4.6.5 a): the infill sections' timers from the
+      --  passage over the infill group
+      procedure Scenario_Infill_Modes;
+
+      --  3.12.4.3.1 a) to c): the mode profiles of an infill MA
+      procedure Scenario_Infill_Mode_Profiles;
+
 end EVC_Test_Profiles;

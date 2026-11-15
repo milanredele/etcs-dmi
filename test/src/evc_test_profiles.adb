@@ -3039,5 +3039,178 @@ package body EVC_Test_Profiles is
              & MAu.MA.Sections (2).Timer.Given'Image & Finish (5)'Image);
    end Scenario_Infill_MA_Refused;
 
+   --  3.8.4.6.2, 4.8.4.1.1: the group 10 at 100 m links the infill group
+   --  15 at 800 m and the next main signal's group 20 at 1000 m; the group
+   --  15 carries a packet 136 naming 20, a TSR and an MA of two sections
+   --  of 300 m, the first with a section timer. Without an MA from the
+   --  group 10 the train is not in FS, AD or LS: neither the TSR nor the
+   --  MA is taken. With an MA to 1000 m (FS) both are, and the timer of
+   --  the infill section starts at the passage over the group 15, the
+   --  cut End Section's runs on from the group 10 (3.8.4.6.5 a))
+   procedure Scenario_Infill_Modes is
+      Infill : T12.Packet_T := MA_Of ((300, 300));
+      Main   : T12.Packet_T := MA_Of ((400, 500));
+      Passed : Unsigned_64 := 0;
+
+      function Has_TSR (Id : Natural) return Boolean is
+        (for some I in 1 .. TD.TSR.Count => TD.TSR.List (I).Id = Id);
+
+      procedure Lay (With_MA : Boolean) is
+      begin
+         Start_X;
+         if not With_MA then
+            EVC_Core.Set_Mode_For_Test (M_SR, L1);
+         end if;
+         Add_Group (With_Links (Group (10, 100),
+                                Link_To ((700, 200), (15, 20),
+                                         Locacc => 12)));
+         Add_Group (Group (15, 800));
+         Add_Group (Group (20, 1000));
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         if With_MA then
+            Carry (1, 1, Main);
+         end if;
+         Carry_136 (2, 0, 20);
+         Carry (2, 0, TSR_Packet (7, 100, 20, 40));
+         Carry (2, 0, Infill);
+         Run_X (79_000);
+         while Train_Cm < 80_500 loop
+            if Passed = 0 and then Train_Cm >= 80_000 then
+               Passed := Unsigned_64 (EVC_Core.Time_Ms);
+            end if;
+            Step_X (100);
+         end loop;
+         Run_X (85_000);
+      end Lay;
+   begin
+      Infill.L_SECTION_List (1).Q_SECTIONTIMER := 1;
+      Infill.L_SECTION_List (1).Has_T_SECTIONTIMER := True;
+      Infill.L_SECTION_List (1).T_SECTIONTIMER := 300;
+      Infill.L_SECTION_List (1).D_SECTIONTIMERSTOPLOC := 300;
+      Main.Q_SECTIONTIMER := 1;
+      Main.Has_T_SECTIONTIMER := True;
+      Main.T_SECTIONTIMER := 300;
+      Main.D_SECTIONTIMERSTOPLOC := 500;
+      Lay (With_MA => False);
+      Check (EVC_Core.Mode not in M_FS | M_AD | M_LS
+             and then not Has_TSR (7) and then not MAu.MA.Present,
+             "infill modes: outside FS, AD and LS the infill information "
+             & "rejected (3.8.4.6.2, 4.8.4.1.1), in "
+             & EVC_Core.Mode'Image & ", the TSR " & Has_TSR (7)'Image);
+      Passed := 0;
+      Lay (With_MA => True);
+      Check (EVC_Core.Mode = M_FS and then Has_TSR (7)
+             and then MAu.MA.Count = 4,
+             "infill modes: in FS the infill TSR and MA taken, in "
+             & EVC_Core.Mode'Image & Has_TSR (7)'Image
+             & MAu.MA.Count'Image);
+      Check (MAu.MA.Count = 4
+             and then MAu.MA.Sections (3).Timer.Running
+             and then MAu.MA.Sections (3).Timer.Started + 200 >= Passed
+             and then MAu.MA.Sections (3).Timer.Started <= Passed + 200
+             and then MAu.MA.Sections (2).Timer.Running
+             and then MAu.MA.Sections (2).Timer.Started + 1_000 < Passed,
+             "infill modes: the infill section's timer from the passage "
+             & "over the infill group at" & Passed'Image & " ms, the kept "
+             & "one running on (3.8.4.6.5 a)), got"
+             & MAu.MA.Sections (3).Timer.Started'Image
+             & MAu.MA.Sections (2).Timer.Started'Image);
+   end Scenario_Infill_Modes;
+
+   --  3.12.4.3.1: the group 10 at 100 m gives an MA to 1000 m with a mode
+   --  profile from 900 m (to 1200 m) and links the infill group 15 at
+   --  800 m and the next main signal's group 20 at 1000 m; the group 15
+   --  carries a packet 136 naming 20 and an MA with an OS profile from
+   --  1100 m. a) an OS profile is kept in rear of the reference, ending
+   --  at 1000 m, the infill one taken after it; b) an SH profile from
+   --  1000 m is deleted with the infill one taken; c) an SH profile from
+   --  900 m is kept whole and the infill MA's profile ignored
+   procedure Scenario_Infill_Mode_Profiles is
+      function Count (Mode : Natural) return Natural is
+         N : Natural := 0;
+      begin
+         for I in 1 .. MAu.Max_Mode_Profiles loop
+            if MAu.Mode_Profiles (I).Used
+              and then Natural (MAu.Mode_Profiles (I).Mode) = Mode
+            then
+               N := N + 1;
+            end if;
+         end loop;
+         return N;
+      end Count;
+
+      --  the first used profile of this mode: its start and finish (cm),
+      --  -1 when none or open
+      procedure Ends (Mode : Natural; From, To : out Integer_64) is
+      begin
+         From := -1;
+         To := -1;
+         for I in 1 .. MAu.Max_Mode_Profiles loop
+            if MAu.Mode_Profiles (I).Used
+              and then Natural (MAu.Mode_Profiles (I).Mode) = Mode
+            then
+               From := Est (MAu.Mode_Profiles (I).Start);
+               if not MAu.Mode_Profiles (I).Open then
+                  To := Est (MAu.Mode_Profiles (I).Finish);
+               end if;
+               return;
+            end if;
+         end loop;
+      end Ends;
+
+      function Profile (D, Mode, L : Natural) return T80.Packet_T is
+         P : T80.Packet_T;
+      begin
+         P.Q_DIR := 1;
+         P.Q_SCALE := 1;
+         P.D_MAMODE := ETCS_Variables.D_MAMODE_T (D);
+         P.M_MAMODE := ETCS_Variables.M_MAMODE_T (Mode);
+         P.V_MAMODE := 127;
+         P.L_MAMODE := ETCS_Variables.L_MAMODE_T (L);
+         P.L_ACKMAMODE := 20;
+         P.Q_MAMODE := 0;
+         return P;
+      end Profile;
+
+      procedure Lay (Mode, D : Natural) is
+      begin
+         Start_X;
+         Add_Group (With_Links (Group (10, 100),
+                                Link_To ((700, 200), (15, 20),
+                                         Locacc => 12)));
+         Add_Group (Group (15, 800));
+         Add_Group (Group (20, 1000));
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 1, MA_Of ((400, 500)));
+         Carry (1, 1, Profile (D, Mode, 1100 - D));
+         Carry_136 (2, 0, 20);
+         Carry (2, 0, MA_Of ((300, 300)));
+         Carry (2, 0, Profile (100, 0, 100));
+         Run_X (85_000);
+      end Lay;
+
+      From, To : Integer_64;
+   begin
+      Lay (0, 800);
+      Ends (0, From, To);
+      Check (Count (0) = 2 and then From = 90_000 and then To = 100_000,
+             "infill mode profiles: an OS profile cut at the reference, "
+             & "the infill one after it (3.12.4.3.1 a)), got"
+             & Count (0)'Image & From'Image & To'Image);
+      Lay (1, 900);
+      Check (Count (1) = 0 and then Count (0) = 1,
+             "infill mode profiles: an SH profile from the reference "
+             & "deleted (3.12.4.3.1 b)), got" & Count (1)'Image
+             & Count (0)'Image);
+      Lay (1, 800);
+      Ends (1, From, To);
+      Check (Count (1) = 1 and then From = 90_000 and then Count (0) = 0,
+             "infill mode profiles: an SH profile from 900 m kept, the "
+             & "infill MA's profile ignored (3.12.4.3.1 c)), got"
+             & Count (1)'Image & From'Image & Count (0)'Image);
+   end Scenario_Infill_Mode_Profiles;
+
 
 end EVC_Test_Profiles;
