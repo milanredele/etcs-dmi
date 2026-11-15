@@ -26715,3 +26715,70 @@ envelope by configuration (M: `EVC_Config`, `EVC_System_Version`, the
 | e7/old-rbc-reports | 6.6.2.3.3 to .5, 6.6.4.3.2, 6.6.3.4.1.5, .2, .3, .3.1, 6.6.5.3.5, .4.4, .5.4 | `EVC_Sessions.Mission`, `EVC_Sessions.Reports` | M | air-gap's encoder by the RBC's version | 0 counted (6060200_07, 6060400_08 wait for the runner's timer) |
 | e7/session-x1 | 6.6.3.4.1.1, 6.6.5.3.2 | `EVC_Sessions.Send_159`, `EVC_Config` (the number) | M | air-gap's packet 3 | 7 (Se18f3f0a) |
 | runner | B4563; the envelope block if decided | `S076_Run` | S | the decision | 20 sequences, 15 steps |
+
+### E7 integration after the seventy-sixth round, the first of E7: the three inventories, the decisions, the packages of the next round (2026-11-15)
+
+Merged: e7/air-gap, e7/infill, e7/behaviour, each a subsection above and
+nothing else but three backlog lines (B4563: the runner judges the
+version shown on the DMI only when it begins with 3; B4564: the matrix
+has no row for 3.6.1.1 to 3.6.1.3.4; B4583: 24 rows are deferred with a
+note that names a phase now closed). No code changed; the checks of the
+comments, the backlog and the matrix are green, the whole check where a
+backlog line was added. 20.4 USD for the three, no agent over its bound;
+one brief premise wrong (packet 3 in the session established report is
+the on-board's telephone numbers, not the national values).
+
+**The phase by its numbers.** Chapter 6: 130 rows; an on-board of 3.0
+reads seven versions, of which 1.0 and 1.1 are refused today and 2.x
+read in the layout of 4.0.0; 18 track to train layouts, 4 train to track
+and 5 messages are new, 20 received packets have a rule, and the rules
+hang on four conditions (the operated X, the supervising RBC's Y, the
+version of the session a message goes to, the version of a text's
+source). In the corpus 176 blocked sequences and 28 failed ones wait for
+the coding, 7 for a behaviour, 20 are written for an on-board whose
+highest version is 2.1 or 2.2. Infill: by balise group 14 rows and 9
+failed sequences (12 more reach a packet 136), one round; by radio 31
+rows, 111 failed sequences and 921 steps, two rounds; by Euroloop 15
+rows and 72 blocked sequences, two rounds with a new port and a loop
+telegram parser.
+
+**Decisions of the coordinator** (each an inventory's recommendation;
+the review of the round that builds on one re-derives it). (1) Where the
+translation sits: the old layouts are entries of `etcs_language.toml`
+with generated decoders and encoders, checked against chapter 6 as
+chapter 7 is; the value rules and the merges of packets are a written
+unit, `EVC_Air_Gap`, that decodes by the version and returns the record
+of 4.0.0 at the 19 sites. (2) The highest version stays 3.0, a constant;
+the 20 sequences written for an on-board of 2.1 or 2.2 are blocked by
+the runner as another envelope, their messages not judged. (3)
+M_LEVELTEXTDISPLAY 5 in the packets 73 and 74 of a telegram of X = 2 is
+translated like in 72 and 76 (6.5.2.3.10.1 gives every such telegram the
+old coding; 6.6.5.1.2). (4) The version reaches the units as one record
+of Booleans named by clause, computed once a cycle in
+`EVC_System_Version` and passed by the cycle's steps; a message's
+clauses read the version of its session where the message is built. (5)
+Infill data referred to the next main signal's group are placed at
+reception by the linking distance and relocated at its passage. (6) An
+order to contact an RIU while both sessions are in use is ignored
+(3.9.3.6.1).
+
+**For the user**: Euroloop (built in two rounds, or 3.9.1.3 built as
+"not equipped with the infill transmission media": the 15 rows n/a, the
+72 sequences blocked as not equipped) and radio infill (two rounds;
+3.9.3.3 b) and 3.9.3.4 read with the GSM-R radio as the medium make it
+due on this on-board). The coordinator's recommendation: radio infill
+built, Euroloop not equipped. Neither is needed before the third round
+of the phase.
+
+**The next round (77), four packages.** e7/air-gap-layouts (the toml,
+SCHEMA.md, the generator and the catalogue check for the old layouts;
+the foundation of the coding); e7/version-rows (the record of decision
+4, the predicates of the RBC's Y, the rows that need nothing else, then
+the clauses of an older RBC in Supervised Manoeuvre); e7/infill-origin
+(infill by balise group: the origin ahead and the MA by infill, A1 and
+A2 of the inventory); e7/deferred-rows (B4583: the 24 deferred rows that
+name a closed phase re-read against the code, each set done, built if
+small, or deferred with a reason that holds; B4564; the tool lists such
+rows). The runner's items (B4563, the envelope's block, the triage notes
+the inventory found wrong, B4523, B4524) go with the check per version
+in the round after.
