@@ -26161,3 +26161,197 @@ the ports, the sessions and the runner, its size and what it unblocks:
 the numbers for the user's decision on Euroloop and radio infill. Each
 inventory is a subsection of this section with its tables; the work
 packages of the following rounds are written from them.
+
+### The air gap data of system versions 1 and 2: the tables of 6.6.3 and 6.6.5, the language tools, the corpus (e7/air-gap) (2026-11-15)
+
+**The versions.** 6.4.1: a trackside operates X = 1 (Y 0, 1), 2 (Y 0
+.. 3) or 3 (Y 0). 6.4.2.1: the highest version of an on-board is 2.1,
+2.2 or 3.0; ours is 3.0, so its envelope is 1.0 .. 3.0, seven codes
+(`EVC_System_Version.Envelope` 48, 35, 34, 33, 32, 17, 16; M_VERSION
+of the toml has the same seven as special values). 3.17.3.5 c): a
+telegram of a supported X is interpreted "see chapter 6"; a) X = 0
+ignored; d), e) X above 3: trip in levels 1, 2. Today
+`ETCS_Telegram.Supported` is 32 .. 35 | 48 .. 63: a telegram of 1.0 or
+1.1 is refused `Unsupported_Version` and `EVC_Core.Inputs` takes it as
+a compliant balise whose content is left out; the 2.x telegrams are
+read in the 4.0 layout. Layouts differ by X and within X = 2 by Y (the
+tables below); 3.17.2.1.1 (the highest Y operated) is behaviour, the
+layout of received data follows the Y the telegram or the RBC declares
+(6.5.2.3.1.1: "telegrams marked with 2.0 or 2.1").
+
+**What differs.** From 6.5.1.5 (X = 1) and 6.5.2.3 (X = 2) against the
+toml, the field lists compared by a script over the markdown tables
+(names, widths). Widths: of the variables 6.5.1.5.26 .. .35.2
+replaces, only M_MODE (4 bits, 4.0: 5) and M_POSITION (20, 4.0: 24)
+differ; M_AXLELOAD (7), M_TRACTION (8), M_TRACKCONDBC (4) and Q_TRACKDEL
+(1) are not in the 4.0 language; the others keep their width and
+change their values (M_LEVELTEXTDISPLAY 4 level 3 and 5 no level,
+M_LEVELTR 4, M_ERROR, M_MODE, Q_EMERGENCYSTOP, NC_TRAIN, NID_OPERATIONAL
+...). Packet lists (Table 7.4.1.1): X = 1 has no 0, 13, 31, 32, 40, 52,
+64, 69, 73, 74, 88, 143, 180, 181 and adds 72, 200, 203, 206, 207, 239;
+2.0/2.1 have 72, 76 for 73, 74 and no 31, 32; 2.2 no 31, 32; 2.3 adds
+245. Train to track (7.4.1.2): X = 1 sends 3 for 2 and no 5, 10, 12;
+2.0 no 10, 12, 2 replaced by 3; 2.1 no 10, 12.
+
+Received, 6.6.3.2.3 (X = 1; the X = 2 rules 6.6.5.2.1 .. .7):
+
+| pkt | X = 1 (6.6.3.2.3) | X = 2 (6.6.5.2) | the rule |
+|---|---|---|---|
+| 3 | T [1a][1b][2] | U | no Q_NVLOCACC, V_NVLIMSUPERV, braking NVs: defaults / kept |
+| 27 | T [3] | U | NC_DIFF to Q_DIFF, NC_CDDIFF, NC_DIFF; {1} by the train's SSPs |
+| 39 | T [13] | U | M_TRACTION (8) to M_VOLTAGE, NID_CTRACTION; ignored with 239 |
+| 41, 46 | T [21] | T 6.6.5.2.1 | M_LEVELTR 4 to 3 |
+| 44 | U [20] | U | NID_XUSER 13, 39 to 102 with NID_NTC 28, 11 (no NID_NTC field) |
+| 45 | T [23] | T .2.5-.2.7 | no Q_NETWORKTYPE: by NID_MN 901999, the level table, the stored network (X=1); by packet 245 or 2 (X=2) |
+| 51 | T [4][5] | U | M_AXLELOAD (7) to M_AXLELOADCAT; D_TRACKINIT 0 |
+| 68 | U [8][9] | U | M_TRACKCOND 1, 2 to 0 without 206; ignored with 206 |
+| 70 | R [11][12] | T 6.6.5.2.2 | X=1 M_AXLELOAD, M_TRACTION: rejected but Q_TRACKINIT 1 / traction; X=2 M_AXLELOADCAT to the bitset of [18] |
+| 72 | T [6][22] | T .2.3 (2.0, 2.1) | becomes 73; M_LEVELTEXTDISPLAY [22]; X=1 lacks Q_TEXTREPORT, Q_CONFTEXTDISPLAY, NID_TEXTMESSAGE, NID_C, NID_RBC |
+| 76 | ignored (6.6.3.1.1.1) | T .2.4 (2.0, 2.1) | becomes 74, [22] |
+| 79 | U [14] | U | M_POSITION 20 bits; 1048575 to 16777215 |
+| 80 | T [7] | U | no Q_MAMODE: set 1 |
+| 140 | T [10] | U | NID_OPERATIONAL: the F digits shifted right |
+| 200 | T [15] | - | VBC marker with header: becomes packet 0 |
+| 203 | T [16] | - | braking NVs appended to the packet 3 of the message |
+| 206 | T [17] | - | becomes 68 (M_TRACKCONDBC) |
+| 207 | T [18] | - | becomes 70, M_AXLELOADCAT to M_LINEAXLELOADCAT |
+| 239 | T [19] | - | becomes 39 |
+| 245 | - | T .2.5, .2.6 (2.3) | Q_NETWORKTYPE: 0 becomes 45, else merged into 45 |
+
+The other packets of 6.6.3.2.3 are U (34 of its 49 rows). Messages
+received (6.6.3.3, X = 1 only; 6.6.5 has no such table): 15 and 34
+without D_REF, set 0 [1]; 40, 41 NID_LRBG set unknown [2]; 4, 5, 7, 38
+do not apply (6.5.1.6.6.6 .. .9). Transmitted, the layouts (who sends
+what when, 6.6.3.4.1 .. .3.1, 6.6.5.3.2 .. .5, 6.6.5.5.4, is
+e7/behaviour's):
+
+| packet / message | X = 1 | 2.0 | 2.1 | 2.2 | 2.3 |
+|---|---|---|---|---|---|
+| P0, P1 | M_MODE 4 bits [1a], M_LEVEL [1b], V_TRAIN [1c] | M_MODE 4 bits, 16 to 0; [1b][1c] | as 2.0 | M_MODE 5, [1a][1b] | M_LEVEL only |
+| P2 / P3 | P3 telephone numbers [6] | P3 [2] | U | U | U |
+| P4 | M_ERROR 6 to 7; 7 .. 10 deleted | 9, 10 deleted | same | U | U |
+| P11 (in 129) | X = 1 layout [3]: NC_TRAIN bitset, M_AXLELOAD | U | U | U | U |
+| 132 | Q_TRACKDEL for Q_MARQSTREASON [4] | U | U | U | U |
+| 147 | Q_EMERGENCYSTOP [5] | U | U | U | U |
+| 150 | no Q_DESK [8] | same | same | same | U |
+| 157 | packets 10, 11 deleted [7] | same | same | 10 deleted | U |
+| 159 | packet 3 (6.5.1.6.6.5) | same | U | U | U |
+| 131, 133, 158 | NR (not sent) | 131, 133 NR | same | same | U |
+
+Matrix (`grep -c '^6.6.3.2' doc/TRACE-SUBSET-026.csv` and alike), all
+E7 deferred: 6.6.3.1 3, 6.6.3.2 26 (6.6.3.2.2, the table, 24
+footnotes), 6.6.3.3 3, 6.6.3.4 27 (8 behaviour 6.6.3.4.1.1 .. .3.1,
+19 the table and footnotes); 6.6.5.1 2, 6.6.5.2 7, 6.6.5.3 14, .4 9,
+.5 10, .6 5 (of these 10 behaviour: .3.2 .. .3.5, .4.2 .. .4.4, .5.2
+.. .5.4). Mine: 51 of 59 and 37 of 47. 6.5 has no row (trackside).
+
+**The language tools.** `etcs_language.toml` has one layout per packet
+(57 track to train, 10 train to track) and 43 messages; SCHEMA.md has
+no version key; `gen_language.py` (`--check`, `--stats`) emits one unit
+per packet (`ETCS_Track_Packets.Pn`, `ETCS_Train_Packets.Pn`: Decode,
+Encode, Valid). `ETCS_Telegram.Parse` and `ETCS_Message.Parse` (both
+written) take no version; an unknown NID_PACKET is counted and skipped
+(`T.Unknown`). The version of a telegram is in its header; that of a
+session in `EVC_Radio` (`Version`, `Version_Known`). The 4.0 packets
+are decoded by their consumers: 58 calls of `Pn.Decode` in 9 units, of
+the translated packets 19 in 6 (`EVC_Stored_Information` 12,
+`EVC_Position` 2, `EVC_Text_Messages` 2, `EVC_Procedures`,
+`EVC_Sessions.Network`, `EVC_Mission`). The messages to the RBC are
+written by hand (`EVC_Radio.Put_Request`, `EVC_Sessions`, `.Reports`,
+`.Mission`, `.Manoeuvre`, `EVC_Radio_Authority`) on the generated
+packet encoders. Missing: (1) a decoder per old layout and the packet
+list per version (the sender check, packet 76 of X = 1 ignored); (2)
+the version passed from the header or the session to the parser; (3)
+the value rules, several needing on-board state ([3] {1} the train's
+cant deficiency, [23] the level table and the stored network) or the
+whole message (3 + 203, 39 / 239, 68 / 206, 70 / 207, 45 / 245); (4)
+the translation at the release of the transition buffer (6.6.3.2.2:
+the buffer keeps the bits and their version); (5) encoders per version
+for P0, P1, P3, P4, P11 and 132, 147, 150, 157, 159. B010 and B703
+are two instances of (1) and (3).
+
+**Design question 1: where the translation sits.** (a) All in the
+toml (a `versions` key per packet and variable; the generator emits a
+decoder per layout and its translation into the 4.0 record): the
+consumers see one language; but [3] {1}, [23] and the message level
+merges are on-board state the generator cannot express, so it would
+grow a rule language. (b) A written unit rewriting an old telegram into
+a 4.0 bit image before `Parse`: consumers and generated code untouched;
+but each old layout is decoded by written bit code (27 layouts),
+the merged packets re-encoded, the JRU keeps the original bits, and
+the proof of that unit is all hand work. (c) Mixed: old layouts as
+toml entries (generated decoders and encoders, compared with chapter 6
+by `check_catalogue.py` as chapter 7 is today), the value rules and
+merges in one written unit (`EVC_Air_Gap`, new) that decodes by the
+version and returns the 4.0 record, called at the 19 sites. Proof:
+the packet units hold 801 of the 14525 checks (the main checkout's
+`obj/evc/gnatprove/gnatprove.out` of 2026-11-14: P3 77, P27 30, P51 28,
+P73 24, P70 22, P80 20, P79 20, train P11 20, P0 18); a second layout
+of similar size costs about as much, so (a) or (c) add some 300 checks
+for the 22 packet layouts, an estimate by analogy, not a measure; the
+checks of the written rules and whether a check gets wide cannot be told before
+it is written. Flash (`ports/tms570` is the coordinator's): 18 track
+decoders (X = 1 15, X = 2 3: 45, 70, 245; 72 and 76 only renumber), 4
+train encoders (P0 / P1 with M_MODE 4 bits, one for X = 1, 2.0, 2.1;
+P3; P11 of X = 1), 5 messages (15, 34 decoded; 132, 150, 159 encoded).
+Tests: `evc_s076_check` would read each telegram and message by the
+version in force (it has `Version_At` already) against that version's
+catalogue; `evc_test` round trips per old layout. Recommendation (c).
+
+**Design question 2: the envelope of the SV21 and SV22 forms.** Their
+on-board's highest version is 2.1 or 2.2 (6.4.2.2; the check's
+`Envelope_2`). With an RBC of 2.2 ours (3.0) sends M_MODE in 5 bits
+(6.6.5.5.6 [1]), the SV22 form 4 (6.5.2.3.3: an RBC of 2.2 "in
+communication with an on-board equipment whose highest supported
+system version number X.Y is only 2.1 or 2.2"). Keep 3.0 and judge
+those messages not judged (71 in the check), or make the highest
+version a configuration (6.4.2.1 allows it; behaviour too).
+Recommendation: keep 3.0.
+
+**Two readings: M_LEVELTEXTDISPLAY 5 in packets 73, 74 of 2.2 / 2.3.**
+6.5.2.3.10.1 gives every telegram of 2.0 .. 2.3 the old coding ("Clauses
+6.5.1.5.27.4 & 5 shall apply"); 6.6.5.2.3 / .4 name the translation
+[22] for packets 72 and 76 only. A: [22] applies to 73, 74 of X = 2 too
+(6.6.5.1.2, "use the information as if it had been elaborated in
+compliance with the current chapters 7 and 8"); B: only 72, 76, a 5 in
+73 is spare and refused. The 20 SV22 blocks on it hang on this.
+Recommendation A.
+
+**The corpus.** The sibling rebuilds the bits from the `var` rows, so
+the old layouts reach us exactly (README "Bit rules"). Telegrams by
+version (`grep -h -A2 '^telegram' sequences/sv21/*.scn | grep 'var
+M_VERSION' | sort | uniq -c`): SV21 2.1 7140, 2.0 81, 2.2 58, 1.0 155,
+1.1 44; SV22 2.2 7214, 2.1 64, 1.0 165, 1.1 44; SV30 3.0 7645, 1.0
+173, 1.1 46, 2.x 259; each also 1.2 1 (not valid), 0.0 24, 4.0 3 to 18,
+6.0 22. The RBC's message 32: SV21 2.1 545 of 595, SV22 2.2 550, SV30
+3.0 636; X = 1 RBCs 15, 15, 22. The runner (`S076_Run`, the telegram
+step) blocks `E7-version` on a telegram of 16 .. 31 and, in SV21 /
+SV22, on M_LEVELTEXTDISPLAY 5 (`S076_Sequences` marks it; in SV30 it is
+a SUBSET-076 defect). 176 sequences (`grep -c ',E7-version'
+test/s076/baseline.csv`; SV21 95, SV22 46, SV30 35): 82 hold an X = 1
+telegram (24, 25, 33; 3040400_06 SV21, SV22), 90 only the level text 5
+(70, 20; 3040200_05 SV21, 3040400_03 SV21), 4 neither (3170200_04 SV21,
+SV22). Running today with 2.x packets that need a rule: failed with
+packet 72 14, 45 11, 76 2 (3050300_03 SV21, 4080408_01 SV22; their
+causes are e7/behaviour's). The check (`VERBOSE=1 obj/evc_s076_check |
+grep reject`) rejects M_MODE of 4 bits 1535 times (SV21 1373) and 1445
+messages for their packet structure (SV21 1303): the train to track
+messages of the 2.x layout; 756 telegrams `UNSUPPORTED_VERSION`. The
+sibling needs nothing for the bits; the runner needs its two block
+reasons lifted as the packages land, and the check per version.
+
+**Not read:** 6.5.1.1 .. .4 and 6.5.2.1 .. .2 (behaviour), the tables
+of 8.4.2.1 / 8.4.4.4.1 per message (6.5.1.6.3, .5, 6.5.2.3.17), the
+value tables of the X = 1 variables beyond their widths, the PDF
+pages (markdown only), SUBSET-153, the round trips of `evc_test`.
+
+**Work packages, in order.**
+
+| # | name | clauses | units | size | depends | unblocks |
+|---|---|---|---|---|---|---|
+| 1 | air-gap-layouts | 6.5.1.5, 6.5.2.3 | toml, SCHEMA.md, gen_language.py, check_catalogue.py | L | Q1 | the check per version |
+| 2 | telegram-version | 3.17.3.5 c), 6.6.3.1 | ETCS_Telegram, ETCS_Catalogue, EVC_Received, EVC_Core.Inputs | M | 1 | with 3: 82 (3040400_06 SV21, SV22) |
+| 3 | received-rules | 6.6.3.2.2, .2.3, 6.6.5.2 | EVC_Air_Gap (new), the 19 sites, EVC_Core.Stored | L | 1, 2, Q3 | 90 (3040200_05, 3040400_03 SV21), B010, B703 |
+| 4 | messages-from-old | 6.6.3.3 | ETCS_Message, EVC_Received, EVC_Sessions | M | 1 | X = 1 RBCs (15 to 22 sequences per form) |
+| 5 | messages-to-old | 6.6.3.4.4, .5, 6.6.5.3.6 .. 6.6.5.6.3 | EVC_Radio, EVC_Sessions(.Reports, .Mission, .Manoeuvre), EVC_Radio_Authority | L | 1, e7/behaviour's version query | SV21's 2676 check rejections, its radio steps |
+| 6 | runner-check | - | evc_s076_check, S076_Run, S076_Sequences | M | 2, 3 | the 176 blocks judged |
