@@ -27836,3 +27836,103 @@ B4783 first, before more translations are built: it decides what a
 packet without its translation does meanwhile (the two moved SV21
 sequences show the cost of leaving it out); B4785 is one context flag
 in `EVC_Core.Stored` with a scenario; B4784 and B4786 are runner rules.
+
+### E7 integration after the seventy-eighth round, the third of E7 (2026-11-15)
+
+Merged: e7/runner-tools (a block reason of its own, `R_Envelope`: a
+sequence of the SV21 or SV22 form whose step can only be met by an
+on-board whose highest version is 2.1 or 2.2 (a JRU header of X = 2
+where ours operates 3.0; a group or a message 32 of X = 3 whose comment
+says the version is above the highest supported): 22 sequences, 20 of
+them failed before; the version shown on the DMI judged for what this
+on-board can show, 1.1, 2.3 or 3.0; the matrix tool fails on a row
+deferred to a closed phase, B4583 closed; B4564 and B4643 closed without
+a row: chapter 9 lists 2398 on-board clauses and the matrix has 2398
+rows, the four clauses are definitions, trackside or informative; B4524:
+the dial judged by `S076_Bench.Dial_On_Screen`; B4523 and B4603 left),
+e7/telegram-version (`ETCS_Packet_Index.Scan` reads each packet by
+`ETCS_Catalogue.Layout` of the sender's version; an entry carries its
+layout; a packet in an older layout is recognised, checked for its
+structure and given to no consumer; telegrams of 1.0 and 1.1 are read,
+their unchanged packets take effect; the check's refusals for the
+version fall from 756 to 150; the message by the version of its session
+was built and stopped at the bound on a fixture that gives its RBC 2.1
+and sends the layouts of 4.0.0: the patch kept, B4704; B4663 not taken),
+e7/x-supervision (two of the record's five components applied:
+`TSR_Estimated`, a TSR's start and end at the estimated location in FS
+and OS with X = 1 or 2, and `ASP_Lower_Categories`, the lowest speed of
+the axle load categories up to the train's; both through
+`EVC_Stored_Information.Mode_Context_T`, the record read being the one
+the cycle before left; rows 6.6.2.1.3, 6.6.4.1.2, 6.6.4.1.3 done,
+6.6.2.1.4 partial for a packet 51 in the group that orders the version,
+B4723; the three other components left with their readings, B4724),
+e7/infill-rest (B4683 as decided: `EVC_Movement_Authority.Joinable`, an
+infill MA refused unless an MA in the same direction is stored, not
+withdrawn, its EOA not in rear of the named group and the sections fit;
+the cut section keeps its section timer; B4645: infill information
+accepted only in FS, AD and LS, `EVC_Acceptance.Third_Filter`, 3.8.4.6.2
+and 3.8.4.6.5 a) done; B4646 sized, B4744; B4684's case fails: a speed
+element of length zero for the front end is missing from the MRSP,
+B4743, the row 3.6.3.2.2 e) set partial).
+
+**The state between two rounds.** A packet in an older layout is left
+out until its translation is built: three sequences that passed with a
+packet 70 of X = 2 read in the layout of 4.0.0 fail now (3120200_04 SV21
+and SV22, 3120200_01 SV22), 4080437_01 stops two steps earlier, two pass
+(4100103_15 SV21 and SV22) and 4080408_01 moves on. The runner: 1277 /
+962 / 951 (from 1279 / 980 / 931).
+
+The review (e7/review-78, the twenty-sixth): nine items, five agreed,
+four disagreed in whole or in part, none undecided. B4783, **decided by
+the coordinator for the reviewer on both points**: a packet number the
+list of the sender's version does not have makes the message
+inconsistent (7.3.3.4), the build of B4663; and a packet in an older
+layout is never silently left out: while its translation is not built
+the whole message is rejected (3.17.3.5 b), 3.16.1.1), built with the
+first translations, so that this round's state ends in the next. B4784:
+the envelope's block at a failed header of X = 2 hides later steps that
+can be judged (3170200_01 SV21). B4785: the linking of a balise packet 5
+after a packet 136 is still taken in every mode, the row 4.8.4.1.1 set
+partial. B4786: step 134 of 4080408_01 is the runner's, a placeholder
+"Level 0/1/2/NTC" read as the column's level in a NOT step. The review
+agreed with the TSR and the ASP readings, with the four clauses that
+have no row, and on the infill MA with the build against its own line of
+the last round: the figures 22b and 22c end the old End Section timer.
+Twenty-six rounds of reviews: 219 items, 184 agreed, 37 disagreed, 9
+undecided; 56 lines, of which 16 became fixes; 177.5 USD.
+
+Verification of the merged tree: the whole check green after each of the
+first three merges; the full chain after the fourth green at once: the
+full proof 15589 checks, none unproved, margin 47726 steps, the wide
+checks 4 of 6; cross build 1094 kB of text and stack 32768 B budget,
+margin 6000 B; wasm and both smokes 0 failures; 0 regressions against
+the merged baseline, 0 untriaged. The merge: runner-tools
+fast-forwarded; telegram-version conflicted on the plan and the backlog;
+x-supervision on those and on three test sources where both sides added
+scenarios (both kept, built and run before the commit); infill-rest on
+the plan and the backlog.
+
+Costs (doc/ROUNDS.csv): 57.3 USD with the review (47.7 for the four
+packages, 9.6 the review), 8 of 18 package items done, 10 left, 3 of 17
+premises wrong, two agents over budget (178 and 171 of 160). Lessons:
+the packages were cut for five items each and carried two: an item of
+this phase is a reading on the PDF page, a scenario that fails first, a
+change through the cycle's steps and its proofs, some 60 calls: two
+items a package, a third only as a reading; a foundation that changes
+what every consumer sees (the layout of an entry) moves sequences both
+ways before the next part exists: the round that builds the second part
+is planned with it, and the state between is written down; a fixture
+that sends one version's layouts under another's name is found the
+moment the parser takes the version seriously.
+
+The matrix: done 2186, todo 164, partial 10, deferred 9, n/a 29: 174
+clauses left. Open items: doc/BACKLOG.csv (33 open). Next (round 79),
+two items a package: the translations of X = 2 in `EVC_Air_Gap` with the
+rule that an untranslated older layout rejects its message (B4703, B4783
+c): the three sequences back); the message by the version of its session
+and an unlisted packet number as an inconsistency (B4704 with its patch,
+B4663); the three components left of the record with the ASP of the
+ordering group (B4724, B4723); infill by balise group's rest (B4743,
+B4785, B4744's mode profiles and V_MAIN); the runner (B4784, B4786,
+B4523 and the notes). Then the translations of X = 1, the messages to an
+older RBC, radio infill, Euroloop.
