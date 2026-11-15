@@ -26782,3 +26782,101 @@ small, or deferred with a reason that holds; B4564; the tool lists such
 rows). The runner's items (B4563, the envelope's block, the triage notes
 the inventory found wrong, B4523, B4524) go with the check per version
 in the round after.
+
+### The layouts of system versions 1 and 2 in the language: the schema, the generated decoders and encoders, the check against chapter 6 (e7/air-gap-layouts) (2026-11-15)
+
+Work package 1 of the e7/air-gap inventory, built as decision (1) of the
+integration after round 76: the old layouts are entries of
+`etcs_language.toml`, generated and checked against chapter 6 like
+chapter 7; no value rule, no consumer changed (`ETCS_Telegram`,
+`ETCS_Message` untouched). The commits are one, not five: the check of
+chapter 6 in `check_catalogue.py` (part of the whole check) fails on a
+table of chapter 6 without its layout, so the layouts of X = 1, of X = 2
+and the messages went in with the check that holds them.
+
+**The schema** (`evc/language/SCHEMA.md`, "Older system versions"). The
+versions are the strings "1.0", "1.1", "2.0" .. "2.3" (M_VERSION 16, 17,
+32 .. 35); an entry without the new keys is the one layout of 4.0.0,
+also that of every older version chapter 6 does not change, and every
+existing entry stayed as it was. Keys: `versions` on a `[[packets]]` or
+`[[messages]]` entry (a layout of those versions, its `clause` in
+chapter 6, `table` when the fields follow a table of chapter 7:
+6.5.2.3.1.1.2 makes packet 72 of 2.0, 2.1 the table of packet 73);
+`[[variables.X.layouts]]` (a variable of another width in some versions,
+all its keys written out); `versions` on a variable (one that exists only
+in those versions); `[[packet_lists]]` (the lists replacing 7.4.1.1 and
+7.4.1.2); `[[message_absent]]` (the messages chapter 6 deletes). An
+entry reads, for each variable, the layout whose versions hold all of
+the entry's. Decision: the layouts are made by fields and widths; a
+variable of the width of 4.0.0 keeps the values of 4.0.0 in an old
+layout even where chapter 6 replaces its table, the meaning of a code
+in the old version being the reader's rule (B4604 lists what that
+leaves: packet 255 of X = 1, the code 15 of M_MODE in 4 bits,
+M_LEVELTEXTDISPLAY 5 refused by Valid). Decision: one M_MODE layout of
+4 bits for 1.0 .. 2.1 with the 16 codes of 6.5.2.3.2.4 (15 Passive
+Shunting; spare in 6.5.1.5.28.1), so packets 0 and 1 of those four
+versions are one layout each, as the inventory counted them.
+
+**The naming.** A layout is named by its lowest version:
+`ETCS_Track_Packets.P80_V1_0` (packet 80 of 1.0, 1.1), `P45_V2_0`
+(2.0 .. 2.3), `P245_V2_3`, `ETCS_Train_Packets.P0_V1_0` (1.0 .. 2.1),
+the variable `M_MODE_V1_0` (type `M_MODE_V1_0_T`). A child of the
+packets' parent, like the packet of 4.0.0, because it then sees the same
+types and the generator emits it with the same code (Decode, Encode,
+Valid, the same postconditions, SPARK); a name by the lowest version is
+unique since the layouts of one packet hold disjoint versions.
+`ETCS_Catalogue` gains `Layout_T` (`Not_In_Version`, `Current`, one
+literal per layout), `Layout (Direction, NID, Version)` by the M_VERSION
+code (1.0 .. 2.3 by the lists, 48 .. 63 by `Kind`, any other code
+`Not_In_Version`), `NID_Of_Layout`, `Direction_Of_Layout`,
+`Layout_Name`, `Layout_Clause`, `Check_Layout`;
+`ETCS_Message_Catalogue` gains `Message_Layout_T`, `Message_Layout` and
+the fields and packet rules of the message layouts in arrays of their
+own. `Packet_Kind_T` and `Message_Kind_T` are unchanged (their consumers
+untouched); `Variable_T` gains the six new variables and layouts.
+
+**The layouts in** (counted by `check_catalogue.py`): track to train 20
+(X = 1: 3, 27, 39, 44, 45, 51, 70, 72, 79, 80, 200, 203, 206, 207, 239;
+X = 2: 45 of 2.0 .. 2.3, 70 of 2.0 .. 2.3, 72 and 76 of 2.0, 2.1, 245 of
+2.3), train to track 4 (0 and 1 of 1.0 .. 2.1, 3 of 1.0 .. 2.1, 11 of
+X = 1), messages 6 (15 and 34 of X = 1, 132 of X = 1, 150 of 1.0 .. 2.2,
+159 of 1.0 .. 2.0 with packet 3, 159 of 2.1 with packet 2 or 3), 7
+packet lists, 4 message deletions (X = 1: 4, 5, 7, 38 and 131, 133, 158;
+2.0 .. 2.2: 4, 5, 7, 38 and 131, 133). Against the inventory's 18 + 4 +
+5: the 18 track decoders are 20 with 72 and 76 of 2.0, 2.1 (the
+inventory counted them as renumbering); the 4 train encoders as counted;
+the messages 6 for 5. Left: none of the layouts; the corpus check by
+version (B4603).
+
+**Differences from the inventory.** (1) Packet 159 of an RBC of 2.1 has
+its own table, packet 2 or 3 (6.5.2.3.3.3); the inventory had it
+unchanged. (2) The train to track list of 2.0 (6.5.2.3.2.1) has no
+packet 2, that of 2.1 has it (6.5.2.3.3.1). (3) Packet 51 of X = 2
+(6.5.2.3.12.1) and packet 67 of X = 1 (6.5.1.5.12.1) equal the layouts
+of 4.0.0 (67 differs only in its senders, a balise only). (4) Packet 70
+of X = 1 (6.5.1.5.14) has no loading gauge (M_AXLELOAD and M_TRACTION
+only; PDF page 14 read), packet 3 of X = 1 no NID_C before its N_ITER
+(6.5.1.5.4, page 9), packet 51 of X = 1 no D_TRACKINIT (6.5.1.5.10).
+(5) The packet list of X = 1 has no packet 255 (6.5.1.5.1).
+
+**The check against chapter 6** (`check_catalogue.py` part 3): every
+layout equals the table of its clause (names, widths, order, the loops
+flattened as for chapter 7); every packet table of 6.5.1.5 and 6.5.2.3
+is a layout or equals the packet of 4.0.0; the seven lists equal
+`packet_lists`; the 27 variable tables have the width of the variable,
+of one of its layouts or of the variable of older versions under that
+clause; the 6 message tables equal their layouts. It found no defect of
+a table of chapter 6; KNOWN6 is empty.
+
+**Tests and proof.** `evc_test` Scenario_Packet_Round_Trips: every
+layout at its minimum and maximum values with 0, 1 and the maximum
+items, and 400 random packets, every condition and loop of the layouts
+met (14730 checks, 0 failures); the layouts by version (the lists of
+X = 1, 2.2, 2.3, the train lists of 2.0, 2.1, the message deletions).
+The corpus by version is B4603. The proof of the 24 units, the
+catalogue and the variables as one `prove.sh -u` run: no unproved
+check, 0 checks of 16 VCs or more, margin 4182 of 100000 steps. Full
+proof: 15512 checks (14525 before: 987 more, all proved), margin 47726 of 100000 steps at etcs_bits.adb:69, 4 checks of 16 VCs or more of 6 (4 before, none of the layouts). The
+cross build and the stack are the coordinator's (not run). The runner:
+3190 sequences, 1276 passed, 986 failed, 928 blocked, 0 regressions, no
+sequence moved.
