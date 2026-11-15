@@ -26782,3 +26782,66 @@ small, or deferred with a reason that holds; B4564; the tool lists such
 rows). The runner's items (B4563, the envelope's block, the triage notes
 the inventory found wrong, B4523, B4524) go with the check per version
 in the round after.
+
+### Infill by balise group: the origin ahead of the next main signal's group, the MA by infill (e7/infill-origin) (2026-11-15)
+
+**The claims of the inventory at the source.** "The packets after a 136
+are taken as non-infill, referred to the infill group itself": true
+(EVC_Stored_Information.Take_Group passed the group's message M to every
+packet; Infill_Packet only set the acceptance's Infill sub-rows). "The
+linking store can locate the NMBG (EVC_Linking.Find, Distance)": true,
+through EVC_Position.Linking. "The relocation exists": true, and it is
+the origin table: every group message has an origin (EVC_Origins, three
+items at offset 0 from a reference group), EVC_Position.Set_SOLR
+relocates every used origin when a group becomes the SOLR (3.6.4.2.5,
+by the linking distance when both groups are in the chain). "4.8.3's
+infill rows built": true (EVC_Acceptance.Has_Infill_Row,
+Infill_Accepts). 3.6.2.3.1 has no row in the matrix (B4643); 3.6.1 the
+same (B4564).
+
+**A1, the mechanism as built** (decision 5 of the coordinator).
+EVC_Stored_Information.Infill_Origin: for the message of a group whose
+telegram carries a packet 136 valid for the direction, a second origin
+is allocated, referred to the same group as the message's own origin
+(the SOLR, or the infill group when it is the SOLR), at the distance the
+stored linking gives from that group to the group the packet names
+(NID_C by Q_NEWCOUNTRY), its three items at that one distance as a
+relocation by the linking (3.6.4.2.5 a)) would place them; the packets
+after the 136 are taken with that origin (Take_Group, Infill_M), the
+packets before it with the group's own. The origin table of Evaluate is
+a variable that Take_Group completes with the new origin, so the
+stores' locations resolve in the same cycle; when the named group is
+passed and becomes the SOLR the origin is relocated onto it with the
+others, by the linking distance, so a group read 10 m beyond its linked
+location moves the infill data with it. The named group not in the
+linking ahead of the reference (or no room in the table): the infill
+message has no origin and its location based information is not kept,
+the MA (3.8.4.6.4) or any other (decision: 3.6.2.3.1 gives them no
+other reference); the filters of 4.8 still judge each packet. The set
+of the transition buffer keeps the group's own origin (Set_Origin), so
+infill information kept there is released referred to the infill group
+(B4644). Decision: the first packet 136 of the message names the group.
+Matrix: 8.4.1.3.1 done. Scenario: evc_test Scenario_Infill_Origin
+(EVC_Test_Profiles, where the TSR and linking helpers are): the group 10
+at 100 m links the infill group 15 at 300 m and the group 20 at 500 m;
+the group 15 carries a TSR at 50 m, a packet 136 naming 20 and a TSR at
+100 m: the first at 350 m, the second at 600 m from its reception
+(before the change 400 m: the check failed), 600 m after the group 20
+read at 500 m, 610 m when it is read at 510 m.
+
+**Sequences moved** (full runner, 0 regressions, 12 improvements, the
+baseline re-recorded): 5170200_05 (SV21, SV22, SV30) failed 48 -> failed
+99 (Sf2c5e230, s076: row 99 expects M_MODE 7 in UN); 3080300_01 (three
+forms) failed 48 -> failed 49 (S7341fea5, s076: the infill MA's NMBG is
+not linked, 3.8.4.6.4, and the override at standstill gives SR by 4.6.3
+[37] where the rows keep FS); 3110600_01 (three forms) failed 82 ->
+passed (the infill MA of BG6d from BG8 by the linking, EOA 986 m ahead
+at 2010 m); 4080444_01 (three forms) failed 59 -> blocked 79 (E7-version:
+BG8d of system version 1.0, the air gap's): the packet 67 after the 136
+of BG3d (400 m, NID_BG 4 linked at 450 m) puts the big metal mass area
+at 550 to 650 m, so the alarm at 600 m is inside it and no emergency
+brake comes (steps 57 to 59 pass). The SV21 and SV22 forms move with the
+SV30 ones; none of the four stops on a chapter 6 coding but 4080444_01.
+
+**Proof**: EVC_Stored_Information before 2180 steps, 0 of 6 wide (the
+largest 15 VCs); after 2216 steps, 0 of 6 (15 VCs).

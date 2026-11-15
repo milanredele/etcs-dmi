@@ -2327,7 +2327,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 7.5.1.174,7,x,x,,,,E1,done,ETCS_Variables.X_TEXT_T; evc_test packet_round_trips
 8.4.1.2,8,x,x,,,,E1,done,"ETCS_Message.Parse and Write_Fields in table order, mandatory packets in order; evc_test message (msg 3)"
 8.4.1.3,8,x,x,,,,E1,done,ETCS_Message/ETCS_Telegram.Parse index optional packets in any order; evc_test message (msg 24)
-8.4.1.3.1,8,x,x,,,,E1,deferred,E7 (3.9 infill): locations after packet 136 refer to its balise group
+8.4.1.3.1,8,x,x,,,,E1,done,"the packets after a packet 136 valid for the direction are located from the group it names (3.6.2.3.1, the next main signal's group), placed by the stored linking from the reference of the message's origin and relocated with the other origins at its passage (EVC_Stored_Information.Infill_Origin, Take_Group); not kept without the group in the linking (3.8.4.6.4); evc_test Scenario_Infill_Origin [E7 infill]"
 8.4.1.5,8,x,,,,,E1,done,"ETCS_Message.Parse Duplicate_Packet (train to track); evc_test message (136, packet 4 twice)"
 8.4.1.5.1,8,x,,,,,E1,done,"catalogue: packet 44 repeat in 136, 157; evc_test message (136, packet 44 twice)"
 8.4.4.1.1,8,x,,,,,E1,deferred,"structure done; unknown NID_MESSAGE rejected (Unknown_Message), the Y-exception in E6 (3.17.3.11) [E6 version]"

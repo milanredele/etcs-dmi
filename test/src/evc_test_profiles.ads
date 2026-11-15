@@ -55,5 +55,9 @@ package EVC_Test_Profiles is
       --  A.3.5.1 12th bullet over a relocation: the End Section timer's
       --  start location passed, the relocation puts the front in rear of it
       procedure Scenario_MA_Timers_Relocated;
+      --  8.4.1.3.1, 3.6.2.3.1: the packets after a packet 136 referred to
+      --  the next main signal's group by the linking, relocated at its
+      --  passage
+      procedure Scenario_Infill_Origin;
 
 end EVC_Test_Profiles;

@@ -14,6 +14,8 @@ with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P45;
 with ETCS_Track_Packets.P180;
 with ETCS_Track_Packets.P131;
+with ETCS_Track_Packets.P136;
+with EVC_Linking;
 with ETCS_Track_Packets.P46;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
@@ -1436,7 +1438,10 @@ is
      with Global => EVC_Position.State,
           Pre    => P <= EVC_Position.Taken_Packet_Count (J);
 
-   --  4.8: the filters, then the packet to its store
+   --  4.8: the filters, then the packet to its store; M the message the
+   --  packet is located by (its infill message for infill information),
+   --  Set_Origin the origin of the group's set of the transition buffer
+   --  (the group's own message)
    --  @req 3.7.2.3, 4.8.2.1, 4.8.2.1 a), 4.8.2.1 b), 4.8.2.1 d), 4.8.2.1 e)
    --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [4]
    --  @req 4.8.3.1.1 Table-footnote [11], 4.8.3.1.1 Table-footnote [16]
@@ -1455,7 +1460,8 @@ is
                           Now_Ms      : Unsigned_64;
                           Set_Open    : in out Boolean;
                           Prior       : Prior_T;
-                          Infill      : Boolean)
+                          Infill      : Boolean;
+                          Set_Origin  : EVC_Origins.Count_T)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -1482,7 +1488,7 @@ is
       --  the transition buffer (the speed of a packet 12 with its MA)
       if EVC_Acceptance.Stored (Info_Of (K), A) then
          if not Set_Open then
-            Balise_Buffer.New_Set ((Origin   => M.Origin,
+            Balise_Buffer.New_Set ((Origin   => Set_Origin,
                                     Sense    => M.Sense,
                                     Start_Ms => M.Start_Ms,
                                     Linked   => Linked,
@@ -1751,12 +1757,104 @@ is
       end loop;
    end Take_VBC_Orders;
 
+   --  8.4.1.3.1, 3.6.2.3.1: the origin of the infill information of the
+   --  group message of Tk, the packets after its packet 136: the location
+   --  reference of the group that packet names (the balise group at the
+   --  next main signal), placed by the stored linking at its distance
+   --  from the group the message's origin is referred to (the SOLR or the
+   --  infill group itself), as a relocation by the linking would place it
+   --  (3.6.4.2.5 a)); EVC_Position relocates it with the other origins
+   --  when a group becomes the SOLR, onto the location of the next main
+   --  signal's group when that group is passed. The new origin is added
+   --  to T. I is 0 when the message has no packet 136 valid for the
+   --  direction, the linking does not locate the named group ahead of
+   --  that reference in the message's sense, or the table is full.
+   --  Decision: the first packet 136 of the message names the group (the
+   --  balises of one group repeat the same information)
+   --  @req 8.4.1.3.1
+   procedure Infill_Origin (Tk : EVC_Position.Taken_T;
+                            M  : Message_T;
+                            T  : in out Origin_Table_T;
+                            I  : out EVC_Origins.Count_T)
+     with Global => (In_Out => EVC_Origins.State,
+                     Input  => EVC_Position.State)
+   is
+      L    : constant EVC_Linking.Linking_T := EVC_Position.Linking;
+      X    : ETCS_Track_Packets.P136.Packet_T;
+      R    : Reader_T;
+      OK   : Boolean := False;
+      Ref  : Anchor_T;
+      Base : EVC_Linking.Link_Count_T := 0;
+      K    : EVC_Linking.Link_Count_T;
+      O    : EVC_Origins.Origin_T;
+      D    : Dist_T;
+   begin
+      I := 0;
+      if M.Origin = 0 or else not L.Stored
+        or else not EVC_Origins.Get (M.Origin).Used
+      then
+         return;
+      end if;
+      Ref := EVC_Origins.Get (M.Origin).Est.Ref;
+      if EVC_Origins.Get (M.Origin).Est.Sense /= L.Sense then
+         return;
+      end if;
+      Find_136 :
+      for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+         for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+            if EVC_Position.Taken_Entry (J, P).Kind
+                 = ETCS_Catalogue.Track_P136
+              and then EVC_Position.Valid_For
+                         (EVC_Position.Taken_Entry (J, P).Q_DIR,
+                          Tk.Group.Orientation, Tk.T)
+            then
+               EVC_Position.Open_Taken_Packet (J, P, R);
+               ETCS_Track_Packets.P136.Decode (R, X, OK);
+               OK := OK and then ETCS_Track_Packets.P136.Valid (X);
+               exit Find_136;
+            end if;
+         end loop;
+      end loop Find_136;
+      if not OK then
+         return;
+      end if;
+      if EVC_Balise_Groups."/=" (Ref.Id, L.Ref_Id) then
+         Base := EVC_Linking.Find (L, Ref.Id, 1);
+         if Base = 0 then
+            return;
+         end if;
+      end if;
+      K := EVC_Linking.Find
+        (L, (NID_C  => (if X.Has_NID_C then X.NID_C
+                        else Tk.Group.Id.NID_C),
+             NID_BG => X.NID_BG),
+         Base + 1);
+      if K = 0 or else EVC_Linking.Repositioning_Between (L, Base, K) then
+         return;
+      end if;
+      D := EVC_Linking.Distance (L, K) - EVC_Linking.Distance (L, Base);
+      EVC_Origins.Allocate (Ref, L.Sense, I);
+      if I = 0 then
+         return;
+      end if;
+      O := EVC_Origins.Get (I);
+      O.Est.D := D;
+      O.Min.D := D;
+      O.Max.D := D;
+      EVC_Origins.Put (I, O);
+      T (I) := (Used  => True,
+                Sense => L.Sense,
+                Est   => Advance (Ref.X, L.Sense, D),
+                Min   => Advance (Ref.X, L.Sense, D),
+                Max   => Advance (Ref.X, L.Sense, D));
+   end Infill_Origin;
+
    --  Group G of the position's last Update, as message number Msg_Count
    --  (No_Inline: GCC inlines a subprogram called once, and the decoded
    --  packets of the parts below, up to 6 KB, would stay in the frame of
    --  Evaluate while the snapshot is built and the PBD computed)
    procedure Take_Group (G      : Positive;
-                         T      : Origin_Table_T;
+                         T      : in out Origin_Table_T;
                          Train  : Train_Frame_T;
                          Ctx    : Mode_Context_T;
                          Now_Ms : Unsigned_64)
@@ -1771,7 +1869,7 @@ is
                                 Events, Event_N, Cut, Msg_Count,
                                 Balise_Buffer.State, TAF_L2_New,
                                 TAF_L2_Loc, EVC_System_Version.State,
-                                EVC_VBC.State),
+                                EVC_VBC.State, EVC_Origins.State),
                      Output => Group_Country,
                      Input  => (EVC_Position.State, EVC_Train_Data.State,
                                 EVC_Radio_Info.State)),
@@ -1779,6 +1877,8 @@ is
    is
       Tk          : constant EVC_Position.Taken_T := EVC_Position.Taken (G);
       M           : Message_T;
+      --  8.4.1.3.1: the message of its infill information
+      Infill_M    : Message_T;
       Reverted    : Boolean;
       Listed      : Boolean;
       MA_Accepted : Boolean := False;
@@ -1806,6 +1906,8 @@ is
             Sense    => Tk.S,
             Msg      => Msg_Count,
             Start_Ms => Tk.Start_Ms);
+      Infill_M := M;
+      Infill_Origin (Tk, M, T, Infill_M.Origin);
       Group_Country := Tk.Group.Id.NID_C;
       --  3.17.3.4.1: an immediate set of the message first
       Immediate_Set_Lists (Tk, Tk.Group.Id.NID_C, Listed);
@@ -1834,10 +1936,22 @@ is
                     --  3.8.5.2.2: only at the group linking announced
                     and then (K /= K16 or else Tk.Repositioning)
                   then
-                     Take_Packet (K, J, P, M, T, Train, MA_Accepted, Ctx,
-                                  Tk.Group.Linked, Has_41, Now_Ms,
-                                  Set_Open, Prior,
-                                  Infill_Packet (J, P, Tk));
+                     --  3.8.4.6.4, 3.6.2.3.1: the next main signal's
+                     --  group not located by the linking, the infill
+                     --  message has no origin (0). Decision: its location
+                     --  based information is not kept, the MA or any
+                     --  other, as for a group without an origin; the
+                     --  filters of 4.8 judge it still
+                     if Infill_Packet (J, P, Tk) then
+                        Take_Packet (K, J, P, Infill_M, T, Train,
+                                     MA_Accepted, Ctx, Tk.Group.Linked,
+                                     Has_41, Now_Ms, Set_Open, Prior, True,
+                                     M.Origin);
+                     else
+                        Take_Packet (K, J, P, M, T, Train, MA_Accepted, Ctx,
+                                     Tk.Group.Linked, Has_41, Now_Ms,
+                                     Set_Open, Prior, False, M.Origin);
+                     end if;
                   end if;
                end;
             end loop;
@@ -3324,7 +3438,8 @@ is
                        Virtual_Last   : Virtual_Limits_T :=
                          (others => <>))
    is
-      T     : constant Origin_Table_T := Origin_Table;
+      --  the origins of the infill information added by Take_Group
+      T     : Origin_Table_T := Origin_Table;
       Train : constant Train_Frame_T := Train_Frame;
       O     : EVC_Movement_Authority.Outcome_T;
       Marks : Origin_Marks_T := (others => False);
