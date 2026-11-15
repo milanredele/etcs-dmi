@@ -27678,3 +27678,161 @@ passed, 20 blocked, 35 failed: 3040500_03 45, 3070300_04 48, 3070300_06
 50, 4080436_01 80, 4080444_03 76, 4080445_01 103, 4080445_02 100,
 4080454_01 125, 4080454_02 106, 4080454_04 48, 5170200_05 99,
 9990500_04 48 (16 of them at Sa8a3ba1a, the radio family).
+
+### Review of the seventy-eighth round: nine items re-derived blind (e7/review-78) (2026-11-15)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All nine items were taken, two
+traces run (3120200_04 with 4080437_01 SV21; 4080408_01 SV21). No code,
+no triage line and no line of the authors was changed.
+
+1. A telegram of an older version. (a) An on-board of 3.0 supports X 1
+   to 3 (6.4.1.1.1, 6.4.2.2): 1.0, 1.1 and 2.1 are read by chapter 6
+   (3.17.3.5 c), 6.6.3, 6.6.5); 1.2 is M_VERSION 001 0010, "Not valid"
+   (7.5.1.79): not compliant, refused. (b) A NID_PACKET the version's
+   list does not have is an invalid value like a spare one (7.3.3.4,
+   3.16.1.1.1): the message is inconsistent; the only exceptions are
+   3.17.3.11 (a Y above ours within our highest X, 3.1) and packet 76 of
+   X = 1 (6.6.3.1.1.1, ignored); packet 255 ends a telegram of X = 1
+   without Q_DIR and L_PACKET (6.5.1.5.1). (c) Until the translation
+   exists, rejecting the whole message is the least wrong: 3.17.3.5 b)
+   says it for information the on-board cannot interpret (inconsistent
+   by 3.16.1.1, the linking reaction for an announced group, 3.16.2.4.1);
+   leaving the packet out hides a route unsuitability (70) or keeps the
+   wrong national values (3 of X = 1), which is less safe than the
+   group's rejection; decoding an older layout by 4.0.0's reads other
+   bits. Where an older layout equals 4.0.0's and only a value rule
+   differs, decoding by the layout is right. Author (`ETCS_Telegram`
+   header, `ETCS_Packet_Index.Scan`,
+   `Scenario_Version_Telegram_Read`): (a) the same; (b) a number the
+   version does not list is passed over by its L_PACKET and counted
+   (`Unknown`), the message kept; (c) an older layout indexed with kind
+   Unknown and left to no reader, the rest taken. Agree on (a), disagree
+   on (b) by 7.3.3.4 and on (c): B4783. The trace of item 8 shows the
+   cost: in 4080437_01 the 45 left out lets the 42 order a connection
+   that 4.8.3 [15] refuses with it.
+
+2. Another envelope. (a) Ours operates the highest Y of its envelope
+   within an X (3.17.2.1.1): 1.1 after an order to X = 1, 2.3 after one
+   to X = 2; the System version window shows the operated version (DMI
+   11.7.7.3 S5), so 2.1 and 2.2 never. (b) Only an on-board of 2.1 or
+   2.2 meets a JRU header or a version shown of 2.1 / 2.2 and the
+   reaction to X = 3 (3.17.3.5 d), e), 3.5.3.7 d)); everything operated
+   with X = 1 and every step that does not depend on the version is
+   judged against ours. 3050300_05 SV21 step 60: the message 32 carries
+   3.0 with the comment "higher than the highest supported"; steps 61
+   to 63 expect "Trackside not compatible": ours, compatible, diverges
+   for the rest: the block is right. 3170200_01 SV21 step 39: no group
+   before it; theirs operates 2.1, ours 3.0; step 42 orders X = 1 by
+   packet 2 and from there both operate 1.1 (steps 43 on expect 1.1
+   headers): the block at 39 drops steps ours can be judged on; those
+   steps (39, 41) should be not judged without a block. Author
+   (`R_Envelope`, `Above_Envelope`, `Envelope_Header` with `Block`):
+   3050300_05 the same; 3170200_01 blocked at 39 ("the 1.1 of 3170200_02
+   and 6060302_04 in SV21 / SV22 are behind the new block", its own
+   words). Agree on 3050300_05, disagree on the block of a failed X 2
+   header: B4784.
+
+3. Four clauses without a row. Chapter 9 in layout mode: 3.6.1.3.4
+   Definition (p. 20), 3.6.2.3.1 trackside requirement (p. 20), 3.9.1.2
+   and 3.9.1.4 Informative (p. 32). No row is right for each. Author
+   (e7/runner-tools (b)): the same, by script over the whole table.
+   Agree.
+
+4. A TSR with X = 1 or 2. (a) 4.0.0 (Table 2a, p. 47): the start by the
+   "max" item, the end by the "min" item; with X = 1 or 2 in FS and OS
+   (6.6.2.1.3, 6.6.4.1.2) both by the "estimated" item. (b) FS and OS
+   only; every other mode keeps the row of 4.0.0. (c) 3.17.2.5
+   "immediately", and 3.17.3.3 (the version determined before any other
+   evaluation of the message): the stored TSR and the one in the
+   ordering message both by the new row from the order. Author
+   (`EVC_Track_Description.Speed_Elements` TSR_Estimated, the mode in
+   `EVC_Stored_Information` Build, `EVC_Core.Modes.Version_Rules`,
+   `Scenario_Version_TSR`): the three items are kept and the row chosen
+   when the MRSP is built, so both TSRs switch; the flag is the record
+   of the cycle before, one cycle after the order. Agree; a note: one
+   cycle later than "immediately", no data lost.
+
+5. The ASP with X = 1 or 2. 4.0.0 (3.11.4.3): C2 alone. X = 1 or 2
+   (6.6.2.1.4, 6.6.4.1.3): every category up to C2 in ascending order A
+   to E5, the code order of M_AXLELOADCAT (7.5.1.62 places HS17 at 1
+   "for backward compatibility ... lines operated with X = 1"): A, HS17,
+   B1, B2, C2, the lowest speed. Author (`Take_ASP`.Match: Cat = Axle,
+   or Lower and Cat <= Axle, the minimum; `Scenario_Version_ASP`): the
+   same; the row partial for a packet 51 in the group that orders the
+   version (taken by the X before, B4723), which by 3.17.3.3 is the
+   new X's: partial is right. Agree.
+
+6. An infill MA that cannot be joined. (a) No MA, the other direction,
+   an MA withdrawn to the train (3.8.4.1.2) or to the entry of a revoked
+   section in rear of the named group (3.8.4.2.2), the named group
+   beyond the EOA, no room: refused, the current MA kept (3.8.5.1 b)
+   replaces only what lies beyond the group; a) is for non-infill).
+   (b) Figures 22b and 22c (p. 88): the resulting MA keeps the cut
+   section and carries only the infill MA's End Section timer start
+   location; the old End Section timer is gone (3.8.3.4.1: the infill
+   MA "will replace the previous End Section"): the cut section keeps
+   its section timer, its End Section timer ends. This corrects my call
+   of review-77, which the coordinator's decision of B4683 followed.
+   Author (`EVC_Movement_Authority.Joinable`, `Join`,
+   `Scenario_Infill_MA_Refused`): refused in the five cases; the cut
+   section keeps its section timer, its End Section timer goes with its
+   role (3.8.3.4.1). The revoked case (the End Section's timer expired,
+   the EOA at its entry 900 m, the named group at 1000 m: refused, the
+   EOA kept) is the clause's. Agree.
+
+7. Infill information and the mode. 3.8.4.6.2: an infill MA only in
+   FS, AD, LS. 4.8.4.1.1: every infill information only in the columns
+   FS, AD, LS, rejected in SR, OS, SH, SB and the rest; rejected is the
+   filter's (4.8.1.2, Figure 3): that information is not taken, the
+   rest of the message is. Author (`EVC_Acceptance.Third_Filter`,
+   `Scenario_Infill_Modes`, row 4.8.4.1.1 done): right for what reaches
+   the filter. But the packet 5 of a balise group is taken by
+   `EVC_Position` with `Accept_Info` from `Acceptance_Context`, whose
+   Infill is always False (`EVC_Core.Inputs`,
+   `EVC_Core.Stored.Update_Position`): a linking after a packet 136 is accepted in SR, OS, SB
+   (and referred to the infill group, B4744); the buffered sets drop
+   the mark (B4644). Disagree on done: partial: B4785.
+
+8. Trace 3120200_04 SV21: BG22d (250 m, 2.1), packet 70 with
+   Q_SUITABILITY 10 (traction), M_VOLTAGE 2, NID_CTRACTION 254, N_ITER
+   0. The layout of X = 2 (6.5.2.3.12.2) differs from 4.0.0's only in
+   the axle load branch (M_AXLELOADCAT 7 bits where 4.0.0 has
+   M_LINEAXLELOADCAT 16), and [18] of 6.6.3.2.3 (6.6.5.2.2) translates
+   only Q_SUITABILITY 01: here the identity. Before, the 4.0.0 layout
+   read the same bits; now the packet is left out: steps 47 to 49 fail
+   (no "Route unsuitable", no brake). 4080437_01 SV21: BG2d (100 m,
+   2.1), packet 42 (Q_RBC 1) and packet 45 of X = 2 (NID_MN only); by
+   6.6.5.2.7 the 45 becomes a packet 45 with Q_NETWORKTYPE 2 (GSM-R),
+   and 4.8.3 [15] third bullet rejects the 42 (no GSM-R terminal
+   registered to that network); ours leaves the 45 out and takes the
+   42: a connection request at step 52 (trace), no registration (54).
+   Both: ours, the translations not built (6.6.5.2.2, 6.6.5.2.5 to .7);
+   the failure is the honest outcome until they are. Author (triage E7,
+   B4703): the same. Agree.
+
+9. Trace 4080408_01 SV21: BG6d (650 m, 2.1, a single balise) packet 41
+   Q_DIR 01 with M_LEVELTR 010 (level 1), 45 Q_DIR 00 in the layout of
+   X = 2, 135 Q_DIR 10; in PS only the 135 is taken, the desk opened
+   gives SB (127 to 133 pass). Step 134 "NOT Level 0/1/2/NTC", comment
+   "NOT level changes to Level X, packet 41 has been rejected": X is
+   the 41's level 1; ours stays in level 0 (trace: SB L0). The runner's
+   `Level_Symbol` reads the placeholder as the level of the step's
+   column (L0) and fails ours for showing level 0. The runner. Author:
+   "S3f6059ba as SV30", the id's one triage line (s076), whose note is
+   5170200_03 step 32, another case. Disagree: B4786. The dial:
+   `Dial_On_Screen` holds when the DMI's mode is one of FS, AD, SM, LS,
+   RV, UN, OS, SR, SH and no open window overlaps area B. The DMI
+   draws the scale in every mode and the pointer grey in SB, NL, PT and
+   red in TR (`Draw_Speed_Pointer`, DMI Table 8): there the dial is on
+   the screen and the function says no; its one use is
+   "speed-distance-monitoring displayed", for which those modes rightly
+   say no. No wrong judgement found; the function's heading should say
+   speed and distance monitoring information, not the dial.
+
+Counts: nine items, five agreed (3, 4, 5, 6, 8), four disagreed in
+whole or in part (1, 2, 7, 9; B4783 to B4786), none undecided. My calls:
+B4783 first, before more translations are built: it decides what a
+packet without its translation does meanwhile (the two moved SV21
+sequences show the cost of leaving it out); B4785 is one context flag
+in `EVC_Core.Stored` with a scenario; B4784 and B4786 are runner rules.
