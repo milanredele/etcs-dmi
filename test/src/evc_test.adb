@@ -210,6 +210,7 @@ begin
    Scenario_Snapshot_Seams;
    Scenario_MA_Timers_Relocated;
    Scenario_Infill_Origin;
+   Scenario_Infill_MA;
    Check (Encodes_OK, "E3: every telegram of the track encoded");
    Scenario_SDM_Precision;
    Scenario_SDM_Gamma;

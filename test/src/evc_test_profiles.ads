@@ -59,5 +59,8 @@ package EVC_Test_Profiles is
       --  the next main signal's group by the linking, relocated at its
       --  passage
       procedure Scenario_Infill_Origin;
+      --  3.8.5.1 b), 3.8.5.1.2: an infill MA replaces the MA from the next
+      --  main signal's group on
+      procedure Scenario_Infill_MA;
 
 end EVC_Test_Profiles;

@@ -366,11 +366,65 @@ is
       Delete_Beyond_SvL (T, Current, Natural'Last, Outcome);
    end Overlap_Over;
 
+   --  3.8.5.1 b), 3.8.5.1.2: the infill MA New_MA, its start the infill
+   --  location reference, joined to the current MA: the sections of the
+   --  current one that end in rear of that start, then the section in
+   --  which it lies, ending there (its timer kept; the End Section without
+   --  one, 3.8.3.4.1), then the sections of New_MA, with its own end, end
+   --  timer, danger point and overlap; the MA's start the current one's.
+   --  First: the first section of New_MA after the join (1 when nothing
+   --  is kept: no MA in the same sense, a withdrawn one, or no room for
+   --  both; decision: then New_MA replaces the MA whole, 3.8.5.1 a))
+   procedure Join (New_MA : in out MA_T;
+                   T      : Origin_Table_T;
+                   First  : out Positive)
+     with Global => (Input => Current),
+          Post => New_MA.Present = New_MA.Present'Old
+                  and then First <= New_MA.Count + 1
+   is
+      S    : constant Sense_T := New_MA.Sense;
+      X0   : constant Dist_T := Frame (T, New_MA.Start, Estimated_Item);
+      Keep : Natural := 0;
+      N    : constant Natural := New_MA.Count;
+   begin
+      First := 1;
+      if not Current.Present or else Current.Sense /= S
+        or else Current.Withdrawn or else Current.Count = 0
+      then
+         return;
+      end if;
+      for J in 1 .. Current.Count - 1 loop
+         pragma Loop_Invariant (Keep = J - 1);
+         exit when A (S, Frame (T, Current.Sections (J).Finish,
+                                Estimated_Item)) >= A (S, X0);
+         Keep := J;
+      end loop;
+      if Keep + 1 + N > Max_Sections then
+         return;
+      end if;
+      for J in reverse 1 .. N loop
+         pragma Loop_Invariant (Keep + 1 + N <= Max_Sections);
+         New_MA.Sections (J + Keep + 1) := New_MA.Sections (J);
+      end loop;
+      for J in 1 .. Keep loop
+         pragma Loop_Invariant (Keep + 1 + N <= Max_Sections);
+         New_MA.Sections (J) := Current.Sections (J);
+      end loop;
+      New_MA.Sections (Keep + 1) :=
+        (if Keep + 1 < Current.Count then Current.Sections (Keep + 1)
+         else No_Section);
+      New_MA.Sections (Keep + 1).Finish := New_MA.Start;
+      New_MA.Count := Keep + 1 + N;
+      New_MA.Start := Current.Start;
+      First := Keep + 2;
+   end Join;
+
    procedure Accept_MA (X          : MA_T;
                         T          : Origin_Table_T;
                         Train      : Train_Frame_T;
                         Passage_Ms : Unsigned_64;
-                        Outcome    : out Outcome_T)
+                        Outcome    : out Outcome_T;
+                        Infill     : Boolean := False)
    is
       Old      : constant MA_T := Current;
       New_MA   : MA_T := X;
@@ -378,9 +432,13 @@ is
       End_Now  : Boolean := False;
       OL_Now   : Boolean := False;
       Started  : constant Unsigned_64 := Passage_Ms;
+      First    : Positive := 1;
    begin
       Outcome := (others => <>);
       Outcome.Accepted := True;
+      if Infill then
+         Join (New_MA, T, First);
+      end if;
 
       --  3.8.5.1.3, 3.8.5.1.4, 3.8.5.2.4
       if Old.Present and then Old.Sense = S and then not Is_LOA (X) then
@@ -394,8 +452,9 @@ is
 
       --  the section timers and the LOA speed timer: from the passage
       --  over the first balise of the group, the time the message came
-      --  with (3.8.4.2.1 b, 3.8.4.3.1 b); 3.8.4.2.5
-      for I in 1 .. New_MA.Count loop
+      --  with (3.8.4.2.1 b, 3.8.4.3.1 b; for an infill MA the sections
+      --  beyond the next main signal, 3.8.4.6.5 a)); 3.8.4.2.5
+      for I in First .. New_MA.Count loop
          if New_MA.Sections (I).Timer.Given then
             New_MA.Sections (I).Timer.Running := True;
             New_MA.Sections (I).Timer.Started := Started;

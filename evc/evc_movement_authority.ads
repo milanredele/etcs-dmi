@@ -260,15 +260,19 @@ is
    --  keeps running with the new time-out if it ran (3.8.4.1.4,
    --  3.8.4.4.5), else is over at once (3.8.4.1.3, 3.8.4.4.4).
    --  Passage_Ms: the passage over the first balise of the group.
+   --  Infill: X is an infill MA, referred to the next main signal's
+   --  group: it replaces the MA from that group on, the sections in rear
+   --  kept with their timers (3.8.5.1 b), 3.8.5.1.2).
    --  @req 3.8.4.1.3, 3.8.4.1.4, 3.8.4.2.1 a), 3.8.4.2.1 b), 3.8.4.2.5
    --  @req 3.8.4.3.1, 3.8.4.3.1 a), 3.8.4.3.1 b), 3.8.4.4.4, 3.8.4.4.5
    --  @req 3.8.5.1, 3.8.5.1 a), 3.8.5.1.3, 3.8.5.1.4, 3.8.5.2.4, 3.8.6.2
-   --  @req 3.12.4.3
+   --  @req 3.12.4.3, 3.8.5.1 b), 3.8.5.1.2
    procedure Accept_MA (X          : MA_T;
                         T          : Origin_Table_T;
                         Train      : Train_Frame_T;
                         Passage_Ms : Unsigned_64;
-                        Outcome    : out Outcome_T)
+                        Outcome    : out Outcome_T;
+                        Infill     : Boolean := False)
      with Global => (In_Out => State),
           Pre => X.Present,
           Post => MA.Present and then Outcome.Accepted;

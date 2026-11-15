@@ -26845,3 +26845,30 @@ SV30 ones; none of the four stops on a chapter 6 coding but 4080444_01.
 
 **Proof**: EVC_Stored_Information before 2180 steps, 0 of 6 wide (the
 largest 15 VCs); after 2216 steps, 0 of 6 (15 VCs).
+
+**A2, the MA by infill.** EVC_Movement_Authority.Accept_MA takes an
+Infill flag (EVC_Stored_Information.Store_MA passes the acceptance's
+Infill for a packet 12; a packet 15 never): Join keeps the sections of
+the current MA that end in rear of the infill MA's start (the next main
+signal's group, by A1), cuts the section that start lies in at it (its
+timer kept; the End Section without one, 3.8.3.4.1), appends the infill
+sections and takes the infill MA's end, end timer, danger point and
+overlap; the MA's start stays the current one's. Only the appended
+sections' timers start, at the passage over the infill group's first
+balise (3.8.4.6.5 a), built, no scenario: B4645). Decision: no MA in
+the same sense, a withdrawn one, or more than 32 sections together: the
+infill MA replaces the MA whole (3.8.5.1 a)). Scenario: evc_test
+Scenario_Infill_MA: an MA from the group 10 at 100 m with sections to
+500 and 1000 m, the infill group 15 at 800 m naming the group 20 at
+1000 m with sections of 300 m: four sections, to 500, 1000, 1300 and
+1600 m (before: two, 1300 and 1600: the check failed). Matrix 3.8.5.1 b)
+and 3.8.5.1.2 done. The runner: no sequence moved (3080300_01 stops
+before, its NMBG not linked; 3110600_01 passed with A1). Not built:
+3.8.4.6.2 (B4645); the mode profiles of an infill MA (3.12.4.3.1, A3)
+and A3 as a whole (B4646). The inventory's "V_MAIN 0 by infill ignored"
+is true (EVC_Acceptance, 4.8.3 [18]; Scenario_Infill_Rejected), the row
+3.11.6.5 stays deferred for its location (A3).
+
+**Proof**: EVC_Movement_Authority after the change 716 steps, 0 of 6
+wide (the largest 5 VCs; its count before was not taken);
+EVC_Stored_Information after 2216 steps, 0 of 6 (15 VCs).

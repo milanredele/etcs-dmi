@@ -966,7 +966,8 @@ is
                        M           : Message_T;
                        T           : Origin_Table_T;
                        Train       : Train_Frame_T;
-                       MA_Accepted : in out Boolean)
+                       MA_Accepted : in out Boolean;
+                       Infill      : Boolean)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -983,7 +984,8 @@ is
                     Frame (T, EVC_Movement_Authority.SvL_Location (X),
                            Estimated_Item))
       then
-         EVC_Movement_Authority.Accept_MA (X, T, Train, M.Start_Ms, O);
+         EVC_Movement_Authority.Accept_MA (X, T, Train, M.Start_Ms, O,
+                                           Infill);
          Record_Event (Info_MA, Change_Stored, M.Msg);
          Apply (T, O);
          MA_Accepted := True;
@@ -1093,8 +1095,10 @@ is
                if OK and then EVC_Acceptance.Accepted
                                 (EVC_Acceptance.Movement_Authority, A)
                then
+                  --  3.8.5.1 b): an infill MA from the next main
+                  --  signal's group on
                   Store_MA (EVC_Movement_Authority.From_Packet (X, M), M, T,
-                            Train, MA_Accepted);
+                            Train, MA_Accepted, A.Infill);
                end if;
             end;
          when K15 =>
@@ -1110,7 +1114,7 @@ is
                if OK then
                   Store_MA (EVC_Movement_Authority.From_Packet (To_P12 (X),
                                                                 M),
-                            M, T, Train, Accepted);
+                            M, T, Train, Accepted, False);
                   --  3.11.6.3.1: a level 2 MA accepted ends the V_MAIN
                   --  of level 1
                   if Accepted then

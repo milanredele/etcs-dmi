@@ -2899,5 +2899,37 @@ package body EVC_Test_Profiles is
              & "(3.6.4.2.5 a)), got" & Start_Of (2)'Image);
    end Scenario_Infill_Origin;
 
+   --  3.8.5.1 b), 3.8.5.1.2: the group 10 at 100 m gives an MA of two
+   --  sections, to 500 m and to the EOA at 1000 m, and links the infill
+   --  group 15 at 800 m and the next main signal's group 20 at 1000 m;
+   --  the group 15 carries a packet 136 naming 20, then an MA of two
+   --  sections of 300 m: the MA keeps its first section, its End Section
+   --  ends at the group 20, the infill sections follow it (to 1300 and
+   --  1600 m)
+   procedure Scenario_Infill_MA is
+      function Finish (I : Positive) return Integer_64 is
+        (if I <= MAu.MA.Count then Est (MAu.MA.Sections (I).Finish)
+         else -1);
+   begin
+      Start_X;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((700, 200), (15, 20), Locacc => 12)));
+      Add_Group (Group (15, 800));
+      Add_Group (Group (20, 1000));
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((400, 500)));
+      Carry_136 (2, 0, 20);
+      Carry (2, 0, MA_Of ((300, 300)));
+      Run_X (85_000);
+      Check (MAu.MA.Count = 4 and then Finish (1) = 50_000
+             and then Finish (2) = 100_000 and then Finish (3) = 130_000
+             and then Finish (4) = 160_000,
+             "infill MA: the sections in rear of the next main signal's "
+             & "group kept, a new section from it on (3.8.5.1 b), "
+             & "3.8.5.1.2), got" & MAu.MA.Count'Image & Finish (1)'Image
+             & Finish (2)'Image & Finish (3)'Image & Finish (4)'Image);
+   end Scenario_Infill_MA;
+
 
 end EVC_Test_Profiles;
