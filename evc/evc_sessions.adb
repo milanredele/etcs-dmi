@@ -1507,7 +1507,8 @@ is
       Desk_Was_Open := Open;
    end Apply_Desk;
 
-   procedure Evaluate (Ctx : EVC_Radio.Context_T) is
+   procedure Evaluate (Ctx   : EVC_Radio.Context_T;
+                       Rules : EVC_System_Version.Rules_T) is
       N     : constant R.Session_Count_T := R.Sessions;
       In_L2 : constant Boolean :=
         EVC_Levels.Valid and then EVC_Levels.Level = L2;
@@ -1580,7 +1581,7 @@ is
       declare
          SM_Status : Natural;
       begin
-         Manoeuvre.Evaluate (Ctx, Handover.Order_Stored, SM_Status);
+         Manoeuvre.Evaluate (Ctx, Handover.Order_Stored, Rules, SM_Status);
          if SM_Status /= 0 then
             Show (SM_Status, Natural (EVC_DMI_Port.SS_Event_Start));
          end if;
@@ -1779,9 +1780,17 @@ is
    pragma Warnings
      (GNATprove, On, """W"" is set by ""Finish_And_Send"" but not used*");
 
-   --  The requests and the session messages of S (156 apart)
+   --  The requests and the session messages of S (156 apart). 6.6.3.4.1.3
+   --  (added 3.5.3.7.6, X = 1; 2.0, 2.1, 2.2 by 6.6.5.3.4, 6.6.5.4.3,
+   --  6.6.5.5.3): in SM (Mode) the session with an RBC below 2.3 is
+   --  terminated immediately after its 159 (its 156 sent last in the
+   --  same cycle, 3.5.5.3)
    --  @req 3.5.6.7
-   procedure Produce_Session (S : Session_T; T : T_TRAIN_T; Now : Time_Ms_T)
+   --  @req 6.6.3.4.1.3, 6.6.5.3.4, 6.6.5.4.3, 6.6.5.5.3
+   procedure Produce_Session (S    : Session_T;
+                              T    : T_TRAIN_T;
+                              Now  : Time_Ms_T;
+                              Mode : Mode_T)
      with Global => (In_Out => (Links, R.State, R.Queue, Ind,
                                 Requesting, Timer_On, Timer_Since),
                      Input  => (Network.State, In_Hole))
@@ -1815,6 +1824,11 @@ is
       if L.Send_159 then
          Send_159 (S, T);
          L.Send_159 := False;
+         if Mode = M_SM and then R.Info (S).Version_Known
+           and then EVC_System_Version.Below (R.Info (S).Version, 2, 3)
+         then
+            Terminate_Session (S, Now);
+         end if;
       end if;
    end Produce_Session;
 
@@ -1826,7 +1840,7 @@ is
       Network.Produce (Ctx.Now_Ms);
       for S in Session_T loop
          pragma Loop_Invariant (True);
-         Produce_Session (S, T, Ctx.Now_Ms);
+         Produce_Session (S, T, Ctx.Now_Ms, Ctx.Mode);
       end loop;
       --  3.16.3.5: the acknowledgements (not after 156, 3.5.5.3)
       for I in 1 .. Ack_N loop

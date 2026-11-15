@@ -81,4 +81,10 @@ package EVC_Test_Manoeuvre is
    procedure Scenario_SM_Remote_Shunting;
    procedure Scenario_SM_Consist_Rejects;
 
+   --  6.6.4.3.1, 6.6.2.3.7: with an RBC of 2.1 supervising, no Supervised
+   --  Manoeuvre ('Initiate SM' starts nothing); 6.6.3.4.1.3, 6.6.5.3.4:
+   --  in SM a session established with an RBC of 2.0 is terminated right
+   --  after its 159, and gets no 133 (6.6.3.4.1.6); one of 3.0 is kept
+   procedure Scenario_SM_Older_RBC;
+
 end EVC_Test_Manoeuvre;

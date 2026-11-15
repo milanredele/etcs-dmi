@@ -8,7 +8,6 @@ with ETCS_Train_Packets.P12;
 with EVC_Bytes;
 with EVC_DMI_Port;
 with EVC_Ports;
-with EVC_System_Version;
 with Interfaces;     use Interfaces;
 with ETCS_Variables; use ETCS_Variables;
 
@@ -84,12 +83,13 @@ is
    --  (6.5.2.3.7.1). Decision: the RBC's version is the session's, its
    --  message 32 (6.5.2.3.7 names the RBC's certified version; the
    --  operated X of 3.17.2.8 follows it but carries no Y); a session
-   --  without a version yet is not refused here (it is not established)
+   --  without a version yet is not refused here (it is not established).
+   --  6.6.3.4.1.6 (X = 1; 2.0, 2.1, 2.2 by 6.6.5.3.4, 6.6.5.4.3,
+   --  6.6.5.5.3): 3.18.3.10 does not apply, no message 133 to that RBC
+   --  @req 6.6.3.4.1.6
    function SM_By_Radio (S : R.Session_T) return Boolean is
      (not R.Info (S).Version_Known
-      or else EVC_System_Version.Major (R.Info (S).Version) >= 3
-      or else (EVC_System_Version.Major (R.Info (S).Version) = 2
-               and then Natural (R.Info (S).Version) mod 16 >= 3))
+      or else not EVC_System_Version.Below (R.Info (S).Version, 2, 3))
      with Global => R.State;
 
    --  S0: level 2, a valid position referred to an LRBG, the safe consist
@@ -178,6 +178,7 @@ is
 
    procedure Evaluate (Ctx          : EVC_Radio.Context_T;
                        Order_Stored : Boolean;
+                       Rules        : EVC_System_Version.Rules_T;
                        Status       : out Natural)
    is
    begin
@@ -187,6 +188,7 @@ is
          Req.Latest := False;
       end if;
       if EVC_Driver_Requests.SM_Selected and then not Req.Pending
+        and then not Rules.No_Supervised_Manoeuvre
         and then Possible (Ctx.Mode, Order_Stored)
       then
          Req.Answer := 0;

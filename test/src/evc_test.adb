@@ -408,6 +408,7 @@ begin
    EVC_Test_Manoeuvre.Scenario_SM_Gamma;
    EVC_Test_Manoeuvre.Scenario_SM_Remote_Shunting;
    EVC_Test_Manoeuvre.Scenario_SM_Consist_Rejects;
+   EVC_Test_Manoeuvre.Scenario_SM_Older_RBC;
    Scenario_Session_Error_Report;
    Scenario_Message_Failed_Check;
    Scenario_Session_JRU_Received;
