@@ -27325,3 +27325,9 @@ inventory found wrong, B4523, B4524, the matrix tool's rule of B4583,
 B4564 with B4643). The rules of the received packets (`EVC_Air_Gap`)
 follow the telegram's version in the round after; the user's decision on
 Euroloop and radio infill is needed before the round after that.
+
+The matrix after the record: the 112 rows of 6.6 that were deferred with
+the phase are todo now that the phase runs (the burndown counts todo and
+partial: 117 clauses left); the 24 rows of 3.9 and the rows other phases
+deferred for infill stay deferred until the decision on radio infill and
+Euroloop, those of infill by balise group until their package sets them.
