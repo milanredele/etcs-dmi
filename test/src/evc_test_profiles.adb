@@ -2955,5 +2955,89 @@ package body EVC_Test_Profiles is
              & Finish (2)'Image & Finish (3)'Image & Finish (4)'Image);
    end Scenario_Infill_MA;
 
+   --  3.8.5.1 b), 3.8.4.6.4: the group 10 at 100 m links the infill group
+   --  15 and the next main signal's group 20 at 1000 m; the group 15
+   --  carries a packet 136 naming 20 and an MA of sections of 100 m. It is
+   --  refused, the stored MA kept, when there is none, when the End
+   --  Section was revoked (3.8.4.2.2: the EOA at its entry, 900 m), when
+   --  the EOA is at 700 m and when the 29 sections kept, the cut one and
+   --  three infill ones exceed the 32 of the store; joined, the cut End
+   --  Section keeps its section timer (3.8.5.1 b): the data in rear kept)
+   procedure Scenario_Infill_MA_Refused is
+      function Finish (I : Positive) return Integer_64 is
+        (if I <= MAu.MA.Count then Est (MAu.MA.Sections (I).Finish)
+         else -1);
+
+      --  The groups laid, the group 10 with M when Has_MA, the group 15 at
+      --  Infill_M with N infill sections, the train run to To_M, standing
+      --  for Stand_Ms 50 m before the group 15
+      procedure Lay (M : T12.Packet_T; Has_MA : Boolean;
+                     Infill_M : Natural; N : Positive; To_M : Integer_64;
+                     Stand_Ms : Natural := 0)
+      is
+         L : constant Nat_List (1 .. N) := (others => 100);
+      begin
+         Start_X;
+         Add_Group (With_Links (Group (10, 100),
+                                Link_To ((Infill_M - 100, 1000 - Infill_M),
+                                         (15, 20), Locacc => 12)));
+         Add_Group (Group (15, Integer_64 (Infill_M)));
+         Add_Group (Group (20, 1000));
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         if Has_MA then
+            Carry (1, 1, M);
+         end if;
+         Carry_136 (2, 0, 20);
+         Carry (2, 0, MA_Of (L));
+         Run_X (Integer_64 (Infill_M - 50) * 100);
+         Stand_X (Stand_Ms);
+         Run_X (To_M * 100);
+      end Lay;
+
+      M : T12.Packet_T := MA_Of ((400, 400, 100));
+   begin
+      Lay (M, False, 800, 3, 850);
+      Check (not MAu.MA.Present,
+             "infill MA refused: no MA stored, none taken (3.8.5.1 b)), got"
+             & MAu.MA.Count'Image & Finish (1)'Image);
+
+      M.Q_SECTIONTIMER := 1;
+      M.Has_T_SECTIONTIMER := True;
+      M.T_SECTIONTIMER := 20;
+      M.D_SECTIONTIMERSTOPLOC := 100;
+      Lay (M, True, 800, 3, 850, Stand_Ms => 30_000);
+      Check (MAu.MA.Present and then MAu.MA.Count = 2
+             and then Finish (2) = 90_000,
+             "infill MA refused: the End Section revoked, the EOA at its "
+             & "entry kept (3.8.4.2.2 a)), got" & MAu.MA.Count'Image
+             & Finish (2)'Image & Finish (3)'Image);
+
+      Lay (MA_Of ((400, 200)), True, 600, 3, 650);
+      Check (MAu.MA.Count = 2 and then Finish (2) = 70_000,
+             "infill MA refused: the next main signal's group beyond the "
+             & "EOA, the End Section not extended, got" & MAu.MA.Count'Image
+             & Finish (2)'Image & Finish (3)'Image);
+
+      Lay (MA_Of ((1 .. 30 => 30)), True, 800, 3, 850);
+      Check (MAu.MA.Count = 30 and then Finish (30) = 100_000,
+             "infill MA refused: more sections than the store holds, the "
+             & "MA kept, got" & MAu.MA.Count'Image & Finish (1)'Image);
+
+      M := MA_Of ((400, 500));
+      M.Q_SECTIONTIMER := 1;
+      M.Has_T_SECTIONTIMER := True;
+      M.T_SECTIONTIMER := 200;
+      M.D_SECTIONTIMERSTOPLOC := 500;
+      Lay (M, True, 800, 3, 850);
+      Check (MAu.MA.Count = 5 and then Finish (2) = 100_000
+             and then MAu.MA.Sections (2).Timer.Given
+             and then MAu.MA.Sections (2).Timer.Running
+             and then Finish (5) = 130_000,
+             "infill MA: the cut End Section keeps its section timer "
+             & "(3.8.5.1 b)), got" & MAu.MA.Count'Image & Finish (2)'Image
+             & MAu.MA.Sections (2).Timer.Given'Image & Finish (5)'Image);
+   end Scenario_Infill_MA_Refused;
+
 
 end EVC_Test_Profiles;

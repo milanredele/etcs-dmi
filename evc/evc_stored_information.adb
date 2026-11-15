@@ -960,7 +960,8 @@ is
    --  3.7.2.3, 3.7.2.3.1: the MA X of the message M, accepted when the
    --  SSP and the gradients cover it up to its SvL from the estimated
    --  front end (EVC_Movement_Authority.Accept_MA: 3.8.5.1, the timers),
-   --  with the deletions it asks (Apply)
+   --  with the deletions it asks (Apply); an infill MA (Infill) only when
+   --  it can be joined to the stored one (Joinable, 3.8.5.1 b))
    --  @req 3.8.5.1.4
    procedure Store_MA (X           : EVC_Movement_Authority.MA_T;
                        M           : Message_T;
@@ -979,6 +980,8 @@ is
    begin
       if X.Present
         and then Train.Valid
+        and then (not Infill
+                  or else EVC_Movement_Authority.Joinable (X, T))
         and then EVC_Track_Description.Covered
                    (T, X.Sense, Train.Est_Front,
                     Frame (T, EVC_Movement_Authority.SvL_Location (X),

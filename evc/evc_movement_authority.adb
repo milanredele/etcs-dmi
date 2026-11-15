@@ -366,15 +366,51 @@ is
       Delete_Beyond_SvL (T, Current, Natural'Last, Outcome);
    end Overlap_Over;
 
+   --  The count of the sections of the current MA, its End Section aside,
+   --  that end in rear of X0 in the sense S
+   function Kept (S : Sense_T; X0 : Dist_T; T : Origin_Table_T)
+                  return Natural
+     with Global => (Input => Current),
+          Post => Kept'Result < Natural'Max (Current.Count, 1)
+   is
+      Keep : Natural := 0;
+   begin
+      for J in 1 .. Current.Count - 1 loop
+         pragma Loop_Invariant (Keep = J - 1);
+         exit when A (S, Frame (T, Current.Sections (J).Finish,
+                                Estimated_Item)) >= A (S, X0);
+         Keep := J;
+      end loop;
+      return Keep;
+   end Kept;
+
+   function Joinable (X : MA_T; T : Origin_Table_T) return Boolean
+     with Refined_Global => Current
+   is
+      S  : constant Sense_T := X.Sense;
+      X0 : constant Dist_T := Frame (T, X.Start, Estimated_Item);
+   begin
+      if not Current.Present or else Current.Sense /= S
+        or else Current.Withdrawn or else Current.Count = 0
+        or else A (S, X0)
+                > A (S, Frame (T, Current.Sections (Current.Count).Finish,
+                               Estimated_Item))
+      then
+         return False;
+      end if;
+      return Kept (S, X0, T) + 1 + X.Count <= Max_Sections;
+   end Joinable;
+
    --  3.8.5.1 b), 3.8.5.1.2: the infill MA New_MA, its start the infill
    --  location reference, joined to the current MA: the sections of the
    --  current one that end in rear of that start, then the section in
-   --  which it lies, ending there (its timer kept; the End Section without
-   --  one, 3.8.3.4.1), then the sections of New_MA, with its own end, end
-   --  timer, danger point and overlap; the MA's start the current one's.
+   --  which it lies, ending there with its section timer (also the End
+   --  Section's: the data in rear of the reference are kept; its End
+   --  Section timer goes with its role, 3.8.3.4.1), then the sections of
+   --  New_MA, with its own end, end timer, danger point and overlap; the
+   --  MA's start the current one's.
    --  First: the first section of New_MA after the join (1 when nothing
-   --  is kept: no MA in the same sense, a withdrawn one, or no room for
-   --  both; decision: then New_MA replaces the MA whole, 3.8.5.1 a))
+   --  is kept: the caller refuses such an MA before, Joinable)
    procedure Join (New_MA : in out MA_T;
                    T      : Origin_Table_T;
                    First  : out Positive)
@@ -384,7 +420,7 @@ is
    is
       S    : constant Sense_T := New_MA.Sense;
       X0   : constant Dist_T := Frame (T, New_MA.Start, Estimated_Item);
-      Keep : Natural := 0;
+      Keep : Natural;
       N    : constant Natural := New_MA.Count;
    begin
       First := 1;
@@ -393,12 +429,7 @@ is
       then
          return;
       end if;
-      for J in 1 .. Current.Count - 1 loop
-         pragma Loop_Invariant (Keep = J - 1);
-         exit when A (S, Frame (T, Current.Sections (J).Finish,
-                                Estimated_Item)) >= A (S, X0);
-         Keep := J;
-      end loop;
+      Keep := Kept (S, X0, T);
       if Keep + 1 + N > Max_Sections then
          return;
       end if;
@@ -410,9 +441,7 @@ is
          pragma Loop_Invariant (Keep + 1 + N <= Max_Sections);
          New_MA.Sections (J) := Current.Sections (J);
       end loop;
-      New_MA.Sections (Keep + 1) :=
-        (if Keep + 1 < Current.Count then Current.Sections (Keep + 1)
-         else No_Section);
+      New_MA.Sections (Keep + 1) := Current.Sections (Keep + 1);
       New_MA.Sections (Keep + 1).Finish := New_MA.Start;
       New_MA.Count := Keep + 1 + N;
       New_MA.Start := Current.Start;

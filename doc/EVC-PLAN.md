@@ -27342,3 +27342,36 @@ then radio infill (the packages C1 to C6 of the infill inventory), then
 Euroloop (B1 to B4: the LTM port and the loop telegram's parser first),
 each started when the units it shares with the running packages are
 free.
+
+### Infill by balise group completed: an infill MA that cannot be joined refused, the modes of its evaluation, the linking, V_MAIN and the mode profiles by infill (e7/infill-rest) (2026-11-15)
+
+**B4683, an infill MA that cannot be joined** (the coordinator's decision
+of 2026-11-15). The claims at the source: Join returned First = 1 (the
+MA replaced whole) for no MA in the same sense, a withdrawn MA or no
+room, and nothing compared the infill location reference with the
+current EOA, so a named group beyond it extended the End Section (true);
+the cut End Section became No_Section (true, and its section timer was
+in Sections (Count) like any other: From_Packet stores Q_SECTIONTIMER of
+the End Section there). The clause for the timer: 3.8.5.1 b) replaces
+only what lies beyond the reference, so the part of the old End Section
+in rear of it is a section that keeps its own section timer (3.8.4.2);
+its End Section timer (3.8.4.1) goes with the role, which passes to the
+infill MA's End Section (3.8.3.4.1, figure 22c: a new short End Section
+from the reference). Built: EVC_Movement_Authority.Joinable (an MA in
+the same sense, not withdrawn to the train, its EOA not in rear of the
+reference, the kept sections with the infill ones at most 32), called
+by EVC_Stored_Information.Store_MA, which records the infill MA rejected
+and keeps the MA; Join (its section count by Kept, shared with
+Joinable) keeps the cut section whole up to the reference. Scenario:
+evc_test Scenario_Infill_MA_Refused (EVC_Test_Profiles): no MA stored
+(before: three infill sections taken), the End Section revoked by its
+section timer (EOA at 900 m kept; before: extended to 1000 m), the EOA
+at 700 m with the reference at 1000 m (before: five sections to
+1100 m), 30 sections kept and 3 infill ones (before: replaced, 3), and
+the cut End Section with its section timer (before: not given). The
+other sense is not laid by the track helpers (the same condition of
+Joinable). Matrix 3.8.5.1 b) note updated. Proof:
+EVC_Movement_Authority before 716 steps, 0 of 6 wide, the largest 5 VCs
+(the last round's figures, same code); after 716 steps, 0 of 6 (5 VCs);
+EVC_Stored_Information 2216 steps, 0 of 6 (15 VCs). The runner: no
+sequence moved (3110600_01 still passes).

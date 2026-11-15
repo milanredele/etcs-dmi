@@ -64,4 +64,9 @@ package EVC_Test_Profiles is
       --  main signal's group on
       procedure Scenario_Infill_MA;
 
+      --  3.8.5.1 b), 3.8.4.2.2: an infill MA that cannot be joined to the
+      --  stored MA is refused and the stored MA kept; a cut End Section
+      --  keeps its section timer
+      procedure Scenario_Infill_MA_Refused;
+
 end EVC_Test_Profiles;
