@@ -27095,3 +27095,135 @@ proof: 15512 checks (14525 before: 987 more, all proved), margin 47726 of 100000
 cross build and the stack are the coordinator's (not run). The runner:
 3190 sequences, 1276 passed, 986 failed, 928 blocked, 0 regressions, no
 sequence moved.
+
+### Review of the seventy-seventh round: eight items re-derived blind (e7/review-77) (2026-11-15)
+
+I wrote each verdict below from the clause, the data and the trace
+before reading the authors' record. All eight items were taken, two
+traces run (5170200_05; 3080300_01 with 4080444_01). No code, no triage
+line and no line of the authors was changed.
+
+1. The condition of each specific requirement. 6.6.2.1 to 6.6.2.3 hang
+   on the operated X = 1 alone (the heading of 6.6.2). For X = 2:
+   6.6.4.1.1, 6.6.4.2.1 and 6.6.4.3.1 on the supervising RBC's X.Y (2.0,
+   2.1, 2.2); 6.6.4.1.2 and 6.6.4.1.3 on X = 2 alone; 6.6.4.2.2 on the
+   text's source (a telegram marked below 2.2, an RBC of 2.0 or 2.1, not
+   2.2); 6.6.4.3.2 on the RBC the on-board is in communication with, not
+   the supervising one. `EVC_System_Version.Rules_Of`: Ack_Ends_Text
+   X = 1, Engine_Front X = 1 or X = 2 with the RBC 2.0 .. 2.2 (6.6.2.1.2
+   and 6.6.2.2.3 share their condition in both versions, so one
+   component holds both), TSR_Estimated and ASP_Lower_Categories X <= 2,
+   SR_Stop_Always X = 1, Texts_FS_Across_AD X = 1 (6.6.4.2.2 is by the
+   text's source and rightly not in the record), No_Supervised_Manoeuvre
+   as 6.6.4.3.1, EoM_Awaits_Termination X = 1 (X = 2 by the session).
+   Agree, all eight components.
+
+2. (a) 6.6.2.2.4 to 6.6.2.2.6 and 6.6.4.2.2 are added clauses of the AD
+   section; this on-board never enters AD (4.4.16.1.4 deferred): mine
+   deferred with AD. Done would claim a behaviour that only exists once
+   AD does; not applicable would drop them for good although AD is part
+   of the on-board. Author: deferred. Agree. (b) With an RBC of 2.1
+   supervising, DMI Table 33 enables 'Initiate SM' only with a
+   supervising RBC above 2.2, and the session byte of MSG_ONBOARD is 3
+   only then: no button. Selected anyway: nothing, since 5.21 does not
+   apply (6.6.2.3.7 by 6.6.4.3.1) and with it the indication of 5.21.4.1.
+   In SM, a session established with an RBC of 2.0: 6.6.5.3.4 applies
+   6.6.3.4.1.3 and .6: the 159, then the termination (156) at once, and
+   no 133 (3.18.3.10 does not apply). Author (Manoeuvre.Evaluate,
+   Produce_Session, Scenario_SM_Older_RBC: no 131, no 'SM request
+   failed', the 159 then the 156 in the same cycle, no 133; an RBC of 3.0
+   keeps its session): the same. Agree.
+
+3. Infill by balise group. (a) The packets before the 136 count from the
+   infill group, those after it from the named group (8.4.1.3.1). (b) In
+   force at reception, placed by the linking (3.6.4.2.5 a), Note 1); when
+   the named group becomes the SOLR the relocation by the same linking
+   puts them back at their distance from the group as read. (c) The MA
+   is not evaluated (3.8.4.6.4); for the others no clause says, and with
+   no linking and the group not yet passed 3.6.4.2.5 has no distance to
+   use: not kept is the safe answer. (d) 8.4.1.4.4: one packet 136 per
+   telegram per direction, identical in the balises of the group, so the
+   first one names the group. Author (Infill_Origin,
+   Scenario_Infill_Origin): the same, (d) by decision. Agree; 8.4.1.4.4
+   is the clause behind the decision.
+
+4. The MA by infill. Mine: (a) the sections in rear of the named group
+   stay with their timers, the section that holds it is cut there (its
+   section timer kept, the old End Section's too: 3.8.5.1 b) keeps all
+   data in rear); the new end, end timer, danger point and overlap are
+   the infill MA's. (b) The infill sections' timers from the passage over
+   the infill group's first balise (3.8.4.6.5 a)), the kept ones run on.
+   (c) No MA in the same sense, a withdrawn one (3.8.4.1.2, 3.8.4.2.2:
+   the EOA withdrawn to the train or to a revoked section's entry), a
+   named group beyond the current EOA, no room: refuse the infill MA and
+   keep the old, because nothing in rear can be kept and replacing would
+   give an authority over ground nobody granted. Author (Join, Accept_MA,
+   Scenario_Infill_MA): (a) and (b) the same, except that the cut old End
+   Section becomes a section without its timer; (c) by decision the MA is
+   replaced whole (3.8.5.1 a), a clause for non-infill MAs), and a named
+   group beyond the EOA extends the old End Section to it (no check in
+   Join or Store_MA); with 3.8.4.6.2 not built (B4645) the same in SR or
+   SB. The scenario shows only the case where the EOA is the named group
+   (four section ends). Disagree on (c) and the End Section's timer:
+   B4683.
+
+5. Four rows done. 3.6.5.1.4 f) (a position report once the min safe
+   rear end has passed the border of a transition from level 2):
+   EVC_Level_Sessions.Evaluate, Scenario_L2_Exit_By_Order (no request
+   before, one after, none after the RBC's termination; the check counts
+   the request, not the 136 on the RTM). Agree. 5.12.4.2.2 (desk B
+   opened: SH at once): 4.6.3 [23] in EVC_Procedures,
+   Scenario_E4_Continue_Shunting fails without it. Agree. 3.6.3.2.2 e)
+   (a value whose next distance is 0 still taken into account): shown for
+   Q_FRONT 0 (40 km/h kept 200 m in the MRSP); an element of length 0
+   with Q_FRONT 1, a restriction at a point for the front end, is not
+   shown and the code passes it on with its start equal to its finish.
+   Undecided: B4684. 5.4.5.1 (the session lost after D11: S10): ours ends
+   the S21 wait (S10 and S20 are one state derived from the conditions);
+   a lost connection keeps the session (3.5.4) and is rightly not this
+   loss. Agree.
+
+6. Three layouts on the PDF page. Packet 80 of X = 1 (6.5.1.5.18, p. 16
+   and 17): NID_PACKET 8, Q_DIR 2, L_PACKET 13, Q_SCALE 2, D_MAMODE 15,
+   M_MAMODE 2, V_MAMODE 7, L_MAMODE 15, L_ACKMAMODE 15, N_ITER 5 and the
+   five of the iteration, no Q_MAMODE: equal. Packet 45 of X = 2
+   (6.5.2.3.13.1, p. 47): NID_PACKET, Q_DIR, L_PACKET, NID_MN 24: equal
+   (chapter 6 titles it "Radio Network transition order", the toml keeps
+   the 4.0.0 name). M_MODE for 1.0 .. 2.1 (6.5.1.5.28.1 p. 26,
+   6.5.2.3.2.4 p. 41): 4 bits both; code 12 for X = 1 is "National System
+   if the level reported is NTC, else Limited Supervision" and 15 spare
+   against Passive Shunting: rules of the value, one layout serves.
+   The 159 for an RBC of 2.1 (6.5.2.3.3.3): "Packet 2 or 3", the toml's
+   one_of: equal. Agree.
+
+7. 5170200_05 SV30 step 99. Level 0 is announced at 100 m by BG3d's
+   packet 41 after its 136 (referred to the main group at 200 m) and
+   taken at 200 m (step 50, L0 UN), as 8.4.1.3.1 asks; later level 2 at
+   500 m in TR, level 0 at 535 m, standstill at 615 m, the trip
+   acknowledged in level 0 with valid Train Data gives UN (4.6.3 [62]).
+   Row 99 expects a record with M_MODE=7 (Trip) between rows that give UN
+   before and after; the same sequence codes UN as 4 (row 53) and row 102
+   expects M_MODE=16, no mode at all; ERA's PDF rows the same. The
+   sequence's data. Author (Sf2c5e230, s076): the same. Agree.
+
+8. 3080300_01 SV30 step 49: BG1d (50 m) links BG2 only and gives an EOA
+   about 1050 m; BG2d (150 m) carries a 136 naming BG3, not in that
+   linking, then packets 21, 27 and 12 (L_ENDSECTION 20): not evaluated
+   (3.8.4.6.4), ours keeps the EOA (747 m ahead at 300 m); 'Override EoA'
+   at standstill in FS gives SR (5.8.3.1 a), 4.6.3 [37]) where rows 49 to
+   55 keep FS; the EOA at 300 m the rows assume needs BG3 at 280 m, which
+   the data do not give. The sequence's data. Author (S7341fea5, s076):
+   the same. Agree. 4080444_01 SV30: BG1d links BG3 at 400 m and BG4 at
+   450 m; BG3d's packet 67 after its 136 (naming BG4) has D_TRACKCOND 100
+   and L_TRACKCOND 100: the area is 550 to 650 m by 8.4.1.3.1 (500 to 600
+   m counted from the infill group, where the alarm from 600 m fell
+   outside it), so steps 57 to 60 pass for the right reason; it stops at
+   79 on BG8d of version 1.0, blocked E7-version: the coding of the old
+   layouts, a later part of this phase. Author: the same. Agree.
+
+Counts: eight items, six agreed (1, 2, 3, 6, 7, 8), one disagreed (4,
+B4683), one undecided in part (5: three rows agreed, 3.6.3.2.2 e) for a
+front element, B4684). My calls: B4683 first, before more infill (radio
+infill reuses Join): refuse an infill MA that cannot be joined and keep
+the old End Section's timer, with 3.8.4.6.2 built alongside; B4684 is
+one scenario.
