@@ -27603,3 +27603,78 @@ and triage unchanged.
 **Left at the bound** (B4724, with the readings): Engine_Front,
 SR_Stop_Always, Ack_Ends_Text; the inventory's rows of 6.6.2.3.3 to .5
 not read.
+
+### Infill by balise group completed: an infill MA that cannot be joined refused, the modes of its evaluation, the linking, V_MAIN and the mode profiles by infill (e7/infill-rest) (2026-11-15)
+
+**B4683, an infill MA that cannot be joined** (the coordinator's decision
+of 2026-11-15). The claims at the source: Join returned First = 1 (the
+MA replaced whole) for no MA in the same sense, a withdrawn MA or no
+room, and nothing compared the infill location reference with the
+current EOA, so a named group beyond it extended the End Section (true);
+the cut End Section became No_Section (true, and its section timer was
+in Sections (Count) like any other: From_Packet stores Q_SECTIONTIMER of
+the End Section there). The clause for the timer: 3.8.5.1 b) replaces
+only what lies beyond the reference, so the part of the old End Section
+in rear of it is a section that keeps its own section timer (3.8.4.2);
+its End Section timer (3.8.4.1) goes with the role, which passes to the
+infill MA's End Section (3.8.3.4.1, figure 22c: a new short End Section
+from the reference). Built: EVC_Movement_Authority.Joinable (an MA in
+the same sense, not withdrawn to the train, its EOA not in rear of the
+reference, the kept sections with the infill ones at most 32), called
+by EVC_Stored_Information.Store_MA, which records the infill MA rejected
+and keeps the MA; Join (its section count by Kept, shared with
+Joinable) keeps the cut section whole up to the reference. Scenario:
+evc_test Scenario_Infill_MA_Refused (EVC_Test_Profiles): no MA stored
+(before: three infill sections taken), the End Section revoked by its
+section timer (EOA at 900 m kept; before: extended to 1000 m), the EOA
+at 700 m with the reference at 1000 m (before: five sections to
+1100 m), 30 sections kept and 3 infill ones (before: replaced, 3), and
+the cut End Section with its section timer (before: not given). The
+other sense is not laid by the track helpers (the same condition of
+Joinable). Matrix 3.8.5.1 b) note updated. Proof:
+EVC_Movement_Authority before 716 steps, 0 of 6 wide, the largest 5 VCs
+(the last round's figures, same code); after 716 steps, 0 of 6 (5 VCs);
+EVC_Stored_Information 2216 steps, 0 of 6 (15 VCs). The runner: no
+sequence moved (3110600_01 still passes).
+
+**B4645, the modes of an infill MA.** The claim at the clause: 3.8.4.6.2
+holds for the MA, and 4.8.4.1.1 (the row was n/a) holds for every infill
+information: only the columns FS, AD and LS of the table of 4.8.4 apply
+(the row "Infill Location Reference" reads A in FS, AD, LS only). Built
+in EVC_Acceptance.Third_Filter: information marked infill (the packets
+after a packet 136, Context_T.Infill) rejected in any other mode, so in
+SR, OS, SB ... the infill MA, its V_MAIN and the other infill packets
+are not taken at reception (a set of the transition buffer does not
+keep the mark: B4644). 3.8.4.6.5 a) was built (Accept_MA starts only
+the appended sections' timers, at the message's M.Start_Ms, the passage
+over the infill group's first balise) and is now checked. Scenario:
+evc_test Scenario_Infill_Modes: in SR (Set_Mode_For_Test) the infill
+TSR and MA not taken (before: the TSR taken, the check failed); in FS
+both taken, the infill section's timer started within 0.2 s of the
+passage over the group 15, the cut End Section's running on from the
+group 10. Rows 3.8.4.6.2, 3.8.4.6.5 a), 4.8.4.1.1 done. Proof:
+EVC_Acceptance is a spec of expression functions (no statistics of its
+own); EVC_Stored_Information, its main caller, 2579 steps, 0 of 6 wide
+(15 VCs). The runner: no sequence moved.
+
+**Left at the bound** (120 calls): B4646 (A3) sized, not built (B4744:
+3.7.3.1 n) needs EVC_Position, which is not this package's; 3.11.6.2
+about 60 lines over two units; 3.12.4.3.1 about 40 lines, its scenario
+Scenario_Infill_Mode_Profiles written and not yet called; 3.11.6.5 is
+the zero ignored and built: the brief's "valid from that group's
+location" is 3.11.6.2). B4684 checked, not settled: the 40 km/h element
+of length 0 with Q_FRONT 1 is missing from the MRSP (100 km/h, then
+120 km/h at 1100 m), the cause not traced (B4743, EVC_Track_Description
+or Build_MRSP); the case is not committed, since it fails. B4644 not
+taken.
+
+**The SV30 sequences with a packet 136** (58, by `grep -l 'packet 136'`
+against the baseline, unchanged by this package: no sequence moved): 3
+passed, 20 blocked, 35 failed: 3040500_03 45, 3070300_04 48, 3070300_06
+48, 3080300_01 49, 3090300_05 to _10 48, 3110600_02 52, 3120400_01 49,
+3120400_03 46, 3120400_04 59, 4080100_01 96, 4080300_16 73, 4080402_01
+129, 4080404_02 47, 4080416_01 71, 4080416_02 49, 4080417_01 151,
+4080419_02 13, 4080420_01 29, 4080421_02 85, 4080425_02 49, 4080433_01
+50, 4080436_01 80, 4080444_03 76, 4080445_01 103, 4080445_02 100,
+4080454_01 125, 4080454_02 106, 4080454_04 48, 5170200_05 99,
+9990500_04 48 (16 of them at Sa8a3ba1a, the radio family).

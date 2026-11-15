@@ -250,6 +250,19 @@ is
      with Global => (In_Out => State),
           Post => not Trip_Ordered;
 
+   --  3.8.5.1 b), 3.8.5.1.2: the infill MA X, its start the infill
+   --  location reference, can be joined to the stored MA: one is stored in
+   --  the same sense, not withdrawn to the train (3.8.4.1.2), its EOA (the
+   --  entry of a revoked section, 3.8.4.2.2) not in rear of that
+   --  reference, and the sections kept with those of X fit in the store.
+   --  Decision: an infill MA that cannot be joined is refused and the
+   --  stored MA kept (3.8.5.1 b) replaces only what lies beyond the
+   --  reference, and the ground between the EOA and the reference was not
+   --  granted)
+   --  @req 3.8.5.1 b)
+   function Joinable (X : MA_T; T : Origin_Table_T) return Boolean
+     with Global => State;
+
    --  X, whose SSP and gradients cover it (3.7.2.3), replaces the stored
    --  MA (3.8.5.1 a) and deletes the mode profile (3.12.4.3): an SvL
    --  closer than the one supervised, or one where a LOA was, is a
@@ -266,7 +279,7 @@ is
    --  @req 3.8.4.1.3, 3.8.4.1.4, 3.8.4.2.1 a), 3.8.4.2.1 b), 3.8.4.2.5
    --  @req 3.8.4.3.1, 3.8.4.3.1 a), 3.8.4.3.1 b), 3.8.4.4.4, 3.8.4.4.5
    --  @req 3.8.5.1, 3.8.5.1 a), 3.8.5.1.3, 3.8.5.1.4, 3.8.5.2.4, 3.8.6.2
-   --  @req 3.12.4.3, 3.8.5.1 b), 3.8.5.1.2
+   --  @req 3.12.4.3, 3.8.5.1 b), 3.8.5.1.2, 3.8.4.6.5 a)
    procedure Accept_MA (X          : MA_T;
                         T          : Origin_Table_T;
                         Train      : Train_Frame_T;

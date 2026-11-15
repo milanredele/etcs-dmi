@@ -231,9 +231,14 @@ is
      (if C.Level_Valid then Level_Accepts (I, C.Level, C)
       else (for all L in Level_T => Level_Accepts (I, L, C)));
 
-   --  4.8.4: the third filter in the mode of C
+   --  4.8.4: the third filter in the mode of C; infill information only
+   --  in the columns FS, AD and LS, rejected in every other mode (also an
+   --  infill MA, 3.8.4.6.2)
+   --  @req 4.8.4.1.1, 3.8.4.6.2
    function Third_Filter (I : Info_T; C : Context_T) return Boolean
-   is (case C.Mode is
+   is ((not C.Infill or else C.Mode in M_FS | M_AD | M_LS)
+       and then
+       (case C.Mode is
           when M_NP | M_SF | M_IS => False,    -- NR
           when M_SB =>
              C.Cab_Active                                       -- [2]
@@ -298,7 +303,7 @@ is
           when M_RV =>
              I in National_Values | Reversing_Area | Reversing_Supervision
                 | Text_Message | Session_Management | Network_Order
-                | Generic_LS_Marker);
+                | Generic_LS_Marker));
 
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));
