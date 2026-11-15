@@ -7,6 +7,7 @@ with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P2;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P41;
+with ETCS_Track_Packets.P65;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;
 with EVC_Config;
@@ -16,7 +17,11 @@ with EVC_Modes;           use EVC_Modes;
 with EVC_National_Values;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
+with EVC_Stored_Information;
+with EVC_Supervision_Input;
 with EVC_System_Version;
+with EVC_Track_Description;
+with EVC_Train_Data;
 with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
@@ -462,5 +467,114 @@ package body EVC_Test_Version is
              & "the session kept (6.6.3.4.1.2: 3.5.3.7.4, .4.1 not applied)");
       EVC_Core.Initialise;
    end Scenario_Version_Rules;
+
+   --  The start and end (cm along the line) of the MRSP's segment of
+   --  40 km/h after a TSR of 100 m at 300 m from the first group of two,
+   --  the train in FS past the second (a relocation by 3.6.4.2.5 c), the
+   --  first group ordering 2.0 when Order
+   procedure TSR_Run (Order : Boolean; S, F : out Integer_64) is
+      P : ETCS_Track_Packets.P65.Packet_T;
+   begin
+      S := -1;
+      F := -1;
+      Start_X;
+      Add_Version_Group (10, 100, 16#30#, Order, 16#20#);
+      Add_Version_Group (20, 200, (if Order then 16#20# else 16#30#));
+      Carry (1, 0, SSP ((1 => (0, 160, False))));
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.NID_TSR := 9;
+      P.D_TSR := 300;
+      P.L_TSR := 100;
+      P.Q_FRONT := 1;
+      P.V_TSR := 8;
+      Carry (1, 0, P);
+      Run_X (25_000);
+      declare
+         Snap : constant EVC_Supervision_Input.Snapshot_T :=
+           EVC_Stored_Information.Current;
+      begin
+         for K in 1 .. Snap.MRSP.Count loop
+            if Snap.MRSP.Segments (K).Speed = 1_111
+              and then K < Snap.MRSP.Count
+            then
+               S := Integer_64 (Snap.MRSP.Segments (K).Start);
+               F := Integer_64 (Snap.MRSP.Segments (K + 1).Start);
+            end if;
+         end loop;
+      end;
+   end TSR_Run;
+
+   procedure Scenario_Version_TSR is
+      S3, F3, S2, F2 : Integer_64;
+   begin
+      TSR_Run (False, S3, F3);
+      Check (SV.Operated = 3 and then S3 > 0 and then S3 < 40_000
+             and then F3 > 50_000,
+             "version TSR: X = 3, from its max start to its min end "
+             & "(3.6.4.2.4 Table 2a)");
+      TSR_Run (True, S2, F2);
+      Check (SV.Operated = 2 and then Rules.TSR_Estimated
+             and then S2 = 40_000 and then F2 = 50_000,
+             "version TSR: X = 2 ordered by a group, from its estimated "
+             & "start to its estimated end in FS (6.6.4.1.2, 6.6.2.1.3)");
+      EVC_Core.Initialise;
+   end Scenario_Version_TSR;
+
+   --  The ASP taken from a group's packet 51 (the first group orders 2.0
+   --  when Order) by a train of category C2 (4): a first element of
+   --  A 60, B1 40, C2 50 and C4 30 km/h, a second of A 60 alone; Count
+   --  and V the ASP elements stored and the first one's speed (cm/s)
+   procedure ASP_Run (Order : Boolean; Count, V : out Natural) is
+      P   : T51.Packet_T;
+      Cat : EVC_Train_Data.Categories_T;
+   begin
+      Start_X;
+      Cat := EVC_Train_Data.Categories;
+      Cat.Axle_Load := 4;
+      EVC_Train_Data.Set (EVC_Train_Data.Data, Cat);
+      Add_Version_Group (10, 100, 16#30#, Order, 16#20#);
+      Add_Version_Group (20, 200, (if Order then 16#20# else 16#30#));
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.Q_TRACKINIT := 0;
+      P.Has_D_AXLELOAD := True;
+      P.D_AXLELOAD := 200;
+      P.L_AXLELOAD := 100;
+      P.Q_FRONT := 1;
+      P.N_ITER := 4;
+      P.M_AXLELOADCAT_List (1) := (M_AXLELOADCAT => 0, V_AXLELOAD => 12);
+      P.M_AXLELOADCAT_List (2) := (M_AXLELOADCAT => 2, V_AXLELOAD => 8);
+      P.M_AXLELOADCAT_List (3) := (M_AXLELOADCAT => 4, V_AXLELOAD => 10);
+      P.M_AXLELOADCAT_List (4) := (M_AXLELOADCAT => 6, V_AXLELOAD => 6);
+      P.N_ITER_2 := 1;
+      P.D_AXLELOAD_List (1).D_AXLELOAD := 300;
+      P.D_AXLELOAD_List (1).L_AXLELOAD := 100;
+      P.D_AXLELOAD_List (1).Q_FRONT := 1;
+      P.D_AXLELOAD_List (1).N_ITER := 1;
+      P.D_AXLELOAD_List (1).M_AXLELOADCAT_List (1) :=
+        (M_AXLELOADCAT => 0, V_AXLELOAD => 12);
+      Carry (2, 0, P);
+      Run_X (25_000);
+      Count := EVC_Track_Description.ASP.Count;
+      V := (if Count > 0 then Natural (EVC_Track_Description.ASP.List (1).Value)
+            else 0);
+   end ASP_Run;
+
+   procedure Scenario_Version_ASP is
+      C3, V3, C2, V2 : Natural;
+   begin
+      ASP_Run (False, C3, V3);
+      Check (SV.Operated = 3 and then C3 = 1 and then V3 > 1_111
+             and then V3 < 1_666,
+             "version ASP: X = 3, the speed of the train's category C2 "
+             & "alone, no element where it is not listed (3.11.4.3)");
+      ASP_Run (True, C2, V2);
+      Check (SV.Operated = 2 and then C2 = 2 and then V2 = 1_111,
+             "version ASP: X = 2 ordered by the group, the lowest speed of "
+             & "the categories up to C2 (B1 40 km/h, not C4), an element of "
+             & "A alone taken (6.6.4.1.3, 6.6.2.1.4)");
+      EVC_Core.Initialise;
+   end Scenario_Version_ASP;
 
 end EVC_Test_Version;

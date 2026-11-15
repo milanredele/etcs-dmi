@@ -29,4 +29,14 @@ package EVC_Test_Version is
    --  a group, an RBC of 2.1 and of 2.3 supervising, 3.0 everywhere;
    --  6.6.3.4.1.2: no acknowledgement awaited from an RBC of 1.1
    procedure Scenario_Version_Rules;
+
+   --  6.6.2.1.3, 6.6.4.1.2: in FS a TSR relocated across a group starts
+   --  and ends at its estimated location with X = 2 ordered by a group,
+   --  at its max start and min end with X = 3 (3.6.4.2.4 Table 2a)
+   procedure Scenario_Version_TSR;
+
+   --  6.6.2.1.4, 6.6.4.1.3: the ASP of every axle load category up to
+   --  the train's, the lowest speed, with X = 2 ordered by the group that
+   --  carries it; with X = 3 the train's category alone (3.11.4.3)
+   procedure Scenario_Version_ASP;
 end EVC_Test_Version;

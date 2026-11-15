@@ -303,12 +303,17 @@ is
                              T : Origin_Table_T)
      with Global => (In_Out => State);
 
+   --  The ASP of packet 51 for the train's axle load category Axle; with
+   --  Lower (EVC_System_Version.Rules_T.ASP_Lower_Categories) the lowest
+   --  speed of the categories up to Axle
    --  @req 3.7.3.1 c), 3.7.3.2 b), 3.11.4.3
    --  @req 3.6.3.2.4, 3.6.3.2.4 a), 3.6.3.2.4 b), 3.6.3.2.4 c)
+   --  @req 6.6.2.1.4, 6.6.4.1.3
    procedure Take_ASP (P    : ETCS_Track_Packets.P51.Packet_T;
                        M    : Message_T;
                        T    : Origin_Table_T;
-                       Axle : M_AXLELOADCAT_T)
+                       Axle : M_AXLELOADCAT_T;
+                       Lower : Boolean := False)
      with Global => (In_Out => State);
 
    --  3.11.11.2, 3.7.3.1 d), 3.7.3.2 a)
@@ -432,12 +437,16 @@ is
    --  one (see the header)
    --  Only_TSR: the TSRs alone, for the modes in
    --  which the other restrictions are not in the MRSP (4.5.2: SR, UN)
+   --  TSR_Estimated: a TSR from its estimated start to its estimated end
+   --  (EVC_System_Version.Rules_T.TSR_Estimated, in FS or OS)
    --  @req 3.11.2.4, 3.13.7.2, 4.4.10.1.2, 4.4.10.1.3
+   --  @req 6.6.2.1.3, 6.6.4.1.2
    procedure Speed_Elements (T        : Origin_Table_T;
                              Ahead    : Sense_T;
                              Length   : Length_T;
                              E        : in out Elements_T;
-                             Only_TSR : Boolean := False)
+                             Only_TSR : Boolean := False;
+                             TSR_Estimated : Boolean := False)
      with Global => State,
           Post => E.Count >= E.Count'Old;
 
@@ -449,7 +458,8 @@ is
                         Length : Length_T;
                         From   : Cm_T;
                         To     : Cm_T;
-                        V      : Value_T) return Boolean
+                        V      : Value_T;
+                        TSR_Estimated : Boolean := False) return Boolean
      with Global => State;
 
    --  The gradient profile as elements along Ahead (signed per mille),

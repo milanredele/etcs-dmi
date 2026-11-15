@@ -58,6 +58,13 @@ is
    function Radio_Context return EVC_Radio.Context_T
      with Global => (Current_Mode, Clock_Ms, EVC_Track_Conditions.State);
 
+   --  6.6.1.1: the rules of chapter 6 of the cycle, by the operated X and
+   --  the version of the supervising RBC (the stored information reads
+   --  it before this step: the X and the RBC as the cycle before left
+   --  them)
+   function Version_Rules return EVC_System_Version.Rules_T
+     with Global => (EVC_System_Version.State, EVC_Radio.State);
+
    --  5d. After the levels and the mission: the session and
    --  link half, then the authority half (the sessions, the reports and
    --  requests to make, the conditions of 4.6.3 they own)
