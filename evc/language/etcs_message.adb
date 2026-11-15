@@ -136,7 +136,7 @@ is
             Status := (if Expect /= 0 then Missing_Packet else Accepted);
             return;
          end if;
-         Scan (Direction, R, E, Result);
+         Scan (Direction, 48, R, E, Result);
          case Result is
             when End_Of_Data =>
                --  packet 255 is not a packet of radio messages

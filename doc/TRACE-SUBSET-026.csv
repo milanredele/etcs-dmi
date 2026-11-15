@@ -969,7 +969,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.17.3.5,3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams with the decoder ETCS_Telegram and EVC_Procedures (4.6.3 [65]): a) X = 0 ignored, b) n/a (decision), d) trip and indication in levels 1 and 2, e) no reaction in level 0; c) X = 2 and 3 interpreted, the translations of chapter 6 for X = 1 and 2 [E7 version]; evc_test Track_And_Version"
 3.17.3.5 a),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams: X = 0 refused by ETCS_Telegram, its content left out, no reaction; evc_test Track_And_Version"
 3.17.3.5 b),3,x,,,,,E6,n/a,"EVC_System_Version: the lowest X of the envelope is 1 (6.4.2.1), no X other than 0 below it (decision)"
-3.17.3.5 c),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams: X = 3 interpreted (4.0.0), X = 2 with the layout of 4.0.0; X = 1 refused by ETCS_Telegram, its content left out without a reaction: the interpretation by chapter 6 of X = 1 and 2 comes with its translations [E7 version]; evc_test Track_And_Version"
+3.17.3.5 c),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams: ETCS_Telegram.Parse reads a telegram of 1.0, 1.1, 2.0 .. 2.3 and 3.x (Supported, the envelope of EVC_System_Version) by the packet list and the layouts of the version of its header (ETCS_Catalogue.Layout, 6.5.1.5, 6.5.2.3): a packet in the layout of 4.0.0 is taken by its reader, one in a layout of an older version is indexed with it and left to no reader; the translation of chapter 6 for those (6.6.3.2, 6.6.5.2) is B4703 [E7 version]; evc_test Track_And_Version, Scenario_Telegram_Versions, Scenario_Version_Telegram_Read"
 3.17.3.5 d),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams compares with EVC_System_Version.Highest_X; the content left out, the trip of 4.6.3 [65] in levels 1 and 2 with Trackside not compatible (EVC_Procedures); evc_test Track_And_Version"
 3.17.3.5 e),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams: the trip of 4.6.3 [65] only in levels 1 and 2 (EVC_Procedures), level 0 no reaction; NTC out of scope; evc_test Track_And_Version"
 3.17.3.6,3,x,,,,,E6,todo,Euroloop is phase E7 [E7 Euroloop]
@@ -1905,8 +1905,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.2.3.5,6,x,,,,,E7,todo,
 6.6.2.3.6,6,x,,,,,E7,done,"S140 without SM: EVC_System_Version.Rules_Of (No_Supervised_Manoeuvre: X = 1 operated), read by EVC_Sessions.Manoeuvre.Evaluate (the selection starts nothing: no 131, no 'SM request failed'); the DMI does not offer 'Initiate SM' (Table 33 #11: the session byte of EVC_Core.Outputs.Session_Byte is 3 only with a supervising RBC above 2.2); evc_test Scenario_SM_Older_RBC, Scenario_Version_Rules"
 6.6.2.3.7,6,x,,,,,E7,done,"5.21 not applied: EVC_System_Version.Rules_Of (No_Supervised_Manoeuvre: X = 1 operated), read by EVC_Sessions.Manoeuvre.Evaluate (the selection starts nothing: no 131, no 'SM request failed'); the DMI does not offer 'Initiate SM' (Table 33 #11: the session byte of EVC_Core.Outputs.Session_Byte is 3 only with a supervising RBC above 2.2); evc_test Scenario_SM_Older_RBC, Scenario_Version_Rules"
-6.6.3.1.1,6,x,,,,,E7,todo,
-6.6.3.1.1.1,6,x,,,,,E7,todo,
+6.6.3.1.1,6,x,,,,,E7,partial,"ETCS_Telegram.Parse (ETCS_Packet_Index.Scan by the version of the header): the packet structure and list of 6.5.1.5 for X = 1 (6.5.1.5.1: packet 255; 6.5.1.5.2: the list) and of 6.5.2.3 for X = 2, a packet in a layout of an older version checked for its structure in that layout (ETCS_Catalogue.Check_Layout); its values judged by their translation, B4703; radio messages by the version of the session: B4704; evc_test Scenario_Telegram_Versions"
+6.6.3.1.1.1,6,x,,,,,E7,partial,"ETCS_Telegram.Parse: a packet 76 in a telegram of X = 1 is no consistency error, counted Ignored and read by nothing; in a radio message of an RBC of X = 1: B4704; evc_test Scenario_Telegram_Versions"
 6.6.3.1.2,6,x,,,,,E7,todo,
 6.6.3.2.2,6,x,,,,,E7,todo,
 6.6.3.2.3 Table,6,x,,,,,E7,todo,

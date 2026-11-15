@@ -15,7 +15,18 @@
 --  (7.3.3.4 leaves the reaction to the caller). Packet 0
 --  of the track to train direction has no L_PACKET (7.3.3.5): its length
 --  is what it decodes to. Packet 255 of that direction ends the string
---  (7.4.2.39).
+--  (7.4.2.39), in every version (6.5.1.5.1: X = 1 lists no packet 255
+--  but exempts it from the structure).
+--
+--  A packet is read by its layout in the system version of the sender
+--  (6.5.1.5, 6.5.2.3: the packet lists and the tables that replace
+--  those of chapter 7): a packet the version does not list is unknown;
+--  one in a layout of an older version decodes in exactly its L_PACKET
+--  bits by that layout. Decision: its values are not judged against
+--  the tables of 7.5 here, a variable of an older version keeping the
+--  width of 4.0.0 with another table (6.5.1.5.27.4: M_LEVELTEXTDISPLAY
+--  5 in packet 72 of X = 1); they are judged by the translation, which
+--  no packet of an older layout reaches yet.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -35,6 +46,11 @@ is
       Q_DIR  : Q_DIR_T := 0;
       Offset : Bit_Count := 0;   -- its first bit in the string
       Length : Bit_Count := 0;   -- its bits
+      --  its layout in the system version of the sender (ETCS_Catalogue
+      --  .Layout): Current, read in the layout of 4.0.0 by the package of
+      --  Kind; a layout of an older version, Kind then Unknown, so that
+      --  no reader of 4.0.0 takes it; Not_In_Version, Kind Unknown
+      Layout : Layout_T := Current;
    end record;
    No_Entry : constant Entry_T := (others => <>);
 
@@ -46,7 +62,10 @@ is
       Undecodable,   -- a known packet that does not decode in L_PACKET
       Invalid_Value);  -- a known packet with a spare value (3.16.1.1.1)
 
+   --  The packet at the reader in this direction, of a sender of the
+   --  M_VERSION code Version (7.5.1.79)
    procedure Scan (Direction : Direction_T;
+                   Version   : Natural;
                    R         : in out Reader;
                    E         : out Entry_T;
                    Result    : out Scan_Result_T)

@@ -27438,3 +27438,95 @@ the brief's list of units.
 **Left at the bound:** item 4 (B4523 with ERA's PDFs of 3131050_11,
 3040400_04 SV22 / SV30 and 3131050_22; the notes of Sa8a3ba1a,
 Se18f3f0a and S185bee31) and item 5 (B4603).
+
+### A telegram and a message read by the version of their sender; an unknown packet by that version (e7/telegram-version) (2026-11-15)
+
+Work package 2 of the e7/air-gap inventory, B4663, B4604 (1).
+
+**1. The telegram.** `ETCS_Telegram.Supported` is the envelope of
+6.4.2.2 with the codes 3.1 .. 3.15 (16, 17, 32 .. 35, 48 .. 63): held
+in the language, which does not depend on the on-board, and compared
+with `EVC_System_Version.Envelope` by evc_test
+(Scenario_Telegram_Versions). `ETCS_Packet_Index.Scan` takes the
+M_VERSION code of the sender and reads each packet by
+`ETCS_Catalogue.Layout (Direction, NID_PACKET, Version)`; the index
+entry (`Entry_T`) gains `Layout`. What a consumer sees: an entry in the
+layout of 4.0.0 has its kind as before (`Layout = Current`); one in a
+layout of an older version has kind `Unknown` and `Layout` naming it,
+so that the 58 decode sites, which all match on the entry's kind
+(`EVC_Position` 9 index reads, `EVC_Stored_Information`,
+`EVC_Text_Messages`, `EVC_Received.Last_Packet_Kind`, `EVC_Radio_Info`:
+not one find function, as the brief supposed, but every site compares
+`Kind`), take nothing they cannot read and none changed. Decision: an
+older layout is checked for its structure (it decodes in exactly its
+L_PACKET by `ETCS_Catalogue.Check_Layout`), not for its values: a
+variable of an older version keeps the width of 4.0.0 with another
+table (6.5.1.5.27.4, B4604 (3)); its values are the translation's
+(B4703). Packet 255 ends a telegram of every version (6.5.1.5.1: the
+list of X = 1 has no 255, B4604 (1) answered by the parser). The
+counts of a telegram: `Unknown` (a number the version does not list),
+`Old_Layouts` (indexed with an older layout), `Ignored` (6.6.3.1.1.1:
+packet 76 of X = 1, no error, its content ignored). The JRU record of a
+telegram (`EVC_Core.Inputs.Read_Telegrams`, SUBSET-027 4.3.1.1) keeps
+the bits as received: nothing changed there. A telegram of 1.0 or 1.1,
+refused whole before (`Unsupported_Version`, a compliant balise whose
+content is left out), is read: its packets of the layout of 4.0.0
+take effect (Scenario_Version_Telegram_Read: the linking of a group of
+1.0 taken, its packet 3 of X = 1 not, the operated 3.0 kept by
+3.17.2.3). A sender's old layouts not yet translated, by version
+(ETCS_Catalogue.Layout): X = 1, the packets 3, 27, 39, 44, 45, 51, 70,
+72, 79, 80, 200, 203, 206, 207, 239; X = 2, 45 and 70 (2.0 .. 2.3), 72
+and 76 (2.0, 2.1), 245 (2.3).
+
+The check (`VERBOSE=1 obj/evc_s076_check`): `UNSUPPORTED_VERSION` 756
+before (the inventory), 150 after; its summary line after: 23487
+telegrams, 18706 messages, 4274 rejected, 0 failures, 13543 skipped.
+The runner: 1276 / 986 / 928 before, 1277 / 982 / 931 after, eight
+regressions and four improvements, each traced. The 82 sequences
+blocked for a telegram of X = 1 stay blocked by the runner itself
+(`S076_Run`, E7-version, e7/runner-tools'): the on-board now reads
+them. Moved:
+- 3120200_04 SV21, SV22 (passed, now failed 47, S3b91603a) and
+  3120200_01 SV22 (passed, now failed 47, S40db9a42), 4100103_43 SV21,
+  SV22 (failed 114, now 47, S40db9a42): the packet 70 of a telegram of
+  X = 2 has the layout of X = 2 (`Track_P70_V2_0`, M_AXLELOADCAT): left
+  to no reader, Route unsuitable not shown; it was read before in the
+  layout of 4.0.0, whose bits are the same for Q_SUITABILITY 0 and 2
+  (traced on 3120200_04 SV21 and 4100103_43 SV21).
+- 4080437_01 SV21, SV22 (failed 54, now 52, Sce3c7004): BG2d (2.1)
+  carries packets 42 and 45; the 45 in the layout of X = 2 (L_PACKET
+  47) is left out, the 42 taken, a connection is requested where step
+  52 expects none; before, the 45 did not decode in the layout of
+  4.0.0 and the telegram was refused.
+- 4080408_01 SV21, SV22 (failed 127, now 134, S3f6059ba as SV30) and
+  4100103_15 SV21, SV22 (failed 41, now passed): a telegram of 2.1 with
+  a packet 45 of X = 2 (L_PACKET 47), refused before (Se110c7fe), is
+  read; in 4100103_15 its packet 41 orders level 2 (step 41 passes).
+
+**2. The message: left at the bound.** Built and not committed (B4704
+holds what was built and why it stopped; the diff is kept in the
+worktree as `obj/item2-message-version.patch`): `ETCS_Message.Parse`
+by the version of the session (a trailing `Version`, 3.0 by default,
+so that the callers of other packages compile unchanged), a status
+`Old_Layout` for 15 and 34 of X = 1 (6.6.3.3.2 [1], read to their end
+and taken by nobody), `Unknown_Message` for the messages chapter 6
+deletes, the packets scanned by the version. Message 32 before the
+version is known: read as 3.0, right because its layout is the same in
+every version (`Message_Layout (Track_To_Train, 32, 16) = Current`,
+3.5.3.7 c), d)); a session whose version is outside the envelope keeps
+3.0 too, so that message 39 ends a session with an RBC of 4.0
+(3.5.3.7 d)). It stopped at 29 failed checks of evc_test: the fixture
+`EVC_Test_Authority.Establish` gives its session the version 2.1 and
+sends packets 45, 70 and 72 in the layouts of 4.0.0, which the reader
+by version reads in those of X = 2.
+
+**3. B4663: not taken** (the bound). Found on the way: the radio half
+of 7.3.3.4 exists already, `EVC_Core.Inputs.Read_Radio_Messages` makes
+a message with `Last_Unknown_Packets > 0` inconsistent (M_ERROR 3); the
+telegram's `Unknown` count reaches no reaction, and the Y rule of
+3.17.3.11 for a sender of 3.Y is not applied to either.
+
+Proof: `etcs_packet_index`, `etcs_telegram`, `etcs_message` (one run):
+no unproved check, 0 checks of 16 VCs or more (0 before: the e7/
+air-gap-layouts run of the language units), margin 8718 of 100000
+steps; the canary `evc_core-inputs`: margin 3980, 0 wide.

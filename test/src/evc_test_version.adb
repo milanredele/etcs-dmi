@@ -6,6 +6,8 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P2;
 with ETCS_Track_Packets.P3;
+with ETCS_Track_Packets.P3_V1_0;
+with ETCS_Telegram;
 with ETCS_Track_Packets.P41;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;
@@ -15,7 +17,9 @@ with EVC_DMI_Port;
 with EVC_Modes;           use EVC_Modes;
 with EVC_National_Values;
 with EVC_Ports;           use EVC_Ports;
+with EVC_Position;
 with EVC_Radio;
+with EVC_Received;
 with EVC_System_Version;
 with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
@@ -462,5 +466,56 @@ package body EVC_Test_Version is
              & "the session kept (6.6.3.4.1.2: 3.5.3.7.4, .4.1 not applied)");
       EVC_Core.Initialise;
    end Scenario_Version_Rules;
+
+   --  3.17.3.5 c), 6.6.3.1: a group of 1.0 carrying a packet 5, whose
+   --  layout is that of 4.0.0, and a packet 3 in its layout of X = 1:
+   --  the telegrams are read, the linking taken, the national values of
+   --  the old layout not (their translation, 6.6.3.2, not built)
+   procedure Scenario_Version_Telegram_Read is
+      use type EVC_National_Values.Set_T;
+      P      : ETCS_Track_Packets.P3_V1_0.Packet_T;
+      W      : Writer_T;
+      OK     : Boolean;
+      Before : constant EVC_National_Values.Set_T :=
+        EVC_National_Values.Current;
+      Refused  : Natural;
+      Accepted : Natural;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Refused :=
+        EVC_Received.Telegram_Count (ETCS_Telegram.Unsupported_Version);
+      Accepted := EVC_Received.Telegram_Count (ETCS_Telegram.Accepted);
+      Add_Group (With_Links (Group (1, 50), Link_To ((1 => 100), (1 => 2))));
+      Version (Track_N) := 16#10#;
+      P.Q_DIR := 2;
+      P.Q_SCALE := 1;
+      P.D_VALIDNV := 32_767;
+      P.V_NVSHUNT := 6;
+      ETCS_Track_Packets.P3_V1_0.Encode (P, W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      Add_Group (Group (2, 150));
+      Version (Track_N) := 16#10#;
+      Run_X (10_000);
+      Check (EVC_Received.Telegram_Count (ETCS_Telegram.Unsupported_Version)
+             = Refused
+             and then EVC_Received.Telegram_Count (ETCS_Telegram.Accepted)
+                      = Accepted + 2
+             and then EVC_Received.Last_Telegram.Header.M_VERSION = 16#10#,
+             "version telegram: the two telegrams of 1.0 read, not refused "
+             & "(3.17.3.5 c)");
+      Check (EVC_Position.Linking.Stored
+             and then Natural (EVC_Position.Linking.Ref_Id.NID_BG) = 1,
+             "version telegram: the linking of the group of 1.0 taken "
+             & "(6.6.3.1.2: packet 5 of X = 1 is that of 4.0.0)");
+      Check (EVC_National_Values.Current = Before,
+             "version telegram: the national values of the layout of "
+             & "X = 1 not taken (6.6.3.2: their translation not built)");
+      Check (SV.Operated = 3,
+             "version telegram: a group of 1.0 does not lower the operated "
+             & "3.0 (3.17.2.3: only a higher X)");
+      EVC_Core.Initialise;
+   end Scenario_Version_Telegram_Read;
 
 end EVC_Test_Version;

@@ -11,7 +11,10 @@ with ETCS_Track_Packets.P0;
 with ETCS_Track_Packets.P140;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P2;
+with ETCS_Track_Packets.P245_V2_3;
+with ETCS_Track_Packets.P3_V1_0;
 with ETCS_Track_Packets.P45;
+with ETCS_Track_Packets.P72_V2_0;
 with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P73;
@@ -22,6 +25,7 @@ with EVC_Bytes;
 with EVC_Core;
 with EVC_Ports;
 with EVC_Received;
+with EVC_System_Version;
 with Interfaces;
 
 package body EVC_Test_Language is
@@ -44,6 +48,7 @@ package body EVC_Test_Language is
 
    use type EVC_Bytes.Byte_Array;
    use type Cat.Packet_Kind_T;
+   use type Cat.Layout_T;
    use type MCat.Message_Kind_T;
    use type Tel.Status_T;
    use type Tel.Header_T;
@@ -360,7 +365,6 @@ package body EVC_Test_Language is
       --  6.5.1.5.2, 6.5.2.3.1.1.1, 6.5.2.3.14.1, 6.5.2.3.16.1, 6.5.1.5.2.1,
       --  6.5.2.3.2.1, 6.5.2.3.3.1; 1.0 = 16, 2.0 = 32, 2.3 = 35, 3.0 = 48)
       declare
-         use type Cat.Layout_T;
          T : constant Cat.Direction_T := Cat.Track_To_Train;
          R : constant Cat.Direction_T := Cat.Train_To_Track;
       begin
@@ -547,17 +551,17 @@ package body EVC_Test_Language is
                 "telegram: the packet after the unknown one decodes");
       end;
 
-      --  the M_VERSION of 7.5.1.79: 2.0 .. 2.3 and 3.x
+      --  the M_VERSION of 7.5.1.79: 1.0, 1.1, 2.0 .. 2.3 and 3.x
       for V in ETCS_Variables.M_VERSION_T loop
          ETCS_Bits.Clear (W);
          Tel.Write_Header (W, Header (V));
          Put (W, Gradient);
          Tel.Finish (W, Tel.Long_Bits, OK);
          Status := Telegram_Status (W);
-         if V in 32 .. 35 | 48 .. 63 then
+         if V in 16 | 17 | 32 .. 35 | 48 .. 63 then
             Check (Status = Tel.Accepted,
                    "telegram: M_VERSION" & V'Image & " accepted");
-         elsif V in 0 | 16 | 17 | 36 | 64 | 127 then
+         elsif V in 0 | 18 | 36 | 64 | 127 then
             Check (Status = Tel.Unsupported_Version,
                    "telegram: M_VERSION" & V'Image & " rejected");
          else
@@ -654,6 +658,136 @@ package body EVC_Test_Language is
          Check (Status = Tel.Too_Long, "telegram: 100 bits in 11 bytes");
       end;
    end Scenario_Telegram;
+
+   --  3.17.3.5 c), 6.6.3.1, 6.5.1.5, 6.5.2.3: a telegram of a version of
+   --  the envelope is read by the packet list and the layouts of the
+   --  version in its header; a packet in a layout of an older version
+   --  is indexed with it and reaches no reader of 4.0.0
+   procedure Scenario_Telegram_Versions is
+      W      : Writer_T;
+      T      : Tel.Telegram_T;
+      Status : Tel.Status_T;
+      OK     : Boolean;
+
+      procedure Start (Version : ETCS_Variables.M_VERSION_T) is
+      begin
+         ETCS_Bits.Clear (W);
+         Tel.Write_Header (W, Header (Version));
+      end Start;
+
+      procedure Parse_W is
+      begin
+         Tel.Finish (W, Tel.Long_Bits, OK);
+         Tel.Parse (ETCS_Bits.Data (W), ETCS_Bits.Position (W), T, Status);
+      end Parse_W;
+
+      function Entry_Is (I : Positive; Kind : Cat.Packet_Kind_T;
+                         Layout : Cat.Layout_T) return Boolean
+      is (I <= T.Count and then T.Index (I).Kind = Kind
+          and then T.Index (I).Layout = Layout);
+   begin
+      --  1.0: packet 5 as in 4.0.0, packet 3 in its layout of X = 1
+      --  (6.5.1.5.4: no NID_C before the N_ITER)
+      Start (16);
+      Put (W, Linking);
+      declare
+         P : ETCS_Track_Packets.P3_V1_0.Packet_T;
+      begin
+         P.Q_DIR := 2;
+         P.Q_SCALE := 1;
+         ETCS_Track_Packets.P3_V1_0.Encode (P, W, OK);
+      end;
+      Parse_W;
+      Check (Status = Tel.Accepted and then T.Count = 2
+             and then Entry_Is (1, Cat.Track_P5, Cat.Current)
+             and then Entry_Is (2, Cat.Unknown, Cat.Track_P3_V1_0)
+             and then T.Unknown = 0 and then T.Old_Layouts = 1,
+             "telegram versions: 1.0, packet 5 read as in 4.0.0, packet 3 "
+             & "indexed in its layout of X = 1 and left to no reader, got "
+             & Tel.Status_T'Image (Status));
+
+      --  1.1: the same, and 6.6.3.1.1.1: a packet 76 is no error, its
+      --  content ignored
+      Start (17);
+      Put (W, Linking);
+      Put_Unknown (W, 76, True, 40);
+      Parse_W;
+      Check (Status = Tel.Accepted and then T.Count = 2
+             and then Entry_Is (2, Cat.Unknown, Cat.Not_In_Version)
+             and then T.Unknown = 0 and then T.Ignored = 1,
+             "telegram versions: 1.1, a packet 76 ignored (6.6.3.1.1.1), "
+             & "got " & Tel.Status_T'Image (Status));
+
+      --  2.1: a packet 72 of 2.0, 2.1 (6.5.2.3.1.1.2: the table of 73)
+      Start (33);
+      Put (W, Gradient);
+      declare
+         P : ETCS_Track_Packets.P72_V2_0.Packet_T;
+      begin
+         P.Q_DIR := 2;
+         P.Q_SCALE := 1;
+         ETCS_Track_Packets.P72_V2_0.Encode (P, W, OK);
+      end;
+      Put (W, TSR (3));
+      Parse_W;
+      Check (Status = Tel.Accepted and then T.Count = 3
+             and then Entry_Is (1, Cat.Track_P21, Cat.Current)
+             and then Entry_Is (2, Cat.Unknown, Cat.Track_P72_V2_0)
+             and then Entry_Is (3, Cat.Track_P65, Cat.Current)
+             and then T.Old_Layouts = 1,
+             "telegram versions: 2.1, packet 72 in its layout, the packets "
+             & "around it as in 4.0.0, got " & Tel.Status_T'Image (Status));
+
+      --  2.3: packet 245 (6.5.2.3), 2.2: packet 245 is not in the list
+      Start (35);
+      declare
+         P : ETCS_Track_Packets.P245_V2_3.Packet_T;
+      begin
+         P.Q_DIR := 2;
+         ETCS_Track_Packets.P245_V2_3.Encode (P, W, OK);
+      end;
+      Parse_W;
+      Check (Status = Tel.Accepted and then T.Count = 1
+             and then Entry_Is (1, Cat.Unknown, Cat.Track_P245_V2_3),
+             "telegram versions: 2.3, packet 245 in its layout, got "
+             & Tel.Status_T'Image (Status));
+
+      --  an old layout that does not decode in its L_PACKET
+      Start (16);
+      declare
+         P : ETCS_Track_Packets.P3_V1_0.Packet_T;
+         V : Writer_T;
+      begin
+         P.Q_DIR := 2;
+         P.Q_SCALE := 1;
+         ETCS_Track_Packets.P3_V1_0.Encode (P, V, OK);
+         ETCS_Bits.Write (W, 8, 3);
+         ETCS_Bits.Write (W, 2, 2);
+         ETCS_Bits.Write (W, 13, Unsigned_64 (ETCS_Bits.Position (V) + 8));
+         ETCS_Bits.Fill (W, ETCS_Bits.Position (V) + 8 - 23, One => False);
+      end;
+      Parse_W;
+      Check (Status = Tel.Packet_Structure,
+             "telegram versions: 1.0, a packet 3 longer than its layout is "
+             & "a structure error, got " & Tel.Status_T'Image (Status));
+
+      --  the versions read are the envelope of the on-board (6.4.2.2)
+      --  with the codes 3.1 .. 3.15 under X = 3
+      declare
+         Same : Boolean := True;
+         In_Envelope : Boolean;
+      begin
+         for V in ETCS_Variables.M_VERSION_T loop
+            In_Envelope := V in 49 .. 63;
+            for E of EVC_System_Version.Envelope loop
+               In_Envelope := In_Envelope or else E = V;
+            end loop;
+            Same := Same and then Tel.Supported (V) = In_Envelope;
+         end loop;
+         Check (Same, "telegram versions: the versions read are those of "
+                & "EVC_System_Version.Envelope and 3.1 .. 3.15");
+      end;
+   end Scenario_Telegram_Versions;
 
    --  A telegram cut at every bit, and L_PACKET made inconsistent
    procedure Scenario_Telegram_Damaged is
@@ -1438,7 +1572,7 @@ package body EVC_Test_Language is
 
       --  rejections, counted by reason; the last accepted one stays
       ETCS_Bits.Clear (W);
-      Tel.Write_Header (W, Header (16));
+      Tel.Write_Header (W, Header (18));
       Put (W, Gradient);
       Tel.Finish (W, Tel.Long_Bits, OK);
       Input (BTM, BTM_Of (ETCS_Bits.Data (W), ETCS_Bits.Position (W)));
@@ -1448,7 +1582,7 @@ package body EVC_Test_Language is
              and then EVC_Received.Last_Telegram.Count = 2
              --  SUBSET-027 4.3.1.1: every telegram received is recorded
              and then JRU_Event (2) /= 0,
-             "received: version 1.0 rejected and counted");
+             "received: version 1.2 (not valid, 7.5.1.79) rejected and counted");
       Input (RTM, RTM_Payload (5, 5));
       EVC_Core.Tick (100);
       Check (EVC_Received.Message_Count (Msg.Truncated) = 1

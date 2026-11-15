@@ -29,4 +29,8 @@ package EVC_Test_Version is
    --  a group, an RBC of 2.1 and of 2.3 supervising, 3.0 everywhere;
    --  6.6.3.4.1.2: no acknowledgement awaited from an RBC of 1.1
    procedure Scenario_Version_Rules;
+
+   --  3.17.3.5 c), 6.6.3.1: a group of 1.0 read by its version, the
+   --  packets of the layout of 4.0.0 taken, the older layouts not
+   procedure Scenario_Version_Telegram_Read;
 end EVC_Test_Version;

@@ -13,6 +13,7 @@ is
    ----------
 
    procedure Scan (Direction : Direction_T;
+                   Version   : Natural;
                    R         : in out Reader;
                    E         : out Entry_T;
                    Result    : out Scan_Result_T)
@@ -32,11 +33,15 @@ is
       E.NID := To_NID_PACKET (V);
       E.Kind := Kind (Direction, Natural (E.NID));
 
-      --  7.4.2.39: the end of the information
+      --  7.4.2.39: the end of the information (6.5.1.5.1 for X = 1)
       if Direction = Track_To_Train and then E.NID = 255 then
          E.Length := 8;
          Result := End_Of_Data;
          return;
+      end if;
+      E.Layout := Layout (Direction, Natural (E.NID), Version);
+      if E.Layout /= Current then
+         E.Kind := Unknown;
       end if;
 
       --  7.3.3.5: a packet without L_PACKET is as long as it decodes
@@ -110,6 +115,22 @@ is
          end if;
          if not Valid then
             Result := Invalid_Value;
+            return;
+         end if;
+      elsif E.Layout in Old_Layout_T then
+         --  its structure alone (the decision of the heading)
+         declare
+            Probe : Reader := R;
+         begin
+            Seek (Probe, Start);
+            Set_Limit (Probe, Start + Length);
+            pragma Warnings (GNATprove, Off, "*set by ""Check_Layout"" *",
+                             Reason => "only whether the packet decodes");
+            Check_Layout (E.Layout, Probe, OK, Valid);
+            pragma Warnings (GNATprove, On, "*set by ""Check_Layout"" *");
+         end;
+         if not OK then
+            Result := Undecodable;
             return;
          end if;
       end if;
