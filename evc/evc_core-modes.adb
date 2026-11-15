@@ -93,8 +93,6 @@ is
      ((Mode       => Current_Mode, Now_Ms => Unsigned_64 (Clock_Ms),
        Radio_Hole => EVC_Track_Conditions.Engine_In_Radio_Hole));
 
-   --  6.6.1.1: the rules of chapter 6 of the cycle, by the operated X and
-   --  the version of the supervising RBC
    function Version_Rules return EVC_System_Version.Rules_T is
      (EVC_System_Version.Rules_Of
         (EVC_System_Version.Operated,

@@ -461,6 +461,8 @@ begin
    Scenario_Version_Country_Set;
    Scenario_Version_Rules;
    Scenario_Version_Telegram_Read;
+   Scenario_Version_TSR;
+   Scenario_Version_ASP;
    EVC_Test_VBC.Scenario_VBC_Store;
    EVC_Test_VBC.Scenario_VBC_Driver;
    EVC_Test_VBC.Scenario_VBC_Rooms;

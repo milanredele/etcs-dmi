@@ -296,14 +296,17 @@ is
    --  mode (the functions of 4.5.2 Figure 1, EVC_Modes; the filter of
    --  4.8.4), the inputs of the exceptions of 4.8.4 (a cab active, a
    --  valid train running number), the SR distance (4.4.11.1.3 b, a
-   --  frame position), the antenna... The default: FS, every
-   --  information accepted and used.
+   --  frame position), the antenna, the version rules of the TSRs and
+   --  the ASP (EVC_System_Version.Rules_T, 6.6.2.1.3, 6.6.2.1.4)... The
+   --  default: FS, every information accepted and used.
    type Mode_Context_T is record
       Mode        : EVC_Modes.Mode_T := EVC_Modes.M_FS;
       Cab_Active  : Boolean := True;
       TRN_Valid   : Boolean := True;
       SR_Distance : Boolean := False;
       SR_End      : Dist_T := 0;
+      TSR_Estimated : Boolean := False;
+      ASP_Lower_Categories : Boolean := False;
    end record;
 
    --  4.6.3 [10], [25], [31], [32]: "MA + SSP + gradient are on-board"

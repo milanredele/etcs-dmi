@@ -5,6 +5,7 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Core.Records; use EVC_Core.Records;
 with EVC_Core.Inputs; use EVC_Core.Inputs;
+with EVC_Core.Modes;
 
 with EVC_Fixed;
 with EVC_DMI_Port;
@@ -247,7 +248,10 @@ is
             TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
             SR_Distance => Current_Mode = M_SR
                            and then SR_Distance.Active,
-            SR_End      => SR_End),
+            SR_End      => SR_End,
+            TSR_Estimated => EVC_Core.Modes.Version_Rules.TSR_Estimated,
+            ASP_Lower_Categories =>
+              EVC_Core.Modes.Version_Rules.ASP_Lower_Categories),
          Virtual_Last   => SDM_Result.Virtual);
       --  3.18.3.7 a): after the Train Data entered in the last cycle, or
       --  changed by the train interface (5.17.2.2 A7)
@@ -373,7 +377,10 @@ is
          Cab_Active  => EVC_Train_Inputs.Desk_Open,
          TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
          SR_Distance => Current_Mode = M_SR and then SR_Distance.Active,
-         SR_End      => SR_End);
+         SR_End      => SR_End,
+         TSR_Estimated => EVC_Core.Modes.Version_Rules.TSR_Estimated,
+         ASP_Lower_Categories =>
+           EVC_Core.Modes.Version_Rules.ASP_Lower_Categories);
    begin
       --  4.8.5.5: the sets of balise groups kept for
       --  the transition to level 1 (4.8.3 [1]), released and taken in

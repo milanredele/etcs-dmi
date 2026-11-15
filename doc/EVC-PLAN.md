@@ -27530,3 +27530,76 @@ Proof: `etcs_packet_index`, `etcs_telegram`, `etcs_message` (one run):
 no unproved check, 0 checks of 16 VCs or more (0 before: the e7/
 air-gap-layouts run of the language units), margin 8718 of 100000
 steps; the canary `evc_core-inputs`: margin 3980, 0 wide.
+
+### The supervision when operating with system version 1 or 2: the temporary speed restrictions, the axle load profile, the train's front end, Stop if in SR, a text ended by its acknowledgement (e7/x-supervision) (2026-11-15)
+
+**How the record reaches the units.** `EVC_Core.Modes.Version_Rules`
+(the record `EVC_System_Version.Rules_T` of the operated X and the
+supervising RBC) is declared in the spec of `EVC_Core.Modes` now, so that
+the stored information step, which runs before the modes step, reads it
+too: there it is the record of the X and the RBC as the cycle before left
+them (the smaller change: the computation stays a function of the state,
+no new state, no change of Tick). The stored information takes it in
+`EVC_Stored_Information.Mode_Context_T`, the record of what the cycle
+tells it (built twice in `EVC_Core.Stored`).
+
+**TSR_Estimated (6.6.2.1.3, 6.6.4.1.2).** At the clause and on the page
+(SUBSET-026-6 p. 53, SUBSET-026-3 p. 47): with 4.0 the TSR's area start is
+a "max" location item and its end a "min" one; the replaced row puts both
+in the "estimated" column. The inventory's claim (`Speed_Elements`,
+`TSR_Limits`) holds. Built: `EVC_Track_Description.Element_Of` takes the
+items by `Start_Item` / `End_Item`, `Speed_Elements` and `TSR_Limits` take
+`TSR_Estimated`; `EVC_Stored_Information.Build` passes
+`Ctx.TSR_Estimated` in FS and OS only (the clause's condition) to
+`Build_Speed_Sources` and `Build_MRSP`. The rule is applied when the MRSP
+is built every cycle, so the record of the cycle before is late by one
+cycle at most after a group's order. Scenario
+`EVC_Test_Version.Scenario_Version_TSR`: a TSR of 100 m at 300 m from the
+first of two groups, the train in FS past the second (a relocation by
+3.6.4.2.5 c with the odometer's doubt): with 3.0 the 40 km/h segment runs
+from 398 m to 502 m (max start, min end), with 2.0 ordered by the first
+group from 400 m to 500 m; run before the change (the rule forced off),
+the second check failed with X = 2 operated and 398 / 502 m. Rows done:
+6.6.2.1.3, 6.6.4.1.2.
+
+**ASP_Lower_Categories (6.6.2.1.4, 6.6.4.1.3).** At the clause: with X =
+1 or 2 the most restrictive speed of any axle load category lower than
+or equal to the train's, the categories in ascending order A to E5;
+read as the order of the codes of M_AXLELOADCAT (A, HS17, B1, ..., E5,
+the order of the coding table), the only order the variable gives. The
+inventory's claim (`Take_ASP`) holds. Built:
+`EVC_Track_Description.Take_ASP` takes `Lower` (its `Match`: the
+train's category alone, or with Lower every category up to it, the
+lowest speed); `EVC_Stored_Information.Mode_Context_T.ASP_Lower_Categories`
+reaches it through `Dispatch` and `Take_Speed_Packet`. The ASP is
+selected at reception, so the context of the cycle before (built before
+the cycle's groups are taken) gives the ASP of the very group that
+orders the version the X before the order: row 6.6.2.1.4 partial, B4723
+(the refresh in `Take_Group` after `Take_Version`, not taken in
+e7/infill-rest's subprogram). Scenario
+`EVC_Test_Version.Scenario_Version_ASP`: a train of C2, an element of A
+60, B1 40, C2 50, C4 30 km/h and one of A 60 alone, carried by the
+second group (a 2.0 telegram): with 3.0 one element at 50 km/h, with
+2.0 ordered by the first group two, the first at 40 km/h. Not run before
+the change (the bound): its 3.0 half gives the 4.0 result for the same
+inputs, which the 2.0 check refuses. Rows: 6.6.4.1.3 done, 6.6.2.1.4
+partial.
+
+**One commit for both.** The two components share the context record and
+the two aggregates of `EVC_Core.Stored`, and the second was edited before
+the first was committed; they went in as one commit with one proof and
+one whole check.
+
+**Proof** (`evc/prove.sh -u`, margin in steps and checks of 16 VCs or
+more, before / after): see the commit's body. The Global of
+`EVC_Core.Stored.Release_Transition_Buffer` takes
+`EVC_System_Version.State` (the record read in its context), so
+`evc_core` is in the list.
+
+**Runner.** 1279 passed, 980 failed, 931 blocked, as on master: 0
+regressions, 0 improvements, no sequence moved; 0 untriaged. Baseline
+and triage unchanged.
+
+**Left at the bound** (B4724, with the readings): Engine_Front,
+SR_Stop_Always, Ack_Ends_Text; the inventory's rows of 6.6.2.3.3 to .5
+not read.

@@ -745,7 +745,8 @@ is
                                 M         : Message_T;
                                 T         : Origin_Table_T;
                                 A         : EVC_Acceptance.Context_T;
-                                Inhibited : Boolean)
+                                Inhibited : Boolean;
+                               Lower     : Boolean)
      with No_Inline,
           Global => (In_Out => (EVC_Track_Description.State,
                                 Events, Event_N),
@@ -772,7 +773,7 @@ is
                ETCS_Track_Packets.P51.Decode (R, X, OK);
                if OK then
                   EVC_Track_Description.Take_ASP
-                    (X, M, T, EVC_Train_Data.Categories.Axle_Load);
+                    (X, M, T, EVC_Train_Data.Categories.Axle_Load, Lower);
                   Record_Event (Info_ASP, Change_Stored, M.Msg);
                end if;
             end;
@@ -1403,7 +1404,8 @@ is
          when K3 =>
             Take_National_Packet (R, M);
          when K27 | K51 | K52 | K65 | K66 | K88 =>
-            Take_Speed_Packet (K, R, M, T, A, Inhibited);
+            Take_Speed_Packet (K, R, M, T, A, Inhibited,
+                               Ctx.ASP_Lower_Categories);
          when K21 | K141 | K70 | K71 =>
             Take_Description_Packet (K, R, M, T);
          when K68 | K39 | K67 | K69 | K40 =>
@@ -2486,7 +2488,8 @@ is
    procedure Build_Speed_Sources (T        : Origin_Table_T;
                                   Ahead    : Sense_T;
                                   Length   : Length_T;
-                                  Mode     : EVC_Modes.Mode_T)
+                                  Mode     : EVC_Modes.Mode_T;
+                                  TSR_Estimated : Boolean)
      with Global => (Output => Sources,
                      Input  => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State))
@@ -2496,7 +2499,7 @@ is
                   Lost => 0);
       if EVC_Modes.Track_Speed_Mode (Mode) then
          EVC_Track_Description.Speed_Elements
-           (T, Ahead, Length, Sources);
+           (T, Ahead, Length, Sources, TSR_Estimated => TSR_Estimated);
       elsif EVC_Modes.TSR_Mode (Mode) then
          EVC_Track_Description.Speed_Elements
            (T, Ahead, Length, Sources, Only_TSR => True);
@@ -2521,6 +2524,7 @@ is
                          Max_Speed  : Speed_Cms_T;
                          Mode       : EVC_Modes.Mode_T;
                          Mode_Speed : Speed_Cms_T;
+                         TSR_Estimated : Boolean;
                          MRSP       : in out Speed_Profile_T)
      with Global => (Output => (Steps, Ceiling),
                      In_Out => (Sources, Failures),
@@ -2563,7 +2567,7 @@ is
          TSR_Flags (K) :=
            EVC_Track_Description.TSR_Limits
              (T, Ahead, Length, Steps.List (K).Start,
-              Step_End (Steps, K), Steps.List (K).Value);
+              Step_End (Steps, K), Steps.List (K).Value, TSR_Estimated);
       end loop;
       MRSP.TSR := TSR_Flags;
    end Build_MRSP;
@@ -3177,12 +3181,17 @@ is
       Mode     : constant EVC_Modes.Mode_T := Ctx.Mode;
       With_MA  : constant Boolean :=
         EVC_Modes.MA_Mode (Mode) or else EVC_Modes."=" (Mode, EVC_Modes.M_SM);
+      --  6.6.2.1.3: the TSR row of Table 2a replaced in FS and OS
+      TSR_Estimated : constant Boolean :=
+        Ctx.TSR_Estimated
+        and then (EVC_Modes."=" (Mode, EVC_Modes.M_FS)
+                  or else EVC_Modes."=" (Mode, EVC_Modes.M_OS));
    begin
       Build_Train (T, Train, Ahead, Data, NV, Mode_Speed, Configuration, Ctx);
       Build_PBD (Train, Special_Active, Additional, Configuration, Work);
-      Build_Speed_Sources (T, Ahead, Data.Length, Mode);
+      Build_Speed_Sources (T, Ahead, Data.Length, Mode, TSR_Estimated);
       Build_MRSP (T, Ahead, Data.Length, Data.Max_Speed, Mode, Mode_Speed,
-                  Snap.MRSP);
+                  TSR_Estimated, Snap.MRSP);
       Build_Gradients (T, Ahead, Default_Known, Default_G, Snap.Gradients,
                        G_Steps);
       Build_MA (T, Ahead, NV.V_NVREL, Data.Length, Mode, With_MA, MA_R,

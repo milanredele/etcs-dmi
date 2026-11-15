@@ -33,4 +33,14 @@ package EVC_Test_Version is
    --  3.17.3.5 c), 6.6.3.1: a group of 1.0 read by its version, the
    --  packets of the layout of 4.0.0 taken, the older layouts not
    procedure Scenario_Version_Telegram_Read;
+
+   --  6.6.2.1.3, 6.6.4.1.2: in FS a TSR relocated across a group starts
+   --  and ends at its estimated location with X = 2 ordered by a group,
+   --  at its max start and min end with X = 3 (3.6.4.2.4 Table 2a)
+   procedure Scenario_Version_TSR;
+
+   --  6.6.2.1.4, 6.6.4.1.3: the ASP of every axle load category up to
+   --  the train's, the lowest speed, with X = 2 ordered by the group that
+   --  carries it; with X = 3 the train's category alone (3.11.4.3)
+   procedure Scenario_Version_ASP;
 end EVC_Test_Version;

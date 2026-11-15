@@ -319,10 +319,27 @@ is
    procedure Take_ASP (P    : ETCS_Track_Packets.P51.Packet_T;
                        M    : Message_T;
                        T    : Origin_Table_T;
-                       Axle : M_AXLELOADCAT_T)
+                       Axle : M_AXLELOADCAT_T;
+                       Lower : Boolean := False)
    is
       Scale : constant Natural := Natural (P.Q_SCALE);
       Start : Dist_T;
+
+      --  3.11.4.3: the category Cat of speed W matches the train's; with
+      --  Lower (6.6.2.1.4) every category up to the train's, in the
+      --  ascending order of the codes of M_AXLELOADCAT (A, HS17, B1 and
+      --  on to the last category), the lowest speed
+      procedure Match (Cat   : M_AXLELOADCAT_T;
+                       W     : V_AXLELOAD_T;
+                       Found : in out Boolean;
+                       V     : in out V_AXLELOAD_T)
+      is
+      begin
+         if Cat = Axle or else (Lower and then Cat <= Axle) then
+            V := (if Lower and then Found and then V < W then V else W);
+            Found := True;
+         end if;
+      end Match;
 
       --  3.11.4.3: the speed of the train's category, if listed
       procedure Add_Element (From    : Dist_T;
@@ -366,10 +383,8 @@ is
       Found := False;
       V := 0;
       for I in 1 .. Natural (P.N_ITER) loop
-         if P.M_AXLELOADCAT_List (I).M_AXLELOADCAT = Axle then
-            Found := True;
-            V := P.M_AXLELOADCAT_List (I).V_AXLELOAD;
-         end if;
+         Match (P.M_AXLELOADCAT_List (I).M_AXLELOADCAT,
+                P.M_AXLELOADCAT_List (I).V_AXLELOAD, Found, V);
       end loop;
       Add_Element (Start, D (Natural (P.L_AXLELOAD), Scale), P.Q_FRONT,
                    Found, V);
@@ -383,10 +398,8 @@ is
             Found := False;
             V := 0;
             for I in 1 .. Natural (X.N_ITER) loop
-               if X.M_AXLELOADCAT_List (I).M_AXLELOADCAT = Axle then
-                  Found := True;
-                  V := X.M_AXLELOADCAT_List (I).V_AXLELOAD;
-               end if;
+               Match (X.M_AXLELOADCAT_List (I).M_AXLELOADCAT,
+                      X.M_AXLELOADCAT_List (I).V_AXLELOAD, Found, V);
             end loop;
             Add_Element (Start, D (Natural (X.L_AXLELOAD), Scale), X.Q_FRONT,
                          Found, V);
@@ -844,28 +857,40 @@ is
 
    --  For the snapshot
 
+   --  The location items of an element's start and end: "max" and "min"
+   --  (Table 2a), both "estimated" when Estimated (the TSR row of 6.6.2.1.3)
+   function Start_Item (Estimated : Boolean) return Item_Kind_T is
+     (if Estimated then Estimated_Item else Max_Item);
+   function End_Item (Estimated : Boolean) return Item_Kind_T is
+     (if Estimated then Estimated_Item else Min_Item);
+
    --  Element X of a store of the sense Ahead as an element along Ahead:
    --  from its "max" start to its "min" end, plus the train length when
-   --  the rear end counts
-   function Element_Of (T      : Origin_Table_T;
-                        Ahead  : Sense_T;
-                        X      : Stored_T;
-                        Length : Length_T) return Element_T
-   is (Start  => A (Ahead, Frame (T, X.Start, Max_Item)),
+   --  the rear end counts; from its estimated start to its estimated end
+   --  when Estimated
+   function Element_Of (T         : Origin_Table_T;
+                        Ahead     : Sense_T;
+                        X         : Stored_T;
+                        Length    : Length_T;
+                        Estimated : Boolean := False) return Element_T
+   is (Start  => A (Ahead, Frame (T, X.Start, Start_Item (Estimated))),
        Finish => (if X.Open then Max_Cm
                   elsif X.Delay_Length
-                  then Sum (A (Ahead, Frame (T, X.Finish, Min_Item)), Length)
-                  else A (Ahead, Frame (T, X.Finish, Min_Item))),
+                  then Sum (A (Ahead,
+                               Frame (T, X.Finish, End_Item (Estimated))),
+                            Length)
+                  else A (Ahead, Frame (T, X.Finish, End_Item (Estimated)))),
        Value  => X.Value);
 
    procedure Add_Stored (E      : in out Elements_T;
                          T      : Origin_Table_T;
                          Ahead  : Sense_T;
                          X      : Stored_T;
-                         Length : Length_T)
+                         Length : Length_T;
+                         Estimated : Boolean := False)
      with Post => E.Count >= E.Count'Old
    is
-      El : constant Element_T := Element_Of (T, Ahead, X, Length);
+      El : constant Element_T := Element_Of (T, Ahead, X, Length, Estimated);
    begin
       Add (E, El.Start, El.Finish, El.Value);
    end Add_Stored;
@@ -913,14 +938,16 @@ is
                              Ahead    : Sense_T;
                              Length   : Length_T;
                              E        : in out Elements_T;
-                             Only_TSR : Boolean := False)
+                             Only_TSR : Boolean := False;
+                             TSR_Estimated : Boolean := False)
    is
    begin
       if Only_TSR then
          if TSR_S.Sense = Ahead then
             for I in 1 .. TSR_S.Count loop
                pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
-               Add_Stored (E, T, Ahead, TSR_S.List (I), Length);
+               Add_Stored (E, T, Ahead, TSR_S.List (I), Length,
+                           TSR_Estimated);
             end loop;
          end if;
          return;
@@ -943,7 +970,8 @@ is
       if TSR_S.Sense = Ahead then
          for I in 1 .. TSR_S.Count loop
             pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
-            Add_Stored (E, T, Ahead, TSR_S.List (I), Length);
+            Add_Stored (E, T, Ahead, TSR_S.List (I), Length,
+                        TSR_Estimated);
          end loop;
       end if;
       --  3.11.11: the sections computed (Compute_PBD runs before)
@@ -979,7 +1007,8 @@ is
                         Length : Length_T;
                         From   : Cm_T;
                         To     : Cm_T;
-                        V      : Value_T) return Boolean
+                        V      : Value_T;
+                        TSR_Estimated : Boolean := False) return Boolean
      with Refined_Global => TSR_S
    is
    begin
@@ -989,7 +1018,7 @@ is
       for I in 1 .. TSR_S.Count loop
          declare
             El : constant Element_T :=
-              Element_Of (T, Ahead, TSR_S.List (I), Length);
+              Element_Of (T, Ahead, TSR_S.List (I), Length, TSR_Estimated);
          begin
             if El.Start < El.Finish and then El.Start < To
               and then From < El.Finish and then El.Value <= V
