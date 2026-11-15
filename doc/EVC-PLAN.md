@@ -27227,3 +27227,101 @@ front element, B4684). My calls: B4683 first, before more infill (radio
 infill reuses Join): refuse an infill MA that cannot be joined and keep
 the old End Section's timer, with 3.8.4.6.2 built alongside; B4684 is
 one scenario.
+
+### E7 integration after the seventy-seventh round, the second of E7 (2026-11-15)
+
+Merged: e7/deferred-rows (B4583: of the 24 rows deferred to closed
+phases 19 are done: built and shown already, with their `@req` and a
+scenario each, two scenarios added, and 5.4.5.1 built here: the wait at
+S21 ends when the session with the RBC is lost, one line of
+`EVC_Mission.Take_RBC_Answer`, `Scenario_SoM_L2_Session_Lost`; 3 partial
+with their lines: 5.11.4.3 B4664, 3.4.4.4.6 c) B4665, 3.13.2.2.9.1.2
+B4666; 2 wait for this phase: 7.3.3.4 and 8.4.4.1.1, an unknown packet
+or message by the sender's version, B4663; the tool rule and B4564 left
+at the bound), e7/version-rows (decision 4 built:
+`EVC_System_Version.Rules_T`, eight Booleans named by clause, computed
+once a cycle by `Rules_Of` in `EVC_Core.Modes.Version_Rules`, with
+`Below` and `RBC_2_0_To_2_2` for the places that build a message; 14
+rows done: the acknowledgement of the session established report already
+built, and Supervised Manoeuvre with an RBC of X = 1 or 2.0 to 2.2: the
+driver's selection starts nothing, and in SM a session with an RBC below
+2.3 is terminated right after its 159; the four rows on texts around
+Automatic Driving stay deferred with AD; two claims of the inventory
+corrected: 6.6.4.1.2 and 6.6.4.1.3 hang on the operated X alone, the two
+voids have no row), e7/infill-origin (A1:
+`EVC_Stored_Information.Infill_Origin`, a second origin for the packets
+after a packet 136, placed at the linking distance of the group it names
+and relocated with the others at its passage; when that group is not in
+the linking the data are not kept, the MA by 3.8.4.6.4; A2:
+`EVC_Movement_Authority.Join`, the sections of the current MA in rear of
+the infill MA's start kept with their timers, the infill sections
+appended; rows 8.4.1.3.1, 3.8.5.1 b) and 3.8.5.1.2 done; 3110600_01
+passes in three forms, 5170200_05 moves from step 48 to 99 and
+3080300_01 to 49, both s076, 4080444_01 from failed at 59 to blocked at
+79 on a telegram of 1.0; A3 not taken, B4646), e7/air-gap-layouts
+(decision 1's first half: the old layouts are entries of
+`etcs_language.toml` with `versions`, a variable's other width under
+`layouts`, the packet lists per version and the messages deleted; 20
+track to train, 4 train to track and 6 message layouts generated as
+children named by their lowest version (`P80_V1_0`),
+`ETCS_Catalogue.Layout (Direction, NID, Version)`; `check_catalogue.py`
+compares them with chapter 6: 24 layouts, 7 lists, 27 variable tables
+and 6 messages match, no defect of the specification found; round trips
+for every layout; no consumer changed, the on-board behaves as before).
+
+The review (e7/review-77, the twenty-fifth): eight items, six agreed,
+one disagreed, one undecided in part. The disagreement, B4683: an infill
+MA that cannot be joined (no MA in the same direction, a withdrawn one,
+no room, the named group beyond the EOA) replaces the MA whole as built;
+the reviewer reads 3.8.5.1 b) as replacing only the data beyond the
+named group, so such an infill MA is refused and the current MA kept,
+and the cut End Section keeps its timer. **Decided by the coordinator
+for the reviewer's reading**: an authority over ground nobody granted is
+not taken from an infill group; a build item, first in the next round.
+B4684: 3.6.3.2.2 e) is shown for an element of length zero for the rear
+end, not for the front end; a scenario settles it. The review agreed
+with the eight components of the record against the clauses, with the
+status of the AD rows, with the placing of infill data (8.4.1.4.4 is the
+clause behind "the first packet 136") and found the three layouts it
+compared with the PDF pages equal. Twenty-five rounds of reviews: 210
+items, 179 agreed, 33 disagreed, 9 undecided; 52 lines, of which 15
+became fixes; 167.9 USD.
+
+Verification of the merged tree: the whole check green after each of the
+first three merges; the full chain after the fourth green at once: the
+full proof 15570 checks (14525 before: 987 the layouts'), none unproved,
+margin 47726 steps, the wide checks 4 of 6; cross build and stack 32768
+B budget, margin 6016 B; the object code of the cross build 1089 kB of
+text (999 kB before: the 30 layouts and their catalogue); wasm and both
+smokes 0 failures; the runner 1279 / 980 / 931 (from 1276 / 986 / 928),
+0 regressions, 0 untriaged. The merge: deferred-rows fast-forwarded;
+version-rows conflicted on the plan; infill-origin on the plan, the
+backlog and the generated index of test/efs (regenerated);
+air-gap-layouts on the plan and the backlog.
+
+Costs (doc/ROUNDS.csv): 57.0 USD with the review (48.3 for the four
+packages, of which the layouts 18.6; 8.7 the review), 11 of 14 package
+items done, 3 left (the matrix tool's rule, B4564, the infill profiles
+A3), 6 of 18 premises wrong, all claims of the inventories corrected at
+the clause (a count of layouts, a message's own table for 2.1, the
+condition of two clauses, rows that do not exist); no agent over budget,
+three past the bound. Lessons: an inventory read from the markdown is
+corrected on the PDF page by the package that builds on it, as its brief
+asked; a check that fails on any missing part forces one commit for the
+whole (the layouts): say so in the brief instead of asking for five; a
+package of the generator carries a large context (300k): cut the next
+ones smaller.
+
+The matrix: done 2182 (from 2146), deferred 181 (140 of them rows of
+this phase, 16 of its rows done), partial 5, n/a 30. Open items:
+doc/BACKLOG.csv (31 open; 15 added in rounds 76 and 77, of which 2 by
+the review). Next (round 78): the telegram read by the version in its
+header (the packet lists, the old packets recognised, the version passed
+on; B4663, B4604); the supervision with X = 1 or 2 from the record
+(6.6.2.1, 6.6.2.2.1 to .3, 6.6.4.1, 6.6.4.2.1); infill by balise group
+completed (B4683 first, B4645, B4646, B4644, B4684); the runner and the
+tools (B4563, the block of the other envelope, the triage notes the
+inventory found wrong, B4523, B4524, the matrix tool's rule of B4583,
+B4564 with B4643). The rules of the received packets (`EVC_Air_Gap`)
+follow the telegram's version in the round after; the user's decision on
+Euroloop and radio infill is needed before the round after that.
