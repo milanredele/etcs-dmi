@@ -167,7 +167,7 @@ expect efs: (LAST X IN Kernel.MA.MA.Sections).Length == 800.0 @ deadline=1
 expect efs: BTM.Infill.InfillReferenceNID(BTM.CurrentBaliseGroup) == Messages.NID_BG.NID_UNKNOWN @ deadline=2
 expect efs: NOT Kernel.Infill.AccepBTMtInfill(BTM.CurrentBaliseGroup) @ deadline=2
 case Replace data beyond balise group in L1 via Balise
-clause E5 deferred 3.8.5.1 b) ; efs 3.8.5.1.b
+clause E5 done 3.8.5.1 b) ; efs 3.8.5.1.b
 clause E5 done 3.8.5.1 ; efs 3.8.5.1.1
 step Setup
 sub Reset MA (+Grad+SSP)
@@ -202,7 +202,7 @@ expect efs: (LAST X IN Kernel.MA.MA.Sections).Length == 1234.0 @ deadline=1
 expect efs: (LAST X IN Kernel.MA.MA.Sections).Length == 1234.0 @ deadline=1
 expect efs: Before( ExpectedFirst=> FIRST X IN Kernel.MA.MA.Sections | X.Length == 800.0, ExpectedSecond=> FIRST X IN Kernel.MA.MA.Sections | X.Length == 200.0, Collection=> Kernel.MA.MA.Sections ) @ deadline=1
 case New MA section at infill location reference
-clause E5 deferred 3.8.5.1.2 ; efs 3.8.5.1.2
+clause E5 done 3.8.5.1.2 ; efs 3.8.5.1.2
 step Setup
 sub Initialize test environment
 init 100.0 FS

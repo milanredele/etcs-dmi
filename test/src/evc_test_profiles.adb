@@ -1,6 +1,7 @@
 with EVC_Test_Support;  use EVC_Test_Support;
 with DMI_Protocol;
 with ETCS_Track_Packets.P12;
+with ETCS_Track_Packets.P136;
 with ETCS_Track_Packets.P141;
 with ETCS_Track_Packets.P39;
 with ETCS_Track_Packets.P3;
@@ -2840,6 +2841,119 @@ package body EVC_Test_Profiles is
              & "(A.3.5.1 12th bullet, 3.8.4.1.1)");
       Speed_Cms := Saved;
    end Scenario_MA_Timers_Relocated;
+
+   --  The TSR of identity Id at D_M from the reference, L_M long, at Kmh
+   function TSR_Packet (Id, D_M, L_M, Kmh : Natural) return T65.Packet_T is
+      P : T65.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.NID_TSR := ETCS_Variables.NID_TSR_T (Id);
+      P.D_TSR := ETCS_Variables.D_TSR_T (D_M);
+      P.L_TSR := ETCS_Variables.L_TSR_T (L_M);
+      P.Q_FRONT := 1;
+      P.V_TSR := ETCS_Variables.V_TSR_T (Kmh / 5);
+      return P;
+   end TSR_Packet;
+
+   --  Packet 136 naming the group NID_BG in the telegram of balise K of
+   --  group G, after the packets carried before
+   procedure Carry_136 (G : Positive; K : Natural; NID_BG : Natural) is
+      P  : ETCS_Track_Packets.P136.Packet_T;
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      P.Q_DIR := 2;
+      P.NID_BG := ETCS_Variables.NID_BG_T (NID_BG);
+      ETCS_Track_Packets.P136.Encode (P, W, OK);
+      Finish_Carry (G, K, W, OK);
+   end Carry_136;
+
+   --  8.4.1.3.1, 3.6.2.3.1: the group 10 at 100 m links the infill group
+   --  15 at 300 m and the next main signal's group 20 at 500 m (Q_LOCACC
+   --  12 m); the group 15 carries a TSR 1 at 50 m, then a packet 136
+   --  naming the group 20, then a TSR 2 at 100 m. The TSR 1 is referred
+   --  to the group 15 (350 m), the TSR 2 to the group 20 (600 m) from its
+   --  reception on; the group 20 read At_M, its location by the passage:
+   --  read 10 m beyond the linked location, the TSR 2 moves with it
+   --  (3.6.4.2.5 a))
+   procedure Scenario_Infill_Origin is
+      procedure Run (At_M : Integer_64) is
+      begin
+         Start_X;
+         Add_Group (With_Links (Group (10, 100),
+                                Link_To ((200, 200), (15, 20),
+                                         Locacc => 12)));
+         Add_Group (Group (15, 300));
+         Add_Group (Group (20, At_M));
+         Carry (1, 0, SSP ((1 => (0, 100, False))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 1, MA_Of ((1 => 3000)));
+         Carry (2, 0, TSR_Packet (1, 50, 20, 60));
+         Carry_136 (2, 0, 20);
+         Carry (2, 0, TSR_Packet (2, 100, 20, 40));
+         Run_X (40_000);
+      end Run;
+
+      function Start_Of (Id : Natural) return Integer_64 is
+      begin
+         for I in 1 .. TD.TSR.Count loop
+            if TD.TSR.List (I).Id = Id then
+               return Est (TD.TSR.List (I).Start);
+            end if;
+         end loop;
+         return -1;
+      end Start_Of;
+   begin
+      Run (500);
+      Check (Start_Of (1) = 35_000 and then Start_Of (2) = 60_000,
+             "infill origin: the TSR before the packet 136 from the infill "
+             & "group (350 m), the TSR after it from the next main signal's "
+             & "group by the linking (600 m) at its reception (8.4.1.3.1, "
+             & "3.6.2.3.1), got" & Start_Of (1)'Image & Start_Of (2)'Image);
+      Run_X (55_000);
+      Check (Natural (Pos.SOLR.Id.NID_BG) = 20 and then Start_Of (2) = 60_000,
+             "infill origin: the group 20 read at its linked location, the "
+             & "TSR 2 stays at 600 m, got" & Start_Of (2)'Image);
+      Run (510);
+      Run_X (55_000);
+      Check (Natural (Pos.SOLR.Id.NID_BG) = 20 and then Start_Of (2) = 61_000,
+             "infill origin: the group 20 read 10 m beyond its linked "
+             & "location, the TSR 2 relocated with it to 610 m "
+             & "(3.6.4.2.5 a)), got" & Start_Of (2)'Image);
+   end Scenario_Infill_Origin;
+
+   --  3.8.5.1 b), 3.8.5.1.2: the group 10 at 100 m gives an MA of two
+   --  sections, to 500 m and to the EOA at 1000 m, and links the infill
+   --  group 15 at 800 m and the next main signal's group 20 at 1000 m;
+   --  the group 15 carries a packet 136 naming 20, then an MA of two
+   --  sections of 300 m: the MA keeps its first section, its End Section
+   --  ends at the group 20, the infill sections follow it (to 1300 and
+   --  1600 m)
+   procedure Scenario_Infill_MA is
+      function Finish (I : Positive) return Integer_64 is
+        (if I <= MAu.MA.Count then Est (MAu.MA.Sections (I).Finish)
+         else -1);
+   begin
+      Start_X;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((700, 200), (15, 20), Locacc => 12)));
+      Add_Group (Group (15, 800));
+      Add_Group (Group (20, 1000));
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((400, 500)));
+      Carry_136 (2, 0, 20);
+      Carry (2, 0, MA_Of ((300, 300)));
+      Run_X (85_000);
+      Check (MAu.MA.Count = 4 and then Finish (1) = 50_000
+             and then Finish (2) = 100_000 and then Finish (3) = 130_000
+             and then Finish (4) = 160_000,
+             "infill MA: the sections in rear of the next main signal's "
+             & "group kept, a new section from it on (3.8.5.1 b), "
+             & "3.8.5.1.2), got" & MAu.MA.Count'Image & Finish (1)'Image
+             & Finish (2)'Image & Finish (3)'Image & Finish (4)'Image);
+   end Scenario_Infill_MA;
 
 
 end EVC_Test_Profiles;
