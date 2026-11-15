@@ -728,4 +728,126 @@ is
       --  Train_M159, message 159
       188 => (2, 2, False, False, (True, True, True, True)));
 
+   --  The layout of a message in a system version (SUBSET-026 6.5.1.6,
+   --  6.5.2.3, which replace some message tables of chapter 8 and delete some
+   --  messages for the versions before 3.0): the message is absent from the
+   --  version, read in the layout of 4.0.0 (Current: its Kind), or read in a
+   --  layout of older versions, described by the arrays below as the messages
+   --  of 4.0.0 are above.
+   type Message_Layout_T is
+     (Not_In_Version,
+      Current,
+      Track_M15_V1_0,
+      Track_M34_V1_0,
+      Train_M132_V1_0,
+      Train_M150_V1_0,
+      Train_M159_V1_0,
+      Train_M159_V2_1);
+
+   subtype Old_Message_T is Message_Layout_T
+     range Track_M15_V1_0 .. Train_M159_V2_1;
+
+   --  The layout of message NID in this direction in the system version of the
+   --  M_VERSION code Version (7.5.1.79): 1.0 (16), 1.1 (17), 2.0 (32), 2.1
+   --  (33), 2.2 (34), 2.3 (35) by chapter 6; 3.0 and the codes 49 .. 63 by
+   --  chapter 8, Current where Kind knows the message; any other code
+   --  Not_In_Version
+   function Message_Layout (Direction : Direction_T;
+                            NID       : Natural;
+                            Version   : Natural)
+     return Message_Layout_T;
+
+   function Layout_Name (Layout : Old_Message_T) return String;
+   function Layout_Clause (Layout : Old_Message_T) return String;
+
+   Layout_NID : constant array (Old_Message_T) of Natural :=
+     (Track_M15_V1_0 => 15,
+      Track_M34_V1_0 => 34,
+      Train_M132_V1_0 => 132,
+      Train_M150_V1_0 => 150,
+      Train_M159_V1_0 => 159,
+      Train_M159_V2_1 => 159);
+
+   Layout_Direction : constant array (Old_Message_T) of Direction_T :=
+     (Track_M15_V1_0 => Track_To_Train,
+      Track_M34_V1_0 => Track_To_Train,
+      Train_M132_V1_0 => Train_To_Track,
+      Train_M150_V1_0 => Train_To_Track,
+      Train_M159_V1_0 => Train_To_Track,
+      Train_M159_V2_1 => Train_To_Track);
+
+   Layout_Sent_By : constant array (Old_Message_T) of Senders_T :=
+     (Track_M15_V1_0 => (False, False, True, False),
+      Track_M34_V1_0 => (False, False, True, False),
+      Train_M132_V1_0 => (False, False, True, False),
+      Train_M150_V1_0 => (False, False, True, False),
+      Train_M159_V1_0 => (False, False, True, True),
+      Train_M159_V2_1 => (False, False, True, True));
+
+   Layout_Field_Count : constant array (Old_Message_T) of Field_Count_T :=
+     (Track_M15_V1_0 => 10,
+      Track_M34_V1_0 => 10,
+      Train_M132_V1_0 => 5,
+      Train_M150_V1_0 => 4,
+      Train_M159_V1_0 => 4,
+      Train_M159_V2_1 => 4);
+
+   Layout_Fields : constant array (Old_Message_T) of Field_Array :=
+     (Track_M15_V1_0 =>
+        (1 => NID_MESSAGE, 2 => L_MESSAGE, 3 => T_TRAIN, 4 => M_ACK,
+        5 => NID_C, 6 => NID_BG, 7 => NID_EM, 8 => Q_SCALE, 9 => Q_DIR,
+        10 => D_EMERGENCYSTOP, others => NID_MESSAGE),
+      Track_M34_V1_0 =>
+        (1 => NID_MESSAGE, 2 => L_MESSAGE, 3 => T_TRAIN, 4 => M_ACK,
+        5 => NID_C, 6 => NID_BG, 7 => Q_SCALE, 8 => Q_DIR, 9 => D_TAFDISPLAY,
+        10 => L_TAFDISPLAY, others => NID_MESSAGE),
+      Train_M132_V1_0 =>
+        (1 => NID_MESSAGE, 2 => L_MESSAGE, 3 => T_TRAIN, 4 => NID_ENGINE,
+        5 => Q_TRACKDEL, others => NID_MESSAGE),
+      Train_M150_V1_0 =>
+        (1 => NID_MESSAGE, 2 => L_MESSAGE, 3 => T_TRAIN, 4 => NID_ENGINE,
+        others => NID_MESSAGE),
+      Train_M159_V1_0 =>
+        (1 => NID_MESSAGE, 2 => L_MESSAGE, 3 => T_TRAIN, 4 => NID_ENGINE,
+        others => NID_MESSAGE),
+      Train_M159_V2_1 =>
+        (1 => NID_MESSAGE, 2 => L_MESSAGE, 3 => T_TRAIN, 4 => NID_ENGINE,
+        others => NID_MESSAGE));
+
+   --  The rules of the packets of the layouts, as Rules above:
+   --  those of layout K are Layout_Rules (Layout_First_Rule (K)
+   --  .. Layout_First_Rule (K) + Layout_Rule_Count (K) - 1)
+   Total_Layout_Rules : constant := 5;
+   subtype Layout_Rule_Index_T is Positive
+     range 1 .. Total_Layout_Rules;
+   subtype Layout_Rule_Count_T is Natural
+     range 0 .. Total_Layout_Rules;
+
+   Layout_First_Rule : constant array (Old_Message_T) of Layout_Rule_Index_T :=
+     (Track_M15_V1_0 => 1,
+      Track_M34_V1_0 => 1,
+      Train_M132_V1_0 => 1,
+      Train_M150_V1_0 => 3,
+      Train_M159_V1_0 => 4,
+      Train_M159_V2_1 => 5);
+
+   Layout_Rule_Count : constant array (Old_Message_T) of Layout_Rule_Count_T :=
+     (Track_M15_V1_0 => 0,
+      Track_M34_V1_0 => 0,
+      Train_M132_V1_0 => 2,
+      Train_M150_V1_0 => 1,
+      Train_M159_V1_0 => 1,
+      Train_M159_V2_1 => 1);
+
+   Layout_Rules : constant array (Layout_Rule_Index_T) of Rule_T :=
+      --  Train_M132_V1_0, message 132
+     (1 => (0, 1, False, False, (True, True, True, True)),
+      2 => (9, 9, True, False, (True, True, True, True)),
+      --  Train_M150_V1_0, message 150
+      3 => (0, 1, False, False, (True, True, True, True)),
+      --  Train_M159_V1_0, message 159
+      4 => (3, 3, False, False, (True, True, True, True)),
+      --  Train_M159_V2_1, message 159
+      5 => (2, 3, False, False, (True, True, True, True)));
+
 end ETCS_Message_Catalogue;

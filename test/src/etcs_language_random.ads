@@ -48,13 +48,21 @@ package ETCS_Language_Random is
                            W      : in out ETCS_Bits.Writer;
                            OK     : out Boolean);
 
-   Condition_Count : constant := 76;
+   --  The same for a layout of older system versions
+   procedure Round_Trip_Layout
+     (Layout : ETCS_Catalogue.Old_Layout_T;
+      Values : Value_Mode_T;
+      Counts : Count_Mode_T;
+      Result : out Result_T;
+      Bits   : out Natural);
+
+   Condition_Count : constant := 129;
    function Condition_Name (C : Positive) return String;
    --  The condition was met holding (Value True) or not
    function Condition_Seen (C : Positive; Value : Boolean) return Boolean;
 
    type Items_T is (None, One, Maximum);
-   Loop_Count : constant := 33;
+   Loop_Count : constant := 55;
    function Loop_Name (L : Positive) return String;
    --  1 for a loop of the packet, 2 for a loop in a loop, ...
    function Loop_Depth (L : Positive) return Positive;

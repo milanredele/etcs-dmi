@@ -360,4 +360,183 @@ is
       end case;
    end Sent_By;
 
+   --------------------
+   -- Message_Layout --
+   --------------------
+
+   function Message_Layout (Direction : Direction_T;
+                            NID       : Natural;
+                            Version   : Natural)
+     return Message_Layout_T
+   is
+   begin
+      case Version is
+         when 16 | 17 =>
+            --  1.0, 1.1
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 15 => return Track_M15_V1_0;
+                     when 34 => return Track_M34_V1_0;
+                     when 4 | 5 | 7 | 38 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when 132 => return Train_M132_V1_0;
+                     when 150 => return Train_M150_V1_0;
+                     when 159 => return Train_M159_V1_0;
+                     when 131 | 133 | 158 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+            end case;
+         when 32 =>
+            --  2.0
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 4 | 5 | 7 | 38 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when 150 => return Train_M150_V1_0;
+                     when 159 => return Train_M159_V1_0;
+                     when 131 | 133 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+            end case;
+         when 33 =>
+            --  2.1
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 4 | 5 | 7 | 38 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when 150 => return Train_M150_V1_0;
+                     when 159 => return Train_M159_V2_1;
+                     when 131 | 133 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+            end case;
+         when 34 =>
+            --  2.2
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 4 | 5 | 7 | 38 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when 150 => return Train_M150_V1_0;
+                     when 131 | 133 =>
+                        return Not_In_Version;
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+            end case;
+         when 35 =>
+            --  2.3
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when others =>
+                        return (if Kind (Direction, NID)
+                                  = Message_Kind_T'(Unknown)
+                                then Not_In_Version else Current);
+                  end case;
+            end case;
+         when 48 .. 63 =>
+            return (if Kind (Direction, NID) = Message_Kind_T'(Unknown)
+                    then Not_In_Version else Current);
+         when others =>
+            return Not_In_Version;
+      end case;
+   end Message_Layout;
+
+   -----------------
+   -- Layout_Name --
+   -----------------
+
+   function Layout_Name (Layout : Old_Message_T) return String is
+   begin
+      case Layout is
+         when Track_M15_V1_0 =>
+            return "Conditional Emergency Stop";
+         when Track_M34_V1_0 =>
+            return "Track Ahead Free Request";
+         when Train_M132_V1_0 =>
+            return "MA Request";
+         when Train_M150_V1_0 =>
+            return "End of Mission";
+         when Train_M159_V1_0 =>
+            return "Session established";
+         when Train_M159_V2_1 =>
+            return "Session established";
+      end case;
+   end Layout_Name;
+
+   -------------------
+   -- Layout_Clause --
+   -------------------
+
+   function Layout_Clause (Layout : Old_Message_T) return String is
+   begin
+      case Layout is
+         when Track_M15_V1_0 =>
+            return "6.5.1.6.7";
+         when Track_M34_V1_0 =>
+            return "6.5.1.6.8";
+         when Train_M132_V1_0 =>
+            return "6.5.1.6.6.3";
+         when Train_M150_V1_0 =>
+            return "6.5.1.6.6.3.2";
+         when Train_M159_V1_0 =>
+            return "6.5.1.6.6.5";
+         when Train_M159_V2_1 =>
+            return "6.5.2.3.3.3";
+      end case;
+   end Layout_Clause;
+
 end ETCS_Message_Catalogue;

@@ -73,6 +73,30 @@ with ETCS_Train_Packets.P10;
 with ETCS_Train_Packets.P11;
 with ETCS_Train_Packets.P12;
 with ETCS_Train_Packets.P44;
+with ETCS_Track_Packets.P3_V1_0;
+with ETCS_Track_Packets.P27_V1_0;
+with ETCS_Track_Packets.P39_V1_0;
+with ETCS_Track_Packets.P44_V1_0;
+with ETCS_Track_Packets.P45_V1_0;
+with ETCS_Track_Packets.P45_V2_0;
+with ETCS_Track_Packets.P51_V1_0;
+with ETCS_Track_Packets.P70_V1_0;
+with ETCS_Track_Packets.P70_V2_0;
+with ETCS_Track_Packets.P72_V1_0;
+with ETCS_Track_Packets.P72_V2_0;
+with ETCS_Track_Packets.P76_V2_0;
+with ETCS_Track_Packets.P79_V1_0;
+with ETCS_Track_Packets.P80_V1_0;
+with ETCS_Track_Packets.P200_V1_0;
+with ETCS_Track_Packets.P203_V1_0;
+with ETCS_Track_Packets.P206_V1_0;
+with ETCS_Track_Packets.P207_V1_0;
+with ETCS_Track_Packets.P239_V1_0;
+with ETCS_Track_Packets.P245_V2_3;
+with ETCS_Train_Packets.P0_V1_0;
+with ETCS_Train_Packets.P1_V1_0;
+with ETCS_Train_Packets.P3_V1_0;
+with ETCS_Train_Packets.P11_V1_0;
 
 package body ETCS_Catalogue
   with SPARK_Mode => On
@@ -1441,5 +1465,582 @@ is
          OK := not Failed (R);
       end if;
    end Skip;
+
+   ------------
+   -- Layout --
+   ------------
+
+   function Layout (Direction : Direction_T;
+                    NID       : Natural;
+                    Version   : Natural) return Layout_T
+   is
+   begin
+      case Version is
+         when 16 | 17 =>
+            --  1.0, 1.1
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 3 => return Track_P3_V1_0;
+                     when 27 => return Track_P27_V1_0;
+                     when 39 => return Track_P39_V1_0;
+                     when 44 => return Track_P44_V1_0;
+                     when 45 => return Track_P45_V1_0;
+                     when 51 => return Track_P51_V1_0;
+                     when 70 => return Track_P70_V1_0;
+                     when 72 => return Track_P72_V1_0;
+                     when 79 => return Track_P79_V1_0;
+                     when 80 => return Track_P80_V1_0;
+                     when 200 => return Track_P200_V1_0;
+                     when 203 => return Track_P203_V1_0;
+                     when 206 => return Track_P206_V1_0;
+                     when 207 => return Track_P207_V1_0;
+                     when 239 => return Track_P239_V1_0;
+                     when 2 | 5 | 6 | 12 | 15 | 16 | 21 | 41 | 42 | 46 | 49
+                        | 57 | 58 | 63 | 65 | 66 | 67 | 68 | 71 | 90 | 131
+                        | 132 | 133 | 134 | 135 | 136 | 137 | 138 | 139
+                        | 140 | 141 | 145 | 254 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when 0 => return Train_P0_V1_0;
+                     when 1 => return Train_P1_V1_0;
+                     when 3 => return Train_P3_V1_0;
+                     when 11 => return Train_P11_V1_0;
+                     when 4 | 9 | 44 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+            end case;
+         when 32 =>
+            --  2.0
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 45 => return Track_P45_V2_0;
+                     when 70 => return Track_P70_V2_0;
+                     when 72 => return Track_P72_V2_0;
+                     when 76 => return Track_P76_V2_0;
+                     when 0 | 2 | 3 | 5 | 6 | 12 | 13 | 15 | 16 | 21 | 27
+                        | 39 | 40 | 41 | 42 | 44 | 46 | 49 | 51 | 52 | 57
+                        | 58 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 71 | 79
+                        | 80 | 88 | 90 | 131 | 132 | 133 | 134 | 135 | 136
+                        | 137 | 138 | 139 | 140 | 141 | 143 | 145 | 180
+                        | 181 | 254 | 255 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when 0 => return Train_P0_V1_0;
+                     when 1 => return Train_P1_V1_0;
+                     when 3 => return Train_P3_V1_0;
+                     when 4 | 5 | 9 | 11 | 44 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+            end case;
+         when 33 =>
+            --  2.1
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 45 => return Track_P45_V2_0;
+                     when 70 => return Track_P70_V2_0;
+                     when 72 => return Track_P72_V2_0;
+                     when 76 => return Track_P76_V2_0;
+                     when 0 | 2 | 3 | 5 | 6 | 12 | 13 | 15 | 16 | 21 | 27
+                        | 39 | 40 | 41 | 42 | 44 | 46 | 49 | 51 | 52 | 57
+                        | 58 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 71 | 79
+                        | 80 | 88 | 90 | 131 | 132 | 133 | 134 | 135 | 136
+                        | 137 | 138 | 139 | 140 | 141 | 143 | 145 | 180
+                        | 181 | 254 | 255 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when 0 => return Train_P0_V1_0;
+                     when 1 => return Train_P1_V1_0;
+                     when 3 => return Train_P3_V1_0;
+                     when 2 | 4 | 5 | 9 | 11 | 44 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+            end case;
+         when 34 =>
+            --  2.2
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 45 => return Track_P45_V2_0;
+                     when 70 => return Track_P70_V2_0;
+                     when 0 | 2 | 3 | 5 | 6 | 12 | 13 | 15 | 16 | 21 | 27
+                        | 39 | 40 | 41 | 42 | 44 | 46 | 49 | 51 | 52 | 57
+                        | 58 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 71 | 73
+                        | 74 | 79 | 80 | 88 | 90 | 131 | 132 | 133 | 134
+                        | 135 | 136 | 137 | 138 | 139 | 140 | 141 | 143
+                        | 145 | 180 | 181 | 254 | 255 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when others =>
+                        return (if Kind (Direction, NID) = Unknown
+                                then Not_In_Version else Current);
+                  end case;
+            end case;
+         when 35 =>
+            --  2.3
+            case Direction is
+               when Track_To_Train =>
+                  case NID is
+                     when 45 => return Track_P45_V2_0;
+                     when 70 => return Track_P70_V2_0;
+                     when 245 => return Track_P245_V2_3;
+                     when 0 | 2 | 3 | 5 | 6 | 12 | 13 | 15 | 16 | 21 | 27
+                        | 31 | 32 | 39 | 40 | 41 | 42 | 44 | 46 | 49 | 51
+                        | 52 | 57 | 58 | 63 | 64 | 65 | 66 | 67 | 68 | 69
+                        | 71 | 73 | 74 | 79 | 80 | 88 | 90 | 131 | 132 | 133
+                        | 134 | 135 | 136 | 137 | 138 | 139 | 140 | 141
+                        | 143 | 145 | 180 | 181 | 254 | 255 =>
+                        return Current;
+                     when others => return Not_In_Version;
+                  end case;
+               when Train_To_Track =>
+                  case NID is
+                     when others =>
+                        return (if Kind (Direction, NID) = Unknown
+                                then Not_In_Version else Current);
+                  end case;
+            end case;
+         when 48 .. 63 =>
+            return (if Kind (Direction, NID) = Unknown
+                    then Not_In_Version else Current);
+         when others =>
+            return Not_In_Version;
+      end case;
+   end Layout;
+
+   -----------------
+   -- Layout_Name --
+   -----------------
+
+   function Layout_Name (Layout : Old_Layout_T) return String is
+   begin
+      case Layout is
+         when Track_P3_V1_0 =>
+            return "National Values";
+         when Track_P27_V1_0 =>
+            return "International Static Speed Profile";
+         when Track_P39_V1_0 =>
+            return "Track Condition Change of traction system";
+         when Track_P44_V1_0 =>
+            return "Data used by applications outside the ERTMS/ETCS system";
+         when Track_P45_V1_0 =>
+            return "Radio Network registration";
+         when Track_P45_V2_0 =>
+            return "Radio Network registration";
+         when Track_P51_V1_0 =>
+            return "Axle Load Speed Profile";
+         when Track_P70_V1_0 =>
+            return "Route Suitability Data";
+         when Track_P70_V2_0 =>
+            return "Route Suitability Data";
+         when Track_P72_V1_0 =>
+            return "Packet for sending plain text messages";
+         when Track_P72_V2_0 =>
+            return "Packet for sending plain text messages";
+         when Track_P76_V2_0 =>
+            return "Packet for sending fixed text messages";
+         when Track_P79_V1_0 =>
+            return "Geographical Position Information";
+         when Track_P80_V1_0 =>
+            return "Mode profile";
+         when Track_P200_V1_0 =>
+            return "Virtual Balise Cover marker";
+         when Track_P203_V1_0 =>
+            return "National Values for braking curves";
+         when Track_P206_V1_0 =>
+            return "Track Condition";
+         when Track_P207_V1_0 =>
+            return "Route Suitability Data";
+         when Track_P239_V1_0 =>
+            return "Track Condition Change of traction system";
+         when Track_P245_V2_3 =>
+            return "Radio Network type";
+         when Train_P0_V1_0 =>
+            return "Position Report";
+         when Train_P1_V1_0 =>
+            return "Position Report based on two balise groups";
+         when Train_P3_V1_0 =>
+            return "Onboard telephone numbers";
+         when Train_P11_V1_0 =>
+            return "Validated train data";
+      end case;
+   end Layout_Name;
+
+   -------------------
+   -- Layout_Clause --
+   -------------------
+
+   function Layout_Clause (Layout : Old_Layout_T) return String is
+   begin
+      case Layout is
+         when Track_P3_V1_0 =>
+            return "6.5.1.5.4";
+         when Track_P27_V1_0 =>
+            return "6.5.1.5.6";
+         when Track_P39_V1_0 =>
+            return "6.5.1.5.7";
+         when Track_P44_V1_0 =>
+            return "6.5.1.5.9";
+         when Track_P45_V1_0 =>
+            return "6.5.1.5.9.1";
+         when Track_P45_V2_0 =>
+            return "6.5.2.3.13.1";
+         when Track_P51_V1_0 =>
+            return "6.5.1.5.10";
+         when Track_P70_V1_0 =>
+            return "6.5.1.5.14";
+         when Track_P70_V2_0 =>
+            return "6.5.2.3.12.2";
+         when Track_P72_V1_0 =>
+            return "6.5.1.5.15";
+         when Track_P72_V2_0 =>
+            return "6.5.2.3.1.1.2";
+         when Track_P76_V2_0 =>
+            return "6.5.2.3.1.1.3";
+         when Track_P79_V1_0 =>
+            return "6.5.1.5.17";
+         when Track_P80_V1_0 =>
+            return "6.5.1.5.18";
+         when Track_P200_V1_0 =>
+            return "6.5.1.5.21";
+         when Track_P203_V1_0 =>
+            return "6.5.1.5.22";
+         when Track_P206_V1_0 =>
+            return "6.5.1.5.23";
+         when Track_P207_V1_0 =>
+            return "6.5.1.5.24";
+         when Track_P239_V1_0 =>
+            return "6.5.1.5.25";
+         when Track_P245_V2_3 =>
+            return "6.5.2.3.16.2";
+         when Train_P0_V1_0 =>
+            return "6.5.1.5.25.1";
+         when Train_P1_V1_0 =>
+            return "6.5.1.5.25.2";
+         when Train_P3_V1_0 =>
+            return "6.5.1.5.25.3";
+         when Train_P11_V1_0 =>
+            return "6.5.1.5.25.4";
+      end case;
+   end Layout_Clause;
+
+   procedure Check_Track_P3_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P3_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P3_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P3_V1_0.Valid (P);
+   end Check_Track_P3_V1_0;
+
+   procedure Check_Track_P27_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P27_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P27_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P27_V1_0.Valid (P);
+   end Check_Track_P27_V1_0;
+
+   procedure Check_Track_P39_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P39_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P39_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P39_V1_0.Valid (P);
+   end Check_Track_P39_V1_0;
+
+   procedure Check_Track_P44_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P44_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P44_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P44_V1_0.Valid (P);
+   end Check_Track_P44_V1_0;
+
+   procedure Check_Track_P45_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P45_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P45_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P45_V1_0.Valid (P);
+   end Check_Track_P45_V1_0;
+
+   procedure Check_Track_P45_V2_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P45_V2_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P45_V2_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P45_V2_0.Valid (P);
+   end Check_Track_P45_V2_0;
+
+   procedure Check_Track_P51_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P51_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P51_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P51_V1_0.Valid (P);
+   end Check_Track_P51_V1_0;
+
+   procedure Check_Track_P70_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P70_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P70_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P70_V1_0.Valid (P);
+   end Check_Track_P70_V1_0;
+
+   procedure Check_Track_P70_V2_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P70_V2_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P70_V2_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P70_V2_0.Valid (P);
+   end Check_Track_P70_V2_0;
+
+   procedure Check_Track_P72_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P72_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P72_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P72_V1_0.Valid (P);
+   end Check_Track_P72_V1_0;
+
+   procedure Check_Track_P72_V2_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P72_V2_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P72_V2_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P72_V2_0.Valid (P);
+   end Check_Track_P72_V2_0;
+
+   procedure Check_Track_P76_V2_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P76_V2_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P76_V2_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P76_V2_0.Valid (P);
+   end Check_Track_P76_V2_0;
+
+   procedure Check_Track_P79_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P79_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P79_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P79_V1_0.Valid (P);
+   end Check_Track_P79_V1_0;
+
+   procedure Check_Track_P80_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P80_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P80_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P80_V1_0.Valid (P);
+   end Check_Track_P80_V1_0;
+
+   procedure Check_Track_P200_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P200_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P200_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P200_V1_0.Valid (P);
+   end Check_Track_P200_V1_0;
+
+   procedure Check_Track_P203_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P203_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P203_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P203_V1_0.Valid (P);
+   end Check_Track_P203_V1_0;
+
+   procedure Check_Track_P206_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P206_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P206_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P206_V1_0.Valid (P);
+   end Check_Track_P206_V1_0;
+
+   procedure Check_Track_P207_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P207_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P207_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P207_V1_0.Valid (P);
+   end Check_Track_P207_V1_0;
+
+   procedure Check_Track_P239_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P239_V1_0.Packet_T;
+   begin
+      ETCS_Track_Packets.P239_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P239_V1_0.Valid (P);
+   end Check_Track_P239_V1_0;
+
+   procedure Check_Track_P245_V2_3
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Track_Packets.P245_V2_3.Packet_T;
+   begin
+      ETCS_Track_Packets.P245_V2_3.Decode (R, P, OK);
+      Valid := OK and then ETCS_Track_Packets.P245_V2_3.Valid (P);
+   end Check_Track_P245_V2_3;
+
+   procedure Check_Train_P0_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Train_Packets.P0_V1_0.Packet_T;
+   begin
+      ETCS_Train_Packets.P0_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Train_Packets.P0_V1_0.Valid (P);
+   end Check_Train_P0_V1_0;
+
+   procedure Check_Train_P1_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Train_Packets.P1_V1_0.Packet_T;
+   begin
+      ETCS_Train_Packets.P1_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Train_Packets.P1_V1_0.Valid (P);
+   end Check_Train_P1_V1_0;
+
+   procedure Check_Train_P3_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Train_Packets.P3_V1_0.Packet_T;
+   begin
+      ETCS_Train_Packets.P3_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Train_Packets.P3_V1_0.Valid (P);
+   end Check_Train_P3_V1_0;
+
+   procedure Check_Train_P11_V1_0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
+   is
+      P : ETCS_Train_Packets.P11_V1_0.Packet_T;
+   begin
+      ETCS_Train_Packets.P11_V1_0.Decode (R, P, OK);
+      Valid := OK and then ETCS_Train_Packets.P11_V1_0.Valid (P);
+   end Check_Train_P11_V1_0;
+
+   ------------------
+   -- Check_Layout --
+   ------------------
+
+   procedure Check_Layout (Layout : Old_Layout_T;
+                           R      : in out Reader;
+                           OK     : out Boolean;
+                           Valid  : out Boolean)
+   is
+   begin
+      case Layout is
+         when Track_P3_V1_0 => Check_Track_P3_V1_0 (R, OK, Valid);
+         when Track_P27_V1_0 => Check_Track_P27_V1_0 (R, OK, Valid);
+         when Track_P39_V1_0 => Check_Track_P39_V1_0 (R, OK, Valid);
+         when Track_P44_V1_0 => Check_Track_P44_V1_0 (R, OK, Valid);
+         when Track_P45_V1_0 => Check_Track_P45_V1_0 (R, OK, Valid);
+         when Track_P45_V2_0 => Check_Track_P45_V2_0 (R, OK, Valid);
+         when Track_P51_V1_0 => Check_Track_P51_V1_0 (R, OK, Valid);
+         when Track_P70_V1_0 => Check_Track_P70_V1_0 (R, OK, Valid);
+         when Track_P70_V2_0 => Check_Track_P70_V2_0 (R, OK, Valid);
+         when Track_P72_V1_0 => Check_Track_P72_V1_0 (R, OK, Valid);
+         when Track_P72_V2_0 => Check_Track_P72_V2_0 (R, OK, Valid);
+         when Track_P76_V2_0 => Check_Track_P76_V2_0 (R, OK, Valid);
+         when Track_P79_V1_0 => Check_Track_P79_V1_0 (R, OK, Valid);
+         when Track_P80_V1_0 => Check_Track_P80_V1_0 (R, OK, Valid);
+         when Track_P200_V1_0 => Check_Track_P200_V1_0 (R, OK, Valid);
+         when Track_P203_V1_0 => Check_Track_P203_V1_0 (R, OK, Valid);
+         when Track_P206_V1_0 => Check_Track_P206_V1_0 (R, OK, Valid);
+         when Track_P207_V1_0 => Check_Track_P207_V1_0 (R, OK, Valid);
+         when Track_P239_V1_0 => Check_Track_P239_V1_0 (R, OK, Valid);
+         when Track_P245_V2_3 => Check_Track_P245_V2_3 (R, OK, Valid);
+         when Train_P0_V1_0 => Check_Train_P0_V1_0 (R, OK, Valid);
+         when Train_P1_V1_0 => Check_Train_P1_V1_0 (R, OK, Valid);
+         when Train_P3_V1_0 => Check_Train_P3_V1_0 (R, OK, Valid);
+         when Train_P11_V1_0 => Check_Train_P11_V1_0 (R, OK, Valid);
+      end case;
+   end Check_Layout;
 
 end ETCS_Catalogue;
