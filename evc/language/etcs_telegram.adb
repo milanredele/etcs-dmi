@@ -94,12 +94,14 @@ is
          pragma Loop_Invariant (T.Bits = Bits);
          pragma Loop_Invariant (Limit (R) = Bits);
          pragma Loop_Invariant (T.Unknown <= T.Count);
+         pragma Loop_Invariant (T.Old_Layouts <= T.Count);
+         pragma Loop_Invariant (T.Ignored <= T.Count);
          pragma Loop_Invariant
            (for all I in 1 .. T.Count =>
               T.Index (I).Length > 0
               and then T.Index (I).Offset + T.Index (I).Length
                        <= Position (R));
-         Scan (Track_To_Train, R, E, Result);
+         Scan (Track_To_Train, Natural (H.M_VERSION), R, E, Result);
          case Result is
             when End_Of_Data =>
                T.End_Bit := E.Offset;
@@ -128,8 +130,10 @@ is
                   Status := Packet_Structure;
                   return;
                end if;
-               --  8.4.1.4: one instance per packet type and direction
-               if E.Kind /= Unknown and then not May_Repeat (E.NID) then
+               --  8.4.1.4: one instance per packet type and direction,
+               --  in an older layout too
+               if E.Layout /= Not_In_Version and then not May_Repeat (E.NID)
+               then
                   for I in 1 .. T.Count loop
                      if T.Index (I).NID = E.NID
                        and then Same_Direction (T.Index (I).Q_DIR, E.Q_DIR)
@@ -145,9 +149,19 @@ is
                end if;
                T.Count := T.Count + 1;
                T.Index (T.Count) := E;
-               if E.Kind = Unknown then
-                  T.Unknown := T.Unknown + 1;
-               end if;
+               case E.Layout is
+                  when Current =>
+                     null;
+                  when Old_Layout_T =>
+                     T.Old_Layouts := T.Old_Layouts + 1;
+                  when Not_In_Version =>
+                     if Major (H.M_VERSION) = 1 and then E.NID = 76 then
+                        --  6.6.3.1.1.1: no consistency error, ignored
+                        T.Ignored := T.Ignored + 1;
+                     else
+                        T.Unknown := T.Unknown + 1;
+                     end if;
+               end case;
          end case;
       end loop;
       Status := Too_Many_Packets;

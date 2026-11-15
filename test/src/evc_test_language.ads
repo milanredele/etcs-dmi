@@ -9,6 +9,7 @@ package EVC_Test_Language is
 
       procedure Scenario_Packet_Round_Trips;
       procedure Scenario_Telegram;
+      procedure Scenario_Telegram_Versions;
       procedure Scenario_Telegram_Damaged;
       procedure Scenario_Message;
       procedure Scenario_Telegram_Length;

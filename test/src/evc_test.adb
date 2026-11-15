@@ -137,6 +137,7 @@ begin
    Scenario_End_To_End;
    Scenario_Packet_Round_Trips;
    Scenario_Telegram;
+   Scenario_Telegram_Versions;
    Scenario_Telegram_Damaged;
    Scenario_Message;
    Scenario_Telegram_Length;
@@ -459,6 +460,7 @@ begin
    Scenario_Version_Balise_Groups;
    Scenario_Version_Country_Set;
    Scenario_Version_Rules;
+   Scenario_Version_Telegram_Read;
    EVC_Test_VBC.Scenario_VBC_Store;
    EVC_Test_VBC.Scenario_VBC_Driver;
    EVC_Test_VBC.Scenario_VBC_Rooms;

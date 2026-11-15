@@ -15,10 +15,10 @@
 --      830 (SUBSET-036 4.3.1.2);
 --    - a header of another medium or direction (Q_UPDOWN = 0 down-link,
 --      Q_MEDIA = 1 loop), N_PIG above N_TOTAL, M_DUP spare (7.5.1.63);
---    - M_VERSION other than 2.0 .. 2.3 and 3.x (7.5.1.79): X = 0 is
---      ignored (3.17.3.5 a), X = 1 needs chapter 6 (phase E7), 2.4 ..
---      2.15 are not valid, X above 3 is higher than this on-board
---      supports (3.17.3.5 d, e);
+--    - M_VERSION other than 1.0, 1.1, 2.0 .. 2.3 and 3.x (7.5.1.79):
+--      X = 0 is ignored (3.17.3.5 a), 1.2 .. 1.15 and 2.4 .. 2.15 are
+--      not valid, X above 3 is higher than this on-board supports
+--      (3.17.3.5 d, e);
 --    - a packet that does not fit, an L_PACKET shorter than the header,
 --      a known packet that does not decode in its L_PACKET, packet 0 not
 --      first (8.4.2.3), a second instance of a packet for the same
@@ -29,9 +29,14 @@
 --    - a known packet that a balise does not transmit ("Transmitted
 --      by" of 7.4.2: 13 by a loop, 15, 57, 58, 63, 64, 140 by an RBC,
 --      143 by an RIU).
---  A packet of an unknown NID_PACKET is passed over by its L_PACKET and
---  counted (Unknown): whether the telegram is then consistent (7.3.3.4,
---  3.17.3.11 a) is decided with the operated system version (E2, E6).
+--  The packets are read by the version of the header (3.17.3.5 c),
+--  6.6.3.1.1: the packet list and the layouts of 6.5.1.5 and 6.5.2.3,
+--  ETCS_Catalogue.Layout): a packet in the layout of 4.0.0 is indexed
+--  by its kind for its readers; one in a layout of an older version is
+--  indexed with that layout, kind Unknown, and counted (Old_Layouts):
+--  its translation (6.6.3.2) is not built, no reader takes it. A packet
+--  the version does not list is passed over by its L_PACKET and counted
+--  (Unknown), packet 76 of X = 1 apart (Ignored, 6.6.3.1.1.1).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -94,8 +99,15 @@ is
       Header  : Header_T := (others => <>);
       Count   : Packet_Count_T := 0;
       Index   : Index_T := (others => No_Entry);
-      --  packets of an unknown NID_PACKET among them
+      --  packets of an NID_PACKET the version of the header does not
+      --  list among them
       Unknown : Packet_Count_T := 0;
+      --  packets in a layout of an older version (Layout of the index),
+      --  read by no reader of 4.0.0
+      Old_Layouts : Packet_Count_T := 0;
+      --  packets not listed whose reception is no error, their content
+      --  ignored (6.6.3.1.1.1: packet 76 of X = 1)
+      Ignored : Packet_Count_T := 0;
       --  where packet 255 starts
       End_Bit : Bit_Count := 0;
       Bits    : Natural range 0 .. Long_Bits := 0;
@@ -107,14 +119,20 @@ is
    function Major (Version : M_VERSION_T) return Natural is
      (Natural (Version) / 16);
 
-   --  The versions whose telegrams this on-board reads: 2.0 .. 2.3, and
-   --  3.0 with the reserved (valid) values 3.1 .. 3.15 of 7.5.1.79
+   --  The versions whose telegrams this on-board reads (3.17.3.5 c): the
+   --  envelope of 6.4.2.2, 1.0 up to 3.0, with the reserved (valid)
+   --  values 3.1 .. 3.15 of 7.5.1.79 under X = 3 (3.17.3.11): the
+   --  versions ETCS_Catalogue.Layout has packet lists for. Decision: the
+   --  set is held here, in the language, which does not depend on the
+   --  on-board; EVC_System_Version.Envelope lists the same seven codes
+   --  (evc_test Scenario_Telegram_Versions compares them).
    function Supported (Version : M_VERSION_T) return Boolean is
-     (Version in 32 .. 35 | 48 .. 63);
+     (Version in 16 | 17 | 32 .. 35 | 48 .. 63);
 
    --  The telegram of Bits bits held in Data from its first byte on. The
    --  header is in T whenever it could be read; the index when Status is
    --  Accepted.
+   --  @req 3.17.3.5 c), 6.6.3.1.1, 6.6.3.1.1.1
    procedure Parse (Data   : Byte_Array;
                     Bits   : Natural;
                     T      : out Telegram_T;
