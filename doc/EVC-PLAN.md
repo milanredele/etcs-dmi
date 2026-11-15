@@ -26161,3 +26161,180 @@ the ports, the sessions and the runner, its size and what it unblocks:
 the numbers for the user's decision on Euroloop and radio infill. Each
 inventory is a subsection of this section with its tables; the work
 packages of the following rounds are written from them.
+
+### Infill by balise group, by Euroloop and by radio: the clauses, what exists, the corpus, the numbers for the decision (e7/infill) (2026-11-15)
+
+**The clauses.** 3.9 has 24 on-board rows, all E7 deferred (`awk -F,
+'$8=="E7" && $1 ~ /^3\.9/'`); of the 66 rows other phases deferred, 37
+name infill, the loop or an RIU (the brief's grep; 3.11.6.2 is in for
+its infill part). The other 29: 24 name a phase that is closed (E3
+profiles 10, E4 SM 2, brake reasons 2, desk closure 2, transition border
+1, E5 sessions 2, E6 version 2, reversing area 1, train data 1, balise
+consistency 1), the ATO 4, E8 faults 1 (B4583). By group, with 3.9.1.3
+shared: A 14 rows, B 15, C 31, 61 in all.
+
+(A) Infill by balise group (3.9.1.4: "no additional description").
+
+| clause | the on-board | unit | size |
+|---|---|---|---|
+| 8.4.1.3.1, 3.6.2.3.1, 3.8.4.6.4 | the packets after a 136 referred to its NID_BG, located by the stored linking; no linking to it: not evaluated | EVC_Stored_Information (Infill_Packet, Take_Packet), EVC_Linking (Find, Distance) | M |
+| 3.8.5.1 b), 3.8.5.1.2, 3.8.4.6.2, 3.8.4.6.5 a) | a new MA section from the NMBG on, the sections before kept; only in FS, AD, LS; section timers at the first balise of the infill group | EVC_Movement_Authority (like Reposition) | M |
+| 3.7.3.1 n) | linking replaced from the NMBG on | EVC_Linking.Replace | S |
+| 3.11.6.2, 3.11.6.5 | V_MAIN from the NMBG's location (the zero ignored: built) | EVC_Movement_Authority.Take_V_Main | S |
+| 3.12.4.3.1 a) to c) | OS/LS profiles deleted beyond the reference only; an SH profile by its start | EVC_Movement_Authority.Take_Mode_Profile | M |
+
+(B) Euroloop (an LTM, a loop telegram of 8.4.3.1: a 33 bit header,
+Q_MEDIA 1, NID_LOOP).
+
+| clause | the on-board | unit | size |
+|---|---|---|---|
+| 3.4.5.1.4, 3.4.5.1.6 | one EOLM (packet 134) at a time; deleted when the loop antenna leaves the loop area (the antenna's offset: a new configuration item) | new store, EVC_Config | M |
+| 3.4.5.2.1, 3.4.5.2.2 | a loop message accepted by its NID_LOOP from the EOLM on; the LTM told the key Q_SSCODE | EVC_Ports (LTM in and out), EVC_Core.Inputs | L |
+| 3.8.4.6.5 b), 3.9.2.11 | infill from a loop (orientation by the EOLM, 3.6.2.3.1.2), timers at reception; ignored after the NMBG read or missed | with A | S |
+| 4.4.11.1.3.1 c), 4.4.11.1.6.7, 5.8.3.8, 4.8.4.2 [6] | packet 13: the SR distance by reference groups matched with the LRBG; rejected under override and after the NMBG | EVC_Mission, EVC_Acceptance | M |
+| 3.17.3.6 a) to c) | the loop's M_VERSION judged as a balise group's | EVC_System_Version | S |
+
+(C) Radio infill (an RIU, level 1 only).
+
+| clause | the on-board | unit | size |
+|---|---|---|---|
+| 8.4.4.4.1, 8.5.3 Tables, 3.9.3.4 | a session's peer is an RBC or an RIU (packet 133: NID_C, NID_RIU, NID_RADIO); 37 and 143 only from an RIU | EVC_Radio (Session_Info_T), EVC_Received (Wrong_Sender today), EVC_Ports (set-up) | M |
+| 3.9.3.3 b), 3.9.3.5, 3.9.3.6, 3.9.3.6.1, 3.5.6.8 | the order of a 133 (Q_RIU) at D_INFILL, of a 143 from an RIU: the others terminated, a new session; not without registration | EVC_Sessions | M |
+| 3.9.3.16, 3.5.3.8 h), 3.5.4.3, 5.5.3.1.2, A.3.5.1 | terminated by order, level 1 left, end of mission; attempts end at the terminate location; not twice | EVC_Sessions | M |
+| 3.9.3.10, 3.9.3.11, 3.9.3.9 | message 153 at the area's entry and at the NMBG read or missed, with the position report and the NMBG; the level unchanged | EVC_Sessions.Reports | M |
+| 3.8.4.6.5 c), 3.9.3.14, 3.9.3.15, 4.8.3.1.1 | message 37 (packet 136 then 12, ...) by A's machinery, timers at its T_TRAIN, consistency of 3.16.3; judged by the rows "From RBC: No" | EVC_Radio_Authority, EVC_Radio_Acceptance | M |
+| 3.5.7.7 | the connection shown is the current area's | EVC_Core.Outputs | S |
+
+Not in the matrix (SUBSET-027): the JRU records 5 and 8 (message to and
+from an RIU) and 7 (from a Euroloop), in EVC_JRU_Records, S each.
+
+**What exists.** A: the acceptance of 4.8.3 has the infill sub-rows
+(EVC_Acceptance.Context_T.Infill, set by
+EVC_Stored_Information.Infill_Packet from a 136 valid for the
+direction); an infill V_MAIN of zero is ignored (4.8.3 [18]). The
+packets after it are otherwise taken as non-infill: referred to the
+infill group itself, the MA replaced whole (3.8.5.1 a), the linking
+from the group (3.7.3.1 m). The linking store can locate the NMBG
+(EVC_Linking.Find, Distance); EVC_Movement_Authority.Reposition is the
+model of a replacement from a location. New: an origin that is a
+group ahead, a section replacement, a linking replacement from an
+index. B: nothing but the codec (ETCS_Track_Packets.P134, P136, P13;
+ETCS_Telegram rejects Q_MEDIA 1 and a packet 13 in a balise). New: a
+port (Port_T has BTM, RTM, Odometer, TIU, DMI, ATO, JRU), a loop
+telegram parser (the header of 8.4.3.1, "Transmitted by" loop: a change
+of gen_language.py, L), the EOLM store, an antenna offset. C: the
+sessions (RTM_Max_Sessions 2, by the handover), the codec of 133, 143,
+37 and 153 (etcs_language.toml), the sender rule. New: the peer kind
+and RIU identity in the session table, the infill area (the 133's
+location and NMBG), messages 153 out and 37 in.
+
+**The corpus** (a script of this round, not committed, classifies a
+sequence by its var blocks: a loop telegram, an LTM step or a 134 is B; else a message 37
+or 153, a 133 or Q_RIU 1 is C; else a 136 in a balise telegram is A).
+
+| group | per form (SV21/22/30) | today, SV30 | examples |
+|---|---|---|---|
+| A | 27/27/28 | 21 failed, 2 passed, 5 blocked (S076-defect 3, extractor 2) | 3080300_01 step 48, 5170200_05 step 48 |
+| B | 29/29/29 | 24 blocked E7-euroloop, 2 failed, 1 passed, 2 E7-version | 3040500_01 step 48, 3170300_02 step 44 |
+| C | 42/42/42 | 38 failed (Sa8a3ba1a), 2 passed, 2 E7-version | 3090300_01 step 48, 4080429_01 step 73 |
+
+A: 9 failures are filed E7 on infill (3080300_01 Sf619da00, 3110600_01
+Seb6766c6, 5170200_05 Sf2942686, three forms each); in SV30 10 of the
+21 failures and 2 of the 5 blocks come after the first balise telegram
+with a 136 (its step against the baseline's), among them the 3120400 mode profile cases filed model
+(S5ea84fdd, S6cedaecc, S7b03e0c6: 3.12.4.3.1 may be their cause, not
+traced); 11 failures and 3 blocks come before it.
+B: 72 blocked (24 cases, all at "input LTM"), 81 steps not judged; in
+SV30 the loop telegrams carry 136 in 19 sequences, packet 13 in 6. C:
+111 fail at "expect RTM connect" (37 cases), 921 steps not judged (JRU
+5: 466, JRU 8: 243, message 153: 164, message 37: 48); 17 of the 42
+cases carry a message 37, the others the sessions and orders only.
+What the runner needs: A nothing; B an LTM input with the key it was
+received on (the steps' "cross talk"), the "BTM LOOP" tag, JRU 7
+judged (S076_Run: NJ R_Euroloop today); C message 37 given
+(S076_Run.Radio_Input), 153 and JRU 5 and 8 judged; its Route already
+tells two sessions apart by the order of events.
+
+**Chapter 6.** The SV21 and SV22 forms carry their RIU and loop at
+version 2.1 or 2.2 (sv21: 42 of 53 loop telegrams at 2.1; the RIU's
+message 32 of 3090300 at 2.1), a few loop telegrams at 1.0, 1.1, 2.0
+(the version tests): a session with an RIU operated at X = 2 is
+e7/behaviour's (6.6.4), the layouts of 133, 134, 136, 13 at X = 1 and
+X = 2 e7/air-gap's (6.5.1 lists them; 6.5.1.5.5: no packet 13,
+6.5.1.5.20: no packet 143). The SV30 forms need neither.
+
+**What the specification makes mandatory.** Chapter 9 classifies all
+these rows as on-board requirements, without an option; 3.9.1.3 is the
+exception: "If the on-board system is not equipped with the infill
+transmission media as requested by the announcement balise group, the
+announcement information shall be ignored ... and the train shall
+proceed according to the previously received information". For the
+loop the medium is the loop receiver: an on-board without one is
+conformant and ignores the EOLM. For radio, two readings: (1) the
+medium is the radio infill function, which an on-board may lack; (2)
+the medium is the GSM-R radio, and 3.9.3.3 b) ("ignored ... b) If the
+GSM-R radio system is not installed on-board") with 3.9.3.4 ("If the
+GSM-R radio system is installed on-board, the communication session
+shall be established ...") make radio infill due on an on-board with
+GSM-R, which ours has. Reading (2) is the closer to the words.
+
+**The numbers for the decision.**
+
+| | A balise | B Euroloop | C radio |
+|---|---|---|---|
+| matrix rows | 14 | 15 | 31 |
+| sequences moved | 9 E7; 12 reach a 136 (SV30) | 72 blocked | 111 failed, 921 steps |
+| new port / state | none / an origin ahead | LTM / EOLM, loop area | none / RIU peer, area |
+| rounds of 4 | 1 | 2 (parser L) | 2 |
+| depends on | none | A; X = 2 forms on air-gap | A; 6.6.4 for SV21/22 |
+
+Sizes: A is four M packages in stores that exist; B adds a port in and
+out, a generator change and the antenna's geometry; C is six packages,
+all in units that exist, the session machine reused.
+
+Recommendation: A first (mandatory, no question hangs on it, the base
+of B and C), then C (due by reading (2), the largest move in the
+corpus), B last or not at all. Left out, B is 3.9.1.3 built as "not
+equipped" (S: packet 134 ignored, the loop's rows n/a by 3.9.1.3, the
+72 stay blocked as "not equipped"); left out, C keeps 31 rows deferred,
+111 sequences failing, and an on-board with GSM-R that does not follow
+a 133, conformant only by reading (1). Whether lines with Euroloop or
+radio infill run where this on-board would go is not in the repository;
+I did not verify it.
+
+Design questions. (Q1) Where infill data referred to the NMBG live
+before it is passed: (a) placed at reception by the linking distance
+to the NMBG and relocated at its passage by the relocation that exists
+(3.6.4.2.5), or (b) held per NMBG and applied at its passage, which
+defeats infill. Recommended (a). (Q2) An RIU while an RBC session is
+open (a level 2 transition announced in level 1): two sessions only;
+options: the RIU order ignored as 3.9.3.6.1's degraded case, or a third
+session. Recommended the first (S), counted in the corpus before
+building. (Q3) Euroloop: build (2 rounds) or "not equipped" (S): the
+user's.
+
+Work packages.
+
+| name | clauses | units | size | depends | unblocks |
+|---|---|---|---|---|---|
+| A1 infill origin | 8.4.1.3.1, 3.6.2.3.1, 3.8.4.6.4 | EVC_Stored_Information, EVC_Linking | M | Q1 | 5170200_05 |
+| A2 infill MA | 3.8.5.1 b), 3.8.5.1.2, 3.8.4.6.2, 3.8.4.6.5 a) | EVC_Movement_Authority | M | A1 | 3080300_01, 3110600_01 |
+| A3 linking, V_MAIN, profiles | 3.7.3.1 n), 3.11.6.2, 3.11.6.5, 3.12.4.3.1 | EVC_Linking, EVC_Movement_Authority | M | A1 | 3120400_01 (claim) |
+| A4 traces | the 7 SV30 failures after a 136 not filed E7 | triage | S | A1-A3 | by count |
+| C1 RIU peer | 8.4.4.4.1, 8.5.3, 3.9.3.4 | EVC_Radio, EVC_Received, EVC_Ports | M | none | none alone |
+| C2 orders | 3.9.3.3 b), 3.9.3.5, 3.9.3.6, 3.9.3.6.1, 3.5.6.8, 3.9.3.16, 3.5.3.8 h), 3.5.4.3, 5.5.3.1.2, A.3.5.1 | EVC_Sessions | M | C1, Q2 | 111 at the connect |
+| C3 reports | 3.9.3.9 to 3.9.3.11 | EVC_Sessions.Reports | M | C2 | 164 steps (153) |
+| C4 infill MA by radio | 3.8.4.6.5 c), 3.9.3.14, 3.9.3.15, 4.8.3.1.1 | EVC_Radio_Authority, EVC_Radio_Acceptance | M | A2, C2 | 17 cases with a 37 |
+| C5 records, symbol | 3.5.7.7, SUBSET-027 5, 8 | EVC_JRU_Records, EVC_Core.Outputs | S | C2 | 709 steps |
+| C6 runner | | S076_Run.Radio_Input, the JRU judgement | S | C3 | the 921 |
+| B1 LTM port, parser | 8.4.3.1, 3.4.5.2.1, 3.4.5.2.2 | EVC_Ports, EVC_Core.Inputs, gen_language.py | L | Q3 | 72 blocked |
+| B2 EOLM | 3.4.5.1.4, 3.4.5.1.6 | new store, EVC_Config | M | B1 | 3040500_01 |
+| B3 loop infill, SR distance | 3.8.4.6.5 b), 3.9.2.11, 4.4.11.1.3.1 c), 4.4.11.1.6.7, 5.8.3.8, 4.8.4.2 [6], 3.17.3.6 | EVC_Mission, EVC_Acceptance, EVC_System_Version | M | A2, B2 | 6 cases with packet 13 |
+| B4 runner, JRU 7 | | S076_Run, EVC_JRU_Records | S | B1 | the 81 steps |
+
+Not read: SUBSET-044 (the loop, not imported) and SUBSET-027's records
+5, 7, 8 (their names taken from the sequences' steps); chapter 6
+beyond its lists of RIU and loop items; the relocation code (Q1 a)
+rests on its existence, EVC_Position); the group A failures before
+their first 136, and whether 3.11.6.5 is complete (the row is deferred
+although its zero is ignored).
