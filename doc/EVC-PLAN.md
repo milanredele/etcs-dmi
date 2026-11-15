@@ -27406,3 +27406,31 @@ them. Moved:
   4100103_15 SV21, SV22 (failed 41, now passed): a telegram of 2.1 with
   a packet 45 of X = 2 (L_PACKET 47), refused before (Se110c7fe), is
   read; in 4100103_15 its packet 41 orders level 2 (step 41 passes).
+
+**2. The message: left at the bound.** Built and not committed (B4704
+holds what was built and why it stopped; the diff is kept in the
+worktree as `obj/item2-message-version.patch`): `ETCS_Message.Parse`
+by the version of the session (a trailing `Version`, 3.0 by default,
+so that the callers of other packages compile unchanged), a status
+`Old_Layout` for 15 and 34 of X = 1 (6.6.3.3.2 [1], read to their end
+and taken by nobody), `Unknown_Message` for the messages chapter 6
+deletes, the packets scanned by the version. Message 32 before the
+version is known: read as 3.0, right because its layout is the same in
+every version (`Message_Layout (Track_To_Train, 32, 16) = Current`,
+3.5.3.7 c), d)); a session whose version is outside the envelope keeps
+3.0 too, so that message 39 ends a session with an RBC of 4.0
+(3.5.3.7 d)). It stopped at 29 failed checks of evc_test: the fixture
+`EVC_Test_Authority.Establish` gives its session the version 2.1 and
+sends packets 45, 70 and 72 in the layouts of 4.0.0, which the reader
+by version reads in those of X = 2.
+
+**3. B4663: not taken** (the bound). Found on the way: the radio half
+of 7.3.3.4 exists already, `EVC_Core.Inputs.Read_Radio_Messages` makes
+a message with `Last_Unknown_Packets > 0` inconsistent (M_ERROR 3); the
+telegram's `Unknown` count reaches no reaction, and the Y rule of
+3.17.3.11 for a sender of 3.Y is not applied to either.
+
+Proof: `etcs_packet_index`, `etcs_telegram`, `etcs_message` (one run):
+no unproved check, 0 checks of 16 VCs or more (0 before: the e7/
+air-gap-layouts run of the language units), margin 8718 of 100000
+steps; the canary `evc_core-inputs`: margin 3980, 0 wide.
