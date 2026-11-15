@@ -16,6 +16,22 @@ is
    function By_RBC return Boolean is (RBC_Governs)
      with Refined_Global => RBC_Governs;
 
+   function Rules_Of (X : Major_T; Known : Boolean; V : M_VERSION_T)
+     return Rules_T
+   is
+      X1  : constant Boolean := X = 1;
+      Old : constant Boolean := X = 2 and then RBC_2_0_To_2_2 (Known, V);
+   begin
+      return (Ack_Ends_Text           => X1,
+              Engine_Front            => X1 or else Old,
+              TSR_Estimated           => X <= 2,
+              ASP_Lower_Categories    => X <= 2,
+              SR_Stop_Always          => X1,
+              Texts_FS_Across_AD      => X1,
+              No_Supervised_Manoeuvre => X1 or else Old,
+              EoM_Awaits_Termination  => X1);
+   end Rules_Of;
+
    --  3.17.2.9, 3.17.2.9.1
    procedure Restore (Known : Boolean; X : Natural)
      with Refined_Global => (Output => (Current, RBC_Governs))

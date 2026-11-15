@@ -453,6 +453,7 @@ begin
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;
    Scenario_Version_Country_Set;
+   Scenario_Version_Rules;
    EVC_Test_VBC.Scenario_VBC_Store;
    EVC_Test_VBC.Scenario_VBC_Driver;
    EVC_Test_VBC.Scenario_VBC_Rooms;
