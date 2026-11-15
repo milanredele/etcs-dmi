@@ -27395,3 +27395,25 @@ group 10. Rows 3.8.4.6.2, 3.8.4.6.5 a), 4.8.4.1.1 done. Proof:
 EVC_Acceptance is a spec of expression functions (no statistics of its
 own); EVC_Stored_Information, its main caller, 2579 steps, 0 of 6 wide
 (15 VCs). The runner: no sequence moved.
+
+**Left at the bound** (120 calls): B4646 (A3) sized, not built (B4744:
+3.7.3.1 n) needs EVC_Position, which is not this package's; 3.11.6.2
+about 60 lines over two units; 3.12.4.3.1 about 40 lines, its scenario
+Scenario_Infill_Mode_Profiles written and not yet called; 3.11.6.5 is
+the zero ignored and built: the brief's "valid from that group's
+location" is 3.11.6.2). B4684 checked, not settled: the 40 km/h element
+of length 0 with Q_FRONT 1 is missing from the MRSP (100 km/h, then
+120 km/h at 1100 m), the cause not traced (B4743, EVC_Track_Description
+or Build_MRSP); the case is not committed, since it fails. B4644 not
+taken.
+
+**The SV30 sequences with a packet 136** (58, by `grep -l 'packet 136'`
+against the baseline, unchanged by this package: no sequence moved): 3
+passed, 20 blocked, 35 failed: 3040500_03 45, 3070300_04 48, 3070300_06
+48, 3080300_01 49, 3090300_05 to _10 48, 3110600_02 52, 3120400_01 49,
+3120400_03 46, 3120400_04 59, 4080100_01 96, 4080300_16 73, 4080402_01
+129, 4080404_02 47, 4080416_01 71, 4080416_02 49, 4080417_01 151,
+4080419_02 13, 4080420_01 29, 4080421_02 85, 4080425_02 49, 4080433_01
+50, 4080436_01 80, 4080444_03 76, 4080445_01 103, 4080445_02 100,
+4080454_01 125, 4080454_02 106, 4080454_04 48, 5170200_05 99,
+9990500_04 48 (16 of them at Sa8a3ba1a, the radio family).
