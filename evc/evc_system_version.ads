@@ -79,6 +79,7 @@ is
    --  X = 1, applied to 2.0, 2.1 and 2.2 by 6.6.5.3.3, 6.6.5.4.2 and
    --  6.6.5.5.2)
    --  @req 3.5.3.7.4
+   --  @req 6.6.3.4.1.2, 6.6.5.3.3, 6.6.5.4.2, 6.6.5.5.2
    function Session_Acknowledged (V : M_VERSION_T) return Boolean is
      (not Below (V, 2, 3));
 
