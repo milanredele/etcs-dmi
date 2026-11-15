@@ -25,6 +25,14 @@ Standard library only; needs Python 3.11 or newer (tomllib).
    picture text of the markdown). A difference that is a defect of the
    markdown is listed in KNOWN_MD_DEFECTS with the PDF page that shows the
    correct content; anything else fails.
+3. Chapter 6 (06_management_of_older_system_versions.md): every layout of
+   older versions (an entry with `versions`) equals the table of its clause
+   (or of its `table`, a chapter 7 table) as in 2; every packet table of
+   6.5.1.5 and 6.5.2.3 is a layout of the catalogue or equals the packet
+   of 4.0.0; the packet lists equal `packet_lists`; the width of every
+   variable table is that of the variable, of one of its layouts or of
+   the variable of older versions under that clause (KNOWN6 for a
+   defect of the markdown).
 
 Exit status 0 only when everything passes.
 """
@@ -117,7 +125,10 @@ R = Report()
 # 1. Schema
 # --------------------------------------------------------------------------
 VAR_KEYS = {"bits", "clause", "min", "max", "special", "scale", "resolution",
-            "spare", "bcd"}
+            "spare", "bcd", "versions", "layouts"}
+# the system versions before 3.0 that chapter 6 gives layouts (SCHEMA.md
+# "Older system versions")
+OLD_VERSIONS = ["1.0", "1.1", "2.0", "2.1", "2.2", "2.3"]
 SPARE_RANGE_RE = re.compile(r"^\s*(-?\d+)\s*\.\.\s*(-?\d+)\s*$")
 
 
@@ -139,9 +150,10 @@ def spare_ranges(v):
 def is_spare(v, x):
     return any(r and r[0] <= x <= r[1] for r in spare_ranges(v))
 PACKET_KEYS = {"nid", "name", "clause", "direction", "sent_by", "fields"}
+PACKET_OPTIONAL_KEYS = {"versions", "table"}
 MESSAGE_KEYS = {"nid", "name", "clause", "direction", "sent_by", "fields", "packets"}
 # the keys a message may have besides
-MESSAGE_OPTIONAL_KEYS = {"invariant"}
+MESSAGE_OPTIONAL_KEYS = {"invariant", "versions"}
 NAME_RE = re.compile(r"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$")
 COND_RE = re.compile(r"^([A-Z][A-Z0-9_]*)\s*(==|!=|<=|>=|<|>)\s*(-?\d+)$")
 COND_IN_RE = re.compile(r"^([A-Z][A-Z0-9_]*)\s+in\s+\[\s*(-?\d+(?:\s*,\s*-?\d+)*)\s*\]$")
@@ -178,8 +190,28 @@ def check_variables(variables):
         elif not 1 <= bits <= 32:
             R.err(w, f"bits {bits} not in 1 .. 32")
         c = v.get("clause")
-        if not isinstance(c, str) or not re.match(r"^7\.5\.[01](\.\d+)+$", c):
+        vs = check_versions(v, w)
+        if vs:
+            if not isinstance(c, str) or not re.match(r"^6\.5\.[12](\.\d+)+$", c):
+                R.err(w, f"clause {c!r} of older versions is not a 6.5 clause")
+        elif not isinstance(c, str) or not re.match(r"^7\.5\.[01](\.\d+)+$", c):
             R.err(w, f"clause {c!r} is not a 7.5 clause")
+        lays = v.get("layouts", [])
+        if not isinstance(lays, list) or (lays and vs):
+            R.err(w, "layouts is not a list, or of a variable of older versions")
+            lays = []
+        taken = set()
+        for lay in lays:
+            lvs = check_versions(lay, w + " layout") if isinstance(lay, dict) else None
+            if not lvs:
+                R.err(w, "a layout without versions")
+                continue
+            if taken & set(lvs):
+                R.err(w, "two layouts for one version")
+            taken |= set(lvs)
+            if "layouts" in lay:
+                R.err(w, "a layout with layouts")
+            check_variables({name + "_V" + lvs[0].replace(".", "_"): lay})
         lo, hi = var_range(v)
         mn, mx = v.get("min", 0), v.get("max", hi)
         for k, x in (("min", mn), ("max", mx)):
@@ -307,6 +339,35 @@ def check_fields(fields, variables, where, readable, names, used):
                 R.err(w, f"raw length variable {f['raw']} not read before")
 
 
+def check_versions(entry, where):
+    """The versions of a layout of older versions, None for 4.0.0."""
+    if "versions" not in entry:
+        return None
+    vs = entry["versions"]
+    if not isinstance(vs, list) or not vs or len(set(vs)) != len(vs) \
+            or not set(vs) <= set(OLD_VERSIONS):
+        R.err(where, f"versions {vs!r} is not a list of distinct versions of {OLD_VERSIONS}")
+        return None
+    return [v for v in OLD_VERSIONS if v in vs]
+
+
+def entry_variables(variables, versions):
+    """The variables an entry of these versions may read: of 4.0.0 the
+    variables without versions, of older versions also those of theirs."""
+    return {n: v for n, v in variables.items()
+            if "versions" not in v or (versions and set(versions) <= set(v["versions"]))}
+
+
+def bits_in(variables, name, versions):
+    """The width of a variable in an entry of these versions: of its
+    layout for them, else its own."""
+    v = variables.get(name, {})
+    for lay in v.get("layouts", []):
+        if versions and set(versions) <= set(lay.get("versions", [])):
+            return lay.get("bits")
+    return v.get("bits")
+
+
 def check_packets(packets, variables, used):
     seen = set()
     for p in packets:
@@ -316,18 +377,28 @@ def check_packets(packets, variables, used):
             if k not in p:
                 R.err(w, f"missing key {k}")
         for k in p:
-            if k not in PACKET_KEYS:
+            if k not in PACKET_KEYS | PACKET_OPTIONAL_KEYS:
                 R.err(w, f"unknown key {k!r}")
         if not isinstance(nid, int) or not 0 <= nid <= 255:
             R.err(w, "nid not in 0 .. 255")
         if d not in DIRECTIONS:
             R.err(w, f"direction {d!r}")
-        if (d, nid) in seen:
-            R.err(w, "defined twice")
-        seen.add((d, nid))
+        vs = check_versions(p, w)
+        for v in vs or [None]:
+            if (d, nid, v) in seen:
+                R.err(w, "defined twice" + (f" for {v}" if v else ""))
+            seen.add((d, nid, v))
         c = p.get("clause", "")
         want = "7.4.2." if d == "track_to_train" else "7.4.3."
-        if not isinstance(c, str) or not c.startswith(want):
+        if vs:
+            t = p.get("table", c)
+            if not isinstance(c, str) or not c.startswith("6.5."):
+                R.err(w, f"clause {c!r} of a layout of older versions is not in 6.5")
+            if not isinstance(t, str) or not (t.startswith("6.5.") or t.startswith(want)):
+                R.err(w, f"table {t!r} is neither in 6.5 nor in {want[:-1]}")
+        elif "table" in p:
+            R.err(w, "table without versions")
+        elif not isinstance(c, str) or not c.startswith(want):
             R.err(w, f"clause {c!r} is not in {want[:-1]}")
         sb = p.get("sent_by")
         if not isinstance(sb, list) or not sb or not set(sb) <= SENDERS:
@@ -345,8 +416,8 @@ def check_packets(packets, variables, used):
                 R.err(w, f"header {heads}, expected NID_PACKET Q_DIR L_PACKET")
         elif heads[:2] != ["NID_PACKET", "L_PACKET"]:
             R.err(w, f"header {heads[:2]}, expected NID_PACKET L_PACKET")
-        check_fields(fields, variables, w, {}, set(), used)
-    return seen
+        check_fields(fields, entry_variables(variables, vs), w, {}, set(), used)
+    return {(d, n, v) for d, n, v in seen}
 
 
 def check_messages(messages, variables, packet_keys, used):
@@ -364,13 +435,15 @@ def check_messages(messages, variables, packet_keys, used):
             R.err(w, f"invariant {m.get('invariant')!r}")
         if not isinstance(nid, int) or not 0 <= nid <= 255:
             R.err(w, "nid not in 0 .. 255")
-        if nid in seen:
-            R.err(w, "defined twice")
-        seen.add(nid)
+        vs = check_versions(m, w)
+        for v in vs or [None]:
+            if (nid, v) in seen:
+                R.err(w, "defined twice" + (f" for {v}" if v else ""))
+            seen.add((nid, v))
         if d not in DIRECTIONS:
             R.err(w, f"direction {d!r}")
         c = m.get("clause", "")
-        want = "8.7." if d == "track_to_train" else "8.6."
+        want = "6.5." if vs else "8.7." if d == "track_to_train" else "8.6."
         if not isinstance(c, str) or not c.startswith(want):
             R.err(w, f"clause {c!r} is not in {want[:-1]}")
         sb = m.get("sent_by")
@@ -388,7 +461,7 @@ def check_messages(messages, variables, packet_keys, used):
             want_h = ["NID_MESSAGE", "L_MESSAGE", "T_TRAIN", "NID_ENGINE"]
             if heads[:4] != want_h:
                 R.err(w, f"header {heads[:4]}, expected {want_h} (8.4.4.7.1)")
-        check_fields(fields, variables, w, {}, set(), used)
+        check_fields(fields, entry_variables(variables, vs), w, {}, set(), used)
         pks = m.get("packets")
         if not isinstance(pks, list):
             R.err(w, "packets is not a list")
@@ -409,7 +482,8 @@ def check_messages(messages, variables, packet_keys, used):
                 continue
             nids = [e["nid"]] if "nid" in e else e["one_of"]
             for n in nids:
-                if (pd, n) not in packet_keys:
+                if not all((pd, n, v) in packet_keys or (pd, n, None) in packet_keys
+                           for v in vs or [None]):
                     R.err(we, f"packet {pd}:{n} not in the catalogue")
                 key = (n, tuple(e.get("from", ())))
                 if key in listed:
@@ -583,7 +657,8 @@ def cross_check(cat, variables):
 
     # packets
     mdp = md_packets(t7)
-    for p in cat.get("packets", []):
+    current = [p for p in cat.get("packets", []) if "versions" not in p]
+    for p in current:
         key = (p["direction"], p["nid"])
         w = f"packet {key[0]}:{key[1]}"
         mine = flatten(p["fields"], variables)
@@ -605,10 +680,10 @@ def cross_check(cat, variables):
                 R.err(w, f"{n}: bits {b} in the catalogue, {l} in the markdown")
         stats["packets"] += 1
     for key in mdp:
-        if key not in {(p["direction"], p["nid"]) for p in cat.get("packets", [])}:
+        if key not in {(p["direction"], p["nid"]) for p in current}:
             R.err(f"packet {key[0]}:{key[1]}", "in the markdown, not in the catalogue")
     lists = md_packet_lists(t7)
-    have = {(p["direction"], p["nid"]) for p in cat.get("packets", [])}
+    have = {(p["direction"], p["nid"]) for p in current}
     for key in sorted(lists - have):
         R.err(f"packet {key[0]}:{key[1]}", "listed in 7.4.1, not in the catalogue")
     for key in sorted(have - lists):
@@ -639,7 +714,7 @@ def cross_check(cat, variables):
                 R.err(w, f"bits {v['bits']} in the catalogue, {length} in the markdown")
         stats["vars"] += 1
     for name in variables:
-        if name not in mdv:
+        if name not in mdv and "versions" not in variables[name]:
             key = ("variable-heading", name)
             if key in KNOWN_MD_DEFECTS:
                 R.known.append(KNOWN_MD_DEFECTS[key])
@@ -650,12 +725,24 @@ def cross_check(cat, variables):
 
     # messages
     mdm = md_messages(t8)
-    for m in cat.get("messages", []):
+    for m in [m for m in cat.get("messages", []) if "versions" not in m]:
         w = f"message {m['nid']}"
         theirs = mdm.get(m["nid"])
         if theirs is None:
             R.err(w, "no table in the markdown")
             continue
+        if compare_message(m, theirs, w):
+            stats["messages"] += 1
+    ids = set(mdm)
+    for nid in sorted(ids - {m["nid"] for m in cat.get("messages", [])}):
+        R.err(f"message {nid}", "in the markdown, not in the catalogue")
+    return stats
+
+
+def compare_message(m, theirs, w):
+    """The fields and packets of a catalogue message against the items of
+    its table (md_messages); True when they agree."""
+    if True:
         mine = []
         vars_ = [f["var"] for f in m["fields"]]
         # the markdown writes NID_LRBG where the catalogue has NID_C, NID_BG
@@ -685,11 +772,210 @@ def cross_check(cat, variables):
         theirs_c = [x for x in theirs_c if x != "OPT"]
         if mine != theirs_c:
             R.err(w, f"fields differ from the markdown:\n    catalogue {mine}\n    markdown  {theirs_c}")
+            return False
+        return True
+
+
+# --------------------------------------------------------------------------
+# 3. Chapter 6: the layouts of the versions before 3.0
+# --------------------------------------------------------------------------
+MD6 = os.path.join(SECTIONS, "06_management_of_older_system_versions.md")
+CLAUSE6_RE = re.compile(r"^(?:#+ )?(6\.5\.[12]\.[\d.]*\d)\.? +(.*)$")
+
+# The tables of chapter 6 the comparison does not take, with the reason
+# (a defect of the markdown or of the table, with the PDF page)
+KNOWN6 = {}
+
+
+def md6_sections(text):
+    """clause -> (heading text, the lines up to the next clause) of 6.5."""
+    res = {}
+    cur = None
+    for ln in text.split("\n"):
+        m = CLAUSE6_RE.match(ln)
+        if m:
+            cur = m.group(1)
+            res[cur] = (m.group(2), [])
             continue
-        stats["messages"] += 1
-    ids = set(mdm)
-    for nid in sorted(ids - {m["nid"] for m in cat.get("messages", [])}):
-        R.err(f"message {nid}", "in the markdown, not in the catalogue")
+        if cur:
+            res[cur][1].append(ln)
+    return res
+
+
+def md6_tables(sections):
+    """The replacement tables of chapter 6 by clause: packets
+    (direction, nid, rows), packet lists (direction, nids) and variables
+    (name, bits)."""
+    packets, lists, variables = {}, {}, {}
+    for clause, (head, lines) in sections.items():
+        text = head + "\n" + "\n".join(lines)
+        m = re.search(r"[Tt]able 7\.4\.1\.([12]) shall be replaced", head)
+        if m:
+            d = "track_to_train" if m.group(1) == "1" else "train_to_track"
+            nids = []
+            for ln in lines:
+                cells = [c for c in (md_cells(ln) or []) if c]
+                if cells and re.fullmatch(r"\d+", cells[0]):
+                    nids.append(int(cells[0]))
+            lists[clause] = (d, nids)
+            continue
+        m = re.search(r"7\.5\.1\.[\d.]+ \(([A-Z][A-Z0-9_]+)\)", head)
+        if m:
+            b = re.search(r"\|\s*(?:\*\*_Length of variable_\*\*<br>)?(\d+) bits?\b", text)
+            variables[clause] = (m.group(1), int(b.group(1)) if b else None)
+            continue
+        if not re.search(r"Packet Number \d+", head) or "shall not apply" in head:
+            continue
+        if not any(md_cells(ln) for ln in lines):
+            continue
+        before = text.split("\n|", 1)[0]
+        nid = int(re.findall(r"Packet Number (\d+)", before)[-1])
+        d = "train_to_track" if re.search(r"7\.4\.3", head) else "track_to_train"
+        rows = md_packets("### 7.4.%s.0 Packet Number %d: x\n" % (
+            "2" if d == "track_to_train" else "3", nid) + "\n".join(lines))
+        packets[clause] = (d, nid, list(rows.values())[0])
+    return packets, lists, variables
+
+
+def flatten_in(fields, variables, versions):
+    out = []
+    for f in fields:
+        if "var" in f:
+            out.append((f["var"], bits_in(variables, f["var"], versions)))
+        elif "raw" in f:
+            out.append(("RAW", None))
+        else:
+            out += flatten_in(f.get("fields", []), variables, versions)
+    return out
+
+
+def same_rows(mine, theirs):
+    return [n for n, _ in mine] == [n for n, _ in theirs] and all(
+        n == "RAW" or b == l for (n, b), (_, l) in zip(mine, theirs))
+
+
+def cross_check6(cat, variables):
+    """The layouts of older versions against the tables of chapter 6;
+    every packet table of chapter 6 is a layout of the catalogue or
+    equals the layout of 4.0.0; the packet lists; the widths."""
+    sections = md6_sections(open(MD6, encoding="utf-8").read())
+    packets6, lists6, vars6 = md6_tables(sections)
+    stats = {"layouts": 0, "same": 0, "lists": 0, "vars": 0}
+    entries = cat.get("packets", [])
+    current = {(p["direction"], p["nid"]): p for p in entries if "versions" not in p}
+    by_clause7 = {p["clause"]: p for p in current.values()}
+    taken = set()
+    for p in entries:
+        vs = check_versions(p, "")
+        if not vs:
+            continue
+        key = (p["direction"], p["nid"])
+        w = f"packet {key[0]}:{key[1]} of {', '.join(vs)}"
+        table = p.get("table", p["clause"])
+        if p["clause"] not in sections:
+            R.err(w, f"clause {p['clause']} not in chapter 6")
+        mine = flatten_in(p["fields"], variables, vs)
+        if table.startswith("7."):
+            ref = by_clause7.get(table)
+            if ref is None:
+                R.err(w, f"table {table}: no packet of 4.0.0 with that clause")
+                continue
+            theirs = flatten_in(ref["fields"], variables, None)
+            src = f"the table of {table}"
+        else:
+            if table not in packets6:
+                R.err(w, f"no packet table under {table} in chapter 6")
+                continue
+            d, nid, theirs = packets6[table]
+            taken.add(table)
+            if (d, nid) != key:
+                R.err(w, f"the table of {table} is packet {d}:{nid}")
+            src = f"chapter 6 {table}"
+        if [n for n, _ in mine] != [n for n, _ in theirs]:
+            R.err(w, f"variables differ from {src}:\n    catalogue {[n for n, _ in mine]}\n"
+                  f"    markdown  {[n for n, _ in theirs]}")
+            continue
+        for (n, b), (_, l) in zip(mine, theirs):
+            if n != "RAW" and b != l:
+                R.err(w, f"{n}: bits {b} in the catalogue, {l} in {src}")
+        stats["layouts"] += 1
+    for clause, (d, nid, rows) in sorted(packets6.items()):
+        if clause in taken:
+            continue
+        if clause in KNOWN6:
+            R.known.append(KNOWN6[clause])
+            continue
+        ref = current.get((d, nid))
+        w = f"chapter 6 {clause} packet {d}:{nid}"
+        if ref is None:
+            R.err(w, "a table of chapter 6 without a layout in the catalogue")
+            continue
+        if not same_rows(flatten_in(ref["fields"], variables, None), rows):
+            R.err(w, "differs from the packet of 4.0.0 and is no layout of the catalogue:\n"
+                  f"    4.0.0     {flatten_in(ref['fields'], variables, None)}\n"
+                  f"    markdown  {rows}")
+            continue
+        stats["same"] += 1
+    mine_lists = {}
+    for pl in cat.get("packet_lists", []):
+        mine_lists[pl.get("clause")] = pl
+    for clause, (d, nids) in sorted(lists6.items()):
+        pl = mine_lists.pop(clause, None)
+        w = f"chapter 6 {clause} packet list"
+        if pl is None:
+            R.err(w, "not in the catalogue's packet_lists")
+            continue
+        if pl.get("direction") != d or sorted(pl.get("nids", [])) != sorted(nids):
+            R.err(w, f"differs: catalogue {pl.get('direction')} {sorted(pl.get('nids', []))},"
+                  f" markdown {d} {sorted(nids)}")
+            continue
+        stats["lists"] += 1
+    for clause in mine_lists:
+        R.err(f"packet list {clause}", "no packet list table under this clause in chapter 6")
+    stats["messages"] = 0
+    for m in cat.get("messages", []):
+        vs = check_versions(m, "")
+        if not vs:
+            continue
+        w = f"message {m['nid']} of {', '.join(vs)}"
+        if m["clause"] not in sections:
+            R.err(w, f"clause {m['clause']} not in chapter 6")
+            continue
+        head, lines = sections[m["clause"]]
+        body = "\n".join(lines)
+        items = md_messages("## **8.6.0 Message %d: x**\n%s" % (m["nid"], body)).get(m["nid"])
+        if items is None:
+            # a numbered list instead of the picture text (6.5.1.6.8)
+            items = [n for _, n in re.findall(r"(\d+) ([A-Z][A-Z0-9_]+)", body)]
+        if compare_message(m, items, w):
+            stats["messages"] += 1
+    for a in cat.get("message_absent", []):
+        c = a.get("clause")
+        if c not in sections or "shall not apply" not in sections[c][0] and "shall apply" not in sections[c][0]:
+            R.err(f"message_absent {c}", "not a clause of chapter 6 that deletes or applies a deletion")
+    layouts = {}
+    for n, v in variables.items():
+        if "versions" in v:
+            layouts[v.get("clause")] = (n, v.get("bits"))
+        for lay in v.get("layouts", []):
+            layouts[lay.get("clause")] = (n, lay.get("bits"))
+    for clause, (name, b) in sorted(vars6.items()):
+        w = f"chapter 6 {clause} {name}"
+        mine = layouts.get(clause)
+        if mine is None:
+            v = variables.get(name)
+            if v is None or "versions" in v:
+                R.err(w, "a variable of older versions without an entry under this clause")
+            elif b != v.get("bits") and not any(
+                    lay.get("bits") == b for lay in v.get("layouts", [])):
+                R.err(w, f"{b} bits, {v.get('bits')} in 4.0.0 and no layout of that width")
+            else:
+                stats["vars"] += 1
+            continue
+        if mine != (name, b):
+            R.err(w, f"the catalogue's entry of this clause is {mine}, the markdown {(name, b)}")
+            continue
+        stats["vars"] += 1
     return stats
 
 
@@ -698,7 +984,7 @@ def main():
     with open(path, "rb") as f:
         cat = tomllib.load(f)
     for k in cat:
-        if k not in ("variables", "packets", "messages"):
+        if k not in ("variables", "packets", "messages", "packet_lists", "message_absent"):
             R.err("catalogue", f"unknown top-level key {k!r}")
     variables = cat.get("variables", {})
     check_variables(variables)
@@ -706,6 +992,7 @@ def main():
     keys = check_packets(cat.get("packets", []), variables, used)
     check_messages(cat.get("messages", []), variables, keys, used)
     stats = cross_check(cat, variables)
+    stats6 = cross_check6(cat, variables)
     unused = sorted(set(variables) - used)
 
     t2t = sum(1 for p in cat.get("packets", []) if p.get("direction") == "track_to_train")
@@ -714,6 +1001,9 @@ def main():
           f"train-to-track packets, {len(cat.get('messages', []))} messages")
     print(f"markdown: {stats['packets']} packets, {stats['vars']} variables and "
           f"{stats['messages']} messages match")
+    print(f"chapter 6: {stats6['layouts']} layouts of older versions match, {stats6['same']} "
+          f"tables equal the packet of 4.0.0, {stats6['lists']} packet lists and "
+          f"{stats6['vars']} variable tables match, {stats6['messages']} message layouts match")
     if unused:
         print(f"variables used by no packet or message ({len(unused)}; the balise and "
               f"loop telegram headers of 8.4.2 and 8.4.3 use them): {', '.join(unused)}")

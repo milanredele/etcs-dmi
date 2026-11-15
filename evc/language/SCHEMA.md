@@ -219,6 +219,91 @@ packets = [
     RIU 44, 45, 143, 180, 254).
 - Padding to a whole byte (8.4.4.5) is not written.
 
+## Older system versions
+
+Chapter 6 (6.5.1.5, 6.5.1.6 for X = 1; 6.5.2.3 for X = 2) replaces some
+tables of chapters 7 and 8 for the system versions before 3.0. The
+versions are written as the strings `"1.0"`, `"1.1"`, `"2.0"`, `"2.1"`,
+`"2.2"`, `"2.3"` (M_VERSION 16, 17, 32 .. 35); 3.0 is the language of
+the entries without `versions`. Every entry of 4.0.0 stays as it is: a
+packet, message or variable without the key has the one layout of
+4.0.0, which is also that of every older version that chapter 6 does
+not change.
+
+```toml
+[[packets]]                  # a layout of older versions
+nid = 80
+name = "Mode profile"
+clause = "6.5.1.5.18"        # the clause of chapter 6 that gives it
+versions = ["1.0", "1.1"]    # the versions it applies to
+# table = "7.4.2.23"         # optional: the table its fields follow when
+                             # chapter 6 gives none (6.5.2.3.1.1.2: packet
+                             # 72 of 2.0, 2.1 is the table of packet 73)
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]   # its "Transmitted by"
+fields = [ ... ]             # the full field list as chapter 6 prints it
+
+[[variables.M_MODE.layouts]] # a variable of another width in some versions
+versions = ["1.0", "1.1", "2.0", "2.1"]
+bits = 4
+clause = "6.5.2.3.2.4"
+max = 15                     # the keys of a variable, all written out:
+[variables.M_MODE.layouts.special]   # nothing is taken from 4.0.0
+0 = "Full Supervision"
+
+[variables.M_AXLELOAD]       # a variable that exists only in older versions
+versions = ["1.0", "1.1"]
+bits = 7
+clause = "6.5.1.5.27"
+
+[[packet_lists]]             # a list of chapter 6 replacing 7.4.1.1 / 7.4.1.2
+versions = ["1.0", "1.1"]
+direction = "track_to_train"
+clause = "6.5.1.5.2"
+nids = [2, 3, 5, ...]
+```
+
+- A packet entry with `versions` is a layout of those versions; the
+  layouts of one packet number and direction hold disjoint versions.
+  Its fields read, for each variable, the variable's layout whose
+  `versions` hold all of the entry's (a layout holding only some of
+  them is an error when the entry reads the variable), else the
+  variable itself. A packet that exists only in older versions (72,
+  76, 200, 203, 206, 207, 239, 245, train to track 3) is such an entry
+  with no entry of 4.0.0 beside it.
+- A variable with `versions` exists only in those versions: an entry of
+  4.0.0 cannot read it. `layouts` belongs to a variable of 4.0.0.
+- The layouts are made for the fields and the widths. A variable whose
+  width is that of 4.0.0 keeps the values of 4.0.0 in an older layout,
+  even where chapter 6 replaces its table (M_LEVELTEXTDISPLAY,
+  M_LEVELTR, M_ERROR, NC_TRAIN, ...): a layout decodes the raw value,
+  and what the value means in the older version, a code spare in 4.0.0
+  included, is a rule of the reader of the layout, not of this file.
+  A layout of a variable carries the table of its clause; where two
+  versions share a width and their tables differ, one layout serves
+  both and its comment says which table it carries (M_MODE of 4 bits:
+  the 16 codes of 2.0, 15 being spare in 1.0, 1.1).
+- `packet_lists` gives the packets of a version and direction (track
+  to train by the version of the telegram or of the RBC / RIU, train to
+  track by that of the RBC / RIU). Every packet listed has a layout in
+  the version (its own or that of 4.0.0) and every layout's packet is
+  listed; a version without a list of a direction has every packet of
+  4.0.0 and its own layouts.
+- Names: the layout of the lowest version of `versions` names it,
+  `ETCS_Track_Packets.P80_V1_0` (packet 80 of 1.0, 1.1; file
+  `etcs_track_packets-p80_v1_0.ads`), `P45_V2_0` (2.0 .. 2.3), the
+  variable `M_MODE_V1_0` (its type `M_MODE_V1_0_T`, a literal of
+  `Variable_T`). A layout is a child of the packets' parent like the
+  packet of 4.0.0, so it sees the same types and has the same Decode,
+  Encode and Valid; its record type is its own `Packet_T`.
+- `check_catalogue.py` compares every layout with the table of its
+  clause (or `table`) in chapter 6 as it compares chapter 7, requires
+  every packet table of chapter 6 to be a layout or to equal the packet
+  of 4.0.0, the packet lists to equal those of chapter 6, and the width
+  of every variable table of chapter 6 to be that of the variable, of
+  one of its layouts or of the variable of older versions under that
+  clause.
+
 ## What the generator produces
 
 - `etcs_variables.ads`: enumeration `Variable_T`, `Bits (V)`, `Max (V)`,
@@ -246,6 +331,12 @@ packets = [
   direction, clause, senders, `Check`: decodes and says whether the
   packet is `Valid`, `Skip`) and `ETCS_Message_Catalogue` from
   the `[[messages]]` section (fields with the header, the packet rules).
+  `ETCS_Catalogue` also has the layouts by version: `Layout_T`
+  (`Not_In_Version`, `Current` for the layout of 4.0.0, then one literal
+  per layout of older versions, `Old_Layout_T`), `Layout (Direction,
+  NID, Version)` with the M_VERSION code, `NID_Of_Layout`,
+  `Direction_Of_Layout`, `Layout_Name`, `Layout_Clause` and
+  `Check_Layout`.
   The framing of telegrams (8.4.2) and radio messages (8.4.4) is written
   by hand in `ETCS_Telegram` and `ETCS_Message` on top of them, and
   `ETCS_Packet_Index` scans one packet.
@@ -260,9 +351,11 @@ packets = [
   page, not only in the markdown.
 - The language is the one of SRS 4.0.0, which 7.5.1.79 gives as system
   versions 2.0 to 2.3 and 3.0 (M_VERSION codes 32 to 35 and 48; 49 to
-  63 are reserved and valid). The codec accepts those and rejects
-  versions 0.x and 1.x, whose differences (chapter 6) are phase E7 and
-  not in this file.
+  63 are reserved and valid). The entries without `versions` are that
+  language; the layouts of chapter 6 for the versions 1.0 .. 2.3 are
+  entries with `versions` (see "Older system versions"). `ETCS_Telegram`
+  and `ETCS_Message` (written) still read every telegram and message in
+  the layouts of 4.0.0 and refuse the versions 0.x and 1.x.
 - Packets of chapter 7 that the plan puts out of scope (NTC: 44 stays in
   as raw data; STM packets of SUBSET-035 are not here) are still
   described when SUBSET-026 defines them, so that a telegram carrying

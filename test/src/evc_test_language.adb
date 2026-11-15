@@ -278,45 +278,67 @@ package body EVC_Test_Language is
       Bits         : Natural;
       Trips        : Natural := 0;
       Too_Long     : Natural := 0;
+
+      --  One round trip of a kind of 4.0.0 (Old False) or of a layout of
+      --  older system versions, by its position in its type
+      procedure Trip (Old   : Boolean;
+                      Index : Natural;
+                      V     : Rnd.Value_Mode_T;
+                      C     : Rnd.Count_Mode_T) is
+      begin
+         if Old then
+            Rnd.Round_Trip_Layout (Cat.Layout_T'Val (Index), V, C,
+                                   Result, Bits);
+         else
+            Rnd.Round_Trip (Cat.Packet_Kind_T'Val (Index), V, C,
+                            Result, Bits);
+         end if;
+         Trips := Trips + 1;
+      end Trip;
+
+      procedure Run (Old : Boolean; Index : Natural; Name, Title : String)
+      is
+         Bad : Natural := 0;
+      begin
+         for V in Rnd.Min_Values .. Rnd.Max_Values loop
+            for C in Rnd.No_Items .. Rnd.Max_Items loop
+               Trip (Old, Index, V, C);
+               if Result = Rnd.Too_Long and then C = Rnd.Max_Items then
+                  Too_Long := Too_Long + 1;
+               elsif Result /= Rnd.Passed then
+                  Bad := Bad + 1;
+                  Put_Line ("  " & Name & " " & Rnd.Value_Mode_T'Image (V)
+                            & " " & Rnd.Count_Mode_T'Image (C) & ": "
+                            & Rnd.Result_T'Image (Result));
+               end if;
+            end loop;
+         end loop;
+         for I in 1 .. Random_Trips loop
+            Trip (Old, Index, Rnd.Random_Values, Rnd.Random_Items);
+            if Result = Rnd.Too_Long then
+               Too_Long := Too_Long + 1;
+            elsif Result /= Rnd.Passed then
+               Bad := Bad + 1;
+               if Bad <= 3 then
+                  Put_Line ("  " & Name & " random: "
+                            & Rnd.Result_T'Image (Result));
+               end if;
+            end if;
+         end loop;
+         Check (Bad = 0, "round trip " & Name & " " & Title
+                & ": boundaries and" & Img (Random_Trips) & " random");
+      end Run;
    begin
       Rnd.Reset (20260927);
       Rnd.Clear_Coverage;
       for K in Cat.Known_Kind_T loop
-         declare
-            Bad  : Natural := 0;
-            Name : constant String := Cat.Known_Kind_T'Image (K);
-         begin
-            for V in Rnd.Min_Values .. Rnd.Max_Values loop
-               for C in Rnd.No_Items .. Rnd.Max_Items loop
-                  Rnd.Round_Trip (K, V, C, Result, Bits);
-                  Trips := Trips + 1;
-                  if Result = Rnd.Too_Long and then C = Rnd.Max_Items then
-                     Too_Long := Too_Long + 1;
-                  elsif Result /= Rnd.Passed then
-                     Bad := Bad + 1;
-                     Put_Line ("  " & Name & " " & Rnd.Value_Mode_T'Image (V)
-                               & " " & Rnd.Count_Mode_T'Image (C) & ": "
-                               & Rnd.Result_T'Image (Result));
-                  end if;
-               end loop;
-            end loop;
-            for I in 1 .. Random_Trips loop
-               Rnd.Round_Trip (K, Rnd.Random_Values, Rnd.Random_Items,
-                               Result, Bits);
-               Trips := Trips + 1;
-               if Result = Rnd.Too_Long then
-                  Too_Long := Too_Long + 1;
-               elsif Result /= Rnd.Passed then
-                  Bad := Bad + 1;
-                  if Bad <= 3 then
-                     Put_Line ("  " & Name & " random: "
-                               & Rnd.Result_T'Image (Result));
-                  end if;
-               end if;
-            end loop;
-            Check (Bad = 0, "round trip " & Name & " " & Cat.Name (K)
-                   & ": boundaries and" & Img (Random_Trips) & " random");
-         end;
+         Run (False, Cat.Packet_Kind_T'Pos (K), Cat.Known_Kind_T'Image (K),
+              Cat.Name (K));
+      end loop;
+      --  the layouts of the system versions before 3.0 (chapter 6)
+      for L in Cat.Old_Layout_T loop
+         Run (True, Cat.Layout_T'Pos (L), Cat.Old_Layout_T'Image (L),
+              Cat.Layout_Name (L) & " (" & Cat.Layout_Clause (L) & ")");
       end loop;
       for C in 1 .. Rnd.Condition_Count loop
          Check (Rnd.Condition_Seen (C, True)
@@ -334,6 +356,86 @@ package body EVC_Test_Language is
       end loop;
       Put_Line ("  round trips:" & Img (Trips) & ", longer than a packet"
                 & " can be (encode refuses):" & Img (Too_Long));
+      --  The layout of a packet number by the M_VERSION code (SUBSET-026
+      --  6.5.1.5.2, 6.5.2.3.1.1.1, 6.5.2.3.14.1, 6.5.2.3.16.1, 6.5.1.5.2.1,
+      --  6.5.2.3.2.1, 6.5.2.3.3.1; 1.0 = 16, 2.0 = 32, 2.3 = 35, 3.0 = 48)
+      declare
+         use type Cat.Layout_T;
+         T : constant Cat.Direction_T := Cat.Track_To_Train;
+         R : constant Cat.Direction_T := Cat.Train_To_Track;
+      begin
+         Check (Cat.Layout (T, 80, 16) = Cat.Track_P80_V1_0
+                and then Cat.Layout (T, 80, 17) = Cat.Track_P80_V1_0
+                and then Cat.Layout (T, 80, 32) = Cat.Current
+                and then Cat.Layout (T, 80, 48) = Cat.Current,
+                "layout: packet 80 of X = 1 by 6.5.1.5.18, of 2.0 and 3.0"
+                & " that of 4.0.0");
+         Check (Cat.Layout (T, 72, 16) = Cat.Track_P72_V1_0
+                and then Cat.Layout (T, 72, 33) = Cat.Track_P72_V2_0
+                and then Cat.Layout (T, 72, 34) = Cat.Not_In_Version
+                and then Cat.Layout (T, 73, 33) = Cat.Not_In_Version
+                and then Cat.Layout (T, 73, 34) = Cat.Current
+                and then Cat.Layout (T, 76, 32) = Cat.Track_P76_V2_0,
+                "layout: packet 72 of X = 1 and of 2.0, 2.1 (packet 73"
+                & " renumbered), packet 73 from 2.2 on");
+         Check (Cat.Layout (T, 0, 16) = Cat.Not_In_Version
+                and then Cat.Layout (T, 255, 16) = Cat.Not_In_Version
+                and then Cat.Layout (T, 200, 17) = Cat.Track_P200_V1_0
+                and then Cat.Layout (T, 200, 32) = Cat.Not_In_Version
+                and then Cat.Layout (T, 245, 35) = Cat.Track_P245_V2_3
+                and then Cat.Layout (T, 245, 34) = Cat.Not_In_Version
+                and then Cat.Layout (T, 31, 34) = Cat.Not_In_Version
+                and then Cat.Layout (T, 31, 35) = Cat.Current
+                and then Cat.Layout (T, 45, 35) = Cat.Track_P45_V2_0,
+                "layout: the packet lists of X = 1, 2.2 and 2.3");
+         Check (Cat.Layout (R, 0, 33) = Cat.Train_P0_V1_0
+                and then Cat.Layout (R, 0, 34) = Cat.Current
+                and then Cat.Layout (R, 2, 32) = Cat.Not_In_Version
+                and then Cat.Layout (R, 2, 33) = Cat.Current
+                and then Cat.Layout (R, 3, 33) = Cat.Train_P3_V1_0
+                and then Cat.Layout (R, 11, 16) = Cat.Train_P11_V1_0
+                and then Cat.Layout (R, 5, 16) = Cat.Not_In_Version,
+                "layout: train to track by the RBC's version");
+         Check (Cat.Layout (T, 80, 18) = Cat.Not_In_Version
+                and then Cat.Layout (T, 80, 0) = Cat.Not_In_Version
+                and then Cat.Layout (T, 80, 63) = Cat.Current,
+                "layout: 1.2 and 0.0 not in a version, 3.15 that of 4.0.0");
+      end;
+      declare
+         use type MCat.Message_Layout_T;
+         use type MCat.Packet_NID_T;
+         use type ETCS_Variables.Variable_T;
+         T    : constant Cat.Direction_T := Cat.Track_To_Train;
+         R    : constant Cat.Direction_T := Cat.Train_To_Track;
+         M132 : constant MCat.Message_Layout_T :=
+           MCat.Message_Layout (R, 132, 16);
+         M159 : constant MCat.Message_Layout_T :=
+           MCat.Message_Layout (R, 159, 33);
+      begin
+         Check (MCat.Message_Layout (T, 15, 16) = MCat.Track_M15_V1_0
+                and then MCat.Message_Layout (T, 15, 32) = MCat.Current
+                and then MCat.Message_Layout (T, 38, 17) = MCat.Not_In_Version
+                and then MCat.Message_Layout (T, 38, 35) = MCat.Current
+                and then MCat.Message_Layout (R, 150, 34) = MCat.Train_M150_V1_0
+                and then MCat.Message_Layout (R, 150, 35) = MCat.Current
+                and then MCat.Message_Layout (R, 159, 32) = MCat.Train_M159_V1_0
+                and then MCat.Message_Layout (R, 159, 33) = MCat.Train_M159_V2_1
+                and then MCat.Message_Layout (R, 131, 33) = MCat.Not_In_Version
+                and then MCat.Message_Layout (R, 158, 33) = MCat.Current,
+                "message layout: 15 of X = 1, 150 up to 2.2, 159 of 2.0 and"
+                & " 2.1, the messages deleted (6.5.1.6.6.2.2 .. 6.5.1.6.9,"
+                & " 6.5.2.3.7.1)");
+         Check (M132 in MCat.Old_Message_T
+                and then M159 in MCat.Old_Message_T
+                and then MCat.Layout_Field_Count (M132) = 5
+                and then MCat.Layout_Fields (M132) (5)
+                  = ETCS_Variables.Q_TRACKDEL
+                and then MCat.Layout_Rule_Count (M159) = 1
+                and then MCat.Layout_Rules
+                  (MCat.Layout_First_Rule (M159)).Second = 3,
+                "message layout: 132 of X = 1 with Q_TRACKDEL (6.5.1.6.6.3),"
+                & " 159 of 2.1 with packet 2 or 3 (6.5.2.3.3.3)");
+      end;
    end Scenario_Packet_Round_Trips;
 
    --  The Eurobalise telegram (8.4.2)

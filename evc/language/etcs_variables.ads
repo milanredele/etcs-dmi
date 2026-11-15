@@ -106,6 +106,7 @@ is
       M_ACK,
       M_ADHESION,
       M_AIRTIGHT,
+      M_AXLELOAD,
       M_AXLELOADCAT,
       M_CURRENT,
       M_DUP,
@@ -120,6 +121,7 @@ is
       M_MAMODE,
       M_MCOUNT,
       M_MODE,
+      M_MODE_V1_0,
       M_MODETEXTDISPLAY,
       M_NVAVADH,
       M_NVCONTACT,
@@ -130,7 +132,10 @@ is
       M_NVKVINT,
       M_PLATFORM,
       M_POSITION,
+      M_POSITION_V1_0,
       M_TRACKCOND,
+      M_TRACKCONDBC,
+      M_TRACTION,
       M_VERSION,
       M_VOLTAGE,
       NC_CDDIFF,
@@ -218,6 +223,7 @@ is
       Q_TEXTCONFIRM,
       Q_TEXTDISPLAY,
       Q_TEXTREPORT,
+      Q_TRACKDEL,
       Q_TRACKINIT,
       Q_UPDOWN,
       Q_VBCO,
@@ -343,6 +349,7 @@ is
       M_ACK => 1,
       M_ADHESION => 1,
       M_AIRTIGHT => 2,
+      M_AXLELOAD => 7,
       M_AXLELOADCAT => 7,
       M_CURRENT => 10,
       M_DUP => 2,
@@ -357,6 +364,7 @@ is
       M_MAMODE => 2,
       M_MCOUNT => 8,
       M_MODE => 5,
+      M_MODE_V1_0 => 4,
       M_MODETEXTDISPLAY => 4,
       M_NVAVADH => 5,
       M_NVCONTACT => 2,
@@ -367,7 +375,10 @@ is
       M_NVKVINT => 7,
       M_PLATFORM => 4,
       M_POSITION => 24,
+      M_POSITION_V1_0 => 20,
       M_TRACKCOND => 4,
+      M_TRACKCONDBC => 4,
+      M_TRACTION => 8,
       M_VERSION => 7,
       M_VOLTAGE => 4,
       NC_CDDIFF => 4,
@@ -455,6 +466,7 @@ is
       Q_TEXTCONFIRM => 2,
       Q_TEXTDISPLAY => 1,
       Q_TEXTREPORT => 1,
+      Q_TRACKDEL => 1,
       Q_TRACKINIT => 1,
       Q_UPDOWN => 1,
       Q_VBCO => 1,
@@ -580,6 +592,7 @@ is
       M_ACK => 1,
       M_ADHESION => 1,
       M_AIRTIGHT => 1,
+      M_AXLELOAD => 80,
       M_AXLELOADCAT => 12,
       M_CURRENT => 1000,
       M_DUP => 2,
@@ -594,6 +607,7 @@ is
       M_MAMODE => 2,
       M_MCOUNT => 253,
       M_MODE => 17,
+      M_MODE_V1_0 => 15,
       M_MODETEXTDISPLAY => 15,
       M_NVAVADH => 20,
       M_NVCONTACT => 2,
@@ -604,7 +618,10 @@ is
       M_NVKVINT => 127,
       M_PLATFORM => 13,
       M_POSITION => 9999999,
+      M_POSITION_V1_0 => 1048574,
       M_TRACKCOND => 10,
+      M_TRACKCONDBC => 10,
+      M_TRACTION => 255,
       M_VERSION => 127,
       M_VOLTAGE => 5,
       NC_CDDIFF => 10,
@@ -692,6 +709,7 @@ is
       Q_TEXTCONFIRM => 3,
       Q_TEXTDISPLAY => 1,
       Q_TEXTREPORT => 1,
+      Q_TRACKDEL => 1,
       Q_TRACKINIT => 1,
       Q_UPDOWN => 1,
       Q_VBCO => 1,
@@ -1726,6 +1744,19 @@ is
    function Is_Valid (X : M_AIRTIGHT_T) return Boolean is
      (X <= 1);
 
+   --  M_AXLELOAD, 6.5.1.5.27: 7 bits, 0 .. 80, 0.5 t, 0 t .. 40 t
+   type M_AXLELOAD_T is range 0 .. 127;
+   M_AXLELOAD_Axle_Load_Above_40 : constant M_AXLELOAD_T := 126;
+   --  126: Axle load above 40 t
+   function To_M_AXLELOAD (V : Unsigned_64) return M_AXLELOAD_T is
+     (M_AXLELOAD_T (V))
+     with Pre => Fits (V, 7);
+   function Code (X : M_AXLELOAD_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 7);
+   function Is_Valid (X : M_AXLELOAD_T) return Boolean is
+     ((X <= 80 or else X = 126));
+
    --  M_AXLELOADCAT, 7.5.1.62: 7 bits, 0 .. 12
    type M_AXLELOADCAT_T is range 0 .. 127;
    M_AXLELOADCAT_A : constant M_AXLELOADCAT_T := 0;
@@ -2040,6 +2071,49 @@ is
    function Is_Valid (X : M_MODE_T) return Boolean is
      (X <= 17);
 
+   --  M_MODE_V1_0, 6.5.2.3.2.4: 4 bits, 0 .. 15
+   type M_MODE_V1_0_T is range 0 .. 15;
+   M_MODE_V1_0_Full_Supervision : constant M_MODE_V1_0_T := 0;
+   --  0: Full Supervision
+   M_MODE_V1_0_On_Sight : constant M_MODE_V1_0_T := 1;
+   --  1: On Sight
+   M_MODE_V1_0_Staff_Responsible : constant M_MODE_V1_0_T := 2;
+   --  2: Staff Responsible
+   M_MODE_V1_0_Shunting : constant M_MODE_V1_0_T := 3;
+   --  3: Shunting
+   M_MODE_V1_0_Unfitted : constant M_MODE_V1_0_T := 4;
+   --  4: Unfitted
+   M_MODE_V1_0_Sleeping : constant M_MODE_V1_0_T := 5;
+   --  5: Sleeping
+   M_MODE_V1_0_Stand_By : constant M_MODE_V1_0_T := 6;
+   --  6: Stand By
+   M_MODE_V1_0_Trip : constant M_MODE_V1_0_T := 7;
+   --  7: Trip
+   M_MODE_V1_0_Post_Trip : constant M_MODE_V1_0_T := 8;
+   --  8: Post Trip
+   M_MODE_V1_0_System_Failure : constant M_MODE_V1_0_T := 9;
+   --  9: System Failure
+   M_MODE_V1_0_Isolation : constant M_MODE_V1_0_T := 10;
+   --  10: Isolation
+   M_MODE_V1_0_Non_Leading : constant M_MODE_V1_0_T := 11;
+   --  11: Non Leading
+   M_MODE_V1_0_Limited_Supervision : constant M_MODE_V1_0_T := 12;
+   --  12: Limited Supervision
+   M_MODE_V1_0_National_System : constant M_MODE_V1_0_T := 13;
+   --  13: National System
+   M_MODE_V1_0_Reversing : constant M_MODE_V1_0_T := 14;
+   --  14: Reversing
+   M_MODE_V1_0_Passive_Shunting : constant M_MODE_V1_0_T := 15;
+   --  15: Passive Shunting
+   function To_M_MODE_V1_0 (V : Unsigned_64) return M_MODE_V1_0_T is
+     (M_MODE_V1_0_T (V))
+     with Pre => Fits (V, 4);
+   function Code (X : M_MODE_V1_0_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 4);
+   function Is_Valid (X : M_MODE_V1_0_T) return Boolean is
+     (True);
+
    --  M_MODETEXTDISPLAY, 7.5.1.73: 4 bits, 0 .. 15, enumeration; spare: 9, 10,
    --  11, 13
    type M_MODETEXTDISPLAY_T is range 0 .. 15;
@@ -2241,6 +2315,21 @@ is
    function Is_Valid (X : M_POSITION_T) return Boolean is
      ((X <= 9999999 or else X = 16777215));
 
+   --  M_POSITION_V1_0, 6.5.1.5.30: 20 bits, 0 .. 1048574, 1 m
+   type M_POSITION_V1_0_T is range 0 .. 1048575;
+   M_POSITION_V1_0_No_More_Geographical_Position :
+     constant M_POSITION_V1_0_T := 1048575;
+   --  1048575: No more geographical position calculation after this reference
+   --  location
+   function To_M_POSITION_V1_0 (V : Unsigned_64) return M_POSITION_V1_0_T is
+     (M_POSITION_V1_0_T (V))
+     with Pre => Fits (V, 20);
+   function Code (X : M_POSITION_V1_0_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 20);
+   function Is_Valid (X : M_POSITION_V1_0_T) return Boolean is
+     ((X <= 1048574 or else X = 1048575));
+
    --  M_TRACKCOND, 7.5.1.77: 4 bits, 0 .. 10
    type M_TRACKCOND_T is range 0 .. 15;
    M_TRACKCOND_Non_Stopping_Area_Initial : constant M_TRACKCOND_T := 0;
@@ -2279,6 +2368,52 @@ is
      with Post => Fits (Code'Result, 4);
    function Is_Valid (X : M_TRACKCOND_T) return Boolean is
      (X <= 10);
+
+   --  M_TRACKCONDBC, 6.5.1.5.32: 4 bits, 0 .. 10
+   type M_TRACKCONDBC_T is range 0 .. 15;
+   M_TRACKCONDBC_Non_Stopping_Area : constant M_TRACKCONDBC_T := 0;
+   --  0: Non stopping area
+   M_TRACKCONDBC_Tunnel_Stopping_Area : constant M_TRACKCONDBC_T := 1;
+   --  1: Tunnel stopping area
+   M_TRACKCONDBC_Sound_Horn : constant M_TRACKCONDBC_T := 2;
+   --  2: Sound horn
+   M_TRACKCONDBC_Powerless_Section_Lower_Pantograph :
+     constant M_TRACKCONDBC_T := 3;
+   --  3: Powerless section, lower pantograph
+   M_TRACKCONDBC_Radio_Hole : constant M_TRACKCONDBC_T := 4;
+   --  4: Radio hole
+   M_TRACKCONDBC_Air_Tightness : constant M_TRACKCONDBC_T := 5;
+   --  5: Air tightness
+   M_TRACKCONDBC_Switch_Off_Regenerative_Brake : constant M_TRACKCONDBC_T := 6;
+   --  6: Switch off regenerative brake
+   M_TRACKCONDBC_Switch_Off_Eddy_Current : constant M_TRACKCONDBC_T := 7;
+   --  7: Switch off eddy current brake for service brake
+   M_TRACKCONDBC_Switch_Off_Magnetic_Shoe : constant M_TRACKCONDBC_T := 8;
+   --  8: Switch off magnetic shoe brake
+   M_TRACKCONDBC_Powerless_Section_Switch_Off : constant M_TRACKCONDBC_T := 9;
+   --  9: Powerless section, switch off the main power switch
+   M_TRACKCONDBC_Switch_Off_Eddy_Current_10 : constant M_TRACKCONDBC_T := 10;
+   --  10: Switch off eddy current brake for emergency brake
+   function To_M_TRACKCONDBC (V : Unsigned_64) return M_TRACKCONDBC_T is
+     (M_TRACKCONDBC_T (V))
+     with Pre => Fits (V, 4);
+   function Code (X : M_TRACKCONDBC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 4);
+   function Is_Valid (X : M_TRACKCONDBC_T) return Boolean is
+     (X <= 10);
+
+   --  M_TRACTION, 6.5.1.5.33: 8 bits, 0 .. 255, the traction system; every
+   --  code a value (non interoperable codes are not spare)
+   type M_TRACTION_T is range 0 .. 255;
+   function To_M_TRACTION (V : Unsigned_64) return M_TRACTION_T is
+     (M_TRACTION_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : M_TRACTION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : M_TRACTION_T) return Boolean is
+     (True);
 
    --  M_VERSION, 7.5.1.79: 7 bits, 0 .. 127, X in the 3 MSBs, Y in the 4 LSBs;
    --  000 xxxx previous versions (EEIG, UIC A200); 001 0010 .. 001 1111 and
@@ -3630,6 +3765,21 @@ is
    function Is_Valid (X : Q_TEXTREPORT_T) return Boolean is
      (True);
 
+   --  Q_TRACKDEL, 6.5.1.5.35.1: 1 bits, 0 .. 1
+   type Q_TRACKDEL_T is range 0 .. 1;
+   Q_TRACKDEL_No_Track_Description_Deleted : constant Q_TRACKDEL_T := 0;
+   --  0: No track description deleted
+   Q_TRACKDEL_Track_Description_Deleted : constant Q_TRACKDEL_T := 1;
+   --  1: Track description deleted
+   function To_Q_TRACKDEL (V : Unsigned_64) return Q_TRACKDEL_T is
+     (Q_TRACKDEL_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_TRACKDEL_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_TRACKDEL_T) return Boolean is
+     (True);
+
    --  Q_TRACKINIT, 7.5.1.141: 1 bits, 0 .. 1
    type Q_TRACKINIT_T is range 0 .. 1;
    Q_TRACKINIT_No_Initial_States_To : constant Q_TRACKINIT_T := 0;
@@ -4141,6 +4291,7 @@ is
        and then
          (case Var is
             when M_AIRTIGHT => Is_Valid (To_M_AIRTIGHT (V)),
+            when M_AXLELOAD => Is_Valid (To_M_AXLELOAD (V)),
             when M_AXLELOADCAT => Is_Valid (To_M_AXLELOADCAT (V)),
             when M_CURRENT => Is_Valid (To_M_CURRENT (V)),
             when M_DUP => Is_Valid (To_M_DUP (V)),
@@ -4160,7 +4311,9 @@ is
             when M_NVEBCL => Is_Valid (To_M_NVEBCL (V)),
             when M_PLATFORM => Is_Valid (To_M_PLATFORM (V)),
             when M_POSITION => Is_Valid (To_M_POSITION (V)),
+            when M_POSITION_V1_0 => Is_Valid (To_M_POSITION_V1_0 (V)),
             when M_TRACKCOND => Is_Valid (To_M_TRACKCOND (V)),
+            when M_TRACKCONDBC => Is_Valid (To_M_TRACKCONDBC (V)),
             when M_VERSION => Is_Valid (To_M_VERSION (V)),
             when M_VOLTAGE => Is_Valid (To_M_VOLTAGE (V)),
             when NC_CDDIFF => Is_Valid (To_NC_CDDIFF (V)),

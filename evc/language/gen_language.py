@@ -53,6 +53,61 @@ DIRECTIONS = {
 }
 DIRECTION_ORDER = ["track_to_train", "train_to_track"]
 
+# The system versions before 3.0 that chapter 6 gives a layout of their
+# own (SCHEMA.md "Older system versions"), with their M_VERSION codes
+# (7.5.1.79: X in the upper three bits, Y in the lower four)
+OLD_VERSIONS = ["1.0", "1.1", "2.0", "2.1", "2.2", "2.3"]
+VERSION_CODE = {"1.0": 16, "1.1": 17, "2.0": 32, "2.1": 33, "2.2": 34,
+                "2.3": 35}
+
+
+def version_set(value, where):
+    """The `versions` of an entry: a non-empty list of OLD_VERSIONS,
+    returned in their order."""
+    if not isinstance(value, list) or not value:
+        fail("%s: versions is not a non-empty list" % where)
+    for v in value:
+        if v not in OLD_VERSIONS:
+            fail("%s: version %r is not one of %s"
+                 % (where, v, ", ".join(OLD_VERSIONS)))
+    if len(set(value)) != len(value):
+        fail("%s: a version listed twice" % where)
+    return [v for v in OLD_VERSIONS if v in value]
+
+
+def version_suffix(versions):
+    """The name of a layout of older versions: V and its lowest version
+    (P80_V1_0 is packet 80 of 1.0 and 1.1)."""
+    return "V" + versions[0].replace(".", "_")
+
+
+def layout_variables(variables, versions, where):
+    """The variables an entry of these versions reads, by their SRS
+    name: of 4.0.0 (versions None) the variables without `versions`;
+    of older versions a variable's layout whose versions hold all of
+    the entry's (a layout holding only some of them is an error), else
+    the variable itself, which exists in these versions."""
+    view = {}
+    for name, v in variables.items():
+        if v.layout_of:
+            continue
+        if v.versions and (versions is None
+                           or not set(versions) <= set(v.versions)):
+            continue
+        chosen = v
+        for lv in v.layouts:
+            common = set(lv.versions) & set(versions or [])
+            if common and common != set(versions):
+                # an error when the entry reads the variable (resolve)
+                chosen = ("%s: versions %s, the layout %s of %s only %s"
+                          % (where, ", ".join(versions), lv.name, name,
+                             ", ".join(sorted(common))))
+                break
+            if common:
+                chosen = lv
+        view[name] = chosen
+    return view
+
 SENDERS = {"balise": "Balise", "loop": "Euroloop", "rbc": "RBC",
            "riu": "RIU"}
 SENDER_ORDER = ["balise", "loop", "rbc", "riu"]
@@ -429,14 +484,27 @@ class Packet:
                 fail("packet %d: sent_by %s" % (self.nid, s))
         for key in spec:
             if key not in ("nid", "name", "clause", "direction", "sent_by",
-                           "fields"):
+                           "fields", "versions", "table"):
                 fail("packet %d: unknown key %s" % (self.nid, key))
-        self.variables = variables
+        # a layout of older system versions (SCHEMA.md): its versions,
+        # the clause of chapter 6 and the table its fields follow
+        self.versions = None
+        if "versions" in spec:
+            self.versions = version_set(spec["versions"],
+                                        "packet %d" % self.nid)
+        elif "table" in spec:
+            fail("packet %d: table without versions" % self.nid)
+        self.table = str(spec.get("table", self.clause))
+        self.variables = layout_variables(variables, self.versions,
+                                          "packet %d" % self.nid)
         self.dir_ada, self.parent_pkg, self.kind_prefix, self.dir_text, \
             _ = DIRECTIONS[self.direction]
-        self.package = "%s.P%d" % (self.parent_pkg, self.nid)
-        self.kind = "%s_P%d" % (self.kind_prefix, self.nid)
-        self.file_base = "%s-p%d" % (self.parent_pkg.lower(), self.nid)
+        name = "P%d" % self.nid
+        if self.versions:
+            name += "_" + version_suffix(self.versions)
+        self.package = "%s.%s" % (self.parent_pkg, name)
+        self.kind = "%s_%s" % (self.kind_prefix, name)
+        self.file_base = "%s-%s" % (self.parent_pkg.lower(), name.lower())
         self.type_names = set(["Packet_T"])
         self.item_types = []      # (LoopNode) in declaration order
         self.raw_types = []
@@ -544,6 +612,8 @@ class Packet:
                         fail("packet %d: %s: unknown key %s"
                              % (self.nid, name, key))
                 var = self.variables[name]
+                if isinstance(var, str):
+                    fail(var)
                 comp = level.unique(f.get("as", name))
                 node = VarNode(var, comp, level)
                 level.reads.append((name, comp, node))
@@ -714,8 +784,15 @@ class Message:
             fail("message %d: NID_MESSAGE not in 0 .. 255" % self.nid)
         for key in spec:
             if key not in ("nid", "name", "clause", "direction", "sent_by",
-                           "invariant", "fields", "packets"):
+                           "invariant", "fields", "packets", "versions"):
                 fail("message %d: unknown key %s" % (self.nid, key))
+        # a layout of older system versions (SCHEMA.md)
+        self.versions = None
+        if "versions" in spec:
+            self.versions = version_set(spec["versions"],
+                                        "message %d" % self.nid)
+        variables = layout_variables(variables, self.versions,
+                                     "message %d" % self.nid)
         self.invariant = spec.get("invariant", False)
         if not isinstance(self.invariant, bool):
             fail("message %d: invariant %r" % (self.nid, self.invariant))
@@ -725,6 +802,8 @@ class Message:
                 fail("message %d: sent_by %s" % (self.nid, x))
         self.dir_ada = DIRECTIONS[self.direction][0]
         self.kind = "%s_M%d" % (DIRECTIONS[self.direction][2], self.nid)
+        if self.versions:
+            self.kind += "_" + version_suffix(self.versions)
         self.fields = []
         names = set()
         for f in fields:
@@ -738,6 +817,8 @@ class Message:
             if comp in names:
                 fail("message %d: %s twice, use as" % (self.nid, comp))
             names.add(comp)
+            if isinstance(variables[f["var"]], str):
+                fail(variables[f["var"]])
             self.fields.append((variables[f["var"]], comp))
         head = [v.name for v, _ in self.fields[:3]]
         if head != ["NID_MESSAGE", "L_MESSAGE", "T_TRAIN"]:
@@ -785,40 +866,161 @@ def load(path):
         except tomllib.TOMLDecodeError as e:
             fail("%s: %s" % (path, e))
     for key in data:
-        if key not in ("variables", "packets", "messages"):
+        if key not in ("variables", "packets", "messages", "packet_lists",
+                       "message_absent"):
             fail("%s: unknown table %s" % (path, key))
     variables = {}
     for name in sorted(data.get("variables", {})):
-        variables[name] = Variable(name, data["variables"][name])
+        spec = dict(data["variables"][name])
+        only = spec.pop("versions", None)
+        layouts = spec.pop("layouts", [])
+        v = Variable(name, spec)
+        v.versions = version_set(only, "variable " + name) if only else None
+        v.layout_of = None
+        v.layouts = []
+        variables[name] = v
+        if layouts and only:
+            fail("variable %s: layouts of a variable of older versions"
+                 % name)
+        for lay in layouts:
+            lay = dict(lay)
+            if "versions" not in lay:
+                fail("variable %s: a layout without versions" % name)
+            vs = version_set(lay.pop("versions"), "variable " + name)
+            for other in v.layouts:
+                if set(vs) & set(other.versions):
+                    fail("variable %s: two layouts for one version" % name)
+            lv = Variable("%s_%s" % (name, version_suffix(vs)), lay)
+            lv.versions, lv.layout_of, lv.layouts = vs, name, []
+            v.layouts.append(lv)
+            variables[lv.name] = lv
     for need in ("NID_PACKET", "L_PACKET", "Q_DIR"):
         if need not in variables:
             fail("variable %s is needed by every packet" % need)
     if variables["NID_PACKET"].bits != 8:
         fail("NID_PACKET must have 8 bits")
     packets = []
+    old = []
     seen = set()
     for i, spec in enumerate(data.get("packets", [])):
         p = Packet(spec, variables, i)
-        key = (p.direction, p.nid)
-        if key in seen:
-            fail("packet %d %s described twice" % (p.nid, p.direction))
-        seen.add(key)
-        packets.append(p)
+        for v in p.versions or [None]:
+            key = (p.direction, p.nid, v)
+            if key in seen:
+                fail("packet %d %s described twice%s" % (
+                    p.nid, p.direction, " for %s" % v if v else ""))
+            seen.add(key)
+        (old if p.versions else packets).append(p)
     packets.sort(key=lambda p: (DIRECTION_ORDER.index(p.direction), p.nid))
+    old.sort(key=lambda p: (DIRECTION_ORDER.index(p.direction), p.nid,
+                            OLD_VERSIONS.index(p.versions[0])))
+    lists = load_packet_lists(data.get("packet_lists", []), packets, old)
     for need in ("NID_MESSAGE", "L_MESSAGE", "T_TRAIN"):
         if need not in variables:
             fail("variable %s is needed by every message" % need)
     messages = []
+    old_messages = []
     seen = set()
     for spec in data.get("messages", []):
         m = Message(spec, variables)
-        key = (m.direction, m.nid)
-        if key in seen:
-            fail("message %d %s described twice" % (m.nid, m.direction))
-        seen.add(key)
-        messages.append(m)
+        for v in m.versions or [None]:
+            key = (m.direction, m.nid, v)
+            if key in seen:
+                fail("message %d %s described twice%s" % (
+                    m.nid, m.direction, " for %s" % v if v else ""))
+            seen.add(key)
+        (old_messages if m.versions else messages).append(m)
     messages.sort(key=lambda m: (DIRECTION_ORDER.index(m.direction), m.nid))
-    return variables, packets, messages
+    old_messages.sort(key=lambda m: (DIRECTION_ORDER.index(m.direction),
+                                     m.nid, OLD_VERSIONS.index(m.versions[0])))
+    lang = Language(variables, packets, messages, old, lists)
+    lang.old_messages = old_messages
+    lang.max_fields = max(len(m.fields) for m in messages)
+    lang.message_absent = []
+    for i, a in enumerate(data.get("message_absent", [])):
+        where = "message_absent #%d" % (i + 1)
+        for key in a:
+            if key not in ("versions", "direction", "clause", "nids"):
+                fail("%s: unknown key %s" % (where, key))
+        if a.get("direction") not in DIRECTIONS:
+            fail("%s: direction %s" % (where, a.get("direction")))
+        nids = a.get("nids")
+        if not isinstance(nids, list) or not nids or not all(
+                any(m.nid == n and m.direction == a["direction"]
+                    for m in messages) for n in nids):
+            fail("%s: nids is not a list of messages of 4.0.0" % where)
+        lang.message_absent.append((nids, version_set(a.get("versions"),
+                                                      where),
+                                    a["direction"], str(a.get("clause"))))
+    return lang
+
+
+class Language:
+    """What load reads: the entries of 4.0.0 (variables, packets,
+    messages), the layouts of older versions (old: packets) and the
+    packet lists of chapter 6 ({(direction, version): (nids, clause)})."""
+    def __init__(self, variables, packets, messages, old, lists):
+        self.variables, self.packets, self.messages = (variables, packets,
+                                                       messages)
+        self.old, self.lists = old, lists
+
+
+def load_packet_lists(specs, packets, old):
+    """The packet lists of chapter 6 (SCHEMA.md), checked against the
+    layouts: every packet listed for a version has a layout in it."""
+    lists = {}
+    for i, s in enumerate(specs):
+        where = "packet list #%d" % (i + 1)
+        for key in s:
+            if key not in ("versions", "direction", "clause", "nids"):
+                fail("%s: unknown key %s" % (where, key))
+        vs = version_set(s.get("versions"), where)
+        d = s.get("direction")
+        if d not in DIRECTIONS:
+            fail("%s: direction %s" % (where, d))
+        nids = s.get("nids")
+        if not isinstance(nids, list) or not nids \
+                or len(set(nids)) != len(nids) \
+                or not all(isinstance(n, int) and 0 <= n <= 255
+                           for n in nids):
+            fail("%s: nids is not a list of distinct packet numbers" % where)
+        for v in vs:
+            if (d, v) in lists:
+                fail("%s: a second list for %s %s" % (where, d, v))
+            lists[(d, v)] = (sorted(nids), str(s.get("clause", "")))
+    for d in DIRECTION_ORDER:
+        for v in OLD_VERSIONS:
+            version_layouts(d, v, packets, old, lists)
+    return lists
+
+
+def version_layouts(d, v, packets, old, lists):
+    """{NID_PACKET: Packet}, the layout of every packet of direction d in
+    version v: its layout of older versions, else that of 4.0.0; by the
+    packet list of chapter 6 where there is one, else every packet of
+    4.0.0 and of the layouts of v."""
+    olds = dict((p.nid, p) for p in old
+                if p.direction == d and v in p.versions)
+    current = dict((p.nid, p) for p in packets if p.direction == d)
+    if (d, v) not in lists:
+        res = dict(current)
+        res.update(olds)
+        return res
+    nids, clause = lists[(d, v)]
+    for n in olds:
+        if n not in nids:
+            fail("packet %d %s: a layout for %s, not in the list of %s"
+                 % (n, d, v, clause))
+    res = {}
+    for n in nids:
+        if n in olds:
+            res[n] = olds[n]
+        elif n in current:
+            res[n] = current[n]
+        else:
+            fail("packet %d %s: in the list of %s for %s, without a layout"
+                 % (n, d, clause, v))
+    return res
 
 
 # ---------------------------------------------------------------------
@@ -1165,9 +1367,18 @@ def spec_components(lines, comps, indent):
 def gen_packet_spec(p):
     L = header("Packet %d, %s: %s." % (p.nid, p.dir_text, p.name))
     L.append("--")
+    if p.versions:
+        L += wrap_comment(
+            "The layout of system versions %s: SUBSET-026 %s%s. The values"
+            " are read raw; their meaning in these versions is not"
+            " translated here." % (
+                ", ".join(p.versions), p.clause,
+                ", the table of %s" % p.table if p.table != p.clause
+                else ""), 0)
+        L.append("--")
     L += wrap_comment("SUBSET-026 %s. Sent by: %s." % (
-        p.clause, ", ".join(SENDERS[s] for s in SENDER_ORDER
-                            if s in p.sent_by) or "-"), 0)
+        p.table, ", ".join(SENDERS[s] for s in SENDER_ORDER
+                           if s in p.sent_by) or "-"), 0)
     L += [
         "--",
         "--  Decode reads the packet at the position of the reader; it fails",
@@ -2026,6 +2237,178 @@ def gen_catalogue_spec(variables, packets):
     return "\n".join(L)
 
 
+def layout_groups(lang):
+    """The versions with the same layouts in both directions, grouped:
+    [(versions, {direction: ({nid: Packet}, listed)})]."""
+    groups = []
+    for v in OLD_VERSIONS:
+        maps = {}
+        for d in DIRECTION_ORDER:
+            m = version_layouts(d, v, lang.packets, lang.old, lang.lists)
+            maps[d] = (m, (d, v) in lang.lists)
+        key = dict((d, (sorted((n, p.kind) for n, p in m.items()), listed))
+                   for d, (m, listed) in maps.items())
+        for g in groups:
+            if g[2] == key:
+                g[0].append(v)
+                break
+        else:
+            groups.append(([v], maps, key))
+    return [(vs, maps) for vs, maps, _ in groups]
+
+
+def gen_layout_spec(lang):
+    """The layouts by version in ETCS_Catalogue (spec lines)."""
+    old = lang.old
+    L = [""] + wrap_comment(
+        "The layout of a packet in a system version (SUBSET-026 6.5.1.5,"
+        " 6.5.2.3, which replace the packet lists 7.4.1.1, 7.4.1.2 and some"
+        " packet tables for the versions before 3.0): the packet number is"
+        " absent from the version, read in the layout of 4.0.0 (Current:"
+        " the package of its Kind), or read in a layout of older versions"
+        " (the package of the same name, a child of ETCS_Track_Packets or"
+        " ETCS_Train_Packets). A layout decodes the raw values; their"
+        " meaning in an older version is not translated here.", 3)
+    L.append("   type Layout_T is")
+    names = ["Not_In_Version", "Current"] + [p.kind for p in old]
+    for i, k in enumerate(names):
+        L.append("     %s%s%s" % ("(" if i == 0 else " ", k,
+                                  "," if i < len(names) - 1 else ");"))
+    L += ["",
+          "   subtype Old_Layout_T is Layout_T",
+          "     range %s .. %s;" % (old[0].kind, old[-1].kind),
+          ""]
+    L += wrap_comment(
+        "The layout of packet NID in this direction in the system version"
+        " of the M_VERSION code Version (7.5.1.79): %s by chapter 6;"
+        " 3.0 and the codes 49 .. 63 by chapter 7, Current where Kind"
+        " knows the packet; any other code Not_In_Version"
+        % ", ".join("%s (%d)" % (v, VERSION_CODE[v]) for v in OLD_VERSIONS),
+        3)
+    L += ["   function Layout (Direction : Direction_T;",
+          "                    NID       : Natural;",
+          "                    Version   : Natural) return Layout_T;",
+          "",
+          "   NID_Of_Layout : constant array (Old_Layout_T) of Natural :="]
+    for i, p in enumerate(old):
+        L.append("     %s%s => %d%s" % ("(" if i == 0 else " ", p.kind, p.nid,
+                                        "," if i < len(old) - 1 else ");"))
+    L += ["",
+          "   Direction_Of_Layout : constant array (Old_Layout_T)",
+          "     of Direction_T :="]
+    for i, p in enumerate(old):
+        L.append("     %s%s => %s%s" % ("(" if i == 0 else " ", p.kind,
+                                        p.dir_ada,
+                                        "," if i < len(old) - 1 else ");"))
+    L += ["",
+          "   function Layout_Name (Layout : Old_Layout_T) return String;",
+          "",
+          "   --  The clause of chapter 6 that gives the layout",
+          "   function Layout_Clause (Layout : Old_Layout_T) return String;",
+          "",
+          "   --  Check for a layout of older versions",
+          "   procedure Check_Layout (Layout : Old_Layout_T;",
+          "                           R      : in out Reader;",
+          "                           OK     : out Boolean;",
+          "                           Valid  : out Boolean)",
+          "     with Post => (if OK then not Failed (R))",
+          "                  and then (if Valid then OK);",
+          ""]
+    return L
+
+
+def gen_layout_body(lang):
+    """The layouts by version in ETCS_Catalogue (body lines)."""
+    old = lang.old
+    L = ["   ------------", "   -- Layout --", "   ------------", "",
+         "   function Layout (Direction : Direction_T;",
+         "                    NID       : Natural;",
+         "                    Version   : Natural) return Layout_T",
+         "   is",
+         "   begin",
+         "      case Version is"]
+    for vs, maps in layout_groups(lang):
+        L.append("         when %s =>" % " | ".join(
+            "%d" % VERSION_CODE[v] for v in vs))
+        L.append("            --  %s" % ", ".join(vs))
+        L.append("            case Direction is")
+        for d in DIRECTION_ORDER:
+            m, listed = maps[d]
+            L.append("               when %s =>" % DIRECTIONS[d][0])
+            L.append("                  case NID is")
+            olds = sorted((n, p) for n, p in m.items() if p.versions)
+            for n, p in olds:
+                L.append("                     when %d => return %s;"
+                         % (n, p.kind))
+            if listed:
+                cur = sorted(n for n, p in m.items() if not p.versions)
+                if cur:
+                    line = "                     when"
+                    for i, n in enumerate(cur):
+                        piece = (" | %d" if i else " %d") % n
+                        if len(line + piece) > MAX_LINE - 3:
+                            L.append(line)
+                            line = "                       " + piece
+                        else:
+                            line += piece
+                    L.append(line + " =>")
+                    L.append("                        return Current;")
+                L.append("                     when others =>"
+                         " return Not_In_Version;")
+            else:
+                L += ["                     when others =>",
+                      "                        return (if Kind (Direction,"
+                      " NID) = Unknown",
+                      "                                then Not_In_Version"
+                      " else Current);"]
+            L.append("                  end case;")
+        L.append("            end case;")
+    L += ["         when 48 .. 63 =>",
+          "            return (if Kind (Direction, NID) = Unknown",
+          "                    then Not_In_Version else Current);",
+          "         when others =>",
+          "            return Not_In_Version;",
+          "      end case;",
+          "   end Layout;", ""]
+    for fn, attr in (("Layout_Name", "name"), ("Layout_Clause", "clause")):
+        L += ["   " + "-" * (len(fn) + 6), "   -- %s --" % fn,
+              "   " + "-" * (len(fn) + 6), "",
+              "   function %s (Layout : Old_Layout_T) return String is" % fn,
+              "   begin", "      case Layout is"]
+        for p in old:
+            L.append("         when %s =>" % p.kind)
+            stmt(L, 12, "return %s;" % ada_string(getattr(p, attr)))
+        L += ["      end case;", "   end %s;" % fn, ""]
+    for p in old:
+        L += [
+            "   procedure Check_%s" % p.kind,
+            "     (R : in out Reader; OK : out Boolean; Valid : out Boolean)",
+            "     with Post => (if OK then not Failed (R))",
+            "                  and then (if Valid then OK)",
+            "   is",
+            "      P : %s.Packet_T;" % p.package,
+            "   begin",
+            "      %s.Decode (R, P, OK);" % p.package,
+            "      Valid := OK and then %s.Valid (P);" % p.package,
+            "   end Check_%s;" % p.kind,
+            "",
+        ]
+    L += ["   ------------------", "   -- Check_Layout --",
+          "   ------------------", "",
+          "   procedure Check_Layout (Layout : Old_Layout_T;",
+          "                           R      : in out Reader;",
+          "                           OK     : out Boolean;",
+          "                           Valid  : out Boolean)",
+          "   is",
+          "   begin",
+          "      case Layout is"]
+    for p in old:
+        L.append("         when %s => Check_%s (R, OK, Valid);"
+                 % (p.kind, p.kind))
+    L += ["      end case;", "   end Check_Layout;", ""]
+    return L
+
+
 def gen_catalogue_body(variables, packets):
     L = header("The catalogue of the packets, implementation.")
     L.append("")
@@ -2306,6 +2689,181 @@ def gen_messages_spec(variables, messages):
     return "\n".join(L)
 
 
+def message_absent(lang, d, v):
+    """The messages of direction d that chapter 6 deletes in version v."""
+    out = set()
+    for nids, vs, dd, _ in lang.message_absent:
+        if dd == d and v in vs:
+            out |= set(nids)
+    return out
+
+
+def gen_message_layouts_spec(lang):
+    """The message layouts by version in ETCS_Message_Catalogue (spec)."""
+    old = lang.old_messages
+    L = [""] + wrap_comment(
+        "The layout of a message in a system version (SUBSET-026 6.5.1.6,"
+        " 6.5.2.3, which replace some message tables of chapter 8 and"
+        " delete some messages for the versions before 3.0): the message"
+        " is absent from the version, read in the layout of 4.0.0 (Current:"
+        " its Kind), or read in a layout of older versions, described by"
+        " the arrays below as the messages of 4.0.0 are above.", 3)
+    L.append("   type Message_Layout_T is")
+    names = ["Not_In_Version", "Current"] + [m.kind for m in old]
+    for i, k in enumerate(names):
+        L.append("     %s%s%s" % ("(" if i == 0 else " ", k,
+                                  "," if i < len(names) - 1 else ");"))
+    L += ["",
+          "   subtype Old_Message_T is Message_Layout_T",
+          "     range %s .. %s;" % (old[0].kind, old[-1].kind),
+          ""]
+    L += wrap_comment(
+        "The layout of message NID in this direction in the system version"
+        " of the M_VERSION code Version (7.5.1.79): %s by chapter 6; 3.0"
+        " and the codes 49 .. 63 by chapter 8, Current where Kind knows"
+        " the message; any other code Not_In_Version"
+        % ", ".join("%s (%d)" % (v, VERSION_CODE[v]) for v in OLD_VERSIONS),
+        3)
+    L += ["   function Message_Layout (Direction : Direction_T;",
+          "                            NID       : Natural;",
+          "                            Version   : Natural)",
+          "     return Message_Layout_T;",
+          "",
+          "   function Layout_Name (Layout : Old_Message_T) return String;",
+          "   function Layout_Clause (Layout : Old_Message_T) return String;",
+          ""]
+    last = len(old) - 1
+
+    def table(name, typ, value):
+        rows = ["   %s : constant array (Old_Message_T) of %s :=" % (name, typ)]
+        for i, m in enumerate(old):
+            rows.append("     %s%s => %s%s" % ("(" if i == 0 else " ", m.kind,
+                                             value(m),
+                                             "," if i < last else ");"))
+        return rows
+    L += table("Layout_NID", "Natural", lambda m: "%d" % m.nid) + [""]
+    L += table("Layout_Direction", "Direction_T", lambda m: m.dir_ada) + [""]
+    L += table("Layout_Sent_By", "Senders_T", lambda m: "(%s)" % ", ".join(
+        "True" if x in m.sent_by else "False" for x in SENDER_ORDER)) + [""]
+    if max(len(m.fields) for m in old) > lang.max_fields:
+        fail("an old message has more fields than Max_Fields")
+    L += table("Layout_Field_Count", "Field_Count_T",
+               lambda m: "%d" % len(m.fields)) + [""]
+    L.append("   Layout_Fields : constant array (Old_Message_T) of Field_Array"
+             " :=")
+    for i, m in enumerate(old):
+        names = [v.name for v, _ in m.fields]
+        items = ["%d => %s" % (j + 1, n) for j, n in enumerate(names)]
+        if len(names) < lang.max_fields:
+            items.append("others => NID_MESSAGE")
+        L.append("     %s%s =>" % ("(" if i == 0 else " ", m.kind))
+        text = "(" + ", ".join(items) + ")" + ("," if i < last else ");")
+        L += wrap_list(text, 8)
+    total = sum(len(m.rules) for m in old)
+    L += ["",
+          "   --  The rules of the packets of the layouts, as Rules above:",
+          "   --  those of layout K are Layout_Rules (Layout_First_Rule (K)",
+          "   --  .. Layout_First_Rule (K) + Layout_Rule_Count (K) - 1)",
+          "   Total_Layout_Rules : constant := %d;" % max(total, 1),
+          "   subtype Layout_Rule_Index_T is Positive",
+          "     range 1 .. Total_Layout_Rules;",
+          "   subtype Layout_Rule_Count_T is Natural",
+          "     range 0 .. Total_Layout_Rules;",
+          ""]
+    firsts, first = {}, 1
+    for m in old:
+        firsts[m.kind] = min(first, max(total, 1))
+        first += len(m.rules)
+    L += table("Layout_First_Rule", "Layout_Rule_Index_T",
+               lambda m: "%d" % firsts[m.kind]) + [""]
+    L += table("Layout_Rule_Count", "Layout_Rule_Count_T",
+               lambda m: "%d" % len(m.rules)) + [""]
+    L.append("   Layout_Rules : constant array (Layout_Rule_Index_T) of Rule_T"
+             " :=")
+    n = 0
+    if total == 0:
+        L.append("     (1 => (0, 0, True, False, (others => False)));")
+    for m in old:
+        for j, (nids, optional, repeat, senders) in enumerate(m.rules):
+            n += 1
+            frm = ", ".join("True" if x in senders else "False"
+                            for x in SENDER_ORDER)
+            if j == 0:
+                L += wrap_comment("%s, message %d" % (m.kind, m.nid), 6)
+            L.append("     %s%d => (%d, %d, %s, %s, (%s))%s" % (
+                "(" if n == 1 else " ", n, nids[0], nids[-1],
+                "True" if optional else "False",
+                "True" if repeat else "False", frm,
+                "," if n < total else ");"))
+    L.append("")
+    return L
+
+
+def gen_message_layouts_body(lang):
+    """The message layouts by version in ETCS_Message_Catalogue (body)."""
+    old = lang.old_messages
+    L = ["   --------------------", "   -- Message_Layout --",
+         "   --------------------", "",
+         "   function Message_Layout (Direction : Direction_T;",
+         "                            NID       : Natural;",
+         "                            Version   : Natural)",
+         "     return Message_Layout_T",
+         "   is",
+         "   begin",
+         "      case Version is"]
+    groups = []
+    for v in OLD_VERSIONS:
+        key = tuple((d, tuple(sorted((m.nid, m.kind) for m in old
+                                     if m.direction == d and v in m.versions)),
+                     tuple(sorted(message_absent(lang, d, v))))
+                    for d in DIRECTION_ORDER)
+        for g in groups:
+            if g[1] == key:
+                g[0].append(v)
+                break
+        else:
+            groups.append(([v], key))
+    for vs, key in groups:
+        L.append("         when %s =>" % " | ".join(
+            "%d" % VERSION_CODE[v] for v in vs))
+        L.append("            --  %s" % ", ".join(vs))
+        L.append("            case Direction is")
+        for d, olds, absent in key:
+            L.append("               when %s =>" % DIRECTIONS[d][0])
+            L.append("                  case NID is")
+            for nid, kind in olds:
+                L.append("                     when %d => return %s;"
+                         % (nid, kind))
+            if absent:
+                L.append("                     when %s =>" % " | ".join(
+                    "%d" % n for n in absent))
+                L.append("                        return Not_In_Version;")
+            L += ["                     when others =>",
+                  "                        return (if Kind (Direction, NID)",
+                  "                                  = Message_Kind_T'(Unknown)",
+                  "                                then Not_In_Version"
+                  " else Current);",
+                  "                  end case;"]
+        L.append("            end case;")
+    L += ["         when 48 .. 63 =>",
+          "            return (if Kind (Direction, NID) = Message_Kind_T'(Unknown)",
+          "                    then Not_In_Version else Current);",
+          "         when others =>",
+          "            return Not_In_Version;",
+          "      end case;",
+          "   end Message_Layout;", ""]
+    for fn, attr in (("Layout_Name", "name"), ("Layout_Clause", "clause")):
+        L += ["   " + "-" * (len(fn) + 6), "   -- %s --" % fn,
+              "   " + "-" * (len(fn) + 6), "",
+              "   function %s (Layout : Old_Message_T) return String is" % fn,
+              "   begin", "      case Layout is"]
+        for m in old:
+            L.append("         when %s =>" % m.kind)
+            stmt(L, 12, "return %s;" % ada_string(getattr(m, attr)))
+        L += ["      end case;", "   end %s;" % fn, ""]
+    return L
+
+
 def gen_messages_body(messages):
     L = header("The catalogue of the radio messages, implementation.")
     L += ["", "package body ETCS_Message_Catalogue", "  with SPARK_Mode => On",
@@ -2352,7 +2910,7 @@ def gen_messages_body(messages):
 #  Test helper (host only): random packets and round trips
 # ---------------------------------------------------------------------
 
-def gen_random_spec(packets, conds, loops):
+def gen_random_spec(packets, conds, loops, old=()):
     L = header("Random valid packets and round trips, for evc_test.")
     L += [
         "--",
@@ -2399,6 +2957,16 @@ def gen_random_spec(packets, conds, loops):
         "                           W      : in out ETCS_Bits.Writer;",
         "                           OK     : out Boolean);",
         "",
+    ] + ([
+        "   --  The same for a layout of older system versions",
+        "   procedure Round_Trip_Layout",
+        "     (Layout : ETCS_Catalogue.Old_Layout_T;",
+        "      Values : Value_Mode_T;",
+        "      Counts : Count_Mode_T;",
+        "      Result : out Result_T;",
+        "      Bits   : out Natural);",
+        "",
+    ] if old else []) + [
         "   Condition_Count : constant := %d;" % max(len(conds), 1),
         "   function Condition_Name (C : Positive) return String;",
         "   --  The condition was met holding (Value True) or not",
@@ -2421,7 +2989,9 @@ def gen_random_spec(packets, conds, loops):
     return "\n".join(L)
 
 
-def gen_random_body(variables, packets, conds, loops):
+def gen_random_body(variables, packets, conds, loops, old=()):
+    current = packets
+    packets = list(packets) + list(old)
     L = header("Random valid packets and round trips, implementation.")
     L += ["", "with ETCS_Variables; use ETCS_Variables;"]
     for p in packets:
@@ -2750,7 +3320,13 @@ def gen_random_body(variables, packets, conds, loops):
             "     (%s.Packet_T, %s, Fill_%s," % (
                 pk, "True" if p.has_length else "False", k),
             "      %s.Encode, %s.Decode," % (pk, pk),
+        ] + ([
             "      Length_%s, Set_Length_%s, %s.Valid);" % (k, k, pk),
+        ] if len("      Length_%s, Set_Length_%s, %s.Valid);" % (k, k, pk))
+            <= MAX_LINE else [
+            "      Length_%s, Set_Length_%s," % (k, k),
+            "      %s.Valid);" % pk,
+        ]) + [
             "",
         ]
     L += [
@@ -2766,7 +3342,7 @@ def gen_random_body(variables, packets, conds, loops):
         "      Count_Mode := Counts;",
         "      case Kind is",
     ]
-    for p in packets:
+    for p in current:
         L.append("         when %s => Round_Trip_%s (Result, Bits);"
                  % (p.kind, p.kind))
     L += ["      end case;", "   end Round_Trip;", ""]
@@ -2783,7 +3359,7 @@ def gen_random_body(variables, packets, conds, loops):
         "      Count_Mode := Counts;",
         "      case Kind is",
     ]
-    for p in packets:
+    for p in current:
         L += [
             "         when %s =>" % p.kind,
             "            declare",
@@ -2794,6 +3370,25 @@ def gen_random_body(variables, packets, conds, loops):
             "            end;",
         ]
     L += ["      end case;", "   end Write_Random;", ""]
+    if old:
+        L += [
+            "   procedure Round_Trip_Layout",
+            "     (Layout : ETCS_Catalogue.Old_Layout_T;",
+            "      Values : Value_Mode_T;",
+            "      Counts : Count_Mode_T;",
+            "      Result : out Result_T;",
+            "      Bits   : out Natural)",
+            "   is",
+            "      use ETCS_Catalogue;",
+            "   begin",
+            "      Value_Mode := Values;",
+            "      Count_Mode := Counts;",
+            "      case Layout is",
+        ]
+        for p in old:
+            L.append("         when %s => Round_Trip_%s (Result, Bits);"
+                     % (p.kind, p.kind))
+        L += ["      end case;", "   end Round_Trip_Layout;", ""]
     # names
     L += ["   function Condition_Name (C : Positive) return String is",
           "   begin",
@@ -2831,11 +3426,13 @@ def gen_random_body(variables, packets, conds, loops):
 #  Driver
 # ---------------------------------------------------------------------
 
-def generate(variables, packets, messages):
+def generate(lang):
     """{path relative to the repository: text}"""
+    variables, packets, messages = lang.variables, lang.packets, \
+        lang.messages
     out = {}
     conds, loops = [], []
-    for p in packets:
+    for p in packets + lang.old:
         for n in p.conditions:
             n.fill_id = len(conds)
             conds.append((p, n))
@@ -2843,27 +3440,42 @@ def generate(variables, packets, messages):
             n.fill_id = len(loops)
             loops.append((p, n))
     out["evc/language/etcs_variables.ads"] = gen_variables(variables)
-    out["evc/language/etcs_catalogue.ads"] = gen_catalogue_spec(variables,
-                                                                packets)
-    out["evc/language/etcs_catalogue.adb"] = gen_catalogue_body(variables,
-                                                                packets)
+    spec = gen_catalogue_spec(variables, packets)
+    body = gen_catalogue_body(variables, packets)
+    if lang.old:
+        end = "end ETCS_Catalogue;\n"
+        spec = spec[:-len(end)].rstrip("\n") + "\n" \
+            + "\n".join(gen_layout_spec(lang)) + "\n" + end
+        body = body[:-len(end)] + "\n".join(gen_layout_body(lang)) + "\n" \
+            + end
+        last = "with %s;\n" % packets[-1].package
+        body = body.replace(last, last + "".join(
+            "with %s;\n" % p.package for p in lang.old), 1)
+    out["evc/language/etcs_catalogue.ads"] = spec
+    out["evc/language/etcs_catalogue.adb"] = body
     for d in DIRECTION_ORDER:
         pkg = DIRECTIONS[d][1]
         spec, body = gen_parent(
             d, [p for p in packets if p.direction == d], variables)
         out["evc/language/%s.ads" % pkg.lower()] = spec
         out["evc/language/%s.adb" % pkg.lower()] = body
-    for p in packets:
+    for p in packets + lang.old:
         out["evc/language/%s.ads" % p.file_base] = gen_packet_spec(p)
         out["evc/language/%s.adb" % p.file_base] = gen_packet_body(p)
-    out["evc/language/etcs_message_catalogue.ads"] = gen_messages_spec(
-        variables, messages)
-    out["evc/language/etcs_message_catalogue.adb"] = gen_messages_body(
-        messages)
+    spec = gen_messages_spec(variables, messages)
+    body = gen_messages_body(messages)
+    if lang.old_messages:
+        end = "end ETCS_Message_Catalogue;\n"
+        spec = spec[:-len(end)].rstrip("\n") + "\n" \
+            + "\n".join(gen_message_layouts_spec(lang)) + "\n" + end
+        body = body[:-len(end)] + "\n".join(
+            gen_message_layouts_body(lang)) + "\n" + end
+    out["evc/language/etcs_message_catalogue.ads"] = spec
+    out["evc/language/etcs_message_catalogue.adb"] = body
     out["test/src/etcs_language_random.ads"] = gen_random_spec(
-        packets, conds, loops)
+        packets, conds, loops, lang.old)
     out["test/src/etcs_language_random.adb"] = gen_random_body(
-        variables, packets, conds, loops)
+        variables, packets, conds, loops, lang.old)
     for name, text in out.items():
         check_line_lengths(name, text)
     return out
@@ -2927,8 +3539,10 @@ def main():
     ap.add_argument("--toml", default=TOML_PATH)
     args = ap.parse_args()
     try:
-        variables, packets, messages = load(args.toml)
-        out = generate(variables, packets, messages)
+        lang = load(args.toml)
+        variables, packets, messages = lang.variables, lang.packets, \
+            lang.messages
+        out = generate(lang)
     except GenError as e:
         print("gen_language.py: " + str(e), file=sys.stderr)
         return 1

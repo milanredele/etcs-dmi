@@ -341,4 +341,117 @@ is
                    OK        : out Boolean)
      with Post => (if OK then not Failed (R));
 
+   --  The layout of a packet in a system version (SUBSET-026 6.5.1.5, 6.5.2.3,
+   --  which replace the packet lists 7.4.1.1, 7.4.1.2 and some packet tables
+   --  for the versions before 3.0): the packet number is absent from the
+   --  version, read in the layout of 4.0.0 (Current: the package of its Kind),
+   --  or read in a layout of older versions (the package of the same name, a
+   --  child of ETCS_Track_Packets or ETCS_Train_Packets). A layout decodes the
+   --  raw values; their meaning in an older version is not translated here.
+   type Layout_T is
+     (Not_In_Version,
+      Current,
+      Track_P3_V1_0,
+      Track_P27_V1_0,
+      Track_P39_V1_0,
+      Track_P44_V1_0,
+      Track_P45_V1_0,
+      Track_P45_V2_0,
+      Track_P51_V1_0,
+      Track_P70_V1_0,
+      Track_P70_V2_0,
+      Track_P72_V1_0,
+      Track_P72_V2_0,
+      Track_P76_V2_0,
+      Track_P79_V1_0,
+      Track_P80_V1_0,
+      Track_P200_V1_0,
+      Track_P203_V1_0,
+      Track_P206_V1_0,
+      Track_P207_V1_0,
+      Track_P239_V1_0,
+      Track_P245_V2_3,
+      Train_P0_V1_0,
+      Train_P1_V1_0,
+      Train_P3_V1_0,
+      Train_P11_V1_0);
+
+   subtype Old_Layout_T is Layout_T
+     range Track_P3_V1_0 .. Train_P11_V1_0;
+
+   --  The layout of packet NID in this direction in the system version of the
+   --  M_VERSION code Version (7.5.1.79): 1.0 (16), 1.1 (17), 2.0 (32), 2.1
+   --  (33), 2.2 (34), 2.3 (35) by chapter 6; 3.0 and the codes 49 .. 63 by
+   --  chapter 7, Current where Kind knows the packet; any other code
+   --  Not_In_Version
+   function Layout (Direction : Direction_T;
+                    NID       : Natural;
+                    Version   : Natural) return Layout_T;
+
+   NID_Of_Layout : constant array (Old_Layout_T) of Natural :=
+     (Track_P3_V1_0 => 3,
+      Track_P27_V1_0 => 27,
+      Track_P39_V1_0 => 39,
+      Track_P44_V1_0 => 44,
+      Track_P45_V1_0 => 45,
+      Track_P45_V2_0 => 45,
+      Track_P51_V1_0 => 51,
+      Track_P70_V1_0 => 70,
+      Track_P70_V2_0 => 70,
+      Track_P72_V1_0 => 72,
+      Track_P72_V2_0 => 72,
+      Track_P76_V2_0 => 76,
+      Track_P79_V1_0 => 79,
+      Track_P80_V1_0 => 80,
+      Track_P200_V1_0 => 200,
+      Track_P203_V1_0 => 203,
+      Track_P206_V1_0 => 206,
+      Track_P207_V1_0 => 207,
+      Track_P239_V1_0 => 239,
+      Track_P245_V2_3 => 245,
+      Train_P0_V1_0 => 0,
+      Train_P1_V1_0 => 1,
+      Train_P3_V1_0 => 3,
+      Train_P11_V1_0 => 11);
+
+   Direction_Of_Layout : constant array (Old_Layout_T)
+     of Direction_T :=
+     (Track_P3_V1_0 => Track_To_Train,
+      Track_P27_V1_0 => Track_To_Train,
+      Track_P39_V1_0 => Track_To_Train,
+      Track_P44_V1_0 => Track_To_Train,
+      Track_P45_V1_0 => Track_To_Train,
+      Track_P45_V2_0 => Track_To_Train,
+      Track_P51_V1_0 => Track_To_Train,
+      Track_P70_V1_0 => Track_To_Train,
+      Track_P70_V2_0 => Track_To_Train,
+      Track_P72_V1_0 => Track_To_Train,
+      Track_P72_V2_0 => Track_To_Train,
+      Track_P76_V2_0 => Track_To_Train,
+      Track_P79_V1_0 => Track_To_Train,
+      Track_P80_V1_0 => Track_To_Train,
+      Track_P200_V1_0 => Track_To_Train,
+      Track_P203_V1_0 => Track_To_Train,
+      Track_P206_V1_0 => Track_To_Train,
+      Track_P207_V1_0 => Track_To_Train,
+      Track_P239_V1_0 => Track_To_Train,
+      Track_P245_V2_3 => Track_To_Train,
+      Train_P0_V1_0 => Train_To_Track,
+      Train_P1_V1_0 => Train_To_Track,
+      Train_P3_V1_0 => Train_To_Track,
+      Train_P11_V1_0 => Train_To_Track);
+
+   function Layout_Name (Layout : Old_Layout_T) return String;
+
+   --  The clause of chapter 6 that gives the layout
+   function Layout_Clause (Layout : Old_Layout_T) return String;
+
+   --  Check for a layout of older versions
+   procedure Check_Layout (Layout : Old_Layout_T;
+                           R      : in out Reader;
+                           OK     : out Boolean;
+                           Valid  : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK);
+
 end ETCS_Catalogue;
