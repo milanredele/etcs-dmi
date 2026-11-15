@@ -8,6 +8,9 @@ with DMI_Ack;
 with DMI_Core;
 with DMI_Protocol;
 with DMI_Text_Messages;
+with DMI_Windows;
+with Display;
+with Supplementary_Driving_Info;
 with EVC_Braking;
 with EVC_Build_Up;
 with EVC_Core;
@@ -644,9 +647,32 @@ package body S076_Bench is
    --  The window
    ---------------------------------------------------------------------
 
+   --  The speed dial on the DMI's screen this cycle: a mode the DMI shows
+   --  with the dial (DMI 8.2.1.5.7, Table 10; in OS, SR and SH the dial,
+   --  its hooks by the toggle) and no open window over area B
+   function Dial_On_Screen return Boolean is
+      package SDI renames Supplementary_Driving_Info;
+      A : constant Display.Area_T := Display.Get_Area (Display.B);
+      W : Display.Area_T;
+   begin
+      if SDI.Mode not in SDI.M_FS | SDI.M_AD | SDI.M_SM | SDI.M_LS
+        | SDI.M_RV | SDI.M_UN | SDI.M_OS | SDI.M_SR | SDI.M_SH
+      then
+         return False;
+      elsif not DMI_Windows.Is_Open then
+         return True;
+      end if;
+      W := DMI_Windows.Window_Area;
+      return W.Position.X >= A.Position.X + A.Width
+        or else W.Position.X + W.Width <= A.Position.X
+        or else W.Position.Y >= A.Position.Y + A.Height
+        or else W.Position.Y + W.Height <= A.Position.Y;
+   end Dial_On_Screen;
+
    procedure Fold is
    begin
       Cycles := Cycles + 1;
+      Win.Dial := Win.Dial or else Dial_On_Screen;
       if Now.Mode <= 63 then
          Win.Mode (Now.Mode) := True;
       end if;

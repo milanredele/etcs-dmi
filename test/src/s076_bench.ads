@@ -379,6 +379,9 @@ package S076_Bench is
         Indication, Gradients, Geo, Reversing, Adhesion, Radio_Up,
         Radio_Lost, TAF, LSSMA_Changed :
         Boolean := False;
+      --  the speed dial on the DMI's screen (its mode, no window over
+      --  area B)
+      Dial : Boolean := False;
       TC, TIU_TC : Bit_Array_T := (others => False);
    end record;
 

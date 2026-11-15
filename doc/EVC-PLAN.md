@@ -27422,3 +27422,19 @@ by script over chapter 9's table: 5466 entries, 2398 on-board, 2398
 rows, none missing, none extra. The `@req` of
 `EVC_Stored_Information.Infill_Origin` stays 8.4.1.3.1 (a tag names an
 on-board row); no edit under evc/.
+
+**3. The dial's judgement (B4524).** "speed-distance-monitoring
+displayed" passes when the dial was on the DMI's screen in a cycle of
+the window: `S076_Bench.Dial_On_Screen`, folded into `Seen_T.Dial` each
+cycle, is the DMI's own mode (`Supplementary_Driving_Info.Mode` in the
+nine modes of Table 10 of the DMI specification) with no open window
+over area B (`DMI_Windows.Window_Area` against `Display.Get_Area (B)`),
+in place of the on-board's mode flags of the window. Nothing moved: the
+runner's step counts are the same before and after (214779 passed,
+10134 failed, 4104 not judged); 3080400_05 and _07 pass in their three
+forms. The edit is in `S076_Bench` (the fold of the window), outside
+the brief's list of units.
+
+**Left at the bound:** item 4 (B4523 with ERA's PDFs of 3131050_11,
+3040400_04 SV22 / SV30 and 3131050_22; the notes of Sa8a3ba1a,
+Se18f3f0a and S185bee31) and item 5 (B4603).
