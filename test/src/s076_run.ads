@@ -50,7 +50,12 @@ package S076_Run is
                           -- spare, 7.5.1.67)
       R_Version,          -- system version other than the 4.0 layout
                           -- (chapter 6, E7)
-      R_Euroloop,         -- Euroloop (E7)
+      R_Envelope,         -- the sequence is written for an on-board
+                          -- whose highest version is 2.1 or 2.2 (6.4.2):
+                          -- a version it expects, or a reaction to a
+                          -- version of X 3, that ours (highest 3.0)
+                          -- cannot give
+      R_Euroloop,        -- Euroloop (E7)
       R_E6,               -- a function of phase E6 (VBC, set speed, ...)
       R_NTC,              -- NTC / STM (out of scope)
       R_ATO,              -- ATO (the ATO port has no payload yet)

@@ -27342,3 +27342,67 @@ then radio infill (the packages C1 to C6 of the infill inventory), then
 Euroloop (B1 to B4: the LTM port and the loop telegram's parser first),
 each started when the units it shares with the running packages are
 free.
+
+### The runner and the tools: the sequences of another on-board envelope, the version shown, the matrix tool and its missing rows, the dial's judgement (e7/runner-tools) (2026-11-15)
+
+**1. The sequences of another envelope (6.4.2) and B4563.** A new block
+reason of `S076_Run`, `R_Envelope` ("another on-board envelope", code
+`envelope` in the baseline), not counted as E7. The rule as built, all
+three parts in an SV21 or SV22 sequence only (the sequence's system
+version is the highest version of the on-board it was written for):
+(a) an output step expecting a JRU record whose one field is the
+header's M_VERSION of X 2 (`M_VERSION=010...`) that fails: ours operates
+3.0 there (3.17.2.3), the sequence's on-board has no X 3; not judged and
+the sequence blocked (`Envelope_Header`); a pass (ours operating X 2, as
+3170200_04 SV21 step 69) stays a pass; (b) an input of a balise group
+of X 3 or of a message 32 of X 3 whose step's comment says the version
+is above the highest supported ("than the highest", `Above_Envelope`):
+the reaction expected is 3.17.3.5 d) / 3.5.3.7 d) second bullet, ours
+supports 3.0 and takes them; blocked at the input. Without that comment
+the same data expect the version taken: 3130234_07, 6060302_05 and
+8040400_01 in SV21 / SV22 carry X 3 groups or a 32 of X 3 and pass or
+fail later as before (the first form of the rule, by the data alone,
+blocked them: 5 regressions, taken back); (c) the DMI's
+"operated-system-version displayed 2.0 / 2.1 / 2.2": an on-board of
+envelope 3.0 operates 2.3 within X 2 (3.17.2.1.1), so it is not judged
+(an output: no block), reason envelope in SV21 / SV22 and S076-defect in
+SV30 (the SV22 form's values kept, as the Sfbc6ab9e SV30 lines found).
+B4563: "X.Y" (any), "2.Y" (the X), "1.1" and "3.0" (X and Y) are
+judged against the X.Y the on-board sends the DMI
+(`EVC_Core.Outputs.Send_System_Version`: X and `Operated_Y (X)`, so
+1.1, 2.3 or 3.0; the brief's "1.0, 2.0 to 2.3" shown is not what the
+on-board can show). Over the corpus (`obj/osv.sh`, every sequence with
+the step): 12 judged (10 passed: 1.1 3170200_02 SV30 step 135, 3.0
+3170200_10 SV30 steps 119 and 127, 3170200_11 SV30 step 98, X.Y
+4100103_35 steps 82 and 97 in three forms; 2 failed after the first
+failure: 1.1 at 6060302_04 SV30 step 65 and 6060302_06 SV30 step 54,
+ours 2.3 operated from groups of 3.0, under their s076 line), 9
+S076-defect (2.2 in SV30), 2 envelope (3170200_04 SV21 / SV22 step
+71), 167 not run. The inventory's 15 "judgeable": the 1.1 of
+3170200_02 and 6060302_04 in SV21 / SV22 are behind the new block.
+
+Moved (22, all from the e7/behaviour inventory's 20 plus two):
+
+| Sequence | Before | After |
+|---|---|---|
+| 3170200_01, _05 SV21, SV22 | failed 39 (S79568c18 / Sfbc6ab9e) | blocked 39 envelope |
+| 3170200_02, _06 SV21, SV22 | failed 42 (same) | blocked 42 envelope |
+| 3170200_07 SV21, SV22 | failed 47 (same) | blocked 47 envelope |
+| 3170200_09 SV21, SV22 | failed 44 (same) | blocked 44 envelope |
+| 6060302_04 SV21, SV22 | failed 59 (same) | blocked 59 envelope |
+| 6060302_06 SV21, SV22 | failed 48 (same) | blocked 48 envelope |
+| 3050300_05 SV21, SV22 | failed 62 (Sad696360) | blocked 60 envelope (the 32 of X 3) |
+| 4120100_02 SV22 | failed 46 (S27eb0678@...) | blocked 44 envelope (BG2d of 3.0) |
+| 4060300_03 SV22 | failed 143 (S27eb0678@...) | blocked 141 envelope (BG4d of 3.0) |
+| 4041400_02 SV21, SV22 | blocked 39 S076-defect | blocked 39 envelope (BG1d of 3.0, comment "greater than the highest"; the packet 72 of the text in no telegram is the S076 block of the SV30 form, unchanged) |
+
+The runner counts the four that block at an earlier input step
+(3050300_05 x2, 4120100_02, 4060300_03) as regressions: each is the
+input of the version the sequence's on-board does not support, one or
+two steps before its failed expectation. Report, before and after:
+sequences blocked by reason E7-version 179 / 179, S076-defect 245 /
+243, envelope 0 / 22; steps not judged E7-version 266 / 206, envelope
+0 / 26, S076-defect 378 / 385; the runner 1279 / 980 / 931 to 1279 /
+960 / 951. Triage: the four lines Sfbc6ab9e (E7 family), S79568c18,
+S27eb0678@4120100_02_SV22+4060300_03_SV22 and Sad696360 marked "(no
+sequence left ...)", kept for the record.

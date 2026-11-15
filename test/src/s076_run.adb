@@ -63,7 +63,10 @@ package body S076_Run is
          when R_Level_3          => "level 3 (absent from 4.0.0)",
          when R_Version          =>
             "system version other than 4.0 layout (chapter 6, E7)",
-         when R_Euroloop         => "Euroloop (E7)",
+         when R_Envelope         =>
+            "another on-board envelope (6.4.2: the sequence is written for"
+            & " an on-board whose highest version is 2.1 or 2.2)",
+         when R_Euroloop        => "Euroloop (E7)",
          when R_E6               => "a function of phase E6",
          when R_NTC              => "NTC/STM (out of scope)",
          when R_ATO              => "ATO (no ATO port payload yet)",
@@ -125,6 +128,18 @@ package body S076_Run is
    function Starts (S, Prefix : String) return Boolean is
      (S'Length >= Prefix'Length
       and then Up (S (S'First .. S'First + Prefix'Length - 1)) = Up (Prefix));
+
+   --  Whether an input step of an SV21 / SV22 sequence carries a version
+   --  above the highest its on-board supports by its own comment ("is
+   --  greater than the highest M_VERSION supported", "higher than the
+   --  highest system version supported"): with X 3 (Major) the reaction
+   --  of an on-board whose highest version is 2.1 or 2.2 (6.4.2), which
+   --  ours, supporting 3.0, does not give. The same data without that
+   --  comment (3130234_07, 6060302_05, 8040400_01 SV21 / SV22) expect
+   --  the version taken, as ours does
+   function Above_Envelope (St : Step_T; Major : Integer) return Boolean is
+     (Seq.SV in 21 | 22 and then Major = 3
+      and then Has (Image (St.Comment), "than the highest"));
 
    function Trim (C : Column_T) return String is
      (Ada.Strings.Fixed.Trim (C, Ada.Strings.Both));
@@ -3780,6 +3795,13 @@ package body S076_Run is
                                    "telegram " & Tag & ": M_LEVELTEXTDISPLAY"
                                    & " 5, the coding before 4.0.0 (7.5.1.66)");
                      end if;
+                     if Above_Envelope (St, T.M_Version / 16) then
+                        --  its reaction is 3.17.3.5 d) or e), ours
+                        --  interprets the group (c)
+                        return NJ (R_Envelope, "telegram " & Tag
+                                   & " of system version 3."
+                                   & Img (T.M_Version mod 16));
+                     end if;
                      if T.M_Version in 16 .. 31 then
                         return NJ (R_Version, "telegram " & Tag
                                    & " of system version"
@@ -4710,9 +4732,41 @@ package body S076_Run is
          return Shown (St_W, S.LSSMA /= 16#FFFF#, S.LSSMA /= 16#FFFF#,
                        "LSSMA");
       elsif Same (Kind, "operated-system-version") then
-         if Name'Length = 3 and then Name (Name'First) = '3' then
-            return Shown (St_W, S.SV_X = 3, S.SV_X = 3,
-                          "system version " & Name);
+         --  "X.Y" (any), "2.Y" (the X), "1.1" (X and Y) against the
+         --  version the on-board sent the DMI, which operates the highest
+         --  Y of its envelope within an X (3.17.2.1.1): 1.1, 2.3 or 3.0.
+         --  2.0 to 2.2 are operated by an on-board whose highest version
+         --  is 2.0 to 2.2 (6.4.2): another envelope in an SV21 / SV22
+         --  sequence, the values of the SV22 form kept in an SV30 one
+         if Name'Length = 3 and then Name (Name'First + 1) = '.' then
+            declare
+               X : constant Character := Name (Name'First);
+               Y : constant Character := Name (Name'Last);
+               Any_X : constant Boolean := X = 'X';
+               Any_Y : constant Boolean := Y = 'Y';
+               Ok : constant Boolean :=
+                 S.SV_X /= B.No_Value
+                 and then (Any_X
+                           or else (X in '0' .. '9'
+                                    and then S.SV_X
+                                      = Character'Pos (X) - 48))
+                 and then (Any_Y
+                           or else (Y in '0' .. '9'
+                                    and then S.SV_Y
+                                      = Character'Pos (Y) - 48));
+            begin
+               if X = '2' and then Y in '0' .. '2' then
+                  return NJ ((if Seq.SV = 30 then R_S076_Defect
+                              else R_Envelope),
+                             "operated system version " & Name
+                             & " (ours operates 2.3 within X 2,"
+                             & " 3.17.2.1.1)");
+               elsif (Any_X or else X in '0' .. '9')
+                 and then (Any_Y or else Y in '0' .. '9')
+               then
+                  return Shown (St_W, Ok, Ok, "system version " & Name);
+               end if;
+            end;
          end if;
          return NJ (R_Version, "operated system version " & Name);
       elsif Same (Kind, "speed-distance-monitoring") then
@@ -8134,6 +8188,23 @@ package body S076_Run is
       return Res;
    end Curve_Judgement;
 
+   --  Whether St, in an SV21 / SV22 sequence, expects a JRU record whose
+   --  one field is the header's M_VERSION of X 2 ("M_VERSION=010...",
+   --  4.2.2.2 of SUBSET-027): the version an on-board whose highest
+   --  version is 2.1 or 2.2 operates (6.4.2)
+   function Envelope_Header (St : Step_T) return Boolean is
+      L : constant String := Image (St.Line);
+      Equals : Natural := 0;
+   begin
+      for C of L loop
+         if C = '=' then
+            Equals := Equals + 1;
+         end if;
+      end loop;
+      return Seq.SV in 21 | 22 and then Has (L, "JRU record")
+        and then Has (L, "M_VERSION=010") and then Equals = 1;
+   end Envelope_Header;
+
    procedure Run_Loaded (Verbose : Boolean) is
       Blocked : Boolean := False;
       First_Fail : Natural := 0;
@@ -8731,6 +8802,15 @@ package body S076_Run is
                      then
                         --  B100: the steps after it run with another
                         --  train than the sequence's
+                        Record_Result (I, J);
+                        Block (I, J);
+                     elsif J.Verdict = Failed and then Envelope_Header (St)
+                     then
+                        --  the X 2 its on-board operates, which has no X 3
+                        --  (6.4.2); ours operates 3.0 there (3.17.2.3):
+                        --  the steps after it run with another version
+                        J := NJ (R_Envelope, "JRU header SYSTEM_VERSION"
+                                 & " of X 2: " & Image (J.Sig));
                         Record_Result (I, J);
                         Block (I, J);
                      elsif J.Verdict = Failed then

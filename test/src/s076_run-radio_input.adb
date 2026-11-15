@@ -459,6 +459,17 @@ begin
                     & " bits): packet"
                     & Integer'Image (Packet_Outrun (Msg))
                     & " runs past it");
+      elsif Seq.Messages (Msg).NID = 32
+        and then Seq.Messages (Msg).Bits >= 82
+        and then Above_Envelope
+          (St, (Natural (Seq.Messages (Msg).Data (10)) mod 32 * 4
+                + Natural (Seq.Messages (Msg).Data (11)) / 64) / 16)
+      then
+         --  M_VERSION (bits 75 to 81 of message 32, 8.7.12): its
+         --  reaction is "No compatible version supported" (3.5.3.7 d),
+         --  second bullet); ours, supporting 3.0, takes the session
+         return NJ (R_Envelope, "RTM message 32 of system version 3"
+                    & " (the sequence's on-board tops at X 2)");
       elsif Seq.Messages (Msg).NID = 38 and then L_Message (Msg) /= 7 then
          --  8.7.16: message 38 is NID_MESSAGE, L_MESSAGE, T_TRAIN and
          --  M_ACK, 51 bits in 7 bytes; a 38 of another length is the

@@ -520,6 +520,7 @@ package body S076_Main is
          when R_Radio_Infill     => "E7-infill",
          when R_Level_3          => "L3",
          when R_Version          => "E7-version",
+         when R_Envelope         => "envelope",
          when R_Euroloop         => "E7-euroloop",
          when R_E6               => "E6",
          when R_NTC              => "NTC",
