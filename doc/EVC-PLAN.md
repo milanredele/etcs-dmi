@@ -26161,3 +26161,186 @@ the ports, the sessions and the runner, its size and what it unblocks:
 the numbers for the user's decision on Euroloop and radio infill. Each
 inventory is a subsection of this section with its tables; the work
 packages of the following rounds are written from them.
+
+### The on-board operating with system version 1 or 2: the specific requirements, the messages of an older RBC, the failed sequences filed E7 by their clause (e7/behaviour) (2026-11-15)
+
+**Read.** 6.6.1; 6.6.2 and 6.6.4 whole; 6.6.3.3, 6.6.3.4 and 6.6.5.3
+to 6.6.5.6 (the clauses and the message tables; the brief named 6.6.5.4
+to .6, 6.6.5.3 is the RBC of 2.0 and is taken too); the 4.0 text of
+every clause replaced. Not read: the packet layouts of the footnotes
+field by field and the tables [1a], [1b], [3b], [3d] of 6.6.3.4.5 (M_MODE,
+M_LEVEL, NC_TRAIN, M_AXLELOAD: codings, e7/air-gap's); the PDF pages
+(the tables of 6.6.2 are two rows and their columns held).
+
+**Which version decides.** The text has four conditions, not one:
+(1) X = 1 operated (6.6.2): `EVC_System_Version.Operated`; (2) the
+supervising RBC of 2.0, 2.1 or 2.2 (6.6.4.1.1, .2.1, .3.1; an RBC of 2.3
+behaves as 3.0 there): `EVC_Radio.Info (Supervising).Version`; (3) the
+RBC of the session a message goes to or comes from (6.6.4.3.2, every
+table of 6.6.3.4 and 6.6.5.3 to .6): `EVC_Radio.Info (S).Version`; (4)
+the source of a text, a telegram below 2.2 or an RBC of 2.0 or 2.1
+(6.6.4.2.2). With X = 2 operated the operated Y is always 3
+(`EVC_System_Version.Operated_Y`, 3.17.2.1.1), so no clause of 6.6.4 is
+decided by the operated version: each is the RBC's own Y.
+
+**1. The specific requirements (6.6.2, 6.6.4).** Size as in the round
+brief; "with" a row built in the same change.
+
+| Clause (X = 2 twin) | Replaces | What changes | Unit | Size |
+|---|---|---|---|---|
+| 6.6.2.1.1 | 3.12.3.4.7.2 | the driver's acknowledgement always ends the text, whatever its end condition | `EVC_Text_Messages` (row names no subprogram; the acknowledgement in `Evaluate`) | S |
+| 6.6.2.1.2 (6.6.4.1.1, RBC 2.0-2.2) | 3.6.1.3.4 | front end the engine's, no exception for SB with the safe consist length nor SM | `EVC_Position.Set_Standby_Front` (its `On` from `EVC_Core.Modes.Sync_Train_Length`) | S |
+| 6.6.2.2.3 (6.6.4.2.1) | 4.4.7.1.6 b) | the same in SB | as above | with it |
+| 6.6.2.1.3 (6.6.4.1.2) | 3.6.4.2.4 Table 2a, TSR row | in FS and OS a TSR starts and ends at its estimated location, not max / min | `EVC_Track_Description.Speed_Elements`, `TSR_Limits` | S-M |
+| 6.6.2.1.4 (6.6.4.1.3) | 3.11.4.3 | the lowest ASP of every category up to the train's (A to E5 ascending), not of the matching one | `EVC_Track_Description.Take_ASP` | S-M |
+| 6.6.2.2.1, 6.6.2.2.2 | 4.4.11.1.3 d), 4.6.3 [54] | "stop if in SR" trips also at a group in the RBC's list | `EVC_Procedures` ([54]) with `Context_T.SR_Listed` | S |
+| 6.6.2.2.4 to .6 (6.6.4.2.2, source) | adds 4.4.9.1.8, 4.4.16.1.7, .8 | the "Mode = FS" sub-condition of texts across AD | `EVC_Text_Messages` | 0 |
+| 6.6.2.3.1, .2, .6, .7 (6.6.4.3.1, RBC 2.0-2.2) | 5.4.3.2 S10, 5.4.5.3 k), 5.11.2.2 S140, 5.21 | no Supervised Manoeuvre offered in SB or PT, none at all | `EVC_Sessions.Manoeuvre.Evaluate` (Possible), `EVC_Core.Outputs.Send_Onboard` | S |
+| 6.6.2.3.3 to .5 (6.6.4.3.2, session's RBC 2.0-2.2) | 5.5.3.1.3, .1.4, 5.5.4.1.1 | after the 150 the RBC's termination is awaited and the 150 repeated every 15 s also at a desk closure to SB | `EVC_Sessions.Mission` (`Ends_Mission`, `Evaluate`, `Produce`) | M |
+| 6.6.2.4.1, 6.6.4.4.1 | void | none | none | 0 |
+
+The rows of 0: 6.6.2.2.4 to .6 change only a transition to or from AD,
+and AD is not entered (4.4.16.1.4 to .6 deferred, 4.6.3 [80]); without
+AD "a transition from FS to another mode than AD" is the 4.0 end
+condition, so the rows are a note, no code. The two voids are matrix
+rows. Two readings of 6.6.2.3.5: its words replace 5.5.4.1.1, whose
+bullet "After a defined number of repetitions ... terminate" is printed
+inside 5.5.4.1.1 (so replaced too: repeated without end), or a
+sub-clause kept (three repetitions, then terminate). The corpus says
+the second: 6060200_07 and 6060400_08 step 80, "the third and last
+repetition". Not in the matrix: 3.6.1.1 to 3.6.1.3.4 have no row (the
+one 6.6.2.1.2 replaces among them; B4564).
+
+**2. The messages to and from an older RBC.** The receiving side
+(6.6.3.3) is U or T only (D_REF 0 in 15 and 34, NID_LRBG of 40 and 41):
+codings, e7/air-gap's; so is 6.6.5.6 (2.3: packets 0 and 1). Behaviour:
+
+| Clause | RBC | Replaces | What changes | Unit | Size |
+|---|---|---|---|---|---|
+| 6.6.3.4.1.1, 6.6.5.3.2 | 1, 2.0 | 3.5.3.7 d) 1st | 159 with the on-board's telephone numbers (packet 3 of [6]) for packet 2 | `EVC_Sessions.Send_159`; the number is not in `EVC_Config` (`--decl`: no NID_RADIO of the on-board) | M, layout air-gap's |
+| 6.6.3.4.1.2, 6.6.5.3.3, .4.2, .5.2 | 1, 2.0-2.2 | 3.5.3.7.4, .4.1 | no 38 awaited | built: `EVC_System_Version.Session_Acknowledged` | 0, rows |
+| 6.6.3.4.1.3, 6.6.5.3.4, .4.3, .5.3 | 1, 2.0-2.2 | adds 3.5.3.7.6 | in SM the session terminated right after the 159 | `EVC_Sessions.Take_Version` | S |
+| 6.6.3.4.1.6 (same three) | 1, 2.0-2.2 | 3.18.3.10 | no safe consist length (packet 10 in 133) | `EVC_Sessions.Manoeuvre.Evaluate`, `Send_Consist_To` | S |
+| 6.6.3.4.1.4 | 1 | 3.8.2.1.7 | only "track description deletion" told | coding [4] (Q_TRACKDEL) | 0 here |
+| 6.6.3.4.1.5 | 1 | 3.12.3.5.2 | no 158 | `EVC_Sessions` (the 158 of `EVC_Text_Messages.Ack_Report`) | S |
+| 6.6.3.4.2, .3 | 1 | 3.18.4.5.4, .4.1 | the Train Data (129) sent at a train running number entry, packet 5 not (NR) | `EVC_Sessions.Reports.Evaluate`, `EVC_Sessions.Mission.Send_Train_Data` | S-M |
+| 6.6.3.4.3.1, 6.6.5.3.5, .4.4 | 1, 2.0, 2.1 | 5.4.3.2 A33, A34 | 157 without packets 5, 10, 11 ([7]); valid Train Data as a 129 right after it | `EVC_Sessions.Mission.Produce` | M |
+| 6.6.5.5.4 | 2.2 | A33, A34 | Train Data and train running number in the 157, packet 10 deleted ([3]) | as above | with it |
+
+The NR rows (131 and 133 for 1 and 2.0-2.2; 158 and packet 5 for 1)
+follow from the rows above: nothing to build beyond them. Brief premise
+corrected: the packet 3 of the 159 is the on-board's telephone numbers
+(6.6.3.4.5 [6]), not national values.
+
+**How a unit learns the version today.** `EVC_System_Version.Operated`
+(X) has three readers, none a behaviour (`outline --refs Operated --in
+evc`, 12 uses): `EVC_Core.Modes` (the retained `K.Operated_X`),
+`EVC_Core.Outputs.Send_System_Version`, `EVC_Core.Records` (the JRU
+header, `Operated_Version`). The RBC's X.Y is per session,
+`EVC_Radio.Info (S).Version` with `Version_Known`, set by
+`EVC_Radio.Set_Version` from `EVC_Sessions.Take_Version`;
+`EVC_Sessions.Follow_Version` gives the supervising one to
+`EVC_System_Version.Follow`; its one behaviour reader is
+`Session_Acknowledged` (`evc_sessions.adb:759`). Enough for 1 to 3: the
+sessions build every message with `EVC_Radio.State` in their Globals.
+Missing: predicates of the RBC's Y (2.0-2.2; 2.0-2.1; 2.2), one function
+each beside `Session_Acknowledged`; and the version of a text's source
+(4), needed only with AD.
+
+**3. The 179 failed sequences filed E7** (the brief's command; one line
+per signature line of the report; s: step).
+
+| Signature | Seq. | Clause waited for | Inventory | Examples |
+|---|---|---|---|---|
+| Sa8a3ba1a | 115 | 3.9: a session with an RIU (packet 133) | infill: 111 | 3090300 (33), 9990500_22 s46 |
+| Sf2942686 | 3 | 3.9, the infill location reference | infill | 5170200_05 SV21, SV30 s48 |
+| Seb6766c6@3110600_01 | 3 | 3.11.6.5.1, 3.8.5.1.2 | infill | 3110600_01 SV21, SV30 s82 |
+| Sf619da00 | 3 | 3.8.5.1.2, 3.6.2.3.1 | infill | 3080300_01 SV21, SV30 s48 |
+| Se18f3f0a | 7 | 6.6.3.4.1.1 with [6] | behaviour + air-gap (packet 3) | 3170200_03 SV21 s52, 6060500_09 SV30 s56 |
+| Sc18cdb2f | 3 | 6.6.3.4.5 [4] (6.6.3.4.1.4) | air-gap | 6060304_01 SV21, SV30 s73 |
+| ~147 not sent (Sb99f32af) | 3 | 6.6.3.3.2 [1], 6.6.3.4.5 [5] | air-gap | 6060303_01 s81 |
+| S49bc1c1a@9990400_28_SV21+3120200_05 | 3 | 6.6.3.2.3 [18] (packet 70) | air-gap | 9990400_28 SV21 s69, 3120200_05 SV22 s72 |
+| Sa03cccdc@4080100_06_SV21 | 1 | 6.6.5.2.3 (packet 72) | air-gap | 4080100_06 SV21 s65 |
+| Sa03cccdc@4100103_15_SV21+_SV22 | 2 | 6.6.3.2.3 [23] (packet 45) | air-gap | 4100103_15 SV21, SV22 s41 |
+| ~registration (S6249c0a9) | 4 | 6.6.5.2.7 (packet 45) | air-gap | 4080429_01 SV21, SV22 s52 |
+| Se110c7fe | 2 | 6.6.5.2.7 | air-gap | 4080408_01 SV21, SV22 s127 |
+| S4a1bcab7 | 1 | 6.6.5.2.3 | air-gap | 3160300_01 SV21 s87 |
+| Sde099aa7 | 4 | 6.6.5.2.3, [22] | air-gap | 3120300_05 SV21 s51, 4080300_04 SV21 s64 |
+| Sde099aa7@6060500_04 | 3 | 6.6.5.2.3, [22] | air-gap | 6060500_04 SV21, SV30 s52 |
+| S30d22b77@3110500_03_SV21+_SV22 | 2 | 6.5.2.3.9.2, [22], packet 76 | air-gap | 3110500_03 SV21, SV22 s98 |
+| Sfbc6ab9e | 8 | 6.4.2.1, .2: the sequence's on-board tops at 2.2 | none | 3170200_01 SV22 s39, 6060302_06 SV22 s48 |
+| S79568c18 | 8 | the same at 2.1 | none | 3170200_01 SV21, 6060302_04 SV21 |
+| S27eb0678@4120100_02_SV22+4060300_03_SV22 | 2 | 3.17.3.5 d) for an on-board whose highest X is 2 | none | 4120100_02 SV22 s46, 4060300_03 SV22 s143 |
+| Sad696360 | 2 | the same (3.0 not supported) | none | 3050300_05 SV21, SV22 s62 |
+
+By inventory: e7/infill 120 (111 of Sa8a3ba1a, the command:
+`python3` over the baseline's Sa8a3ba1a failures not named by an @ line,
+115, of which 102 name Q_RIU=1 and 9 a packet 133 without it); e7/air-gap
+28; this one 7 (with air-gap's layout); 20 an envelope other than ours
+(no clause of this on-board waits: the question below); 4 not E7.
+
+**Lines whose note is wrong or older than the code** (no triage edit).
+Sa8a3ba1a: "147 sequences" (133 in the baseline today), and its residue
+of 115 holds 4 that are not E7: 3050600_05 SV30 s69 (the FRMCS and
+GSM-R radio of 3.5.6.7 b), the note's own "model" case) and 3130700_05
+SV21, SV22, SV30 s57 (a session ordered by packet 42 in level 1, case
+3050300 22; not infill, not chapter 6; not traced). Se18f3f0a names
+3170200_08 and 6060504_01, no longer under it (its 7 today:
+3170200_02 SV30, 3170200_03 and 6060500_09 in three forms).
+S185bee31 (3.5.3.7.6, E7) holds no sequence: its three (6060500_10, 6060504_02, 6060505_02 SV30) stop at step 91 under an s076
+line before its step 99.
+
+**4. The steps not judged and the blocks.** The 266 steps of the reason
+(the runner's `NOT_JUDGED` lines over the corpus, `obj/v.sh`): 224 are
+telegrams, a coding (e7/air-gap): 102 with M_LEVELTEXTDISPLAY 5, 91 of
+1.0, 28 of 1.1, 3 of 1.2; 42 the DMI's "operated-system-version
+displayed": 18 "2.2" and 9 "2.1" (the envelope of the sequence's
+on-board, as Sfbc6ab9e), 9 "1.1" and 6 "X.Y", which this on-board can
+show today (`S076_Run` judges only a name beginning "3": B4563). The 176
+blocked sequences are codings, all e7/air-gap's: the report's 16
+sub-lines give 85 M_LEVELTEXTDISPLAY 5 and 85 telegrams of 1.0 to 1.2
+(6 not itemised).
+
+**What the corpus tests of this ground.** Features 6060200 (6.6.2, 14
+sequences) and 6060400 (6.6.4, 12): TSR at the estimated location
+(6060200_01: blocked at 47 by a 1.0 telegram; 6060400_02: passes in the
+three forms, the judgement not sensitive to the location item); ASP by
+category (6060200_02 SV30 passes: its categories do not tell the two
+readings apart; 6060400_03 fails before, s076); texts across AD
+(_03 to _05 by their ATO, s076 and version blocks at step 44; not
+read); the end of mission with an RBC of 1.0
+or 2.1 (6060200_06 passes; 6060200_07 and 6060400_08 blocked at 73 by
+an unnamed timer, E5-radio). The SR stop, the SB front and the S10 /
+S140 rows have no sequence.
+
+**Design question: how the version reaches the units.** (a) Each unit
+reads `EVC_System_Version.Operated` or the session's version itself: a
+line per use, but `EVC_Track_Description`, `EVC_Procedures`,
+`EVC_Position` and `EVC_Text_Messages` gain a Global and their proofs
+the state. (b) A Boolean parameter per clause from the cycle's step
+(`Speed_Elements (..., TSR_Estimated)`): explicit, the units stay free
+of the version, a parameter per call site. (c) As (b), the Booleans
+one record of `EVC_System_Version`, computed once a cycle from
+`Operated` and the supervising session's version by one function whose
+postcondition states each field by its clause, passed by
+`EVC_Core.Monitoring` and `.Modes`; the message clauses keep reading
+`EVC_Radio.Info (S).Version` where the message is built, per session as
+6.6.4.3.2 and the tables say. Recommended: (c).
+
+**Question: the 20 sequences of another envelope** (and 27 steps not
+judged). Their on-board supports at most 2.1 or 2.2 (6.4.2); ours 3.0,
+a constant (`EVC_System_Version.Envelope`). Options: a block reason of
+the runner, "another envelope" (S, nothing of the on-board); or an
+envelope by configuration (M: `EVC_Config`, `EVC_System_Version`, the
+159). Recommended: the block reason.
+
+**Work packages, in order.**
+
+| Package | Clauses | Units | Size | Depends | Unblocks |
+|---|---|---|---|---|---|
+| e7/version-rows | 6.6.3.4.1.2 family, 6.6.2.2.4 to .6, 6.6.4.2.2, the voids; predicates of the RBC's Y; the record of (c) | `EVC_System_Version`, the matrix | S | decision (c) | 0 |
+| e7/old-rbc-sm | 6.6.2.3.1, .2, .6, .7, 6.6.4.3.1, 6.6.3.4.1.3, .1.6 | `EVC_Sessions.Manoeuvre`, `EVC_Sessions.Take_Version`, `EVC_Core.Outputs.Send_Onboard` | S-M | the first | 3 behind s076 s91 (6060500_10, 6060504_02 SV30) |
+| e7/x1-supervision | 6.6.2.1.1 to .4, 6.6.2.2.1 to .3, 6.6.4.1.1 to .3, 6.6.4.2.1 | `EVC_Track_Description.Speed_Elements`, `Take_ASP`, `EVC_Procedures`, `EVC_Core.Modes.Sync_Train_Length`, `EVC_Text_Messages` | M | the first | 3 after air-gap (6060200_01) |
+| e7/old-rbc-reports | 6.6.2.3.3 to .5, 6.6.4.3.2, 6.6.3.4.1.5, .2, .3, .3.1, 6.6.5.3.5, .4.4, .5.4 | `EVC_Sessions.Mission`, `EVC_Sessions.Reports` | M | air-gap's encoder by the RBC's version | 0 counted (6060200_07, 6060400_08 wait for the runner's timer) |
+| e7/session-x1 | 6.6.3.4.1.1, 6.6.5.3.2 | `EVC_Sessions.Send_159`, `EVC_Config` (the number) | M | air-gap's packet 3 | 7 (Se18f3f0a) |
+| runner | B4563; the envelope block if decided | `S076_Run` | S | the decision | 20 sequences, 15 steps |
