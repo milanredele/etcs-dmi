@@ -22,14 +22,14 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | EURORADIO Terminal registration | euroradio-terminal-registration.scn | 2 | 10 | 8 / 12 | 0 / 24 | 0 | done 8 |
 | Gradient | gradient.scn | 7 | 28 | 46 / 15 | 0 / 51 | 0 | absent 8, done 14 |
 | Handling of Accepted and Stored Information | handling-of-accepted-and-stored-information.scn | 72 | 522 | 54 / 75 | 0 / 67 | 0 | absent 54 |
-| Infill | infill.scn | 2 | 11 | 13 / 4 | 0 / 3 | 0 | deferred 3, n/a 1 |
+| Infill | infill.scn | 2 | 11 | 13 / 4 | 0 / 3 | 0 | n/a 1, todo 3 |
 | JRU | jru.scn | 29 | 99 | 35 / 54 | 0 / 136 | 0 | other 30 |
 | LX | lx.scn | 9 | 44 | 40 / 33 | 0 / 126 | 0 | absent 20, done 19 |
 | Level transitions | level-transitions.scn | 10 | 33 | 52 / 36 | 0 / 42 | 0 | absent 8, done 8, other 1 |
 | Linking | linking.scn | 12 | 34 | 64 / 23 | 0 / 93 | 0 | absent 19, done 39 |
-| MA | ma.scn | 18 | 64 | 85 / 84 | 0 / 208 | 0 | absent 34, deferred 2, done 17 |
+| MA | ma.scn | 18 | 64 | 85 / 84 | 0 / 208 | 0 | absent 34, done 17, todo 2 |
 | MRSP | mrsp.scn | 10 | 11 | 14 / 7 | 35 / 2 | 0 | absent 18, done 9 |
-| Mode Profile | mode-profile.scn | 14 | 54 | 42 / 30 | 0 / 63 | 0 | absent 5, deferred 1, done 7, other 3 |
+| Mode Profile | mode-profile.scn | 14 | 54 | 42 / 30 | 0 / 63 | 0 | absent 5, done 7, other 3, todo 1 |
 | Movement | movement.scn | 6 | 20 | 17 / 49 | 0 / 45 | 0 | other 12 |
 | National and default data | national-and-default-data.scn | 110 | 131 | 21 / 30 | 7 / 179 | 0 | absent 134, done 10 |
 | On Sight | on-sight.scn | 3 | 12 | 12 / 17 | 0 / 20 | 0 | absent 2, done 7 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 37, n/a 1 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 6, done 699, n/a 5, other 52, partial 2 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, done 699, n/a 5, other 52, partial 2, todo 6 |

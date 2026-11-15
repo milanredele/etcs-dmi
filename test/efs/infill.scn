@@ -4,7 +4,7 @@
 frame Infill
 sequence Infill BTM Packets
 case Send TSR in LS
-clause E3 deferred 3.8.4.6.2 ; efs 3.8.4.6.2
+clause E3 todo 3.8.4.6.2 ; efs 3.8.4.6.2
 step Setup
 sub SubStep1 - Initialize test environment
 init 0.0 OS
@@ -141,9 +141,9 @@ telegram balise Q_UPDOWN=1 M_VERSION=32 Q_MEDIA=0 N_PIG=1 N_TOTAL=1 M_DUP=0 M_MC
 expect efs: (FIRST X IN Kernel.TSR.TSRs).Location == 60.0 @ deadline=1
 expect efs: (FIRST X IN Kernel.TSR.TSRs).Speed == 10.0 @ deadline=1
 case Send TSR in OS
-clause E3 deferred 3.8.4.6.2 ; efs 3.8.4.6.2
+clause E3 todo 3.8.4.6.2 ; efs 3.8.4.6.2
 clause E4 n/a 4.8.4.1.1 ; efs 4.8.4.1.1
-clause E3 deferred 3.11.6.2 ; efs 3.11.6.2
+clause E3 todo 3.11.6.2 ; efs 3.11.6.2
 step Setup
 sub SubStep1 - Initialize test environment
 init 0.0 OS

@@ -573,7 +573,7 @@ expect efs: Kernel.Mode == ModeEnum.SH @ blocking=FALSE
 expect efs: Kernel.MA.ModeProfile.Profile == [] @ blocking=FALSE
 sequence New MA by INFILL shall delete the current MP after the reference location of the INFILL
 case New MA by INFILL shall delete the current MP after the reference location of the INFILL
-clause E3 deferred 3.12.4.3.1 ; efs 3.12.4.3.1
+clause E3 todo 3.12.4.3.1 ; efs 3.12.4.3.1
 step Setup
 sub Sub-step1 - Initialize test environment
 init 100.0 FS

@@ -27331,3 +27331,14 @@ the phase are todo now that the phase runs (the burndown counts todo and
 partial: 117 clauses left); the 24 rows of 3.9 and the rows other phases
 deferred for infill stay deferred until the decision on radio infill and
 Euroloop, those of infill by balise group until their package sets them.
+
+**The user's decision of 2026-11-15: both radio infill and Euroloop are
+built.** The on-board is equipped with both infill transmission media:
+3.9.1.3's exception is not used. The 24 rows of 3.9 and the rows the
+earlier phases deferred for infill, the loop or an RIU are todo from now
+(the four rows on texts around Automatic Driving stay deferred with AD).
+The order of the phase: chapter 6 and infill by balise group as planned,
+then radio infill (the packages C1 to C6 of the infill inventory), then
+Euroloop (B1 to B4: the LTM port and the loop telegram's parser first),
+each started when the units it shares with the running packages are
+free.

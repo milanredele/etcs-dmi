@@ -32,10 +32,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.4.4.4.6.1,3,x,,,,,E2,done,EVC_Position.Evaluate (the next announced group checked against its own window); evc_test position_linking_errors
 3.4.4.4.7,3,x,,,,,E2,done,"EVC_Position.Evaluate rejects and requests a train trip (Linking_Reaction 0, JRU 4); the trip 4.6.3 [17] (EVC_Procedures); evc_test position_linking_errors, evc_test_procedures Scenario_Linking"
 3.4.4.5.1,3,x,,,,,E2,done,EVC_Position.Evaluate (linking not checked: every group taken); evc_test position_first_group
-3.4.5.1.4,3,x,,,,,E2,deferred,E7 (Euroloop)
-3.4.5.1.6,3,x,,,,,E2,deferred,E7 (Euroloop)
-3.4.5.2.1,3,x,,,,,E2,deferred,E7 (Euroloop)
-3.4.5.2.2,3,x,,,,,E2,deferred,E7 (Euroloop)
+3.4.5.1.4,3,x,,,,,E2,todo,E7 (Euroloop)
+3.4.5.1.6,3,x,,,,,E2,todo,E7 (Euroloop)
+3.4.5.2.1,3,x,,,,,E2,todo,E7 (Euroloop)
+3.4.5.2.2,3,x,,,,,E2,todo,E7 (Euroloop)
 3.5.2.4,3,x,,,,,E5,done,"the session table of EVC_Radio holds two sessions (two by default, one by configuration, EVC_Config.Radio_Config_T); their management is EVC_Sessions', two established at once in a handover (EVC_Sessions.Handover); evc_test Scenario_Radio_Joint, Handover_Radio [E5 joint]"
 3.5.3.4,3,x,,,,,E5,done,"every bullet in its subclause (a) to h)); f) for the Handing Over session after the switch: EVC_Sessions.Evaluate opens it again with the retained contact (3.15.1.3.8.1), evc_test Handover_Deletion [E5 session]"
 3.5.3.4 a),3,x,,,,,E5,done,"EVC_Sessions.Mission.Evaluate_SoM (D2 in level 2 with a known contact, S3: Open_SoM); evc_test Scenario_Session_SoM_Level_2 [E5 session]"
@@ -74,7 +74,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.8 e),3,x,,,,,E5,done,EVC_Sessions.Establish -> Terminate_Session [E5 session]
 3.5.3.8 f),3,x,,,,,E5,done,"EVC_Sessions.Handover.Evaluate (Rear_Passed: the rear border trigger of EVC_Position) and EVC_Sessions.Apply_Handover (Abort_Being_Established; decision: not the sessions with the supervising or accepting role: the session with the Accepting RBC takes its role from its set-up request, EVC_Sessions.Handover.Find_Accepting, and is kept); evc_test Scenario_Handover_Rear_Border [E5 session]; the session with the order's Accepting RBC also when the order came while the set-up with the RBC of the contact was unanswered (no supervising session): EVC_Sessions.Handover.Find_Accepting gives it the role from the order alone (3.15.1.1.6), the switch at the border makes it supervising, so the rear border keeps it and aborts the other (e6/sessions-accepting, B3720); evc_test Handover_Unanswered_Rear; 3050300_05 (SV21, SV22, SV30) past step 56"
 3.5.3.8 g),3,x,,,,,E5,done,"EVC_Sessions.Stop_Attempts (the engine reaching the hole: a session being established closed and released, set up again by 3.5.3.4 e); evc_test Scenario_Session_Hole_Rows [E5 session]"
-3.5.3.8 h),3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
+3.5.3.8 h),3,x,,,,,E5,todo,RIU (radio infill) is phase E7 [E5 session]
 3.5.3.8 i),3,x,,,,,E5,done,EVC_Sessions.Apply_Network (3.18.4.3.6.1: Terminate_Session aborts a session being established); evc_test Scenario_Session_Registration [E5 session]
 3.5.3.11,3,x,,,,,E5,done,"EVC_Sessions.Mission.Driver_Contact (choice 2: NID_RADIO all F, the RBC unknown; the stored contact neither used nor overwritten); evc_test Scenario_Session_Short_Number [E5 session]"
 3.5.3.13,3,x,,,,,E5,done,EVC_Sessions.Apply_Order (NID_RBC 16383: the stored contact) [E5 session]
@@ -86,7 +86,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.4.3,3,x,,,,,E5,done,"EVC_Sessions.Take_Event, Supervise_Session (the 1st and 2nd bullets by their rows; the 3rd, the RIU order, is radio infill: deferred to E7 by its row); evc_test Session_Lost_Version [E5 session]"
 3.5.4.3 1st bullet,3,x,,,,,E5,done,EVC_Sessions.Take_Event [E5 session]
 3.5.4.3 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session [E5 session]
-3.5.4.3 3rd bullet,3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
+3.5.4.3 3rd bullet,3,x,,,,,E5,todo,RIU (radio infill) is phase E7 [E5 session]
 3.5.4.4,3,x,,,,,E5,done,"EVC_Sessions.Stop_Attempts, Take_Event, Produce_Session (In_Hole from EVC_Radio.Context_T.Radio_Hole, EVC_Track_Conditions.Engine_In_Radio_Hole): no request while the engine overlaps an announced radio hole, the requests stopped on entering it (a request already with Euroradio not withdrawn, decision), set up again once it has left it; evc_test Session_Radio_Hole [E5 session]"
 3.5.4.5,3,x,,,,,E5,done,"EVC_Sessions.Reports.Produce: a report due while the connection is lost is considered as sent, neither given to the port nor kept (decision 3 of the position reports); the other messages are given to the RTM port while the session is established (EVC_Radio.Established includes Connection_Lost), none is held back; evc_test Session_Lost_Send [E5 session]"
 3.5.4.7,3,x,,,,,E5,done,EVC_Sessions.Take_Version (32 inside a session: 159 again) [E5 session]
@@ -117,7 +117,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.6.7 b),3,x,,,,,E5,done,EVC_Sessions.Network.Ready (the FRMCS registration by EVC_Sessions.Network.Take_FRMCS); evc_test Session_Registration; Network_FRMCS [E5 session]
 3.5.6.7 c),3,x,,,,,E5,done,EVC_Sessions.Network.Ready (either system registered); evc_test Session_Registration [E5 session]
 3.5.6.7 d),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
-3.5.6.8,3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
+3.5.6.8,3,x,,,,,E5,todo,RIU (radio infill) is phase E7 [E5 session]
 3.5.7.1,3,x,,,,,E5,done,"EVC_Sessions.Indication, MSG_STATUS radio (EVC_Core.Outputs.Send_Status); evc_test session_indication [E5 session]"
 3.5.7.2,3,x,,,,,E5,done,"EVC_Sessions (the connection status timer, 45 s, A.3.1) [E5 session]"
 3.5.7.3,3,x,,,,,E5,done,"EVC_Sessions.Ind_Request: a) done, b) 3.5.4.2 and 3.5.4.4 (radio holes: Produce_Session) [E5 session]"
@@ -130,7 +130,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.7.6,3,x,,,,,E5,done,"EVC_Sessions.Ind_Timer (the session indicated: the supervising RBC's once established, or when the one shown is over); evc_test handover_indication [E5 session]"
 3.5.7.6 a),3,x,,,,,E5,done,EVC_Sessions.Ind_Timer: the Accepting RBC supervising (3.15.1.3.5) and its session established; evc_test handover_indication [E5 session]
 3.5.7.6 b),3,x,,,,,E5,done,"EVC_Sessions.Ind_Timer: the session shown over (released at its termination, ordered at the rear end, 3.15.1.3.5); evc_test handover_indication [E5 session]"
-3.5.7.7,3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
+3.5.7.7,3,x,,,,,E5,todo,RIU (radio infill) is phase E7 [E5 session]
 3.6.1.4,3,x,,,,,E2,done,EVC_Position.Evaluate (Status Valid when an LRBG or ORBG is passed); evc_test position_first_group
 3.6.1.5,3,x,,,,,E2,done,"EVC_Position.Update (orientation from the cab status, proven: Update and EVC_Core.Tick postconditions); evc_test position_orientation"
 3.6.1.5.1,3,x,,,,,E2,done,"EVC_Position.Manoeuvre_Orientation: set by EVC_Position.Shift_For_Manoeuvre at every Supervised Manoeuvre authorisation taken (EVC_Core.Modes.Adjust_For_Manoeuvre), the orientation that of its MA (turned when opposite), kept against the cab inputs (EVC_Position.Kept_By_Manoeuvre) until EVC_Position.End_Manoeuvre at the end of the mission or in Non Leading; evc_test Scenario_SM_Authorisation (same direction and opposite), Scenario_SM_Gamma (Non Leading ends it)"
@@ -288,7 +288,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1 k),3,x,,,,,E3,done,"EVC_Procedures.Take_Packet: a new packet 138 replaces the stored reversing area (and 139 the supervision information), also in RV (3.15.4.1.1, 3.15.4.3); evc_test_procedures Scenario_Reversing"
 3.7.3.1 l),3,x,,,,,E3,done,EVC_Track_Description.Take_Adhesion; evc_test Scenario_Other_Profiles
 3.7.3.1 m),3,x,,,,,E3,done,"EVC_Linking.Replace from EVC_Position.Take_Packets: the stored linking kept up to the new reference group when that group is a link of it in the same sense, the new links after it with their distances counted from the stored reference (decision: the new linking alone when the joined chain exceeds Max_Links, the bound of one packet); evc_test Scenario_Linking_Replacement"
-3.7.3.1 n),3,x,,,,,E3,deferred,E7 (infill)
+3.7.3.1 n),3,x,,,,,E3,todo,E7 (infill)
 3.7.3.1 o),3,x,,,,,E3,done,"packets 69 and 40 stored (EVC_Track_Conditions.Take_Platforms, Take_Current), for 5.20; evc_test_procedures Scenario_External_Track_Conditions"
 3.7.3.1 p),3,x,,,,,E3,done,"packets 69 and 40 stored (EVC_Track_Conditions.Take_Platforms, Take_Current), for 5.20; evc_test_procedures Scenario_External_Track_Conditions"
 3.7.3.1.1,3,x,,,,,E3,done,"Table 2a items: the replaced element ends at the ""min"" item of the new start, the new one starts at its ""max"" item, EVC_Profiles.Envelope keeps the lowest in between (proved postcondition); evc_test Scenario_SSP_Replacement; where the relocation puts the ""max"" item ahead of the ""min"" item the gap between them takes the lower of the two; evc_test Scenario_SSP_Gaps"
@@ -355,12 +355,12 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.4.5.1 b),3,x,,,,,E3,done,evc_test Scenario_Overlap_Timer
 3.8.4.5.1 c),3,x,,,,,E3,done,"evc_test Scenario_Section_Timer, Scenario_MA_Shortening"
 3.8.4.5.2,3,x,,,,,E3,done,EVC_Movement_Authority.Authority (LOA: no SvL); evc_test Scenario_LOA_Timer
-3.8.4.6.2,3,x,,,,,E3,deferred,E7 (infill)
-3.8.4.6.4,3,x,,,,,E3,deferred,E7 (infill)
-3.8.4.6.5,3,x,,,,,E3,deferred,E7 (infill)
-3.8.4.6.5 a),3,x,,,,,E3,deferred,E7 (infill)
-3.8.4.6.5 b),3,x,,,,,E3,deferred,E7 (infill)
-3.8.4.6.5 c),3,x,,,,,E3,deferred,E7 (infill)
+3.8.4.6.2,3,x,,,,,E3,todo,E7 (infill)
+3.8.4.6.4,3,x,,,,,E3,todo,E7 (infill)
+3.8.4.6.5,3,x,,,,,E3,todo,E7 (infill)
+3.8.4.6.5 a),3,x,,,,,E3,todo,E7 (infill)
+3.8.4.6.5 b),3,x,,,,,E3,todo,E7 (infill)
+3.8.4.6.5 c),3,x,,,,,E3,todo,E7 (infill)
 3.8.5.1,3,x,,,,,E5,done,"EVC_Movement_Authority.Accept_MA replaces the MA (E3), for packet 12 and, phase E5, packet 15 of messages 3 and 33 (EVC_Stored_Information.Take_Radio, EVC_Radio_Info); evc_test Scenario_Radio_MA, Scenario_Radio_MA_Shifted [E5 authority]"
 3.8.5.1 a),3,x,,,,,E5,done,a new MA from a group at a main signal or from the RBC replaces all data of the previous one (EVC_Movement_Authority.Accept_MA); evc_test Scenario_Radio_MA_Shifted (an MA by radio replaced by the next) [E5 authority]
 3.8.5.1 b),3,x,,,,,E5,done,"an infill MA (a packet 12 after a packet 136, located from the next main signal's group by EVC_Stored_Information.Infill_Origin) replaces the MA from that group on: the sections ending in rear kept with their timers, the one it lies in ending there, the infill sections after it (EVC_Movement_Authority.Accept_MA, Join; EVC_Stored_Information.Store_MA); evc_test Scenario_Infill_MA [E7 infill]"
@@ -376,30 +376,30 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.6.1 b) 2nd bullet,3,x,,,,,E5,done,"rejected: the message is dropped, nothing of it stored; evc_test Scenario_Shortening [E5 authority]"
 3.8.6.1 c),3,x,,,,,E5,done,"EVC_Radio_Authority.Answer_Shortening: message 137 or 138 with the request's T_TRAIN to its session, the decision of b) only: a request rejected before it (4.8, 4.8.2.1 c) exception 2, 3.10.2.4) is not answered (Judge_Shortening, e5/onboard-gaps B011, SUBSET-076 4080407_01); evc_test Scenario_Shortening; a proposal its SSP and gradients do not cover (3.7.2.3, B210) likewise (Scenario_Shortening_Cover, SUBSET-076 4080407_01) [E5 authority]"
 3.8.6.2,3,x,,,,,E5,done,"the granted MA replaces a longer one through EVC_Movement_Authority.Accept_MA: the deletions of situation b, the column of situation f (A.3.4.1.3); evc_test Scenario_Shortening [E5 authority]"
-3.9.1.3,3,x,,,,,E7,deferred,E7
-3.9.2.11,3,x,,,,,E7,deferred,E7
-3.9.3.3,3,x,,,,,E7,deferred,E7
-3.9.3.3 b),3,x,,,,,E7,deferred,E7
-3.9.3.4,3,x,x,,,,E7,deferred,E7
-3.9.3.5,3,x,,,,,E7,deferred,E7
-3.9.3.5 a),3,x,,,,,E7,deferred,E7
-3.9.3.5 b),3,x,,,,,E7,deferred,E7
-3.9.3.6,3,x,,,,,E7,deferred,E7
-3.9.3.6 a),3,x,,,,,E7,deferred,E7
-3.9.3.6 b),3,x,,,,,E7,deferred,E7
-3.9.3.6.1,3,x,,,,,E7,deferred,E7
-3.9.3.9,3,x,,,,,E7,deferred,E7
-3.9.3.10,3,x,,,,,E7,deferred,E7
-3.9.3.10 a),3,x,,,,,E7,deferred,E7
-3.9.3.10 b),3,x,,,,,E7,deferred,E7
-3.9.3.11,3,x,,,,,E7,deferred,E7
-3.9.3.11 a),3,x,,,,,E7,deferred,E7
-3.9.3.11 b),3,x,,,,,E7,deferred,E7
-3.9.3.11 c),3,x,,,,,E7,deferred,E7
-3.9.3.11 d),3,x,,,,,E7,deferred,E7
-3.9.3.14,3,x,x,,,,E7,deferred,E7
-3.9.3.15,3,x,,,,,E7,deferred,E7
-3.9.3.16,3,x,,,,,E7,deferred,E7
+3.9.1.3,3,x,,,,,E7,todo,
+3.9.2.11,3,x,,,,,E7,todo,
+3.9.3.3,3,x,,,,,E7,todo,
+3.9.3.3 b),3,x,,,,,E7,todo,
+3.9.3.4,3,x,x,,,,E7,todo,
+3.9.3.5,3,x,,,,,E7,todo,
+3.9.3.5 a),3,x,,,,,E7,todo,
+3.9.3.5 b),3,x,,,,,E7,todo,
+3.9.3.6,3,x,,,,,E7,todo,
+3.9.3.6 a),3,x,,,,,E7,todo,
+3.9.3.6 b),3,x,,,,,E7,todo,
+3.9.3.6.1,3,x,,,,,E7,todo,
+3.9.3.9,3,x,,,,,E7,todo,
+3.9.3.10,3,x,,,,,E7,todo,
+3.9.3.10 a),3,x,,,,,E7,todo,
+3.9.3.10 b),3,x,,,,,E7,todo,
+3.9.3.11,3,x,,,,,E7,todo,
+3.9.3.11 a),3,x,,,,,E7,todo,
+3.9.3.11 b),3,x,,,,,E7,todo,
+3.9.3.11 c),3,x,,,,,E7,todo,
+3.9.3.11 d),3,x,,,,,E7,todo,
+3.9.3.14,3,x,x,,,,E7,todo,
+3.9.3.15,3,x,,,,,E7,todo,
+3.9.3.16,3,x,,,,,E7,todo,
 3.10.1.3.1,3,x,,,,,E5,done,"EVC_Radio_Authority.Take_Emergency: the table of stops by NID_EM, a new message with the same identifier replaces the entry; evc_test Scenario_Emergency_Stops [E5 authority]"
 3.10.1.4,3,x,,,,,E5,done,EVC_Radio_Authority.Acknowledge_Stops: message 147 with NID_EM and Q_EMERGENCYSTOP to the session of the message; evc_test Scenario_Emergency_Stops [E5 authority]
 3.10.2.2,3,x,x,,,,E5,done,"message 15 to EVC_Radio_Info (Conditional_Stop, the stop location from the location reference shifted by D_REF, Q_DIR not valid for the train: rejected, a decision); EVC_Stored_Information.Take_Stop; evc_test Scenario_Emergency_Stops [E5 authority]"
@@ -438,11 +438,11 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.5.14,3,x,,,,,E3,done,"EVC_Radio_Authority.Delete_Inhibition: a) the session with the RBC that ordered it no longer established deletes it; b) the max safe front end crossing the RBC/RBC border of the transition order (EVC_Position.Report_Triggers Border_Front, once per order) deletes it; evc_test Scenario_TSR_Inhibition, Scenario_TSR_Inhibition_Border [E5 authority]"
 3.11.5.14 1st bullet,3,x,,,,,E3,done,"EVC_Radio_Authority.Delete_Inhibition: the session of the RBC that ordered the inhibition (Take_Inhibition) not established any more (EVC_Radio.Established: idle or terminating) deletes it; evc_test Scenario_TSR_Inhibition [E5 authority]"
 3.11.5.14 2nd bullet,3,x,,,,,E3,done,"EVC_Radio_Authority.Delete_Inhibition: the max safe front end crossing the RBC/RBC border of the RBC transition order (EVC_Position.Report_Triggers Border_Front, set in the cycle of the crossing, once per order: a roll-back behind the border does not repeat it) deletes the inhibition, the session with the Handing Over RBC still established; evc_test Scenario_TSR_Inhibition_Border [E5 authority]"
-3.11.6.2,3,x,,,,,E3,deferred,"EVC_Movement_Authority.Take_V_Main at reception; in the MRSP from then on in FS, AD, LS and OS (4.5.2), with or without an MA and whatever the orientation (EVC_Stored_Information.Build_Speed_Sources); evc_test Scenario_MA; the infill part [E7 infill]"
+3.11.6.2,3,x,,,,,E3,todo,"EVC_Movement_Authority.Take_V_Main at reception; in the MRSP from then on in FS, AD, LS and OS (4.5.2), with or without an MA and whatever the orientation (EVC_Stored_Information.Build_Speed_Sources); evc_test Scenario_MA; the infill part [E7 infill]"
 3.11.6.3,3,x,,,,,E3,done,EVC_Movement_Authority.Take_V_Main (until a new one or A.3.4 deletes it)
 3.11.6.3.1,3,x,,,,,E3,done,"EVC_Movement_Authority.Drop_V_Main when a level 2 MA (packet 15) is accepted (EVC_Stored_Information, K15): the V_MAIN of a level 1 packet 12 (EVC_Movement_Authority.Take_V_Main) is kept over a transition to level 2 until then; evc_test_authority Scenario_MA_Request_Perturbation; SUBSET-076 3131100_04 [E5 authority]"
 3.11.6.4,3,x,x,,,,E3,done,"V_MAIN 0 recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip 4.6.3 [18] (EVC_Procedures); evc_test_procedures Scenario_Trip_Order"
-3.11.6.5,3,x,,,,,E3,deferred,E7 (infill)
+3.11.6.5,3,x,,,,,E3,todo,E7 (infill)
 3.11.7.1,3,x,,,,,E3,done,"the MRSP takes the mode related speed of EVC_Procedures.Mode_Speed, the one source (V_NVSHUNT, V_NVONSIGHT, V_NVLIMSUPERV, V_NVUNFIT, the V_MAMODE of the mode profile, V_REVERSE, in SR EVC_Mission's SR speed, the override speed); evc_test_procedures Mode_Speeds and the mode scenarios, Integration_SR_Override_Trip"
 3.11.7.1.1,3,x,,,,,E3,done,"the V_MAMODE of the mode profile the mode was entered with (EVC_Procedures.Mode_Speed); evc_test_procedures Scenario_On_Sight, Scenario_Limited_Supervision"
 3.11.7.1.3,3,x,,,,,E3,done,"the driver's SR speed limit (EVC_Mission, 4.4.11.1.5)"
@@ -502,10 +502,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.3.5.3,3,x,,,,,E4,done,a message with a report request and the identifier of one not acknowledged is rejected (JRU 24 kind 4; EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300))
 3.12.4.2,3,x,,,,,E3,done,EVC_Movement_Authority.Take_Mode_Profile (SH: no length); evc_test Scenario_Other_Profiles
 3.12.4.3,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_Other_Profiles
-3.12.4.3.1,3,x,,,,,E3,deferred,E7 (infill)
-3.12.4.3.1 a),3,x,,,,,E3,deferred,E7 (infill)
-3.12.4.3.1 b),3,x,,,,,E3,deferred,E7 (infill)
-3.12.4.3.1 c),3,x,,,,,E3,deferred,E7 (infill)
+3.12.4.3.1,3,x,,,,,E3,todo,E7 (infill)
+3.12.4.3.1 a),3,x,,,,,E3,todo,E7 (infill)
+3.12.4.3.1 b),3,x,,,,,E3,todo,E7 (infill)
+3.12.4.3.1 c),3,x,,,,,E3,todo,E7 (infill)
 3.12.4.4,3,x,,,,,E3,done,the list of balise groups for the SH area deleted when the SH mode profile is deleted other than by entering SH (EVC_Procedures.Profiles_Step)
 3.12.4.7,3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target to Snapshot_T.Temporary, supervised by EVC_SDM (3.13.1.5); not for the profiles of the mode in use (Set_Mode_In_Use, E4); evc_test Other_Profiles, SDM_Seams, evc_test_procedures Scenario_On_Sight"
 3.12.4.7 a),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL at the start), supervised as an SvL without release speed (EVC_SDM, 3.13.1.5); evc_test Other_Profiles, SDM_Seams"
@@ -972,10 +972,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.17.3.5 c),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams: X = 3 interpreted (4.0.0), X = 2 with the layout of 4.0.0; X = 1 refused by ETCS_Telegram, its content left out without a reaction: the interpretation by chapter 6 of X = 1 and 2 comes with its translations [E7 version]; evc_test Track_And_Version"
 3.17.3.5 d),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams compares with EVC_System_Version.Highest_X; the content left out, the trip of 4.6.3 [65] in levels 1 and 2 with Trackside not compatible (EVC_Procedures); evc_test Track_And_Version"
 3.17.3.5 e),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams: the trip of 4.6.3 [65] only in levels 1 and 2 (EVC_Procedures), level 0 no reaction; NTC out of scope; evc_test Track_And_Version"
-3.17.3.6,3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
-3.17.3.6 a),3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
-3.17.3.6 b),3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
-3.17.3.6 c),3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.6,3,x,,,,,E6,todo,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.6 a),3,x,,,,,E6,todo,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.6 b),3,x,,,,,E6,todo,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.6 c),3,x,,,,,E6,todo,Euroloop is phase E7 [E7 Euroloop]
 3.17.3.7,3,x,,,,,E6,done,"EVC_Sessions.Take_Version checks the X of the RBC at every establishment (3.5.3.7 d), the handover included); EVC_System_Version.Follow operates it; RIU is E7; evc_test session_establish"
 3.17.3.11,3,x,,,,,E6,done,"ETCS_Message passes an unknown packet over (c) and ignores an unknown message (b), for any version; EVC_Core.Inputs.Read_Radio_Messages records the unknown message (JRU 9) and takes nothing of it, no consistency error; a spare value of a known message stays an error (3.16.1.1.1, done); a) done in EVC_Core.Inputs.Read_Telegrams; evc_test radio_unknown_message [E5 version]"
 3.17.3.11 a),3,x,,,,,E6,done,"EVC_Core.Inputs.Read_Telegrams: ETCS_Telegram passes an unknown packet over by L_PACKET and counts it, for any Y; the consistency error of a spare NID_PACKET for the operated Y is 3.16"
@@ -1098,7 +1098,7 @@ A.3.5.1 1st bullet,3,x,,,,,E4,done,"national values and the level transition act
 A.3.5.1 2nd bullet,3,x,,,,,E4,done,"national values and the level transition actions are taken once (the order and the stored set are deleted when executed: EVC_National_Values, EVC_Levels)"
 A.3.5.1 3rd bullet,3,x,,,,,E4,done,"the texts' start is taken on the location's passage (EVC_Text_Messages); evc_test Scenario_Text_Roll_Back: a roll back 1.5 m in rear of the start and forward again, the text neither removed nor shown again; the stop over a reverse movement by evc_test Scenario_Text_Stop_Roll_Back (EVC_Text_Messages.End_Condition); over a relocation evc_test Scenario_Text_Relocated: the text from 309 m of the group 10 shown before the group 20 (linked at 300 m, read 6 m late by a 2 % over-reading) is read, the relocation puts the estimated front end in rear of the start, forward again: neither removed nor shown twice, no record; the stop over a relocation by evc_test Scenario_Text_Stop_Relocated (the text from 209 to 309 m of the group 10 ended before the group 20 is read, the relocation in rear of its end, forward again: not shown, no record; the end sub-conditions of 3.12.3.4.3 other than the location are not location based) [E5 authority]"
 A.3.5.1 4th bullet,3,x,,,,,E4,done,"the beginning and the end of a mode profile, once passed, are kept for the profile of the slot (EVC_Procedures.Note_Passed, called by EVC_Procedures.Profiles_Step); evc_test Scenario_Mode_Profile_Roll_Back: an OS profile entered at its start (4.6.3 [40]), a roll back 1.5 m in rear of the start and forward again, OS kept, no second transition nor acknowledgement; FS at its end (4.6.3 [75]), a roll back 1.5 m in rear of the end and forward again, FS kept (OS was resumed there before the fix); over a relocation on a group that becomes SOLR: evc_test Scenario_Mode_Profile_Relocated (an OS profile's end passed by the min safe front end before the group 20 is read, the relocation 1.94 m in rear of it: FS kept) and Scenario_LS_Profile_Relocated (an LS profile from 320 m of the group 10, LS entered when the max safe front end reaches it before the group 20 is read, the relocation puts it in rear of the beginning: LS kept, no transition and no acknowledgement again forward) [E5 authority]"
-A.3.5.1 5th bullet,3,x,,,,,E4,deferred,radio infill is phase E7 [E7 infill] [E5 authority]
+A.3.5.1 5th bullet,3,x,,,,,E4,todo,radio infill is phase E7 [E7 infill] [E5 authority]
 A.3.5.1 6th bullet,3,x,,,,,E4,done,"the handover's actions at the border are taken once, the order consumed by the switch (EVC_Sessions.Handover.Switch, EVC_Sessions.Handover.Watch_Rear); evc_test Handover_Rear_Repeat; over a reverse movement: the crossings of the border by the max safe front end and by the min safe rear end fire once each, the border item invalidated when it fires (EVC_Position.Evaluate_Border, EVC_Position.Report_Triggers), evc_test Scenario_Handover_Roll_Back: the front past the border at 300 m (400 supervising, the session with 300 kept), 1.5 m back and 5 m forward, no second crossing; the rear past it, the same; RBC 300's order, one 156, a roll back and forward, no second 156 and no new connection to 300; over a relocation evc_test Scenario_Handover_Relocated (the max safe front end past the border 320 m from the group 10 before the group 20 is read, the relocation in rear of it, forward again: one crossing only, 400 supervising) [E5 authority]"
 A.3.5.1 7th bullet,3,x,,,,,E4,done,"the track conditions' indications and train interface outputs taken once per location (EVC_Track_Conditions.Phases: the start and the end reached by the train kept in the stored condition); evc_test Scenario_Track_Condition_Roll_Back (a roll back 1.5 m in rear of a powerless section's start, end and the location where the rear end leaves it: no indication shown again, no remaining distance generated again, no record written again); over a relocation evc_test Scenario_Track_Condition_Relocated (a powerless section's start reached by the max safe front end before the group 20 is read, the relocation 4.44 m in rear of it: the lowered pantograph kept, no announcement nor record again) [E5 authority]"
 A.3.5.1 9th bullet,3,x,,,,,E4,done,"the track ahead free request: its beginning once reached kept (EVC_Radio_Authority.Evaluate_TAF), its end once passed ends it; over a reverse movement evc_test Scenario_TAF_Roll_Back; over a relocation evc_test Scenario_TAF_Relocated_In_Rear: the request from 309 m of the group 10 shown before the group 20 (linked at 300 m, read 6 m late by a 2 % over-reading) is read, the relocation puts the estimated front end in rear of the beginning, forward again: shown in every cycle, never withdrawn [E5 authority]"
@@ -1218,10 +1218,10 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.11.1.3 c),4,x,,,,,E4,done,"packet 63 of message 2 (EVC_Radio_Authority.Take_SR_List), 4.6.3 [36] (Group_Not_Listed, trip reason SR_Balise_Not_Listed in EVC_Procedures); evc_test Scenario_SR_Authorisation, Scenario_SR_Stop_Listed (a stop if in SR group in the list passed, not in it tripped) [E5 authority]"
 4.4.11.1.3 d),4,x,,,,,E4,done,"the order of packet 137 trips ([54], EVC_Procedures), except for a group in the list of the RBC (Context_T.SR_Listed from EVC_Radio_Authority.Groups_Passed_Listed); evc_test Scenario_SR_Stop_Listed: the group in the list passed in SR in level 2, without a list the trip by the order [E5 authority]"
 4.4.11.1.3 e),4,x,,,,,E4,done,EVC_Brake_Commands: unauthorised direction protection in SR against the train orientation
-4.4.11.1.3.1,4,x,,,,,E4,deferred,"a) b) done (EVC_Mission, EVC_Radio_Authority; evc_test E4_SR_Distance, Scenario_SR_Authorisation); c) [E7 Euroloop]"
+4.4.11.1.3.1,4,x,,,,,E4,todo,"a) b) done (EVC_Mission, EVC_Radio_Authority; evc_test E4_SR_Distance, Scenario_SR_Authorisation); c) [E7 Euroloop]"
 4.4.11.1.3.1 a),4,x,,,,,E4,done,"EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); national values taken in SR give the end from the entry of SR or of Override (EVC_Mission.Take_National_SR); evc_test E4_SR_Distance, SR_National_Distance"
 4.4.11.1.3.1 b),4,x,,,,,E4,done,EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); evc_test E4_SR_Distance
-4.4.11.1.3.1 c),4,x,x,,,,E4,deferred,E7 (Euroloop)
+4.4.11.1.3.1 c),4,x,x,,,,E4,todo,E7 (Euroloop)
 4.4.11.1.5,4,x,,,,,E4,done,"EVC_Mission: MSG_DRIVER_DATA kind 3 in SR at standstill, refused otherwise (JRU 41 kind 4); evc_test E4_SR_Distance"
 4.4.11.1.5.1,4,x,,,,,E4,done,"EVC_Mission.Entering_SR_Data from the DMI's driver actions 23 (SR speed / distance window opened) to 24 (left) or the data entered, in SR; EVC_Core passes it to EVC_Brake_Commands (reason Data_Entry_Movement); evc_test Scenario_SR_Data_Movement [B015, e4/protocol-items]"
 4.4.11.1.5.2,4,x,,,,,E4,done,"EVC_Mission: 5 .. 600 km/h, 0 .. 65535 m as the DMI sends them (A.3.11)"
@@ -1233,7 +1233,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.11.1.6.4 b),4,x,,,,,E4,done,"message 2 D_SR (EVC_Radio_Authority.Take_SR_Authorisation) supervised from its reception (4.4.11.1.3.1 b), EVC_Core.Stored.SR_Distance / SR_End / [42]; the driver's later entry replaces it; evc_test Scenario_SR_Authorisation [E5 authority]"
 4.4.11.1.6.5,4,x,,,,,E4,done,"EVC_Mission.Override_In_SR, called by EVC_Core.Modes.Run_Procedures on [37] in SR (the distance counted from the selection, 4.4.11.1.3.1 a); evc_test_procedures Integration_SR_Override_Trip"
 4.4.11.1.6.6,4,x,,,,,E4,done,the RBC list replaced or deleted by a new message 2 (EVC_Radio_Authority.Take_SR_Authorisation); evc_test SR_Authorisation [E5 authority]
-4.4.11.1.6.7,4,x,,,,,E4,deferred,Euroloop is phase E7 [E7 Euroloop] [E5 authority]
+4.4.11.1.6.7,4,x,,,,,E4,todo,Euroloop is phase E7 [E7 Euroloop] [E5 authority]
 4.4.11.1.7,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle (the DMI shows the permitted speed on request); the override in MSG_MODE_LEVEL (5.8.3.7)
 4.4.11.1.8,4,x,,,,,E4,done,the SR distance is a virtual position of 3.6.7 (EVC_Odometry.Virtual_T)
 4.4.11.1.9,4,x,,,,,E4,done,"the request of message 34 shown to the driver from its display location (EVC_Radio_Authority.Take_TAF, EVC_Radio_Authority.Evaluate_TAF); evc_test Track_Ahead_Free [E5 authority]"
@@ -1375,7 +1375,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.4.2 Table-footnote [3],4,x,,,,,E4,done,EVC_Sessions.Apply_Order: in SH and PS the order to establish a session stores the RBC contact without the session (e5/mode-change-session); evc_test session_mode_change [E5 session]
 4.8.4.2 Table-footnote [4],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.4.2 Table-footnote [5],4,x,,,,,E4,done,"in PT the immediate and the conditional level transition orders rejected, the announcement taken (EVC_Levels.Take_Order, Take_Conditional; an order at D_LEVELTR 0 is an immediate one); a balise group's are rejected by [1] already (EVC_Acceptance); evc_test Radio_Level_Orders [E5 session]"
-4.8.4.2 Table-footnote [6],4,x,,,,,E4,deferred,the SR distance of a loop (Euroloop) is phase E7 [E7 Euroloop] [E5 session]
+4.8.4.2 Table-footnote [6],4,x,,,,,E4,todo,the SR distance of a loop (Euroloop) is phase E7 [E7 Euroloop] [E5 session]
 4.8.4.2 Table-footnote [7],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; the immediate order kept in EVC_Levels.Take_Order, an order at D_LEVELTR 0 one too; evc_test E4_Acceptance, SH_Order_At_Zero"
 4.8.4.2 Table-footnote [8],4,x,,,,,E4,done,"in SH and PS only an RBC transition order with null distance is taken, for the RBC contact (EVC_Sessions.Handover.Evaluate, EVC_Sessions.Handover.Take_Order); evc_test Session_Order_Rows (an announcement in SH rejected, an order at once in SH and in PS stores the contact, no handover stored, no session) (e6/released-sets) [E5 session]"
 4.8.4.2 Table-footnote [9],4,x,,,,,E4,done,"the LSSMA display toggle on order outside LS taken only when the train position confidence interval overlaps the LS area of a mode profile of the same message, the furthest it overlaps (EVC_Stored_Information.LS_Area_Furthest in Take_LS_Packet, over EVC_Movement_Authority.Mode_Profile with its Msg); evc_test LS_Order_Area, LS_Order_Buffered (B093, e4/ls-display-3)"
@@ -1494,7 +1494,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.5.3 j) 2nd bullet,5,x,,,,,E4,done,"levels 0 / 1: the Radio Network information modified by EVC_Sessions.Network.Driver_Entries in every level; the RBC contact entered taken only in level 2 (EVC_Sessions.Mission.Evaluate_SoM); evc_test Scenario_Network_Level_1: at S10 and S20 in level 1 the network taken, the RBC data not, no session [E5 session]"
 5.4.5.3 k),5,x,,,,,E4,done,"EVC_Sessions.Manoeuvre.Possible: in SB in level 2 with the safe consist length available the driver's selection of SM is taken (S10 of 5.4.3.2 and S20 both in SB; the procedure's S0 adds the valid position referred to an LRBG and standstill), message 131, the SM authorisation of message 4 (EVC_Radio_Authority, 4.6.3 [81]) entering SM, an SM refused back to SB (EVC_Sessions.Manoeuvre.Evaluate); evc_test Scenario_SM_Start_Of_Mission [E6 Supervised Manoeuvre] [E5 session]"
 5.4.5.3 l),5,x,,,,,E4,done,"EVC_Driver_Requests.BMM_Inhibition at standstill in SB, so at S10 and S20 (5.22.2.1, EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM [E5 session]"
-5.5.3.1.2,5,x,,,,,E4,deferred,"a session with an RIU is radio infill, phase E7; step 1 is 4.10 (EVC_Core.Modes.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E7 infill] [E5 session]"
+5.5.3.1.2,5,x,,,,,E4,todo,"a session with an RIU is radio infill, phase E7; step 1 is 4.10 (EVC_Core.Modes.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E7 infill] [E5 session]"
 5.5.3.1.3,5,x,,,,,E4,done,EVC_Sessions.Mission: message 150 with packet 0 when a session with the RBC is established [E5 session]
 5.5.3.1.4,5,x,,,,,E4,done,"EVC_Sessions.Mission: 150 repeated while the desk is open until the RBC terminates the session (3.5.5, EVC_Sessions) [E5 session]"
 5.5.3.1.4 step 4,5,x,,,,,E4,done,EVC_Sessions: the termination ordered by the RBC (3.5.5) [E5 session]
@@ -1548,7 +1548,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.8.3.7,5,x,,,,,E4,done,MSG_MODE_LEVEL override (EVC_Procedures.Override_Indicated); evc_test_procedures Scenario_Override
 5.8.3.7.1,5,x,,,,,E4,n/a,an override activated by an STM: National Systems are out of scope (EVC-PLAN §1)
 5.8.3.7.2,5,x,,,,,E4,done,not indicated in level NTC (EVC_Procedures.Override_Indicated)
-5.8.3.8,5,x,,,,,E4,deferred,E7 (Euroloop)
+5.8.3.8,5,x,,,,,E4,todo,E7 (Euroloop)
 5.8.3.9,5,x,,,,,E4,done,selected again: the time and the distance restart (EVC_Procedures.Override_Step); JRU 23 kind 2 byte 3 1
 5.8.4.1,5,x,,,,,E4,done,"the end of the override, a) to i): see their rows; EVC_Procedures.Override_Step (f) on Context_T.Radio_MA_L2, g) on the SH list and Context_T.SR_Unlisted), EVC_Procedures.Mode_Changed (i); evc_test Scenario_Override, Scenario_Override_Ends_By_Radio"
 5.8.4.1 a),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
@@ -2020,7 +2020,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 6.6.5.6.3 Table-footnote [2],6,x,,,,,E7,todo,
 7.3.2.7,7,x,x,,,,E1,done,"ETCS_Variables.To_D_REF and its Code, two's complement (proved AoRTE); no negative D_REF scenario"
 7.3.2.10,7,x,x,,,,E1,done,"ETCS_Bits Reader/Writer, MSB first (proved); evc_test telegram"
-7.3.3.4,7,x,,,,,E1,deferred,"E7 (e7/version-rows, the version rules of chapter 6 and 3.17.3.11): today an unknown NID_PACKET is passed over for every version (ETCS_Message, EVC_Core.Inputs.Read_Telegrams; row 3.17.3.11), where 7.3.3.4 makes it invalid unless the information only differs by Y above the on-board's X: B4663"
+7.3.3.4,7,x,,,,,E1,todo,"E7 (e7/version-rows, the version rules of chapter 6 and 3.17.3.11): today an unknown NID_PACKET is passed over for every version (ETCS_Message, EVC_Core.Inputs.Read_Telegrams; row 3.17.3.11), where 7.3.3.4 makes it invalid unless the information only differs by Y above the on-board's X: B4663"
 7.4.2.0,7,x,x,,,,E1,done,"ETCS_Track_Packets.P0, no L_PACKET (7.3.3.5) in ETCS_Packet_Index.Scan; evc_test telegram"
 7.4.2.1,7,x,x,,,,E1,done,"ETCS_Track_Packets.P2; evc_test packet_round_trips, evc_test telegram"
 7.4.2.1.1,7,x,x,,,,E1,done,ETCS_Track_Packets.P3; evc_test packet_round_trips
@@ -2330,12 +2330,12 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 8.4.1.3.1,8,x,x,,,,E1,done,"the packets after a packet 136 valid for the direction are located from the group it names (3.6.2.3.1, the next main signal's group), placed by the stored linking from the reference of the message's origin and relocated with the other origins at its passage (EVC_Stored_Information.Infill_Origin, Take_Group); not kept without the group in the linking (3.8.4.6.4); evc_test Scenario_Infill_Origin [E7 infill]"
 8.4.1.5,8,x,,,,,E1,done,"ETCS_Message.Parse Duplicate_Packet (train to track); evc_test message (136, packet 4 twice)"
 8.4.1.5.1,8,x,,,,,E1,done,"catalogue: packet 44 repeat in 136, 157; evc_test message (136, packet 44 twice)"
-8.4.4.1.1,8,x,,,,,E1,deferred,"E7 (e7/version-rows, the version rules of chapter 6 and 3.17.3.11 b)): today an unknown NID_MESSAGE is ignored for every version (EVC_Core.Inputs.Read_Radio_Messages, JRU 9; row 3.17.3.11), where 8.4.4.1.1 makes it invalid unless the RBC operates a version only differing by Y above the on-board's X: B4663"
+8.4.4.1.1,8,x,,,,,E1,todo,"E7 (e7/version-rows, the version rules of chapter 6 and 3.17.3.11 b)): today an unknown NID_MESSAGE is ignored for every version (EVC_Core.Inputs.Read_Radio_Messages, JRU 9; row 3.17.3.11), where 8.4.4.1.1 makes it invalid unless the RBC operates a version only differing by Y above the on-board's X: B4663"
 8.4.4.2,8,x,x,,,,E1,done,"L_MESSAGE read by ETCS_Message.Parse, written by Finish; evc_test message"
 8.4.4.2.1,8,x,x,,,,E1,done,"ETCS_Message.Parse Bad_Length, padding under 8 bits; evc_test message"
 8.4.4.3,8,x,x,,,,E1,done,"ETCS_Message_Catalogue fields and packet rules, Packet_Not_Allowed; evc_test message"
 8.4.4.4,8,x,x,,,,E1,done,"ETCS_Message.Parse: mandatory packets first, then optional ones; evc_test message"
-8.4.4.4.1 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse applies the sender rules (evc_test senders); the RIU session is radio infill, phase E7 [E7 infill] [E5 session]"
+8.4.4.4.1 Table,8,x,x,,,,E1,todo,"structure done; ETCS_Message.Parse applies the sender rules (evc_test senders); the RIU session is radio infill, phase E7 [E7 infill] [E5 session]"
 8.4.4.4.1.1 Table,8,x,x,,,,E1,done,"common optional packets in messages 3, 24, 33 (ETCS_Message_Catalogue); evc_test message"
 8.4.4.4.2,8,x,x,,,,E1,done,"ETCS_Message_Catalogue Train_M136 optional 4, 5, 44; evc_test message (136)"
 8.4.4.4.2 a),8,x,x,,,,E1,done,"ETCS_Message_Catalogue Train_M136 optional 4, 5, 44; evc_test message (136)"
@@ -2353,7 +2353,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 8.4.4.4.5 a),8,x,x,,,,E1,done,ETCS_Message_Catalogue Train_M131 optional packet 12; check_catalogue.py
 8.4.4.5,8,x,x,,,,E1,done,"ETCS_Message.Finish pads to a byte, Parse takes under 8 bits as padding; evc_test message"
 8.5.2 Table,8,x,x,,,,E1,done,"structure done; ETCS_Message.Parse checks the receiver (Wrong_Sender, evc_test senders); the messages the on-board sends are built by EVC_Sessions (131 and 133 by EVC_Sessions.Manoeuvre) and EVC_Radio_Authority; the Invariant column: no clause of 4.0.0 acts on it, the on-board sends 155 and 156 and reads 32 and 39, all invariant, before the RBC's version is known, then 154 or 159 (EVC_Sessions.Take_Version; evc_test version_negotiation); the column is not in the generated catalogue, needed with the translations of chapter 6 (B1463) [E7 version] [E5 session]"
-8.5.3 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse applies the sender rules (evc_test senders); the RIU session is radio infill, phase E7 [E7 infill] [E5 session]"
+8.5.3 Table,8,x,x,,,,E1,todo,"structure done; ETCS_Message.Parse applies the sender rules (evc_test senders); the RIU session is radio infill, phase E7 [E7 infill] [E5 session]"
 8.6.1,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M129; check_catalogue.py; evc_test message
 8.6.2,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M130; check_catalogue.py
 8.6.2.1,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M131; check_catalogue.py
