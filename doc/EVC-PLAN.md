@@ -26782,3 +26782,30 @@ small, or deferred with a reason that holds; B4564; the tool lists such
 rows). The runner's items (B4563, the envelope's block, the triage notes
 the inventory found wrong, B4523, B4524) go with the check per version
 in the round after.
+
+### The rows deferred to closed phases re-read: what was built, what was missing, the matrix check for them (e7/deferred-rows) (2026-11-15)
+
+B4583 named 24 rows of doc/TRACE-SUBSET-026.csv deferred with a closed phase as their reason; `awk -F, 'NR>1 && $9=="deferred" && $8!="E7"'` lists 66 deferred rows outside phase E7: 37 of infill, Euroloop or an RIU (E7, left), the 24, and five that wait for something real, their reasons confirmed: 3.15.11.2 and 4.4.16.1.4 to .6 the ATO on-board on the ATO port (SUBSET-125, AD not entered), 4.4.6.1.10 c) the safety critical faults of the target (E8: ESM, lockstep). Each of the 24 was read at its clause, at the code (outline, the `@req` tags, the matrix rows next to it) and at a scenario of evc_test.
+
+| clause | outcome | unit and scenario, or the open line |
+|---|---|---|
+| 3.6.3.2.2, a) to e) (6 rows) | done | EVC_Track_Description.Take_SSP, .Take_Gradients; Scenario_SSP_Gradients (a, c, d), Scenario_SSP_Gaps (b), Scenario_SSP_Zero_Length (e, new: 40 km/h of length 0 for the rear end kept over the 200 m train length; it passed on the code as it was) |
+| 3.6.3.2.4, a) to c) (4 rows) | done | EVC_Track_Description.Take_ASP, EVC_Track_Conditions.Take_Conditions, EVC_Movement_Authority.Take_Mode_Profile (no tag there: its unit is e7/infill-origin's); Scenario_Track_Conditions (a), Scenario_Other_Profiles (b, c) |
+| 3.6.1.5.1 | done | EVC_Position.Manoeuvre_Orientation, Shift_For_Manoeuvre, End_Manoeuvre; Scenario_SM_Authorisation, Scenario_SM_Gamma |
+| 3.6.3.1.3.2 | done | EVC_Radio_Authority.Take_SM_Authorisation (Reversed by SM_Opposite); Scenario_SM_Authorisation (SM opposite) |
+| 3.6.5.1.4 f) | done | EVC_Level_Sessions.Evaluate (the report when the min safe rear end has passed the border, 5.10.3.3.3, 5.10.3.6.2); Scenario_L2_Exit_By_Order |
+| 3.14.1.11.1, 3.14.1.11.2 | done | EVC_Core.Modes.Revoke_Brake_Reasons; Scenario_SR_Data_Brake_Revoked, Scenario_Brake_Reevaluated, Scenario_SM_Brake_Reasons |
+| 5.12.4.2.1 | done | 4.6.3 [26], EVC_Transition_Conditions.Train_Interface_Holds; Scenario_E4_Continue_Shunting |
+| 5.12.4.2.2 | done | 4.6.3 [23], EVC_Procedures.Set_Conditions; Scenario_E4_Continue_Shunting (a check added: desk B opened after desk A closed, SH at once) |
+| 5.4.5.1 | built here, done | EVC_Mission.Take_RBC_Answer; Scenario_SoM_L2_Session_Lost (new) |
+| 3.7.3.1 k) | done | EVC_Procedures.Take_Packet (packets 138, 139 replace the stored ones); Scenario_Reversing |
+| 5.11.4.3 | partial | level 1 shown (no transition in PT); level 2 to level 0 in PT to D085 not shown: B4664 |
+| 3.4.4.4.6 c) | partial | a) b) done; the message consistency error stopping the window not read: B4665 |
+| 3.13.2.2.9.1.2 | partial | one set of correction factors for every combination: B4666 |
+| 7.3.3.4, 8.4.4.1.1 | deferred, E7 (e7/version-rows) | an unknown packet or message is ignored for every version, an invalid value unless it differs by Y only: B4663 |
+
+Built here, 5.4.5.1 ("if it occurs in any step further than D11, the process shall go to S10"): 'Start' in level 2 at S20 sent the MA request and waited at S21 (EVC_Mission.Waiting_For_RBC) until the RBC answered, the desk was closed or the level changed; with the session of the supervising RBC lost (EVC_Radio.In_Communication false) it waited on. The wait now ends on that condition too (one line in EVC_Mission.Take_RBC_Answer): back to S20, where 'Start' needs the session again (5.4.5.3 h)). A lost connection is not a lost session: the session stays established while the connection is set up again (3.5.4), In_Communication stays true; the scenario's first draft lost the connection and the wait correctly went on. The check failed before the change (Waiting_For_RBC TRUE, session IDLE) and passes after it. EVC_Mission's proof: before 491 steps at most, 0 wide checks; after 5136 steps at most (evc_mission.adb:405, a check the cache did not hold), 0 wide checks. The full runner: 0 regressions, 0 improvements, no sequence moved (3190: 1276 passed, 986 failed, 928 blocked, as before).
+
+The matrix by status, before: done 2146, deferred 220, n/a 30, partial 2; after: done 2165, deferred 198, n/a 30, partial 5. The 24 rows: 19 done (one built here), 3 partial, 2 deferred to E7 with a package. The unit proofs of the units given `@req` lines (comments only): EVC_Track_Description, EVC_Track_Conditions, EVC_Position, EVC_Radio_Authority, EVC_Level_Sessions, EVC_Core.Modes, EVC_Procedures, EVC_Transition_Conditions: no unproved check, 0 or 1 wide checks each as before (EVC_Position 1, of 19 VCs).
+
+Left at the bound: the tool (trace_subset026.py `--stale` and `--check` on a deferred row whose note names a closed phase; the AGENTS.md sentence) and B4564 (the rows 3.6.1.1 to 3.6.1.3.4); B4583 stays open for the tool.

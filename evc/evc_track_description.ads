@@ -287,6 +287,8 @@ is
      with Pre => N <= 31;
 
    --  @req 3.7.3.1 a)
+   --  @req 3.6.3.2.2, 3.6.3.2.2 a), 3.6.3.2.2 b), 3.6.3.2.2 c)
+   --  @req 3.6.3.2.2 d), 3.6.3.2.2 e)
    procedure Take_SSP (P : ETCS_Track_Packets.P27.Packet_T;
                        M : Message_T;
                        T : Origin_Table_T;
@@ -294,12 +296,15 @@ is
      with Global => (In_Out => State);
 
    --  @req 3.7.3.1 b)
+   --  @req 3.6.3.2.2, 3.6.3.2.2 a), 3.6.3.2.2 b), 3.6.3.2.2 c)
+   --  @req 3.6.3.2.2 d), 3.6.3.2.2 e)
    procedure Take_Gradients (P : ETCS_Track_Packets.P21.Packet_T;
                              M : Message_T;
                              T : Origin_Table_T)
      with Global => (In_Out => State);
 
    --  @req 3.7.3.1 c), 3.7.3.2 b), 3.11.4.3
+   --  @req 3.6.3.2.4, 3.6.3.2.4 a), 3.6.3.2.4 b), 3.6.3.2.4 c)
    procedure Take_ASP (P    : ETCS_Track_Packets.P51.Packet_T;
                        M    : Message_T;
                        T    : Origin_Table_T;

@@ -528,6 +528,7 @@ is
    --  (Shift_For_Manoeuvre) to the end of the mission or Non Leading
    --  (End_Manoeuvre) the train orientation is that of the last
    --  authorisation, not the active cab's
+   --  @req 3.6.1.5.1
    function Manoeuvre_Orientation return Boolean
      with Global => State;
 

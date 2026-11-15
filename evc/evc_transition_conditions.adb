@@ -134,6 +134,7 @@ is
 
    --  [1], [2], [3], [14], [26], [27], [46], [47]: the driver's requests
    --  and the train interface (4.4.3, 4.4.15, 4.4.16, 4.4.20)
+   --  @req 5.12.4.2.1
    function Train_Interface_Holds (C : Train_Interface_Condition_T)
      return Boolean
    is (case C is

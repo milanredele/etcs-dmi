@@ -727,7 +727,7 @@ is
 
    --  Packet P of the telegram J of the group taken Tk, of kind Kind (one
    --  of the packets of this unit): decoded and taken
-   --  @req 3.15.4.1.1, 3.15.4.3
+   --  @req 3.15.4.1.1, 3.15.4.3, 3.7.3.1 k)
    procedure Take_Packet (Kind : ETCS_Catalogue.Packet_Kind_T;
                           J, P : Positive;
                           Tk   : EVC_Position.Taken_T)
@@ -1695,6 +1695,7 @@ is
    --  the driver's selections and acknowledgements, the desks, the mode
    --  profile (3.12.4), the level switched (5.10); Standstill: the train
    --  is at standstill
+   --  @req 5.12.4.2.2
    procedure Set_Conditions (C : Context_T; Standstill : Boolean)
      with Global => (Input  => (Acked_Now, Acked_M, Stop_On_Desk,
                                 Ovr_Selected_Now, Profile_Info,

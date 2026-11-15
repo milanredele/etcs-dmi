@@ -178,6 +178,7 @@ begin
    Scenario_E3_Protocol;
    Scenario_SSP_Categories;
    Scenario_SSP_Gradients;
+   Scenario_SSP_Zero_Length;
    Scenario_SSP_Replacement;
    Scenario_TSR;
    Scenario_MA;
@@ -344,6 +345,7 @@ begin
    Scenario_Session_TRN;
    Scenario_SoM_L2_SR_Proposal;
    Scenario_SoM_L2_Mode_Proposal;
+   Scenario_SoM_L2_Session_Lost;
    Scenario_SoM_L2_Mode_Proposal_SH;
    Scenario_SoM_L2_MA_Without_Profile;
    Scenario_PT_L2_SR_Proposal;

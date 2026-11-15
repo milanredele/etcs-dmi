@@ -39,6 +39,7 @@ package EVC_Test_Sessions is
 
    --  e5/mode-proposal: 5.4.3.2 S21, E27 -> S25, E33
    procedure Scenario_SoM_L2_Mode_Proposal;
+   procedure Scenario_SoM_L2_Session_Lost;
    --  e5/mode-proposal-2: 5.4.3.2 E27 / S25 with Shunting, E29 (an MA
    --  without a mode profile);
    --  5.11.2.2 S150 a) / S160 and S150 b) / S170 in PT level 2

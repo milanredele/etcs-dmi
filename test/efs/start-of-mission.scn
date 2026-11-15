@@ -2850,7 +2850,7 @@ sub SubStep2
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 case Loss of connection after D11
-clause E4 deferred 5.4.5.1 ; efs 5.4.5.1
+clause E4 done 5.4.5.1 ; efs 5.4.5.1
 step Somewhere in SoM, after D11
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21

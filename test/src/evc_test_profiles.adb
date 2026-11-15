@@ -213,6 +213,30 @@ package body EVC_Test_Profiles is
              "snapshot: the train, the estimated front end in the frame");
    end Scenario_SSP_Gradients;
 
+   --  3.6.3.2.2 e): an SSP value whose distance to the next value is 0 is
+   --  still taken into account: 40 km/h for the rear end (Q_FRONT 0) at
+   --  1000 m, then 120 km/h from the same point, keeps 40 km/h over the
+   --  train length (200 m) after it
+   procedure Scenario_SSP_Zero_Length is
+      S : Prof.Store_T := TD.SSP;
+   begin
+      Start_X;
+      Add_Group (Group (10, 100));
+      Carry (1, 0, SSP ((1 => (0, 100, False), 2 => (1000, 40, True),
+                         3 => (0, 120, False))));
+      Carry (1, 1, Grad ((1 => (0, 0))));
+      Run_X (15_000);
+      S := TD.SSP;
+      Check (S.Count = 3 and then Est (S.List (2).Start) = 110_000
+             and then Est (S.List (2).Finish) = 110_000
+             and then S.List (2).Delay_Length and then S.List (3).Open,
+             "SSP: the element of length 0 stored (3.6.3.2.2 e)");
+      Check (MRSP_Is ((0, 10_000, 110_000, 130_000),
+                      (4_444, 2_777, 1_111, 3_333)),
+             "MRSP: the 40 km/h of length 0 kept over the train length "
+             & "(3.6.3.2.2 e, 3.11.3.1.3)");
+   end Scenario_SSP_Zero_Length;
+
    --  3.7.3.1 a): a new SSP replaces the stored one from its start; the
    --  relocation by travelled distance (3.6.4.2.5 c, no linking) widens
    --  the min and max items of the older one

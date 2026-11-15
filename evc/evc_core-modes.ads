@@ -208,6 +208,7 @@ is
    --  that turns the train, Table-footnote [2]), the movements while the
    --  driver modifies the Train Data and while he enters the SR limits
    --  (two reasons, their rows differ)
+   --  @req 3.14.1.11.1, 3.14.1.11.2
    procedure Revoke_Brake_Reasons (From, To : Mode_T)
      with Global => (Input  => EVC_Radio_Authority.State,
                      In_Out => (Brake_State, SDM_State, EVC_Sessions.State));

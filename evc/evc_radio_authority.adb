@@ -1022,7 +1022,7 @@ is
    --  [14]): its MA, gradient and SSP to the stores as those of message 33
    --  (referred to the LRBG shifted by D_REF), V_SM kept, [81] for the
    --  next cycle
-   --  @req 5.21.2.2 D080, 5.21.2.2 A050
+   --  @req 5.21.2.2 D080, 5.21.2.2 A050, 3.6.3.1.3.2
    procedure Take_SM_Authorisation (Now_Ms    : EVC_Radio.Time_Ms_T;
                                     Accepting : Boolean)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,

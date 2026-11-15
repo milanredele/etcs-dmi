@@ -168,6 +168,7 @@ is
                   and then Current_Changes.Count = 0;
 
    --  @req 3.7.3.1 g), 3.7.3.2 c)
+   --  @req 3.6.3.2.4, 3.6.3.2.4 a), 3.6.3.2.4 b), 3.6.3.2.4 c)
    procedure Take_Conditions (P : ETCS_Track_Packets.P68.Packet_T;
                               M : Message_T;
                               T : Origin_Table_T)

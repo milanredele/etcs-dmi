@@ -1198,6 +1198,31 @@ package body EVC_Test_Sessions is
              & "(4.6.3 [15])");
    end Scenario_SoM_L2_Mode_Proposal;
 
+   --  5.4.5.1: the session lost at a step after D11 (here S21, 'Start'
+   --  waiting for the RBC's answer): the process goes to S10, the wait
+   --  ends and 'Start' is not proposed again without a session
+   procedure Scenario_SoM_L2_Session_Lost is
+   begin
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Check (EVC_Mission.Waiting_For_RBC,
+             "session lost: 'Start' in level 2 waits (5.4.3.2 S21)");
+      --  a connection lost keeps the session (In_Communication, 3.5.4):
+      --  the session itself lost
+      R.Set_State (1, R.Idle);
+      Stand;
+      Stand;
+      Check (not EVC_Mission.Waiting_For_RBC
+             and then not EVC_Mission.Proposed
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "session lost after D11: back to S10, the wait for the RBC "
+             & "ended (5.4.5.1):"
+             & EVC_Mission.Waiting_For_RBC'Image
+             & EVC_Mission.Proposed'Image
+             & EVC_Radio.In_Communication'Image
+             & " " & R.Info (1).State'Image);
+   end Scenario_SoM_L2_Session_Lost;
+
    --  5.4.3.2 S21, E26 / E27 (decision of e5/same-cycle): 'Start' in
    --  level 2, then a message 2 and an MA with an On Sight profile at the
    --  train delivered in one cycle. The message 2 proposes SR in that

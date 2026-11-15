@@ -14,7 +14,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Change of train orientation | change-of-train-orientation.scn | 2 | 6 | 0 / 8 | 0 / 10 | 0 | absent 4, done 2 |
 | Computation of the expected deceleration | computation-of-the-expected-deceleration.scn | 5 | 12 | 28 / 1 | 32 / 4 | 10 | absent 3, done 2 |
 | Computation of the normal service brake deceleration | computation-of-the-normal-service-brake-deceleration.scn | 6 | 16 | 32 / 2 | 53 / 14 | 19 | absent 11, done 4 |
-| Computation of the safe deceleration | computation-of-the-safe-deceleration.scn | 19 | 44 | 91 / 1 | 187 / 10 | 21 | absent 23, deferred 2, done 18 |
+| Computation of the safe deceleration | computation-of-the-safe-deceleration.scn | 19 | 44 | 91 / 1 | 187 / 10 | 21 | absent 23, done 18, partial 2 |
 | Conversion model | conversion-model.scn | 7 | 33 | 70 / 0 | 87 / 46 | 0 | absent 10, done 35 |
 | Date and time | date-and-time.scn | 1 | 2 | 1 / 2 | 0 / 1 | 0 | - |
 | EURORADIO Communication session | euroradio-communication-session.scn | 3 | 10 | 3 / 13 | 0 / 13 | 0 | done 3 |
@@ -34,7 +34,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | National and default data | national-and-default-data.scn | 110 | 131 | 21 / 30 | 7 / 179 | 0 | absent 134, done 10 |
 | On Sight | on-sight.scn | 3 | 12 | 12 / 17 | 0 / 20 | 0 | absent 2, done 7 |
 | Override | override.scn | 23 | 63 | 118 / 153 | 0 / 155 | 0 | absent 2, done 57 |
-| Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, deferred 1, done 50 |
+| Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, done 51 |
 | Pre-indication location | pre-indication-location.scn | 2 | 4 | 4 / 3 | 4 / 4 | 0 | absent 2 |
 | Release speed | release-speed.scn | 1 | 2 | 2 / 1 | 0 / 4 | 0 | done 3 |
 | Reversing | reversing.scn | 5 | 13 | 16 / 15 | 0 / 30 | 0 | absent 8, done 8 |
@@ -43,7 +43,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Speed and distance monitoring | speed-and-distance-monitoring.scn | 15 | 22 | 51 / 14 | 49 / 5 | 2 | absent 19, done 7 |
 | Speed restriction to ensure permitted braking distance | speed-restriction-to-ensure-permitted-braking-distance.scn | 5 | 18 | 10 / 7 | 0 / 43 | 0 | absent 4, done 4 |
 | Staff Responsible | staff-responsible.scn | 3 | 6 | 6 / 16 | 0 / 12 | 0 | absent 3, done 6 |
-| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 1, done 134 |
+| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, done 135 |
 | Static Speed Profile | static-speed-profile.scn | 3 | 9 | 10 / 6 | 15 / 18 | 0 | absent 6, done 9 |
 | Supervision limits | supervision-limits.scn | 22 | 48 | 59 / 12 | 51 / 32 | 8 | absent 19, done 30 |
 | System Version 1 Translations | system-version-1-translations.scn | 30 | 64 | 30 / 34 | 0 / 34 | 0 | absent 41 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 37, n/a 1 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 12, done 695, n/a 5, other 52 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 8, done 697, n/a 5, other 52, partial 2 |

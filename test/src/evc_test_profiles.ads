@@ -10,6 +10,7 @@ package EVC_Test_Profiles is
       procedure Scenario_E3_Protocol;
       procedure Scenario_SSP_Categories;
       procedure Scenario_SSP_Gradients;
+      procedure Scenario_SSP_Zero_Length;
       procedure Scenario_SSP_Replacement;
       procedure Scenario_TSR;
       procedure Scenario_MA;

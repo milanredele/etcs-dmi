@@ -1459,7 +1459,7 @@ efs: Kernel.TrainPosition.Position.DataState <- DataStateEnum.Valid
 efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { IsLRBG => True, BaliseGroup => BTM.LRBG.BaliseGroupStruct { NID_BG=>9614, BGOrientation => OrientationEnum.Nominal, TrainRunningDirection => OrientationEnum.Nominal, Position => BTM.PositionStruct { OverReadingAmountOdo => 1039.0, Position => 1040.0, UnderReadingAmountOdo => 1042.0 } } },BTM.LRBG.PreviousBaliseGroupStruct{ BaliseGroup => BTM.LRBG.BaliseGroupStruct{ NID_BG=> 9616, BGOrientation=> OrientationEnum.Nominal, TrainRunningDirection => OrientationEnum.Nominal, Timestamp => Kernel.DateAndTime.Now(), Position=> BTM.PositionStruct{ OverReadingAmountOdo=> 12.0, Position=> 1080.0, UnderReadingAmountOdo=> 11.0 } }, IsLRBG => True, IsSingle => False } ]
 set odo.position 1080.0
 case The train passes a level transition border (from level 2/3 to level 0, 1, NTC) with its min safe rear end
-clause E2 deferred 3.6.5.1.4 f) ; efs 3.6.5.1.4.f
+clause E2 done 3.6.5.1.4 f) ; efs 3.6.5.1.4.f
 clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 sequence Position report events: train passes a RBC/RBC border with its max safe front end

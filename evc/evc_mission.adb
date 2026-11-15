@@ -599,7 +599,7 @@ is
    --  authority half keeps its SR distance and list (4.4.11.1.6.4) and a
    --  later 'Start' waits at S21 again
    --  @req 5.4.3.2 S21, 5.4.3.2 S25, 5.11.2.2 S150, 5.11.2.2 S150 a)
-   --  @req 5.11.2.2 S150 b), 5.11.2.2 S170
+   --  @req 5.11.2.2 S150 b), 5.11.2.2 S170, 5.4.5.1
    procedure Take_RBC_Answer (C : Context_T; M : Mode_T)
      with Global => (In_Out => (RBC_Wait, Proposal, Proposal_Mode,
                                 SR_After_Wait, SR_After_Wait_MAs,
@@ -628,9 +628,11 @@ is
       if not RBC_Wait then
          return;
       end if;
+      --  5.4.5.1: the session lost after D11, the process goes to S10
       if not ((M = M_SB and then Engaged) or else M = M_PT)
         or else not C.Level_Valid or else C.Level /= L2
         or else not C.Desk_Open
+        or else not C.In_Communication
       then
          RBC_Wait := False;
       elsif C.Profile_Ack then

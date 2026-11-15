@@ -1328,6 +1328,11 @@ package body EVC_Test_Modes is
              "PS: the desk closed with the passive shunting input: PS "
              & "(4.6.3 [26], 4.4.20.1.6), the function ended (4.4.20.1.7); "
              & "no MSG_MODE_LEVEL: the DMI has no PS");
+      Signal (Cab_B_Active, True);
+      Stand_X (100);
+      Check (JRU_Mode = Mode_T'Pos (M_SH) and then EVC_Core.Mode = M_SH,
+             "PS: desk B opened, back to SH at once (5.12.4.2.2, 4.6.3 "
+             & "[23]); mode " & Mode_T'Image (EVC_Core.Mode));
    end Scenario_E4_Continue_Shunting;
 
    --  4.8.3, the rows "From RBC: No, Infill" (SUBSET-076 4080300_15 step

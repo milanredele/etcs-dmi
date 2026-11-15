@@ -95,6 +95,7 @@ is
    --  The cycle, after the levels (EVC_Core.Evaluate_Modes_And_Levels)
    --  and before the session half (EVC_Sessions.Evaluate applies the
    --  orders given here in the same cycle)
+   --  @req 3.6.5.1.4 f)
    procedure Evaluate (Mode : Mode_T; Now_Ms : Unsigned_64)
      with Global => (In_Out => (State, EVC_Sessions.State,
                                 EVC_Radio.State),
