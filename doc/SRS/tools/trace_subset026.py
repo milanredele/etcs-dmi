@@ -720,18 +720,50 @@ def stale_rows(existing, states):
     return out
 
 
+PLAN = ROOT / "doc" / "EVC-PLAN.md"
+OUTCOME = re.compile(r"^## \d+\. (E\d)\b.*outcome", re.M)
+NOTE_PHASE = re.compile(r"^\s*(E\d)\b")
+
+
+def closed_phases():
+    """The phases with an outcome section in doc/EVC-PLAN.md ("## 14.
+    E5 — Radio, level 2: outcome"): closed, no row waits for them."""
+    if not PLAN.exists():
+        return set()
+    return set(OUTCOME.findall(PLAN.read_text(encoding="utf-8")))
+
+
+def closed_phase_rows(existing, closed):
+    """The deferred rows whose note gives a closed phase as the reason,
+    its name at the head of the note ("E4 (Supervised Manoeuvre)", "E3:
+    ..."): (line, clause, phase) each. A phase named later in the note
+    ("with the ATO on-board after E4") is not the reason."""
+    out = []
+    for n, r in enumerate(existing, 2):
+        if r.get("status") != "deferred":
+            continue
+        m = NOTE_PHASE.match(r.get("note") or "")
+        if m and m.group(1) in closed:
+            out.append((n, r["clause"], m.group(1)))
+    return out
+
+
 def check_stale(existing):
     """--check: an error per partial or todo row citing a closed backlog
-    item; the deferred ones are counted, not failed (a deferred row may
-    cite the item that deferred it)."""
+    item and per deferred row whose reason is a closed phase; the
+    deferred rows citing a closed item are counted, not failed (a
+    deferred row may cite the item that deferred it)."""
     stale = stale_rows(existing, read_backlog())
     deferred = [s for s in stale if s[2] == "deferred"]
     print(f"{len(deferred)} deferred rows cite a closed backlog item "
           f"(--stale lists them)")
-    return [f"line {n}: {c}: status {st} but its note cites "
-            + ", ".join(f"{i} ({s})" for i, s in ids)
-            + ": re-read the row"
-            for n, c, st, ids in stale if st != "deferred"]
+    return ([f"line {n}: {c}: status {st} but its note cites "
+             + ", ".join(f"{i} ({s})" for i, s in ids)
+             + ": re-read the row"
+             for n, c, st, ids in stale if st != "deferred"]
+            + [f"line {n}: {c}: deferred to {p}, a closed phase (its "
+               f"outcome is in doc/EVC-PLAN.md): re-read the row"
+               for n, c, p in closed_phase_rows(existing, closed_phases())])
 
 
 def compare(md_table, pdf_table):
@@ -787,6 +819,11 @@ def main():
             print(f"line {n}: {c}: {st}: "
                   + ", ".join(f"{i} {s}" for i, s in ids))
         print(f"{len(stale)} rows cite a closed backlog item")
+        phased = closed_phase_rows(existing, closed_phases())
+        for n, c, p in phased:
+            print(f"line {n}: {c}: deferred to {p}, a closed phase")
+        print(f"{len(phased)} deferred rows give a closed phase as the "
+              f"reason")
         return 0
 
     if args.compare:

@@ -27406,3 +27406,19 @@ sequences blocked by reason E7-version 179 / 179, S076-defect 245 /
 960 / 951. Triage: the four lines Sfbc6ab9e (E7 family), S79568c18,
 S27eb0678@4120100_02_SV22+4060300_03_SV22 and Sad696360 marked "(no
 sequence left ...)", kept for the record.
+
+**2. The matrix tool (B4583, B4564, B4643).** (a) `trace_subset026.py
+--check` fails on, and `--stale` lists, a deferred row whose note begins
+with a closed phase, one with an outcome section in doc/EVC-PLAN.md
+(E0 to E6 today, `closed_phases`, `closed_phase_rows`); a phase named
+later in the note is not its reason (4.4.16.1.4 to .6: "with the ATO
+on-board after E4"). Today 0 rows; on the matrix before e7/deferred-rows
+19 of its 24 (the other five name the phase inside the note). (b) No
+row is missing: chapter 9 lists 3.6.1.1 to 3.6.1.3.4 as definitions
+and informative, 3.6.2.3.1 and 3.9.1.1 as trackside, 3.9.1.2 and
+3.9.1.4 as informative (PDF pages 20, 21 and 32 of chapter 9 in layout
+mode, as the markdown), and the matrix holds the on-board column only;
+by script over chapter 9's table: 5466 entries, 2398 on-board, 2398
+rows, none missing, none extra. The `@req` of
+`EVC_Stored_Information.Infill_Origin` stays 8.4.1.3.1 (a tag names an
+on-board row); no edit under evc/.
