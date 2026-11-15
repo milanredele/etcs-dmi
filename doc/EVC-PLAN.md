@@ -26104,3 +26104,60 @@ runner: B443, B762, B2880, B4523, B4524. Tooling: B1482.
 **Next.** E7 (compatibility: chapter 6, radio infill and Euroloop if
 wanted) and E8 (the TMS570 board) are the two phases left; the plan's
 table gives E7 as deferrable. Which comes first is the user's decision.
+
+## 16. E7 — Compatibility: plan (2026-11-15)
+
+The user's decision of 2026-11-15: E7 before E8. The phase is the
+compatibility of the on-board with trackside of older system versions
+(chapter 6) and the infill the earlier phases left out (3.9: by balise
+group, by Euroloop, by radio); the plan's table had Euroloop and radio
+infill as "if wanted", a question the inventories of the first round
+answer with their sizes before it is put to the user.
+
+**What waits for it.** The matrix: the 154 rows of the phase, all
+deferred but two (6.6.2: 17, the specific requirements when operating
+with X = 1; 6.6.3: 59, the handling of the air gap data of X = 1; 6.6.4:
+7, the specific requirements with X = 2; 6.6.5: 47, the air gap data of
+X = 2; 3.9: 24, infill; 6.4.2: 2 done), and at least 33 rows the earlier
+phases deferred to it (Euroloop: 3.4.5, 3.17.3.6, 4.4.11.1.3.1 c),
+4.4.11.1.6.7, 4.8.4.2 footnote [6], 5.8.3.8; infill: 3.5.3.8 h),
+3.5.4.3, 3.5.6.8, 3.5.7.7, 3.7.3.1 n), 3.8.4.6, 3.8.5.1 b), 3.11.6.5,
+3.12.4.3.1, A.3.5.1, 5.5.3.1.2, 8.4.1.3.1). The corpus: 176 sequences
+blocked on a telegram or a coding of a system version before 3.0, 72 on
+Euroloop, 179 failed sequences filed E7 by the triage (111 of them a
+session with a radio infill unit), and among the steps not judged 921
+for radio infill, 266 for the older versions, 81 for Euroloop. The
+backlog: B010 (packet 72 of version 2 translated), B703 (packet 45 of
+version 2).
+
+**What exists.** The operated system version and its orders
+(`EVC_System_Version`, 3.17; `EVC_Sessions.Follow_Version`); the
+language of 4.0.0 generated from `evc/language/etcs_language.toml` (one
+layout per packet and message; M_VERSION carried, the versions before
+3.0 not decoded by their own layouts); the codec's refusals counted by
+`evc_s076_check` (a field width of an earlier version is a rejection
+there); the runner's block reasons for the three parts of the phase. The
+SV21 and SV22 forms of the corpus run today as far as their telegrams
+equal the layout of 4.0.0.
+
+**Order.** Chapter 6 first (it is the phase's core and no question hangs
+on it), then infill by balise group, then radio infill and Euroloop as
+decided. **The first round (76) is a preparation**: three inventories,
+no code. (1) e7/air-gap: the air gap data of X = 1 and X = 2 (6.6.3,
+6.6.5 with the layouts of 6.5.1 and 6.5.2 they refer to): per packet,
+message and variable what is deleted, translated or unchanged; what the
+generator and the catalogue need to decode a telegram or a message by
+the version it declares and to encode a message for the version of the
+RBC; where the translation sits; what the corpus carries of older
+telegrams and what the sibling's extractor and the runner need. (2)
+e7/behaviour: the specific requirements with X = 1 and X = 2 (6.6.2,
+6.6.4) and the messages from and to an RBC or RIU of an older version
+(6.6.3.3, 6.6.3.4, 6.6.5.4 to 6.6.5.6): per clause the unit it changes
+and its size; how a unit asks which version is operated; the 179 failed
+sequences filed E7, by the clause each waits for. (3) e7/infill: 3.9 and
+the rows deferred for it: infill by balise group (packet 136), by loop
+(an LTM port) and by radio (a session with an RIU); what each needs of
+the ports, the sessions and the runner, its size and what it unblocks:
+the numbers for the user's decision on Euroloop and radio infill. Each
+inventory is a subsection of this section with its tables; the work
+packages of the following rounds are written from them.
